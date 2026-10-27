@@ -48,7 +48,6 @@ const creadosNegocios: string[] = []
 const creadosDuenos: string[] = []
 const creadosCasos: string[] = []
 const creadosClientes: string[] = []
-let productoDePrueba: string | null = null
 let negocioDeLaPrueba: string | undefined
 
 /** El otro Negocio sembrado, para probar que uno no ve ni toca lo del otro. */
@@ -89,27 +88,50 @@ async function limpiar() {
   // Lo que el Agente del dueño propuso o aplicó en las conversaciones también se deshace.
   if (creadosDuenos.length) {
     const delAgente = await db.select().from(esquema.cambios).where(inArray(esquema.cambios.duenoId, creadosDuenos))
-    for (const c of delAgente) {
-      if (c.estado === 'aplicado') await cambios.revertirCambio(c.negocioId, c.id).catch(() => undefined)
-      if (!creadosCambios.includes(c.id)) creadosCambios.push(c.id)
-    }
+    for (const c of delAgente) if (!creadosCambios.includes(c.id)) creadosCambios.push(c.id)
   }
+  // Un Cambio que no se pudo revertir se queda: su `anterior` es la única copia de lo que había antes.
+  const sinRevertir: string[] = []
   if (creadosCambios.length) {
-    await db.delete(esquema.piezas).where(inArray(esquema.piezas.cambioId, creadosCambios))
-    await db.delete(esquema.reglas).where(inArray(esquema.reglas.cambioId, creadosCambios))
-    await db.delete(esquema.cambios).where(inArray(esquema.cambios.id, creadosCambios))
+    for (const c of await db.select().from(esquema.cambios).where(inArray(esquema.cambios.id, creadosCambios))) {
+      if (c.estado !== 'aplicado') continue
+      await cambios.revertirCambio(c.negocioId, c.id).catch((e) => {
+        sinRevertir.push(c.id)
+        afirmar(`limpieza: revirtió el Cambio ${c.id} (${c.tipo})`, false, e)
+      })
+    }
+    const borrables = creadosCambios.filter((id) => !sinRevertir.includes(id))
+    const productosCreados = (await db.select({ anterior: esquema.cambios.anterior }).from(esquema.cambios).where(inArray(esquema.cambios.id, creadosCambios))).flatMap(
+      (c) => ((c.anterior as { productosCreados?: string[] } | null)?.productosCreados ?? []),
+    )
+    if (borrables.length) {
+      await db.delete(esquema.piezas).where(inArray(esquema.piezas.cambioId, borrables))
+      await db.delete(esquema.reglas).where(inArray(esquema.reglas.cambioId, borrables))
+      await db.delete(esquema.cambios).where(inArray(esquema.cambios.id, borrables))
+    }
+    if (productosCreados.length && !sinRevertir.length) await db.delete(esquema.productos).where(inArray(esquema.productos.id, productosCreados))
   }
-  if (productoDePrueba) await db.delete(esquema.productos).where(eq(esquema.productos.id, productoDePrueba))
   if (negocioDeLaPrueba) await db.delete(esquema.capacidadesFaltantes).where(and(eq(esquema.capacidadesFaltantes.negocioId, negocioDeLaPrueba), gte(esquema.capacidadesFaltantes.creado, inicioDeLaPrueba)))
+  if (creadosCasos.length && negocioDeLaPrueba) {
+    // El aviso de un Caso llega al Hilo de cada Dueño del Negocio, no solo al de la prueba.
+    const hilo = await db
+      .select({ id: esquema.mensajesDueno.id, mensaje: esquema.mensajesDueno.mensaje })
+      .from(esquema.mensajesDueno)
+      .where(and(eq(esquema.mensajesDueno.negocioId, negocioDeLaPrueba), gte(esquema.mensajesDueno.creado, inicioDeLaPrueba)))
+    const avisos = hilo.filter((m) => creadosCasos.some((id) => JSON.stringify(m.mensaje).includes(id))).map((m) => m.id)
+    if (avisos.length) await db.delete(esquema.mensajesDueno).where(inArray(esquema.mensajesDueno.id, avisos))
+  }
   if (creadosCasos.length) await db.delete(esquema.casos).where(inArray(esquema.casos.id, creadosCasos))
   if (creadosClientes.length) await db.delete(esquema.clientes).where(inArray(esquema.clientes.id, creadosClientes))
   if (creadosDuenos.length) await db.delete(esquema.duenos).where(inArray(esquema.duenos.id, creadosDuenos))
   if (creadosNegocios.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, creadosNegocios))
   // Los turnos del generador y del Agente del dueño de esta corrida son de prueba: no van a la medición real.
-  const borrados = await db
-    .delete(esquema.turnos)
-    .where(and(inArray(esquema.turnos.agente, ['generador', 'dueno']), gte(esquema.turnos.creado, inicioDeLaPrueba)))
-    .returning({ id: esquema.turnos.id })
+  const borrados = negocioDeLaPrueba
+    ? await db
+        .delete(esquema.turnos)
+        .where(and(eq(esquema.turnos.negocioId, negocioDeLaPrueba), inArray(esquema.turnos.agente, ['generador', 'dueno']), gte(esquema.turnos.creado, inicioDeLaPrueba)))
+        .returning({ id: esquema.turnos.id })
+    : []
   console.log(`Borrado lo que creó la prueba (y ${borrados.length} turnos de prueba).`)
 }
 
@@ -255,7 +277,6 @@ try {
     await cambios.aplicarCambio(negocio.id, conocimiento.id)
     const [aplicado] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocio.id))
     const nuevos = await db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, negocio.id), like(esquema.productos.nombre, 'Café de prueba%')))
-    productoDePrueba = nuevos[0]?.id ?? null
     console.log(`Horario aplicado: "${aplicado.conocimiento.horario}"; productos de prueba activos: ${nuevos.filter((p) => p.activo).length}`)
     afirmar('5 conocimiento: tras aplicar el horario es el nuevo', aplicado.conocimiento.horario === `${antes} y domingos de 9 a 1`, aplicado.conocimiento.horario)
     afirmar('5 conocimiento: tras aplicar el producto nuevo está activo con su precio', nuevos.filter((p) => p.activo).length === 1 && nuevos[0].precio === 21000, nuevos)
@@ -391,10 +412,11 @@ try {
     creadosCambios.push(...aplicados.map((c) => c.id).filter((id) => !creadosCambios.includes(id)))
     console.log(`\nCambios de esta conversación: ${aplicados.map((c) => `${c.tipo}/${c.estado}`).join(', ')}`)
     afirmar('8 agente: tras decir que sí, el Cambio propuesto queda aplicado', aplicados.some((c) => c.estado === 'aplicado' && deEsteTurno.some((p) => p.id === c.id)), aplicados.map((c) => ({ id: c.id, tipo: c.tipo, estado: c.estado })))
+    const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
     await turno(negocio.id, dueno.id, '¿Me puedes mandar una factura electrónica a cada cliente?')
-    const faltantes = await db.select().from(esquema.capacidadesFaltantes).where(and(eq(esquema.capacidadesFaltantes.negocioId, negocio.id), gte(esquema.capacidadesFaltantes.creado, inicioDeLaPrueba)))
-    console.log(`Capacidades faltantes registradas: ${faltantes.length}`)
-    afirmar('8 agente: pedir facturación registra una capacidad faltante', faltantes.length > 0, faltantes)
+    const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
+    console.log(`Capacidades faltantes registradas en ese turno: ${faltantes - faltantesAntes}`)
+    afirmar('8 agente: pedir facturación registra una capacidad faltante', faltantes > faltantesAntes, { antes: faltantesAntes, despues: faltantes })
 
     titulo('9. Agente del dueño, Negocio nuevo (modo armando): alta + entrevista')
     const { negocio: nuevo, dueno: duenoNuevo } = await altaDeDueno({ id: `prueba-alta-${Date.now()}`, name: 'Marta', email: 'marta@example.com' })

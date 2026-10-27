@@ -30,6 +30,8 @@ const telefonoVencido = `570${String(Date.now()).slice(-9)}`
 let laderaId: string | undefined
 let camilaId: string | undefined
 let ultimoMensajeDeCamila: Date | null = null
+let sesionPrevia: typeof esquema.sesionesWhatsapp.$inferSelect | undefined
+let sesionLeida = false
 
 const filasDeLadera = async (negocioId: string) => ({
   clientes: await db.$count(esquema.clientes, eq(esquema.clientes.negocioId, negocioId)),
@@ -39,7 +41,7 @@ const filasDeLadera = async (negocioId: string) => ({
   turnos: await db.$count(esquema.turnos, eq(esquema.turnos.negocioId, negocioId)),
 })
 
-/** Borra lo que creó esta corrida. Camila y su sesión son datos sembrados: se quedan. */
+/** Borra lo que creó esta corrida. Camila es dato sembrado: se queda. Su sesión vuelve a como estaba. */
 async function limpiar() {
   if (!laderaId || !camilaId) return
   const casos = await db
@@ -61,6 +63,9 @@ async function limpiar() {
   // Al borrar al Cliente de la ventana vencida se van también sus mensajes.
   await db.delete(esquema.clientes).where(and(eq(esquema.clientes.negocioId, laderaId), eq(esquema.clientes.telefono, telefonoVencido)))
   await db.update(esquema.clientes).set({ ultimoMensajeEntrante: ultimoMensajeDeCamila }).where(eq(esquema.clientes.id, camilaId))
+  if (!sesionLeida) return
+  if (sesionPrevia) await db.update(esquema.sesionesWhatsapp).set(sesionPrevia).where(eq(esquema.sesionesWhatsapp.telefono, telefono))
+  else await db.delete(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, telefono))
 }
 
 try {
@@ -71,6 +76,8 @@ try {
   if (!camila) throw new Error('Falta sembrar a Camila Rojas: pnpm tsx scripts/sembrar.mts')
   camilaId = camila.id
   ultimoMensajeDeCamila = camila.ultimoMensajeEntrante
+  sesionPrevia = (await db.select().from(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, telefono)))[0]
+  sesionLeida = true
 
   console.log(`\n=== 1. Agente de clientes en simulación (${MODELO_ID}) ===`)
   const antes = await filasDeLadera(ladera.id)
@@ -162,7 +169,8 @@ try {
     console.log('\n=== 3. Pedido y Caso reales en la base (envío simulado) ===')
     const idsDe = <T extends { id: string }>(filas: T[]) => new Set(filas.map((f) => f.id))
     const pedidosPrevios = idsDe(await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(eq(esquema.pedidos.clienteId, camila.id)))
-    const casosPrevios = idsDe(await db.select({ id: esquema.casos.id }).from(esquema.casos).where(eq(esquema.casos.clienteId, camila.id)))
+    const casosDeCamila = async () => idsDe(await db.select({ id: esquema.casos.id }).from(esquema.casos).where(eq(esquema.casos.clienteId, camila.id)))
+    let casosPrevios = await casosDeCamila()
     const pasos = [
       'Quiero el molino manual, para Bogotá, Carrera 15 # 85-30 apto 402',
       'Sí, confírmalo',
@@ -170,6 +178,7 @@ try {
       'Quiero hablar con una persona, por favor',
     ]
     for (const [i, texto] of pasos.entries()) {
+      if (i === pasos.length - 1) casosPrevios = await casosDeCamila()
       console.log(`\nCliente: ${texto}`)
       await recibirMensaje({ wamid: `${base}.p${i}`, telefono, nombre: 'Camila Rojas', texto })
     }
