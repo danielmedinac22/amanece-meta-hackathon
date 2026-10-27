@@ -1,6 +1,6 @@
-# Diseño del prototipo
+# Diseño
 
-Amanece para la hackatón de Meta, del 27 de octubre al 4 de noviembre de 2026. Es un prototipo que mide; las decisiones de Amanece se toman en su mapa, no aquí.
+Este repo es la base de código de Amanece. Arrancó en la hackatón de Meta, del 27 de octubre al 4 de noviembre de 2026, y se construye con el mismo método que el proyecto completo. Lo escrito hasta ahora es el primer diseño: entra al mapa de decisiones de Amanece como un candidato más, y cambia cuando esas decisiones cierren.
 
 ## La escena
 
@@ -38,8 +38,8 @@ Cada Cambio guarda tokens de entrada y salida, costo estimado y latencia, desde 
 ## Piezas
 
 - **Next.js** (App Router) en Vercel, TypeScript, pnpm.
-- **Postgres con Drizzle.** En desarrollo corre en Docker; en producción, una base administrada.
-- **Clerk** para el alta y el inicio de sesión. Cada Dueño queda ligado a su Negocio.
+- **Postgres en Neon con Drizzle**, creado desde Vercel. Desarrollo y producción usan la misma base por ahora.
+- **Neon Auth** para el alta y el inicio de sesión. Cada Dueño queda ligado a su Negocio.
 - **Modelos de Meta** por `api.meta.ai/v1` con el SDK de Vercel AI (`@ai-sdk/openai-compatible`). El modelo se elige con `MODEL_ID`: `muse-spark-1.3-contributor` para probar, `muse-spark-1.3` cuando lo prueben personas.
 - **Kapso.** Por el webhook `whatsapp.message.received`, firmado, entran los mensajes del número de Amanece; por la API de Kapso salen las respuestas. Un solo número para todos los Negocios: el código del link `wa.me` dice a qué Negocio habla cada Cliente.
 
