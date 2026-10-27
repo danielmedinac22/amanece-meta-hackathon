@@ -33,7 +33,7 @@ Las **piezas compartidas** son lo que tocan todos los Negocios a la vez:
 Algo está hecho cuando se cumplen las cuatro:
 
 1. `tsc --noEmit`, `pnpm lint` y `pnpm build` pasan.
-2. Los `scripts/probar-*.mts` del área tocada corren contra Neon y Muse Spark reales, con `ENVIO_SIMULADO=1`, y salen con 0. Cada cambio agrega su caso al `probar` de su área. Ese caso afirma lo que queda en la base o lo que se habría enviado, nunca el texto exacto del modelo. Hasta que se cierre el issue "Los probar fallan cuando algo no da", lee la salida caso por caso.
+2. `pnpm probar` corre los `scripts/probar-*.mts` contra Neon y Muse Spark reales, con `ENVIO_SIMULADO=1`, y sale con 0. Cada cambio agrega su caso al `probar` de su área con `afirmar` de `scripts/afirmar.mts`. Ese caso afirma lo que queda en la base o lo que se habría enviado, nunca el texto exacto del modelo.
 3. Si tocaste el Panel, ábrelo en Chrome, recorre lo que cambió y míralo.
 4. Lo revisó otro modelo: `interrogate` si es pieza compartida, `/code-review` en lo demás.
 
