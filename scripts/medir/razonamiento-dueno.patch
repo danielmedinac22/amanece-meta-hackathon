@@ -1,0 +1,12 @@
+diff --git a/src/negocio/dueno-chat.ts b/src/negocio/dueno-chat.ts
+index b1fdf90..d99a9bb 100644
+--- a/src/negocio/dueno-chat.ts
++++ b/src/negocio/dueno-chat.ts
+@@ -48,6 +48,7 @@ export async function responderEnElHilo({
+     messages: await convertToModelMessages(historial, { tools, convertDataPart: parteDeDatosParaElModelo, ignoreIncompleteToolCalls: true }),
+     tools,
+     stopWhen: isStepCount(8),
++    ...(process.env.RAZONAMIENTO_DUENO ? { reasoning: process.env.RAZONAMIENTO_DUENO as 'low' } : {}),
+     onEnd: async ({ totalUsage }) => {
+       await registrarTurno('dueno', negocio.id, totalUsage, Date.now() - inicio).catch((e) => console.warn('No se pudo registrar el turno del Agente del dueño', e))
+     },

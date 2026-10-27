@@ -1,0 +1,30 @@
+[
+ {
+  "pedido": "Quiero una lista de todos mis pedidos con el cliente, la ciudad y el total.",
+  "estado": "propuesto",
+  "intentosDelGenerador": 1,
+  "errorQueRecibioElGenerador": [
+   null
+  ],
+  "totalFilas": 200,
+  "error": null,
+  "msQuickJS": 72,
+  "ms": 11514,
+  "llamadas": 1,
+  "costoGuardado": 0.0005693
+ },
+ {
+  "pedido": "Quiero ver todos los pedidos entregados este mes, uno por fila, con cliente, ciudad, total y fecha.",
+  "estado": "propuesto",
+  "intentosDelGenerador": 1,
+  "errorQueRecibioElGenerador": [
+   null
+  ],
+  "totalFilas": 200,
+  "error": null,
+  "msQuickJS": 59,
+  "ms": 8226,
+  "llamadas": 1,
+  "costoGuardado": 0.0005029
+ }
+]

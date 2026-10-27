@@ -1,0 +1,188 @@
+{
+ "pedidosVistos": 2000,
+ "desde": "2026-10-09T22:57:36.095Z",
+ "hasta": "2026-10-27T22:44:38.495Z",
+ "verdadTotal": 2752,
+ "corridas": [
+  {
+   "corrida": 1,
+   "estado": "propuesto",
+   "intentos": 1,
+   "error": null,
+   "msPropuesta": 8721,
+   "msGenerar": 7921,
+   "msQuickJS": 61,
+   "msResto": 800,
+   "msAplicar": 234,
+   "msPanelConUnaPieza": 875,
+   "panelOk": [
+    true
+   ],
+   "llamadas": 1,
+   "tokensEntrada": 2861,
+   "tokensSalida": 1143,
+   "usd": 0.0005147000000000001,
+   "calculadoPorElIndicador": 1656,
+   "verdadSql": 2752,
+   "diasConValorDistinto": 12,
+   "diasEnLaSerie": 30,
+   "nota": "Pedidos confirmados por día en los últimos 30 días, contando confirmado, enviado, entregado y novedad.",
+   "primerosDias": [
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-28"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-29"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-30"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-10-01"
+    }
+   ],
+   "primerosDiasVerdad": [
+    {
+     "etiqueta": "2026-09-28",
+     "valor": 94
+    },
+    {
+     "etiqueta": "2026-09-29",
+     "valor": 92
+    },
+    {
+     "etiqueta": "2026-09-30",
+     "valor": 89
+    },
+    {
+     "etiqueta": "2026-10-01",
+     "valor": 98
+    }
+   ]
+  },
+  {
+   "corrida": 2,
+   "estado": "propuesto",
+   "intentos": 1,
+   "error": null,
+   "msPropuesta": 5976,
+   "msGenerar": 5228,
+   "msQuickJS": 47,
+   "msResto": 748,
+   "msAplicar": 234,
+   "msPanelConUnaPieza": 912,
+   "panelOk": [
+    true
+   ],
+   "llamadas": 1,
+   "tokensEntrada": 2861,
+   "tokensSalida": 713,
+   "usd": 0.00042870000000000007,
+   "calculadoPorElIndicador": 1656,
+   "verdadSql": 2752,
+   "diasConValorDistinto": 12,
+   "diasEnLaSerie": 30,
+   "nota": "Pedidos confirmados por día en los últimos 30 días; confirmados incluye confirmado, enviado, entregado y novedad.",
+   "primerosDias": [
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-28"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-29"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-30"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-10-01"
+    }
+   ],
+   "primerosDiasVerdad": [
+    {
+     "etiqueta": "2026-09-28",
+     "valor": 94
+    },
+    {
+     "etiqueta": "2026-09-29",
+     "valor": 92
+    },
+    {
+     "etiqueta": "2026-09-30",
+     "valor": 89
+    },
+    {
+     "etiqueta": "2026-10-01",
+     "valor": 98
+    }
+   ]
+  },
+  {
+   "corrida": 3,
+   "estado": "propuesto",
+   "intentos": 1,
+   "error": null,
+   "msPropuesta": 8057,
+   "msGenerar": 7287,
+   "msQuickJS": 36,
+   "msResto": 769,
+   "msAplicar": 246,
+   "msPanelConUnaPieza": 965,
+   "panelOk": [
+    true
+   ],
+   "llamadas": 1,
+   "tokensEntrada": 2861,
+   "tokensSalida": 1039,
+   "usd": 0.0004939,
+   "calculadoPorElIndicador": 1656,
+   "verdadSql": 2752,
+   "diasConValorDistinto": 12,
+   "diasEnLaSerie": 30,
+   "nota": "Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por día en Bogotá en los últimos 30 días.",
+   "primerosDias": [
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-28"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-29"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-09-30"
+    },
+    {
+     "valor": 0,
+     "etiqueta": "2026-10-01"
+    }
+   ],
+   "primerosDiasVerdad": [
+    {
+     "etiqueta": "2026-09-28",
+     "valor": 94
+    },
+    {
+     "etiqueta": "2026-09-29",
+     "valor": 92
+    },
+    {
+     "etiqueta": "2026-09-30",
+     "valor": 89
+    },
+    {
+     "etiqueta": "2026-10-01",
+     "valor": 98
+    }
+   ]
+  }
+ ]
+}

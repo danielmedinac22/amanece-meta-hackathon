@@ -1,0 +1,3369 @@
+{
+ "modelo": "muse-spark-1.3-contributor",
+ "base": "ep-damp-scene-b8louqpz-pooler.c-14.us-east-1.aws.neon.tech",
+ "generado": "2026-10-27T22:44:15.858Z",
+ "corridas": [
+  {
+   "tipo": "margen",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:39:41.248Z",
+   "pedido": "Quiero ver mi margen de ganancia por producto.",
+   "herramientasTurno1": [
+    "ver_negocio"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": false,
+   "cambiosCreados": 0,
+   "estadoFinal": "sin cambio",
+   "aplicadoALaPrimera": false,
+   "errores": [],
+   "msRevertir": 0,
+   "msHastaAplicadoMaquina": null,
+   "msHastaVerAplicado": null,
+   "msTurno1": 13367,
+   "msTurno2": null,
+   "llamadasAlModelo": 2,
+   "tokens": {
+    "entrada": 7988,
+    "salida": 1092,
+    "razonamiento": 992
+   },
+   "usd": 0.0010172,
+   "usdStandard": 0.014626,
+   "usdPorRol": {
+    "dueno": 0.0010172,
+    "generador": 0,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 0,
+    "tokensSalida": 0,
+    "costoUsd": 0
+   },
+   "guardadoEnTurnos": {
+    "filas": 1,
+    "porAgente": {
+     "dueno": 1,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 7988,
+    "tokensSalida": 1092,
+    "costoUsd": 0.0010172
+   },
+   "cotejo": null,
+   "cambios": [],
+   "turno1": {
+    "etiqueta": "margen-1-t1",
+    "texto": "Quiero ver mi margen de ganancia por producto.",
+    "ms": 13367,
+    "msHastaCabeceras": 172.7,
+    "herramientas": [
+     {
+      "nombre": "ver_negocio",
+      "estado": "output-available",
+      "entrada": {},
+      "salida": {
+       "link": "https://wa.me/12058633828?text=Hola%20Caf%C3%A9%20Ladera%20(LADERA)",
+       "rubro": "café de especialidad",
+       "estado": "listo",
+       "nombre": "Café Ladera",
+       "piezas": [],
+       "reglas": [],
+       "productos": [
+        {
+         "id": "7492fbd0-e3c7-50e6-ae35-29f074bc3aaf",
+         "activo": true,
+         "nombre": "Café Ladera tueste claro, grano 250 g",
+         "precio": 24000,
+         "descripcion": "Notas frutales y cítricas, de la finca El Mirador."
+        },
+        {
+         "id": "94a7f048-c327-57fd-a346-55b4f0e04b13",
+         "activo": true,
+         "nombre": "Café Ladera tueste medio, grano 500 g",
+         "precio": 38000,
+         "descripcion": "Chocolate y caramelo, el más pedido."
+        },
+        {
+         "id": "0ec007ef-1fd4-59ad-a3fc-be1d1abe04a3",
+         "activo": true,
+         "nombre": "Café Ladera tueste medio, molido 500 g",
+         "precio": 38000,
+         "descripcion": "Molido para greca, filtro o prensa francesa."
+        },
+        {
+         "id": "1c79ae8c-3a7c-5d04-a87f-c2b1f85ce0e5",
+         "activo": true,
+         "nombre": "Café Ladera tueste oscuro, molido 500 g",
+         "precio": 36000,
+         "descripcion": "Cuerpo intenso, para tinto y greca."
+        },
+        {
+         "id": "0cb69b97-5b51-5111-aaac-870ceaeb4a15",
+         "activo": true,
+         "nombre": "Caja regalo Ladera",
+         "precio": 95000,
+         "descripcion": "Dos bolsas de 250 g y una taza esmaltada, en caja de cartón."
+        },
+        {
+         "id": "c09cb1c5-7788-51ab-af1c-33608121501f",
+         "activo": true,
+         "nombre": "Micro lote Honey, grano 250 g",
+         "precio": 32000,
+         "descripcion": "Lote pequeño con proceso honey, dulce y de cuerpo suave."
+        },
+        {
+         "id": "08ce04b5-81e2-59e1-a51d-960a5ab1e972",
+         "activo": true,
+         "nombre": "Molino manual de café",
+         "precio": 119000,
+         "descripcion": "Muelas de cerámica, ajustable, para moler en casa."
+        },
+        {
+         "id": "ed0a5da6-9e56-55c4-abab-17dbccaf8e87",
+         "activo": true,
+         "nombre": "Suscripción mensual, 2 bolsas de 250 g",
+         "precio": 62000,
+         "descripcion": "Dos bolsas al mes del tueste que elijas, se paga contra entrega."
+        }
+       ],
+       "conocimiento": {
+        "tono": "Cercano y cálido, como un barista amigo. Tuteamos, hablamos sencillo y no abusamos de los tecnicismos del café. Un emoji de café de vez en cuando.",
+        "pagos": "Pago contra entrega en todo el país: pagas en efectivo cuando te llega el pedido. Por ahora no recibimos tarjeta ni transferencia.",
+        "ciudad": "Manizales",
+        "envios": "Enviamos a todo el país con Servientrega e Inter Rapidísimo, y el envío va incluido en el precio. Ciudades principales (Bogotá, Medellín, Cali, Barranquilla, Bucaramanga, Pereira y Manizales): de 2 a 4 días hábiles. Resto del país: de 4 a 8 días hábiles, según la transportadora. No enviamos al exterior.",
+        "horario": "Atendemos por WhatsApp de lunes a sábado, de 8:00 a. m. a 6:00 p. m. Despachamos de lunes a viernes.",
+        "preguntas": [
+         {
+          "pregunta": "¿Qué diferencia hay entre los tuestes?",
+          "respuesta": "El claro tiene notas frutales y cítricas, es el más ligero. El medio es el más balanceado, con chocolate y caramelo. El oscuro tiene más cuerpo y un sabor más intenso y amargo."
+         },
+         {
+          "pregunta": "¿Lo venden en grano o molido?",
+          "respuesta": "De las dos formas. El molido sale listo para greca, filtro o prensa francesa. Si tienes molino en casa, el grano se conserva mejor."
+         },
+         {
+          "pregunta": "¿Cuánto dura el café una vez abierto?",
+          "respuesta": "Tostamos por tandas y lo despachamos fresco. Lo mejor es tomarlo dentro de las cuatro semanas siguientes al tueste, en un frasco cerrado y lejos del sol."
+         },
+         {
+          "pregunta": "¿Cómo funciona la suscripción mensual?",
+          "respuesta": "Cada mes te llegan dos bolsas de 250 g del tueste que elijas, por $62.000. Se paga contra entrega, como todo, y la puedes pausar o cancelar avisándonos antes del día 25."
+         },
+         {
+          "pregunta": "¿Si me llega mal o equivocado qué pasa?",
+          "respuesta": "Si el pedido llega dañado o no es el que pediste, nos escribes con una foto y te lo reponemos sin costo. Por ser un alimento no hacemos devoluciones por gusto."
+         }
+        ],
+        "descripcion": "Café de especialidad de Manizales, tostado en lotes pequeños con granos de fincas de Caldas y Risaralda. Vendemos por internet y entregamos en todo el país."
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te armo esa vista de margen por producto. Para mostrarte el margen me falta un dato: cuánto te cuesta cada producto.\n\n¿Me pasas el costo de cada uno? Te armo la tabla de una.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 8,
+    "msEnDb": 847.3,
+    "tokens": {
+     "entrada": 7988,
+     "salida": 1092,
+     "razonamiento": 992
+    },
+    "usd": 0.0010172,
+    "usdStandard": 0.014626,
+    "usdPorRol": {
+     "dueno": 0.0010172,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2223.9,
+     "ventanaDeHerramienta": 188.6,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 342.8,
+     "responder": 10609.1,
+     "primerTextoVisible": 6018.8
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 178.9,
+      "ttfb": 698.7,
+      "ms": 2045,
+      "entrada": 3388,
+      "salida": 198,
+      "razonamiento": 141,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2412.5,
+      "ttfb": 3606.3,
+      "ms": 10609.1,
+      "entrada": 4600,
+      "salida": 894,
+      "razonamiento": 851,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": null
+  },
+  {
+   "tipo": "recompra",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:39:55.674Z",
+   "pedido": "Quiero saber qué porcentaje de mis clientes me ha comprado más de una vez en los últimos 60 días.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 314.8,
+   "msHastaAplicadoMaquina": 23660.4,
+   "msHastaVerAplicado": 26541.3,
+   "msTurno1": 21679.1,
+   "msTurno2": 4862.2,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17775,
+    "salida": 3360,
+    "razonamiento": 2650
+   },
+   "usd": 0.0024495000000000003,
+   "usdStandard": 0.036498749999999996,
+   "usdPorRol": {
+    "dueno": 0.001925,
+    "generador": 0.0005245,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2843,
+    "tokensSalida": 1201,
+    "costoUsd": 0.0005245
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17775,
+    "tokensSalida": 3360,
+    "costoUsd": 0.0024495000000000003
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "5f3689ce-12ca-47a2-abae-3d91d4677c5e",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Porcentaje clientes recurrentes: Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días.",
+     "tokensEntrada": 2843,
+     "tokensSalida": 1201,
+     "costoUsdGuardado": 0.0005245,
+     "msHastaPropuesta": 9837,
+     "msHastaAplicado": 19311,
+     "intentos": 1,
+     "msQuickJS": 34,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "7 de 11 clientes con compra repitieron en los últimos 60 días; se cuentan confirmado, enviado, entregado y novedad.",
+      "valor": 63.6,
+      "unidad": "%"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var validos = { confirmado: true, enviado: true, entregado: true, novedad: true };\n  var corte = Date.parse(datos.hoy) - 60 * 86400000;\n  var conteo = {};\n  var pedidos = datos.pedidos || [];\n  for (var i = 0; i < pedidos.length; i++) {\n    var p = pedidos[i];\n    if (!validos[p.estado]) continue;\n    if (!p.creado) continue;\n    var t = Date.parse(p.creado);\n    if (isNaN(t) || t < corte) continue;\n    var c = p.clienteId || \"__sin_cliente__\";\n    conteo[c] = (conteo[c] || 0) + 1;\n  }\n  var conCompra = 0;\n  var recurrentes = 0;\n  for (var k in conteo) {\n    if (Object.prototype.hasOwnProperty.call(conteo, k)) {\n      conCompra++;\n      if (conteo[k] > 1) recurrentes++;\n    }\n  }\n  if (conCompra === 0) {\n    return { valor: 0, unidad: \"%\", nota: \"Sin compras confirmadas en los últimos 60 días; se cuentan confirmado, enviado, entregado y novedad.\" };\n  }\n  var pct = (recurrentes / conCompra) * 100;\n  pct = Math.round(pct * 10) / 10;\n  return { valor: pct, unidad: \"%\", nota: recurrentes + \" de \" + conCompra + \" clientes con compra repitieron en los últimos 60 días; se cuentan confirmado, enviado, entregado y novedad.\" };\n}",
+      "nombre": "Porcentaje clientes recurrentes",
+      "descripcion": "Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "recompra-1-t1",
+    "texto": "Quiero saber qué porcentaje de mis clientes me ha comprado más de una vez en los últimos 60 días.",
+    "ms": 21679.1,
+    "msHastaCabeceras": 171.8,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Porcentaje clientes recurrentes",
+       "pedido": "Quiero saber qué porcentaje de mis clientes me ha comprado más de una vez en los últimos 60 días."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005245,
+        "tokensSalida": 1201,
+        "tokensEntrada": 2843,
+        "msHastaPropuesta": 9837
+       },
+       "nombre": "Porcentaje clientes recurrentes",
+       "resumen": "Porcentaje clientes recurrentes: Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días.",
+       "cambioId": "5f3689ce-12ca-47a2-abae-3d91d4677c5e",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 34,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "7 de 11 clientes con compra repitieron en los últimos 60 días; se cuentan confirmado, enviado, entregado y novedad.",
+         "valor": 63.6,
+         "unidad": "%"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a calcular ese porcentaje de clientes recurrentes. En los últimos 60 días, 7 de tus 11 clientes te compraron más de una vez. Eso es el 63.6%. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1738.8,
+    "tokens": {
+     "entrada": 9993,
+     "salida": 2770,
+     "razonamiento": 2168
+    },
+    "usd": 0.0015533,
+    "usdStandard": 0.02426375,
+    "usdPorRol": {
+     "dueno": 0.0010288,
+     "generador": 0.0005245,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 4755.9,
+     "ventanaDeHerramienta": 9931.9,
+     "generar": 9040.6,
+     "simular": 0,
+     "dbEnLaVentana": 1257.4,
+     "responder": 6672.4,
+     "primerTextoVisible": 15549.1
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 176.1,
+      "ttfb": 405.3,
+      "ms": 4579.8,
+      "entrada": 3400,
+      "salida": 653,
+      "razonamiento": 539,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 5277.7,
+      "ttfb": 9039.1,
+      "ms": 9040.6,
+      "entrada": 2843,
+      "salida": 1201,
+      "razonamiento": 757,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 14687.8,
+      "ttfb": 861.4,
+      "ms": 6672.4,
+      "entrada": 3750,
+      "salida": 916,
+      "razonamiento": 872,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "recompra-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4862.2,
+    "msHastaCabeceras": 158.5,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "5f3689ce-12ca-47a2-abae-3d91d4677c5e"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Porcentaje clientes recurrentes: Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días.",
+       "cambioId": "5f3689ce-12ca-47a2-abae-3d91d4677c5e",
+       "msHastaAplicado": 19311
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo. Ya quedó en tu panel para que lo veas cuando quieras.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 545.2,
+    "tokens": {
+     "entrada": 7782,
+     "salida": 590,
+     "razonamiento": 482
+    },
+    "usd": 0.0008962,
+    "usdStandard": 0.012235,
+    "usdPorRol": {
+     "dueno": 0.0008962,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1736.2,
+     "ventanaDeHerramienta": 245.1,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 237.3,
+     "responder": 2722.7,
+     "primerTextoVisible": 2269.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 161.4,
+      "ttfb": 450.6,
+      "ms": 1574.8,
+      "entrada": 3800,
+      "salida": 201,
+      "razonamiento": 119,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1981.3,
+      "ttfb": 288.1,
+      "ms": 2722.7,
+      "entrada": 3982,
+      "salida": 389,
+      "razonamiento": 363,
+      "enCache": 3697,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "clientes",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:40:23.926Z",
+   "pedido": "Quiero una tabla con mis mejores clientes: cuánto me han comprado en total, de mayor a menor.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 314.7,
+   "msHastaAplicadoMaquina": 23545.3,
+   "msHastaVerAplicado": 26241.9,
+   "msTurno1": 21654.6,
+   "msTurno2": 4587.3,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 20338,
+    "salida": 3273,
+    "razonamiento": 2243
+   },
+   "usd": 0.0026883999999999996,
+   "usdStandard": 0.03933275,
+   "usdPorRol": {
+    "dueno": 0.0020182999999999998,
+    "generador": 0.0006701,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2813,
+    "tokensSalida": 1944,
+    "costoUsd": 0.0006701
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 20338,
+    "tokensSalida": 3273,
+    "costoUsd": 0.0026883999999999996
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "2c0b3288-5923-4350-8069-3c49a72c970b",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Mejores clientes: Muestra tus mejores clientes ordenados por total comprado de mayor a menor.",
+     "tokensEntrada": 2813,
+     "tokensSalida": 1944,
+     "costoUsdGuardado": 0.0006701,
+     "msHastaPropuesta": 14297,
+     "msHastaAplicado": 21816,
+     "intentos": 1,
+     "msQuickJS": 5,
+     "totalFilas": 12,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Camila Rojas",
+       "telefono": "***0001",
+       "num_pedidos": 12,
+       "ultima_compra": "2026-10-24 06:30",
+       "total_comprado": 1339000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Daniela Quintero",
+       "telefono": "***0007",
+       "num_pedidos": 4,
+       "ultima_compra": "2026-10-15 19:23",
+       "total_comprado": 369000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Juan David Cárdenas",
+       "telefono": "***0004",
+       "num_pedidos": 4,
+       "ultima_compra": "2026-10-25 06:25",
+       "total_comprado": 342000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Paola Andrea Vargas",
+       "telefono": "***0009",
+       "num_pedidos": 2,
+       "ultima_compra": "2026-10-18 15:13",
+       "total_comprado": 264000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Carlos Mario Londoño",
+       "telefono": "***0010",
+       "num_pedidos": 3,
+       "ultima_compra": "2026-10-23 20:54",
+       "total_comprado": 258000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Sebastián Mejía",
+       "telefono": "***0008",
+       "num_pedidos": 3,
+       "ultima_compra": "2026-10-20 06:41",
+       "total_comprado": 222000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Andrés Felipe Gómez",
+       "telefono": "***0002",
+       "num_pedidos": 4,
+       "ultima_compra": "2026-10-18 03:05",
+       "total_comprado": 174000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Laura Valentina Pérez",
+       "telefono": "***0003",
+       "num_pedidos": 1,
+       "ultima_compra": "2026-10-14 13:19",
+       "total_comprado": 138000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Mariana Ospina",
+       "telefono": "***0005",
+       "num_pedidos": 1,
+       "ultima_compra": "2026-10-14 04:16",
+       "total_comprado": 76000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Santiago Herrera",
+       "telefono": "***0006",
+       "num_pedidos": 1,
+       "ultima_compra": "2026-10-12 15:16",
+       "total_comprado": 62000
+      },
+      {
+       "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+       "cliente": "Nicolás Aristizábal",
+       "telefono": "***0012",
+       "num_pedidos": 1,
+       "ultima_compra": "2026-10-17 11:47",
+       "total_comprado": 38000
+      },
+      {
+       "nota": "Sin compras confirmadas.",
+       "cliente": "Luisa Fernanda Ríos",
+       "telefono": "***0011",
+       "num_pedidos": 0,
+       "ultima_compra": null,
+       "total_comprado": 0
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "telefono",
+         "titulo": "Teléfono"
+        },
+        {
+         "clave": "num_pedidos",
+         "titulo": "Pedidos comprados"
+        },
+        {
+         "clave": "total_comprado",
+         "titulo": "Total comprado (COP)"
+        },
+        {
+         "clave": "ultima_compra",
+         "titulo": "Última compra"
+        },
+        {
+         "clave": "nota",
+         "titulo": "Nota"
+        }
+       ]
+      },
+      "codigo": "function consultar(datos) {\n  var fmt = function (iso) {\n    if (!iso) return null;\n    var t = Date.parse(iso);\n    if (isNaN(t)) return null;\n    return new Date(t - 5 * 3600 * 1000).toISOString().slice(0, 16).replace(\"T\", \" \");\n  };\n  var esCompra = function (e) {\n    return e === \"confirmado\" || e === \"enviado\" || e === \"entregado\" || e === \"novedad\";\n  };\n  var clientes = datos.clientes || [];\n  var pedidos = datos.pedidos || [];\n  var acc = {};\n  var i;\n  for (i = 0; i < pedidos.length; i++) {\n    var p = pedidos[i];\n    if (!p || !esCompra(p.estado)) continue;\n    var cid = p.clienteId;\n    if (!cid) continue;\n    if (!acc[cid]) acc[cid] = { total: 0, n: 0, ult: null, ultT: -1 };\n    var tot = typeof p.total === \"number\" ? p.total : 0;\n    acc[cid].total += tot;\n    acc[cid].n += 1;\n    var t = Date.parse(p.creado);\n    if (!isNaN(t) && t > acc[cid].ultT) { acc[cid].ultT = t; acc[cid].ult = p.creado; }\n  }\n  var filas = [];\n  var j;\n  for (j = 0; j < clientes.length; j++) {\n    var c = clientes[j];\n    var a = acc[c.id] || { total: 0, n: 0, ult: null };\n    filas.push({\n      cliente: c.nombre || \"Sin nombre\",\n      telefono: c.telefono || null,\n      num_pedidos: a.n,\n      total_comprado: a.total,\n      ultima_compra: a.ult ? fmt(a.ult) : null,\n      nota: a.n > 0 ? \"Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.\" : \"Sin compras confirmadas.\"\n    });\n  }\n  filas.sort(function (x, y) {\n    if (y.total_comprado !== x.total_comprado) return y.total_comprado - x.total_comprado;\n    if (y.num_pedidos !== x.num_pedidos) return y.num_pedidos - x.num_pedidos;\n    return x.cliente < y.cliente ? -1 : 1;\n  });\n  return filas.slice(0, 200);\n}",
+      "nombre": "Mejores clientes",
+      "descripcion": "Muestra tus mejores clientes ordenados por total comprado de mayor a menor."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "clientes-1-t1",
+    "texto": "Quiero una tabla con mis mejores clientes: cuánto me han comprado en total, de mayor a menor.",
+    "ms": 21654.6,
+    "msHastaCabeceras": 160.8,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Mejores clientes",
+       "pedido": "tabla con mis mejores clientes: cuánto me han comprado en total, de mayor a menor"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "telefono",
+          "titulo": "Teléfono"
+         },
+         {
+          "clave": "num_pedidos",
+          "titulo": "Pedidos comprados"
+         },
+         {
+          "clave": "total_comprado",
+          "titulo": "Total comprado (COP)"
+         },
+         {
+          "clave": "ultima_compra",
+          "titulo": "Última compra"
+         },
+         {
+          "clave": "nota",
+          "titulo": "Nota"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0006701,
+        "tokensSalida": 1944,
+        "tokensEntrada": 2813,
+        "msHastaPropuesta": 14297
+       },
+       "nombre": "Mejores clientes",
+       "resumen": "Mejores clientes: Muestra tus mejores clientes ordenados por total comprado de mayor a menor.",
+       "cambioId": "2c0b3288-5923-4350-8069-3c49a72c970b",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 5,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "telefono",
+           "titulo": "Teléfono"
+          },
+          {
+           "clave": "num_pedidos",
+           "titulo": "Pedidos comprados"
+          },
+          {
+           "clave": "total_comprado",
+           "titulo": "Total comprado (COP)"
+          },
+          {
+           "clave": "ultima_compra",
+           "titulo": "Última compra"
+          },
+          {
+           "clave": "nota",
+           "titulo": "Nota"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Camila Rojas",
+          "telefono": "***0001",
+          "num_pedidos": 12,
+          "ultima_compra": "2026-10-24 06:30",
+          "total_comprado": 1339000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Daniela Quintero",
+          "telefono": "***0007",
+          "num_pedidos": 4,
+          "ultima_compra": "2026-10-15 19:23",
+          "total_comprado": 369000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Juan David Cárdenas",
+          "telefono": "***0004",
+          "num_pedidos": 4,
+          "ultima_compra": "2026-10-25 06:25",
+          "total_comprado": 342000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Paola Andrea Vargas",
+          "telefono": "***0009",
+          "num_pedidos": 2,
+          "ultima_compra": "2026-10-18 15:13",
+          "total_comprado": 264000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Carlos Mario Londoño",
+          "telefono": "***0010",
+          "num_pedidos": 3,
+          "ultima_compra": "2026-10-23 20:54",
+          "total_comprado": 258000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Sebastián Mejía",
+          "telefono": "***0008",
+          "num_pedidos": 3,
+          "ultima_compra": "2026-10-20 06:41",
+          "total_comprado": 222000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Andrés Felipe Gómez",
+          "telefono": "***0002",
+          "num_pedidos": 4,
+          "ultima_compra": "2026-10-18 03:05",
+          "total_comprado": 174000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Laura Valentina Pérez",
+          "telefono": "***0003",
+          "num_pedidos": 1,
+          "ultima_compra": "2026-10-14 13:19",
+          "total_comprado": 138000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Mariana Ospina",
+          "telefono": "***0005",
+          "num_pedidos": 1,
+          "ultima_compra": "2026-10-14 04:16",
+          "total_comprado": 76000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Santiago Herrera",
+          "telefono": "***0006",
+          "num_pedidos": 1,
+          "ultima_compra": "2026-10-12 15:16",
+          "total_comprado": 62000
+         },
+         {
+          "nota": "Suma pedidos confirmado, enviado, entregado y novedad; excluye pendiente y cancelado.",
+          "cliente": "Nicolás Aristizábal",
+          "telefono": "***0012",
+          "num_pedidos": 1,
+          "ultima_compra": "2026-10-17 11:47",
+          "total_comprado": 38000
+         },
+         {
+          "nota": "Sin compras confirmadas.",
+          "cliente": "Luisa Fernanda Ríos",
+          "telefono": "***0011",
+          "num_pedidos": 0,
+          "ultima_compra": null,
+          "total_comprado": 0
+         }
+        ],
+        "totalFilas": 12
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te la tengo. Es una tabla de 12 clientes, de mayor a menor compra.\n\nTrae cliente, pedidos, total comprado y última compra. La top es Camila Rojas con 12 pedidos por $1.339.000. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1591,
+    "tokens": {
+     "entrada": 10815,
+     "salida": 2823,
+     "razonamiento": 1896
+    },
+    "usd": 0.0016461,
+    "usdStandard": 0.025516499999999998,
+    "usdPorRol": {
+     "dueno": 0.0009760000000000001,
+     "generador": 0.0006701,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2138.7,
+     "ventanaDeHerramienta": 14388.3,
+     "generar": 13643.4,
+     "simular": 0,
+     "dbEnLaVentana": 1121.9,
+     "responder": 4810.4,
+     "primerTextoVisible": 17174.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 163.8,
+      "ttfb": 621,
+      "ms": 1974.9,
+      "entrada": 3399,
+      "salida": 240,
+      "razonamiento": 151,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 2537.7,
+      "ttfb": 13642.5,
+      "ms": 13643.4,
+      "entrada": 2813,
+      "salida": 1944,
+      "razonamiento": 1170,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 16527,
+      "ttfb": 647.2,
+      "ms": 4810.4,
+      "entrada": 4603,
+      "salida": 639,
+      "razonamiento": 575,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "clientes-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4587.3,
+    "msHastaCabeceras": 160.1,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "2c0b3288-5923-4350-8069-3c49a72c970b"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Mejores clientes: Muestra tus mejores clientes ordenados por total comprado de mayor a menor.",
+       "cambioId": "2c0b3288-5923-4350-8069-3c49a72c970b",
+       "msHastaAplicado": 21816
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel como Mejores clientes.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 562.5,
+    "tokens": {
+     "entrada": 9523,
+     "salida": 450,
+     "razonamiento": 347
+    },
+    "usd": 0.0010423,
+    "usdStandard": 0.01381625,
+    "usdPorRol": {
+     "dueno": 0.0010423,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1635.9,
+     "ventanaDeHerramienta": 254.8,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 246.6,
+     "responder": 2532.1,
+     "primerTextoVisible": 2347.6
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 163.3,
+      "ttfb": 594.5,
+      "ms": 1472.6,
+      "entrada": 4674,
+      "salida": 166,
+      "razonamiento": 85,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1890.7,
+      "ttfb": 456.9,
+      "ms": 2532.1,
+      "entrada": 4849,
+      "salida": 284,
+      "razonamiento": 262,
+      "enCache": 4593,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "entrega",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:40:51.881Z",
+   "pedido": "Quiero saber cuántos días tarda en promedio un pedido desde que se confirma hasta que se entrega.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 338.5,
+   "msHastaAplicadoMaquina": 22525.8,
+   "msHastaVerAplicado": 28067.7,
+   "msTurno1": 20160.3,
+   "msTurno2": 7907.4,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17695,
+    "salida": 3313,
+    "razonamiento": 2532
+   },
+   "usd": 0.0024321000000000004,
+   "usdStandard": 0.036198999999999995,
+   "usdPorRol": {
+    "dueno": 0.0018356000000000002,
+    "generador": 0.0005965,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2839,
+    "tokensSalida": 1563,
+    "costoUsd": 0.0005965
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17695,
+    "tokensSalida": 3313,
+    "costoUsd": 0.0024321
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "ece1574b-1a04-47fd-b8f3-0303ce27a838",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Días promedio entrega: Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega.",
+     "tokensEntrada": 2839,
+     "tokensSalida": 1563,
+     "costoUsdGuardado": 0.0005965,
+     "msHastaPropuesta": 13037,
+     "msHastaAplicado": 20807,
+     "intentos": 1,
+     "msQuickJS": 6,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Sin fechas de confirmación y entrega en los pedidos entregados no se puede calcular el promedio de 28 entregados.",
+      "valor": 0,
+      "unidad": "días"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var pedidos = (datos && datos.pedidos) || [];\n  var entregados = [];\n  for (var i = 0; i < pedidos.length; i++) {\n    if (pedidos[i] && pedidos[i].estado === 'entregado') entregados.push(pedidos[i]);\n  }\n  function obtenerInicio(p) {\n    return p.confirmadoEn || p.confirmadaEn || p.fechaConfirmacion || p.fechaConfirmado || p.confirmado || null;\n  }\n  function obtenerFin(p) {\n    return p.entregadoEn || p.entregadaEn || p.fechaEntrega || p.fechaEntregado || p.entregado || p.actualizadoEn || null;\n  }\n  var dias = [];\n  for (var j = 0; j < entregados.length; j++) {\n    var p = entregados[j];\n    var ini = obtenerInicio(p);\n    var fin = obtenerFin(p);\n    if (!ini || !fin) continue;\n    var tIni = Date.parse(ini);\n    var tFin = Date.parse(fin);\n    if (isNaN(tIni) || isNaN(tFin)) continue;\n    var d = (tFin - tIni) / 86400000;\n    if (d >= 0 && d < 365) dias.push(d);\n  }\n  if (dias.length === 0) {\n    return { valor: 0, unidad: 'días', nota: 'Sin fechas de confirmación y entrega en los pedidos entregados no se puede calcular el promedio de ' + entregados.length + ' entregados.' };\n  }\n  var suma = 0;\n  for (var k = 0; k < dias.length; k++) suma += dias[k];\n  var prom = suma / dias.length;\n  var red = Math.round(prom * 10) / 10;\n  return { valor: red, unidad: 'días', nota: 'Promedio sobre ' + dias.length + ' de ' + entregados.length + ' pedidos entregados con fecha de confirmación y entrega.' };\n}",
+      "nombre": "Días promedio entrega",
+      "descripcion": "Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "entrega-1-t1",
+    "texto": "Quiero saber cuántos días tarda en promedio un pedido desde que se confirma hasta que se entrega.",
+    "ms": 20160.3,
+    "msHastaCabeceras": 157.7,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Días promedio entrega",
+       "pedido": "Quiero saber cuántos días tarda en promedio un pedido desde que se confirma hasta que se entrega."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005965,
+        "tokensSalida": 1563,
+        "tokensEntrada": 2839,
+        "msHastaPropuesta": 13037
+       },
+       "nombre": "Días promedio entrega",
+       "resumen": "Días promedio entrega: Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega.",
+       "cambioId": "ece1574b-1a04-47fd-b8f3-0303ce27a838",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 6,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Sin fechas de confirmación y entrega en los pedidos entregados no se puede calcular el promedio de 28 entregados.",
+         "valor": 0,
+         "unidad": "días"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya mismo te saco ese dato. Tienes 28 pedidos entregados, pero no tienen las fechas para medir los días. Por eso sale en 0 y no se puede sacar el promedio. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1658.3,
+    "tokens": {
+     "entrada": 9963,
+     "salida": 2410,
+     "razonamiento": 1739
+    },
+    "usd": 0.0014783,
+    "usdStandard": 0.022696249999999998,
+    "usdPorRol": {
+     "dueno": 0.0008818000000000001,
+     "generador": 0.0005965,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2140.6,
+     "ventanaDeHerramienta": 13129.9,
+     "generar": 12368.3,
+     "simular": 0,
+     "dbEnLaVentana": 1161.7,
+     "responder": 4545.1,
+     "primerTextoVisible": 15696.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 161,
+      "ttfb": 449.5,
+      "ms": 1979.6,
+      "entrada": 3397,
+      "salida": 266,
+      "razonamiento": 158,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 2550.1,
+      "ttfb": 12367.2,
+      "ms": 12368.3,
+      "entrada": 2839,
+      "salida": 1563,
+      "razonamiento": 1046,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 15270.5,
+      "ttfb": 425.9,
+      "ms": 4545.1,
+      "entrada": 3727,
+      "salida": 581,
+      "razonamiento": 535,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "entrega-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 7907.4,
+    "msHastaCabeceras": 171.3,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "ece1574b-1a04-47fd-b8f3-0303ce27a838"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Días promedio entrega: Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega.",
+       "cambioId": "ece1574b-1a04-47fd-b8f3-0303ce27a838",
+       "msHastaAplicado": 20807
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel. Marca 0 días porque tus pedidos no guardan esas fechas.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 751.5,
+    "tokens": {
+     "entrada": 7732,
+     "salida": 903,
+     "razonamiento": 793
+    },
+    "usd": 0.0009538000000000001,
+    "usdStandard": 0.01350275,
+    "usdPorRol": {
+     "dueno": 0.0009538000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2105.3,
+     "ventanaDeHerramienta": 260.2,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 254.2,
+     "responder": 5208.2,
+     "primerTextoVisible": 2682.9
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 177.5,
+      "ttfb": 270.4,
+      "ms": 1927.9,
+      "entrada": 3780,
+      "salida": 256,
+      "razonamiento": 177,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2365.5,
+      "ttfb": 317.4,
+      "ms": 5208.2,
+      "entrada": 3952,
+      "salida": 647,
+      "razonamiento": 616,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "conversaciones",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:41:21.725Z",
+   "pedido": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 308.2,
+   "msHastaAplicadoMaquina": 21480.9,
+   "msHastaVerAplicado": 23343.9,
+   "msTurno1": 19902.9,
+   "msTurno2": 3441,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18027,
+    "salida": 3026,
+    "razonamiento": 2153
+   },
+   "usd": 0.0024079,
+   "usdStandard": 0.03539425,
+   "usdPorRol": {
+    "dueno": 0.0017955000000000002,
+    "generador": 0.0006124000000000001,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2812,
+    "tokensSalida": 1656,
+    "costoUsd": 0.0006124
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18027,
+    "tokensSalida": 3026,
+    "costoUsd": 0.0024079
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "e42e82eb-ff74-42ce-a003-0377c8717d25",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Conversaciones de hoy: Muestra las conversaciones de hoy por cliente con lo escrito por cada uno y la última hora.",
+     "tokensEntrada": 2812,
+     "tokensSalida": 1656,
+     "costoUsdGuardado": 0.0006124,
+     "msHastaPropuesta": 11270,
+     "msHastaAplicado": 19420,
+     "intentos": 1,
+     "msQuickJS": 7,
+     "totalFilas": 0,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "telefono",
+         "titulo": "Teléfono"
+        },
+        {
+         "clave": "mensajes_cliente",
+         "titulo": "Mensajes del cliente"
+        },
+        {
+         "clave": "mensajes_negocio",
+         "titulo": "Respuestas del negocio"
+        },
+        {
+         "clave": "total_mensajes",
+         "titulo": "Total mensajes"
+        },
+        {
+         "clave": "ultima_hora",
+         "titulo": "Última hora"
+        }
+       ]
+      },
+      "codigo": "function consultar(datos) {\n  const dia = (iso) => new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10);\n  const fmt = (iso) => new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 16).replace(\"T\", \" \");\n  const hoyDia = dia(datos.hoy);\n  const clientesPorId = {};\n  for (const c of datos.clientes) {\n    clientesPorId[c.id] = c;\n  }\n  const porCliente = {};\n  for (const m of datos.mensajes) {\n    if (!m.creado) continue;\n    if (dia(m.creado) !== hoyDia) continue;\n    const id = m.clienteId;\n    if (!porCliente[id]) {\n      porCliente[id] = { deCliente: 0, deNegocio: 0, ultimo: null };\n    }\n    if (m.rol === \"cliente\") porCliente[id].deCliente += 1;\n    else porCliente[id].deNegocio += 1;\n    if (porCliente[id].ultimo === null || m.creado > porCliente[id].ultimo) {\n      porCliente[id].ultimo = m.creado;\n    }\n  }\n  const filas = [];\n  for (const id in porCliente) {\n    const g = porCliente[id];\n    const cli = clientesPorId[id];\n    filas.push({\n      cliente: cli ? cli.nombre : \"Cliente desconocido\",\n      telefono: cli ? cli.telefono : null,\n      mensajes_cliente: g.deCliente,\n      mensajes_negocio: g.deNegocio,\n      total_mensajes: g.deCliente + g.deNegocio,\n      ultima_hora: fmt(g.ultimo)\n    });\n  }\n  filas.sort((a, b) => b.ultima_hora.localeCompare(a.ultima_hora));\n  return filas.slice(0, 200);\n}",
+      "nombre": "Conversaciones de hoy",
+      "descripcion": "Muestra las conversaciones de hoy por cliente con lo escrito por cada uno y la última hora."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "conversaciones-1-t1",
+    "texto": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente.",
+    "ms": 19902.9,
+    "msHastaCabeceras": 166.7,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Conversaciones de hoy",
+       "pedido": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "telefono",
+          "titulo": "Teléfono"
+         },
+         {
+          "clave": "mensajes_cliente",
+          "titulo": "Mensajes del cliente"
+         },
+         {
+          "clave": "mensajes_negocio",
+          "titulo": "Respuestas del negocio"
+         },
+         {
+          "clave": "total_mensajes",
+          "titulo": "Total mensajes"
+         },
+         {
+          "clave": "ultima_hora",
+          "titulo": "Última hora"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0006124,
+        "tokensSalida": 1656,
+        "tokensEntrada": 2812,
+        "msHastaPropuesta": 11270
+       },
+       "nombre": "Conversaciones de hoy",
+       "resumen": "Conversaciones de hoy: Muestra las conversaciones de hoy por cliente con lo escrito por cada uno y la última hora.",
+       "cambioId": "e42e82eb-ff74-42ce-a003-0377c8717d25",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 7,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "telefono",
+           "titulo": "Teléfono"
+          },
+          {
+           "clave": "mensajes_cliente",
+           "titulo": "Mensajes del cliente"
+          },
+          {
+           "clave": "mensajes_negocio",
+           "titulo": "Respuestas del negocio"
+          },
+          {
+           "clave": "total_mensajes",
+           "titulo": "Total mensajes"
+          },
+          {
+           "clave": "ultima_hora",
+           "titulo": "Última hora"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [],
+        "totalFilas": 0
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te armo esa lista para que la revises. Ya te la dejé lista. Se llama Conversaciones de hoy y muestra por cliente lo que escribió, lo que le respondiste y la última hora. Hoy sale vacía, no hay conversaciones todavía. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1622.8,
+    "tokens": {
+     "entrada": 10047,
+     "salida": 2714,
+     "razonamiento": 1937
+    },
+    "usd": 0.0015475,
+    "usdStandard": 0.02409325,
+    "usdPorRol": {
+     "dueno": 0.0009351,
+     "generador": 0.0006124000000000001,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2476.9,
+     "ventanaDeHerramienta": 11356.5,
+     "generar": 10606.6,
+     "simular": 0,
+     "dbEnLaVentana": 1142.1,
+     "responder": 5748,
+     "primerTextoVisible": 14204.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 168.3,
+      "ttfb": 768.5,
+      "ms": 2308.6,
+      "entrada": 3393,
+      "salida": 259,
+      "razonamiento": 153,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 2889.7,
+      "ttfb": 10603.1,
+      "ms": 10606.6,
+      "entrada": 2812,
+      "salida": 1656,
+      "razonamiento": 1040,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 13833.4,
+      "ttfb": 371,
+      "ms": 5748,
+      "entrada": 3842,
+      "salida": 799,
+      "razonamiento": 744,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "conversaciones-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3441,
+    "msHastaCabeceras": 172.3,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "e42e82eb-ff74-42ce-a003-0377c8717d25"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Conversaciones de hoy: Muestra las conversaciones de hoy por cliente con lo escrito por cada uno y la última hora.",
+       "cambioId": "e42e82eb-ff74-42ce-a003-0377c8717d25",
+       "msHastaAplicado": 19420
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 557.5,
+    "tokens": {
+     "entrada": 7980,
+     "salida": 312,
+     "razonamiento": 216
+    },
+    "usd": 0.0008604000000000001,
+    "usdStandard": 0.011300999999999999,
+    "usdPorRol": {
+     "dueno": 0.0008604000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1335.3,
+     "ventanaDeHerramienta": 242.7,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 234.7,
+     "responder": 1705.1,
+     "primerTextoVisible": 2192.6
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 177.6,
+      "ttfb": 298.4,
+      "ms": 1157.7,
+      "entrada": 3904,
+      "salida": 172,
+      "razonamiento": 94,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1578.1,
+      "ttfb": 614.6,
+      "ms": 1705.1,
+      "entrada": 4076,
+      "salida": 140,
+      "razonamiento": 122,
+      "enCache": 3825,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "margen",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:41:46.769Z",
+   "pedido": "Quiero ver mi margen de ganancia por producto.",
+   "herramientasTurno1": [
+    "ver_negocio",
+    "registrar_capacidad_faltante"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": false,
+   "cambiosCreados": 0,
+   "estadoFinal": "sin cambio",
+   "aplicadoALaPrimera": false,
+   "errores": [],
+   "msRevertir": 0,
+   "msHastaAplicadoMaquina": null,
+   "msHastaVerAplicado": null,
+   "msTurno1": 21944.7,
+   "msTurno2": null,
+   "llamadasAlModelo": 3,
+   "tokens": {
+    "entrada": 12721,
+    "salida": 2794,
+    "razonamiento": 2603
+   },
+   "usd": 0.0018308999999999999,
+   "usdStandard": 0.02777575,
+   "usdPorRol": {
+    "dueno": 0.0018308999999999999,
+    "generador": 0,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 0,
+    "tokensSalida": 0,
+    "costoUsd": 0
+   },
+   "guardadoEnTurnos": {
+    "filas": 1,
+    "porAgente": {
+     "dueno": 1,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 12721,
+    "tokensSalida": 2794,
+    "costoUsd": 0.0018309
+   },
+   "cotejo": null,
+   "cambios": [],
+   "turno1": {
+    "etiqueta": "margen-2-t1",
+    "texto": "Quiero ver mi margen de ganancia por producto.",
+    "ms": 21944.7,
+    "msHastaCabeceras": 157.8,
+    "herramientas": [
+     {
+      "nombre": "ver_negocio",
+      "estado": "output-available",
+      "entrada": {},
+      "salida": {
+       "link": "https://wa.me/12058633828?text=Hola%20Caf%C3%A9%20Ladera%20(LADERA)",
+       "rubro": "café de especialidad",
+       "estado": "listo",
+       "nombre": "Café Ladera",
+       "piezas": [],
+       "reglas": [],
+       "productos": [
+        {
+         "id": "7492fbd0-e3c7-50e6-ae35-29f074bc3aaf",
+         "activo": true,
+         "nombre": "Café Ladera tueste claro, grano 250 g",
+         "precio": 24000,
+         "descripcion": "Notas frutales y cítricas, de la finca El Mirador."
+        },
+        {
+         "id": "94a7f048-c327-57fd-a346-55b4f0e04b13",
+         "activo": true,
+         "nombre": "Café Ladera tueste medio, grano 500 g",
+         "precio": 38000,
+         "descripcion": "Chocolate y caramelo, el más pedido."
+        },
+        {
+         "id": "0ec007ef-1fd4-59ad-a3fc-be1d1abe04a3",
+         "activo": true,
+         "nombre": "Café Ladera tueste medio, molido 500 g",
+         "precio": 38000,
+         "descripcion": "Molido para greca, filtro o prensa francesa."
+        },
+        {
+         "id": "1c79ae8c-3a7c-5d04-a87f-c2b1f85ce0e5",
+         "activo": true,
+         "nombre": "Café Ladera tueste oscuro, molido 500 g",
+         "precio": 36000,
+         "descripcion": "Cuerpo intenso, para tinto y greca."
+        },
+        {
+         "id": "0cb69b97-5b51-5111-aaac-870ceaeb4a15",
+         "activo": true,
+         "nombre": "Caja regalo Ladera",
+         "precio": 95000,
+         "descripcion": "Dos bolsas de 250 g y una taza esmaltada, en caja de cartón."
+        },
+        {
+         "id": "c09cb1c5-7788-51ab-af1c-33608121501f",
+         "activo": true,
+         "nombre": "Micro lote Honey, grano 250 g",
+         "precio": 32000,
+         "descripcion": "Lote pequeño con proceso honey, dulce y de cuerpo suave."
+        },
+        {
+         "id": "08ce04b5-81e2-59e1-a51d-960a5ab1e972",
+         "activo": true,
+         "nombre": "Molino manual de café",
+         "precio": 119000,
+         "descripcion": "Muelas de cerámica, ajustable, para moler en casa."
+        },
+        {
+         "id": "ed0a5da6-9e56-55c4-abab-17dbccaf8e87",
+         "activo": true,
+         "nombre": "Suscripción mensual, 2 bolsas de 250 g",
+         "precio": 62000,
+         "descripcion": "Dos bolsas al mes del tueste que elijas, se paga contra entrega."
+        }
+       ],
+       "conocimiento": {
+        "tono": "Cercano y cálido, como un barista amigo. Tuteamos, hablamos sencillo y no abusamos de los tecnicismos del café. Un emoji de café de vez en cuando.",
+        "pagos": "Pago contra entrega en todo el país: pagas en efectivo cuando te llega el pedido. Por ahora no recibimos tarjeta ni transferencia.",
+        "ciudad": "Manizales",
+        "envios": "Enviamos a todo el país con Servientrega e Inter Rapidísimo, y el envío va incluido en el precio. Ciudades principales (Bogotá, Medellín, Cali, Barranquilla, Bucaramanga, Pereira y Manizales): de 2 a 4 días hábiles. Resto del país: de 4 a 8 días hábiles, según la transportadora. No enviamos al exterior.",
+        "horario": "Atendemos por WhatsApp de lunes a sábado, de 8:00 a. m. a 6:00 p. m. Despachamos de lunes a viernes.",
+        "preguntas": [
+         {
+          "pregunta": "¿Qué diferencia hay entre los tuestes?",
+          "respuesta": "El claro tiene notas frutales y cítricas, es el más ligero. El medio es el más balanceado, con chocolate y caramelo. El oscuro tiene más cuerpo y un sabor más intenso y amargo."
+         },
+         {
+          "pregunta": "¿Lo venden en grano o molido?",
+          "respuesta": "De las dos formas. El molido sale listo para greca, filtro o prensa francesa. Si tienes molino en casa, el grano se conserva mejor."
+         },
+         {
+          "pregunta": "¿Cuánto dura el café una vez abierto?",
+          "respuesta": "Tostamos por tandas y lo despachamos fresco. Lo mejor es tomarlo dentro de las cuatro semanas siguientes al tueste, en un frasco cerrado y lejos del sol."
+         },
+         {
+          "pregunta": "¿Cómo funciona la suscripción mensual?",
+          "respuesta": "Cada mes te llegan dos bolsas de 250 g del tueste que elijas, por $62.000. Se paga contra entrega, como todo, y la puedes pausar o cancelar avisándonos antes del día 25."
+         },
+         {
+          "pregunta": "¿Si me llega mal o equivocado qué pasa?",
+          "respuesta": "Si el pedido llega dañado o no es el que pediste, nos escribes con una foto y te lo reponemos sin costo. Por ser un alimento no hacemos devoluciones por gusto."
+         }
+        ],
+        "descripcion": "Café de especialidad de Manizales, tostado en lotes pequeños con granos de fincas de Caldas y Risaralda. Vendemos por internet y entregamos en todo el país."
+       }
+      }
+     },
+     {
+      "nombre": "registrar_capacidad_faltante",
+      "estado": "output-available",
+      "entrada": {
+       "motivo": "Solo tenemos precio de venta, no tenemos costo por producto para calcular el margen",
+       "pedido": "Quiero ver mi margen de ganancia por producto"
+      },
+      "salida": {
+       "ok": true
+      }
+     }
+    ],
+    "respuestaAlDueno": "Te reviso ese dato del margen por producto. Por ahora no te puedo mostrar el margen por producto. Solo tengo el precio de venta, no cuánto te cuesta cada uno.",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 3,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 9,
+    "msEnDb": 1116.7,
+    "tokens": {
+     "entrada": 12721,
+     "salida": 2794,
+     "razonamiento": 2603
+    },
+    "usd": 0.0018308999999999999,
+    "usdStandard": 0.02777575,
+    "usdPorRol": {
+     "dueno": 0.0018308999999999999,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 3262.6,
+     "ventanaDeHerramienta": 510.1,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 646.6,
+     "responder": 9517.9,
+     "primerTextoVisible": 12614.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 158.9,
+      "ttfb": 510.5,
+      "ms": 3103.6,
+      "entrada": 3388,
+      "salida": 362,
+      "razonamiento": 306,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 3424.4,
+      "ttfb": 906.5,
+      "ms": 8337.5,
+      "entrada": 4599,
+      "salida": 1094,
+      "razonamiento": 993,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 12110.2,
+      "ttfb": 504.2,
+      "ms": 9517.9,
+      "entrada": 4734,
+      "salida": 1338,
+      "razonamiento": 1304,
+      "enCache": 4593,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": null
+  },
+  {
+   "tipo": "recompra",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:42:09.715Z",
+   "pedido": "Quiero saber qué porcentaje de mis clientes me ha comprado más de una vez en los últimos 60 días.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 371.1,
+   "msHastaAplicadoMaquina": 24489.8,
+   "msHastaVerAplicado": 29734.5,
+   "msTurno1": 21552.8,
+   "msTurno2": 8181.7,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17848,
+    "salida": 3213,
+    "razonamiento": 2478
+   },
+   "usd": 0.0024274,
+   "usdStandard": 0.03596525,
+   "usdPorRol": {
+    "dueno": 0.0018496000000000003,
+    "generador": 0.0005778,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2846,
+    "tokensSalida": 1466,
+    "costoUsd": 0.0005778
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17848,
+    "tokensSalida": 3213,
+    "costoUsd": 0.0024274
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "c4819c2b-ae1d-4d55-b845-d147369365d3",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Clientes que repiten 60 días: Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días.",
+     "tokensEntrada": 2846,
+     "tokensSalida": 1466,
+     "costoUsdGuardado": 0.0005778,
+     "msHastaPropuesta": 12570,
+     "msHastaAplicado": 20583,
+     "intentos": 1,
+     "msQuickJS": 4,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "De 11 clientes con compra en los ultimos 60 dias (2026-08-29 a 2026-10-27), 7 compraron mas de una vez; solo cuentan pedidos confirmados, enviados, entregados y novedad.",
+      "valor": 63.6,
+      "unidad": "%"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var dia = function (iso) { return new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10); };\n  var hoyDia = dia(datos.hoy);\n  var inicioDia = dia(new Date(Date.parse(datos.hoy) - 59 * 86400000).toISOString());\n  var pasaron = { confirmado: true, enviado: true, entregado: true, novedad: true };\n  var pedidos = (datos && datos.pedidos) || [];\n  var porCliente = {};\n  for (var i = 0; i < pedidos.length; i++) {\n    var p = pedidos[i];\n    if (!p || !pasaron[p.estado]) continue;\n    if (!p.creado || !p.clienteId) continue;\n    var d = dia(p.creado);\n    if (d < inicioDia || d > hoyDia) continue;\n    porCliente[p.clienteId] = (porCliente[p.clienteId] || 0) + 1;\n  }\n  var total = 0;\n  var repiten = 0;\n  for (var k in porCliente) {\n    if (!Object.prototype.hasOwnProperty.call(porCliente, k)) continue;\n    total++;\n    if (porCliente[k] > 1) repiten++;\n  }\n  var valor = 0;\n  if (total > 0) valor = Math.round((repiten / total) * 1000) / 10;\n  return {\n    valor: valor,\n    unidad: \"%\",\n    nota: \"De \" + total + \" clientes con compra en los ultimos 60 dias (\" + inicioDia + \" a \" + hoyDia + \"), \" + repiten + \" compraron mas de una vez; solo cuentan pedidos confirmados, enviados, entregados y novedad.\"\n  };\n}",
+      "nombre": "Clientes que repiten 60 días",
+      "descripcion": "Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "recompra-2-t1",
+    "texto": "Quiero saber qué porcentaje de mis clientes me ha comprado más de una vez en los últimos 60 días.",
+    "ms": 21552.8,
+    "msHastaCabeceras": 155.3,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Clientes que repiten 60 días",
+       "pedido": "Quiero saber qué porcentaje de mis clientes me ha comprado más de una vez en los últimos 60 días."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005778,
+        "tokensSalida": 1466,
+        "tokensEntrada": 2846,
+        "msHastaPropuesta": 12570
+       },
+       "nombre": "Clientes que repiten 60 días",
+       "resumen": "Clientes que repiten 60 días: Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días.",
+       "cambioId": "c4819c2b-ae1d-4d55-b845-d147369365d3",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 4,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "De 11 clientes con compra en los ultimos 60 dias (2026-08-29 a 2026-10-27), 7 compraron mas de una vez; solo cuentan pedidos confirmados, enviados, entregados y novedad.",
+         "valor": 63.6,
+         "unidad": "%"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te estoy sacando ese dato de clientes que repiten. En los últimos 60 días el 63,6% te volvió a comprar. Son 7 de 11 clientes. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1710.7,
+    "tokens": {
+     "entrada": 10024,
+     "salida": 2392,
+     "razonamiento": 1754
+    },
+    "usd": 0.0014808,
+    "usdStandard": 0.022695999999999997,
+    "usdPorRol": {
+     "dueno": 0.000903,
+     "generador": 0.0005778,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 4325.1,
+     "ventanaDeHerramienta": 12653.9,
+     "generar": 11820.3,
+     "simular": 0,
+     "dbEnLaVentana": 1243.5,
+     "responder": 4258.7,
+     "primerTextoVisible": 17872
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 157.4,
+      "ttfb": 875.1,
+      "ms": 4167.7,
+      "entrada": 3400,
+      "salida": 453,
+      "razonamiento": 334,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 4833.6,
+      "ttfb": 11819.6,
+      "ms": 11820.3,
+      "entrada": 2846,
+      "salida": 1466,
+      "razonamiento": 986,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 16979,
+      "ttfb": 893,
+      "ms": 4258.7,
+      "entrada": 3778,
+      "salida": 473,
+      "razonamiento": 434,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "recompra-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 8181.7,
+    "msHastaCabeceras": 156.6,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "c4819c2b-ae1d-4d55-b845-d147369365d3"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Clientes que repiten 60 días: Mide el porcentaje de clientes con más de una compra confirmada en los últimos 60 días.",
+       "cambioId": "c4819c2b-ae1d-4d55-b845-d147369365d3",
+       "msHastaAplicado": 20583
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 722.5,
+    "tokens": {
+     "entrada": 7824,
+     "salida": 821,
+     "razonamiento": 724
+    },
+    "usd": 0.0009466000000000001,
+    "usdStandard": 0.01326925,
+    "usdPorRol": {
+     "dueno": 0.0009466000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2700.2,
+     "ventanaDeHerramienta": 236.8,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 234.3,
+     "responder": 4908.8,
+     "primerTextoVisible": 3280.6
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 159.8,
+      "ttfb": 737.8,
+      "ms": 2540.4,
+      "entrada": 3823,
+      "salida": 172,
+      "razonamiento": 93,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2936.9,
+      "ttfb": 343.7,
+      "ms": 4908.8,
+      "entrada": 4001,
+      "salida": 649,
+      "razonamiento": 631,
+      "enCache": 3697,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "clientes",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:42:41.254Z",
+   "pedido": "Quiero una tabla con mis mejores clientes: cuánto me han comprado en total, de mayor a menor.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 502.6,
+   "msHastaAplicadoMaquina": 21576.9,
+   "msHastaVerAplicado": 23582.3,
+   "msTurno1": 19914.1,
+   "msTurno2": 3668.2,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 19667,
+    "salida": 2656,
+    "razonamiento": 1561
+   },
+   "usd": 0.0024979,
+   "usdStandard": 0.03587175,
+   "usdPorRol": {
+    "dueno": 0.001879,
+    "generador": 0.0006189000000000001,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2817,
+    "tokensSalida": 1686,
+    "costoUsd": 0.0006189
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 19667,
+    "tokensSalida": 2656,
+    "costoUsd": 0.0024979
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "6c941cad-62e5-476f-9c84-1a54e751fb99",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Mejores clientes: Muestra los mejores clientes ordenados de mayor a menor por total comprado en pedidos confirmados, enviados, entregados y con novedad.",
+     "tokensEntrada": 2817,
+     "tokensSalida": 1686,
+     "costoUsdGuardado": 0.0006189,
+     "msHastaPropuesta": 13417,
+     "msHastaAplicado": 19303,
+     "intentos": 1,
+     "msQuickJS": 6,
+     "totalFilas": 12,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "cliente": "Camila Rojas",
+       "telefono": "***0001",
+       "ultima_compra": "2026-10-24 06:30",
+       "total_comprado": 1339000,
+       "pedidos_confirmados": 12
+      },
+      {
+       "cliente": "Daniela Quintero",
+       "telefono": "***0007",
+       "ultima_compra": "2026-10-15 19:23",
+       "total_comprado": 369000,
+       "pedidos_confirmados": 4
+      },
+      {
+       "cliente": "Juan David Cárdenas",
+       "telefono": "***0004",
+       "ultima_compra": "2026-10-25 06:25",
+       "total_comprado": 342000,
+       "pedidos_confirmados": 4
+      },
+      {
+       "cliente": "Paola Andrea Vargas",
+       "telefono": "***0009",
+       "ultima_compra": "2026-10-18 15:13",
+       "total_comprado": 264000,
+       "pedidos_confirmados": 2
+      },
+      {
+       "cliente": "Carlos Mario Londoño",
+       "telefono": "***0010",
+       "ultima_compra": "2026-10-23 20:54",
+       "total_comprado": 258000,
+       "pedidos_confirmados": 3
+      },
+      {
+       "cliente": "Sebastián Mejía",
+       "telefono": "***0008",
+       "ultima_compra": "2026-10-20 06:41",
+       "total_comprado": 222000,
+       "pedidos_confirmados": 3
+      },
+      {
+       "cliente": "Andrés Felipe Gómez",
+       "telefono": "***0002",
+       "ultima_compra": "2026-10-18 03:05",
+       "total_comprado": 174000,
+       "pedidos_confirmados": 4
+      },
+      {
+       "cliente": "Laura Valentina Pérez",
+       "telefono": "***0003",
+       "ultima_compra": "2026-10-14 13:19",
+       "total_comprado": 138000,
+       "pedidos_confirmados": 1
+      },
+      {
+       "cliente": "Mariana Ospina",
+       "telefono": "***0005",
+       "ultima_compra": "2026-10-14 04:16",
+       "total_comprado": 76000,
+       "pedidos_confirmados": 1
+      },
+      {
+       "cliente": "Santiago Herrera",
+       "telefono": "***0006",
+       "ultima_compra": "2026-10-12 15:16",
+       "total_comprado": 62000,
+       "pedidos_confirmados": 1
+      },
+      {
+       "cliente": "Nicolás Aristizábal",
+       "telefono": "***0012",
+       "ultima_compra": "2026-10-17 11:47",
+       "total_comprado": 38000,
+       "pedidos_confirmados": 1
+      },
+      {
+       "cliente": "Luisa Fernanda Ríos",
+       "telefono": "***0011",
+       "ultima_compra": null,
+       "total_comprado": 0,
+       "pedidos_confirmados": 0
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "telefono",
+         "titulo": "Teléfono"
+        },
+        {
+         "clave": "pedidos_confirmados",
+         "titulo": "Pedidos confirmados"
+        },
+        {
+         "clave": "total_comprado",
+         "titulo": "Total comprado (COP)"
+        },
+        {
+         "clave": "ultima_compra",
+         "titulo": "Última compra"
+        }
+       ]
+      },
+      "codigo": "function fmtBogota(iso) {\n  if (!iso) return null;\n  var d = new Date(Date.parse(iso) - 5 * 3600 * 1000);\n  return d.toISOString().slice(0, 16).replace(\"T\", \" \");\n}\nfunction consultar(datos) {\n  var clientes = datos.clientes || [];\n  var pedidos = datos.pedidos || [];\n  var validos = { confirmado: true, enviado: true, entregado: true, novedad: true };\n  var porCliente = {};\n  var i;\n  for (i = 0; i < pedidos.length; i++) {\n    var p = pedidos[i];\n    if (!p || !validos[p.estado]) continue;\n    var cid = p.clienteId;\n    if (!cid) continue;\n    if (!porCliente[cid]) porCliente[cid] = { total: 0, n: 0, ultimo: null };\n    porCliente[cid].total += (typeof p.total === \"number\" ? p.total : 0);\n    porCliente[cid].n += 1;\n    if (!porCliente[cid].ultimo || p.creado > porCliente[cid].ultimo) porCliente[cid].ultimo = p.creado;\n  }\n  var filas = [];\n  for (i = 0; i < clientes.length; i++) {\n    var c = clientes[i];\n    var agg = porCliente[c.id] || { total: 0, n: 0, ultimo: null };\n    filas.push({\n      cliente: c.nombre || \"Sin nombre\",\n      telefono: c.telefono || null,\n      pedidos_confirmados: agg.n,\n      total_comprado: agg.total,\n      ultima_compra: agg.ultimo ? fmtBogota(agg.ultimo) : null,\n      _ultimo_iso: agg.ultimo || \"\"\n    });\n  }\n  filas.sort(function (a, b) {\n    if (b.total_comprado !== a.total_comprado) return b.total_comprado - a.total_comprado;\n    if (b.pedidos_confirmados !== a.pedidos_confirmados) return b.pedidos_confirmados - a.pedidos_confirmados;\n    return a.cliente < b.cliente ? -1 : a.cliente > b.cliente ? 1 : 0;\n  });\n  var out = [];\n  var limite = filas.length > 200 ? 200 : filas.length;\n  for (i = 0; i < limite; i++) {\n    out.push({\n      cliente: filas[i].cliente,\n      telefono: filas[i].telefono,\n      pedidos_confirmados: filas[i].pedidos_confirmados,\n      total_comprado: filas[i].total_comprado,\n      ultima_compra: filas[i].ultima_compra\n    });\n  }\n  return out;\n}",
+      "nombre": "Mejores clientes",
+      "descripcion": "Muestra los mejores clientes ordenados de mayor a menor por total comprado en pedidos confirmados, enviados, entregados y con novedad."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "clientes-2-t1",
+    "texto": "Quiero una tabla con mis mejores clientes: cuánto me han comprado en total, de mayor a menor.",
+    "ms": 19914.1,
+    "msHastaCabeceras": 173.7,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Mejores clientes",
+       "pedido": "Quiero una tabla con mis mejores clientes: cuánto me han comprado en total, de mayor a menor."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "telefono",
+          "titulo": "Teléfono"
+         },
+         {
+          "clave": "pedidos_confirmados",
+          "titulo": "Pedidos confirmados"
+         },
+         {
+          "clave": "total_comprado",
+          "titulo": "Total comprado (COP)"
+         },
+         {
+          "clave": "ultima_compra",
+          "titulo": "Última compra"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0006189,
+        "tokensSalida": 1686,
+        "tokensEntrada": 2817,
+        "msHastaPropuesta": 13417
+       },
+       "nombre": "Mejores clientes",
+       "resumen": "Mejores clientes: Muestra los mejores clientes ordenados de mayor a menor por total comprado en pedidos confirmados, enviados, entregados y con novedad.",
+       "cambioId": "6c941cad-62e5-476f-9c84-1a54e751fb99",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 6,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "telefono",
+           "titulo": "Teléfono"
+          },
+          {
+           "clave": "pedidos_confirmados",
+           "titulo": "Pedidos confirmados"
+          },
+          {
+           "clave": "total_comprado",
+           "titulo": "Total comprado (COP)"
+          },
+          {
+           "clave": "ultima_compra",
+           "titulo": "Última compra"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "cliente": "Camila Rojas",
+          "telefono": "***0001",
+          "ultima_compra": "2026-10-24 06:30",
+          "total_comprado": 1339000,
+          "pedidos_confirmados": 12
+         },
+         {
+          "cliente": "Daniela Quintero",
+          "telefono": "***0007",
+          "ultima_compra": "2026-10-15 19:23",
+          "total_comprado": 369000,
+          "pedidos_confirmados": 4
+         },
+         {
+          "cliente": "Juan David Cárdenas",
+          "telefono": "***0004",
+          "ultima_compra": "2026-10-25 06:25",
+          "total_comprado": 342000,
+          "pedidos_confirmados": 4
+         },
+         {
+          "cliente": "Paola Andrea Vargas",
+          "telefono": "***0009",
+          "ultima_compra": "2026-10-18 15:13",
+          "total_comprado": 264000,
+          "pedidos_confirmados": 2
+         },
+         {
+          "cliente": "Carlos Mario Londoño",
+          "telefono": "***0010",
+          "ultima_compra": "2026-10-23 20:54",
+          "total_comprado": 258000,
+          "pedidos_confirmados": 3
+         },
+         {
+          "cliente": "Sebastián Mejía",
+          "telefono": "***0008",
+          "ultima_compra": "2026-10-20 06:41",
+          "total_comprado": 222000,
+          "pedidos_confirmados": 3
+         },
+         {
+          "cliente": "Andrés Felipe Gómez",
+          "telefono": "***0002",
+          "ultima_compra": "2026-10-18 03:05",
+          "total_comprado": 174000,
+          "pedidos_confirmados": 4
+         },
+         {
+          "cliente": "Laura Valentina Pérez",
+          "telefono": "***0003",
+          "ultima_compra": "2026-10-14 13:19",
+          "total_comprado": 138000,
+          "pedidos_confirmados": 1
+         },
+         {
+          "cliente": "Mariana Ospina",
+          "telefono": "***0005",
+          "ultima_compra": "2026-10-14 04:16",
+          "total_comprado": 76000,
+          "pedidos_confirmados": 1
+         },
+         {
+          "cliente": "Santiago Herrera",
+          "telefono": "***0006",
+          "ultima_compra": "2026-10-12 15:16",
+          "total_comprado": 62000,
+          "pedidos_confirmados": 1
+         },
+         {
+          "cliente": "Nicolás Aristizábal",
+          "telefono": "***0012",
+          "ultima_compra": "2026-10-17 11:47",
+          "total_comprado": 38000,
+          "pedidos_confirmados": 1
+         },
+         {
+          "cliente": "Luisa Fernanda Ríos",
+          "telefono": "***0011",
+          "ultima_compra": null,
+          "total_comprado": 0,
+          "pedidos_confirmados": 0
+         }
+        ],
+        "totalFilas": 12
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar esa tabla de tus mejores clientes. Te armé la tabla de tus mejores clientes. Tiene 5 columnas: cliente, teléfono, pedidos confirmados, total comprado y última compra. Son 12 filas, de mayor a menor.\n\nLa primera es Camila Rojas, con 12 pedidos y $1.339.000 en total. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1679.2,
+    "tokens": {
+     "entrada": 10584,
+     "salida": 2362,
+     "razonamiento": 1370
+    },
+    "usd": 0.0015308000000000001,
+    "usdStandard": 0.0232685,
+    "usdPorRol": {
+     "dueno": 0.0009119,
+     "generador": 0.0006189000000000001,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2698.6,
+     "ventanaDeHerramienta": 13510.1,
+     "generar": 12815.5,
+     "simular": 0,
+     "dbEnLaVentana": 1345.2,
+     "responder": 3535.4,
+     "primerTextoVisible": 16504.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 175.9,
+      "ttfb": 1059.9,
+      "ms": 2522.7,
+      "entrada": 3399,
+      "salida": 266,
+      "razonamiento": 156,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 3041.8,
+      "ttfb": 12814,
+      "ms": 12815.5,
+      "entrada": 2817,
+      "salida": 1686,
+      "razonamiento": 878,
+      "enCache": 2740,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 16208.7,
+      "ttfb": 295.5,
+      "ms": 3535.4,
+      "entrada": 4368,
+      "salida": 410,
+      "razonamiento": 336,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "clientes-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3668.2,
+    "msHastaCabeceras": 167.1,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "6c941cad-62e5-476f-9c84-1a54e751fb99"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Mejores clientes: Muestra los mejores clientes ordenados de mayor a menor por total comprado en pedidos confirmados, enviados, entregados y con novedad.",
+       "cambioId": "6c941cad-62e5-476f-9c84-1a54e751fb99",
+       "msHastaAplicado": 19303
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya quedó en tu Panel.\n\nLa encuentras como Mejores clientes.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 766.9,
+    "tokens": {
+     "entrada": 9083,
+     "salida": 294,
+     "razonamiento": 191
+    },
+    "usd": 0.0009671,
+    "usdStandard": 0.01260325,
+    "usdPorRol": {
+     "dueno": 0.0009671,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1406.4,
+     "ventanaDeHerramienta": 256.4,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 252.7,
+     "responder": 1655,
+     "primerTextoVisible": 1949.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 169,
+      "ttfb": 301.2,
+      "ms": 1237.4,
+      "entrada": 4449,
+      "salida": 152,
+      "razonamiento": 72,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1662.8,
+      "ttfb": 286.4,
+      "ms": 1655,
+      "entrada": 4634,
+      "salida": 142,
+      "razonamiento": 119,
+      "enCache": 4337,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "entrega",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:43:07.238Z",
+   "pedido": "Quiero saber cuántos días tarda en promedio un pedido desde que se confirma hasta que se entrega.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 316.1,
+   "msHastaAplicadoMaquina": 24042.1,
+   "msHastaVerAplicado": 26760,
+   "msTurno1": 22150.9,
+   "msTurno2": 4609.1,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17772,
+    "salida": 3037,
+    "razonamiento": 2222
+   },
+   "usd": 0.0023846,
+   "usdStandard": 0.03512225,
+   "usdPorRol": {
+    "dueno": 0.0018379000000000002,
+    "generador": 0.0005467,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2835,
+    "tokensSalida": 1316,
+    "costoUsd": 0.0005467
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17772,
+    "tokensSalida": 3037,
+    "costoUsd": 0.0023845999999999997
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "b981891b-d570-4a85-9f13-f7b01bc5a530",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Días promedio entrega: Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega.",
+     "tokensEntrada": 2835,
+     "tokensSalida": 1316,
+     "costoUsdGuardado": 0.0005467,
+     "msHastaPropuesta": 12467,
+     "msHastaAplicado": 22454,
+     "intentos": 1,
+     "msQuickJS": 3,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Hay 28 pedidos entregados pero los datos solo traen fecha de creación, sin fecha de confirmación ni de entrega para medir los días.",
+      "valor": 0,
+      "unidad": "días"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var pedidos = (datos && datos.pedidos) || [];\n  var entregados = pedidos.filter(function (p) { return p.estado === 'entregado'; });\n  var diffs = [];\n  for (var i = 0; i < entregados.length; i++) {\n    var p = entregados[i];\n    var inicio = p.confirmadoEn || p.fechaConfirmacion || p.confirmado || p.fechaConfirmado || null;\n    var fin = p.entregadoEn || p.fechaEntrega || p.entregado || p.fechaEntregado || p.actualizado || p.modificado || null;\n    if (inicio && fin) {\n      var t0 = Date.parse(inicio);\n      var t1 = Date.parse(fin);\n      if (!isNaN(t0) && !isNaN(t1) && t1 >= t0) {\n        diffs.push((t1 - t0) / 86400000);\n      }\n    }\n  }\n  if (diffs.length > 0) {\n    var suma = 0;\n    for (var j = 0; j < diffs.length; j++) { suma += diffs[j]; }\n    var prom = suma / diffs.length;\n    var red = Math.round(prom * 10) / 10;\n    return {\n      valor: red,\n      unidad: 'días',\n      nota: 'Promedio sobre ' + diffs.length + ' pedidos entregados con fecha de confirmación y entrega.'\n    };\n  }\n  if (entregados.length === 0) {\n    return {\n      valor: 0,\n      unidad: 'días',\n      nota: 'Sin pedidos entregados para medir el tiempo de confirmación a entrega.'\n    };\n  }\n  return {\n    valor: 0,\n    unidad: 'días',\n    nota: 'Hay ' + entregados.length + ' pedidos entregados pero los datos solo traen fecha de creación, sin fecha de confirmación ni de entrega para medir los días.'\n  };\n}",
+      "nombre": "Días promedio entrega",
+      "descripcion": "Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "entrega-2-t1",
+    "texto": "Quiero saber cuántos días tarda en promedio un pedido desde que se confirma hasta que se entrega.",
+    "ms": 22150.9,
+    "msHastaCabeceras": 255.5,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Días promedio entrega",
+       "pedido": "cuántos días tarda en promedio un pedido desde que se confirma hasta que se entrega"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005467,
+        "tokensSalida": 1316,
+        "tokensEntrada": 2835,
+        "msHastaPropuesta": 12467
+       },
+       "nombre": "Días promedio entrega",
+       "resumen": "Días promedio entrega: Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega.",
+       "cambioId": "b981891b-d570-4a85-9f13-f7b01bc5a530",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 3,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Hay 28 pedidos entregados pero los datos solo traen fecha de creación, sin fecha de confirmación ni de entrega para medir los días.",
+         "valor": 0,
+         "unidad": "días"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te armo ese dato para que lo veas en tu panel. Ya miré tus pedidos para sacar ese promedio.\n\nTienes 28 pedidos entregados, pero solo guardan la fecha en que se crearon. No hay fecha de confirmado ni de entregado, así que no puedo medir los días. Me da 0 días, que no es real. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 2156.8,
+    "tokens": {
+     "entrada": 9968,
+     "salida": 2503,
+     "razonamiento": 1801
+    },
+    "usd": 0.0014974,
+    "usdStandard": 0.02309775,
+    "usdPorRol": {
+     "dueno": 0.0009507000000000001,
+     "generador": 0.0005467,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2006.3,
+     "ventanaDeHerramienta": 12553.9,
+     "generar": 11577.3,
+     "simular": 0,
+     "dbEnLaVentana": 1593.8,
+     "responder": 7278.1,
+     "primerTextoVisible": 14829.5
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 258.4,
+      "ttfb": 493.3,
+      "ms": 1747.9,
+      "entrada": 3397,
+      "salida": 204,
+      "razonamiento": 92,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 2634.1,
+      "ttfb": 11574.1,
+      "ms": 11577.3,
+      "entrada": 2835,
+      "salida": 1316,
+      "razonamiento": 799,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 14560.2,
+      "ttfb": 269.3,
+      "ms": 7278.1,
+      "entrada": 3736,
+      "salida": 983,
+      "razonamiento": 910,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "entrega-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4609.1,
+    "msHastaCabeceras": 174.7,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "b981891b-d570-4a85-9f13-f7b01bc5a530"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Días promedio entrega: Mide los días promedio que tarda un pedido desde su confirmación hasta su entrega.",
+       "cambioId": "b981891b-d570-4a85-9f13-f7b01bc5a530",
+       "msHastaAplicado": 22454
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel. Te va a mostrar 0 días porque aún no hay fechas para medirlo.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 554.2,
+    "tokens": {
+     "entrada": 7804,
+     "salida": 534,
+     "razonamiento": 421
+    },
+    "usd": 0.0008872000000000001,
+    "usdStandard": 0.0120245,
+    "usdPorRol": {
+     "dueno": 0.0008872000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1654.5,
+     "ventanaDeHerramienta": 236.7,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 233.3,
+     "responder": 2563,
+     "primerTextoVisible": 2384
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 179.5,
+      "ttfb": 325.1,
+      "ms": 1475,
+      "entrada": 3816,
+      "salida": 188,
+      "razonamiento": 109,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1891.2,
+      "ttfb": 492.8,
+      "ms": 2563,
+      "entrada": 3988,
+      "salida": 346,
+      "razonamiento": 312,
+      "enCache": 3697,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "conversaciones",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:43:35.711Z",
+   "pedido": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente.",
+   "herramientasTurno1": [
+    "proponer_seccion",
+    "registrar_capacidad_faltante"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 310.4,
+   "msHastaAplicadoMaquina": 37902.5,
+   "msHastaVerAplicado": 38519,
+   "msTurno1": 35526.5,
+   "msTurno2": 2992.5,
+   "llamadasAlModelo": 6,
+   "tokens": {
+    "entrada": 22671,
+    "salida": 4342,
+    "razonamiento": 3006
+   },
+   "usd": 0.0031355000000000003,
+   "usdStandard": 0.04679225,
+   "usdPorRol": {
+    "dueno": 0.0024990999999999998,
+    "generador": 0.0006364000000000001,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2812,
+    "tokensSalida": 1776,
+    "costoUsd": 0.0006364
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 22671,
+    "tokensSalida": 4342,
+    "costoUsd": 0.0031355000000000003
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "c9c6f3d6-badb-4ed7-8e40-2e38e9df6575",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Conversaciones de hoy: Muestra las conversaciones de hoy por cliente con el conteo de mensajes y la última actividad, ya que los datos no incluyen el texto escrito.",
+     "tokensEntrada": 2812,
+     "tokensSalida": 1776,
+     "costoUsdGuardado": 0.0006364,
+     "msHastaPropuesta": 13327,
+     "msHastaAplicado": 35441,
+     "intentos": 1,
+     "msQuickJS": 3,
+     "totalFilas": 0,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "telefono",
+         "titulo": "Teléfono"
+        },
+        {
+         "clave": "mensajes_cliente",
+         "titulo": "Mensajes del cliente"
+        },
+        {
+         "clave": "mensajes_agente",
+         "titulo": "Respuestas del agente"
+        },
+        {
+         "clave": "total_mensajes",
+         "titulo": "Total mensajes"
+        },
+        {
+         "clave": "ultimo_mensaje",
+         "titulo": "Último mensaje"
+        },
+        {
+         "clave": "ultimo_rol",
+         "titulo": "Quién habló último"
+        },
+        {
+         "clave": "necesita_respuesta",
+         "titulo": "Necesita respuesta"
+        }
+       ]
+      },
+      "codigo": "function diaB(iso){ return new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10); }\nfunction fmtB(iso){ var s = new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString(); return s.slice(0, 10) + \" \" + s.slice(11, 16); }\nfunction consultar(datos){\n  var hoyDia = diaB(datos.hoy);\n  var porCliente = {};\n  var msgs = datos.mensajes || [];\n  for (var i = 0; i < msgs.length; i++){\n    var m = msgs[i];\n    if (!m || !m.creado) continue;\n    if (diaB(m.creado) !== hoyDia) continue;\n    var cid = m.clienteId;\n    if (!porCliente[cid]) porCliente[cid] = { clienteId: cid, de_cliente: 0, de_agente: 0, total: 0, ultimo: null, ultimo_rol: null };\n    var g = porCliente[cid];\n    g.total++;\n    if (m.rol === \"cliente\") g.de_cliente++;\n    else if (m.rol === \"agente\") g.de_agente++;\n    if (!g.ultimo || Date.parse(m.creado) > Date.parse(g.ultimo)) { g.ultimo = m.creado; g.ultimo_rol = m.rol; }\n  }\n  var cmap = {};\n  var clis = datos.clientes || [];\n  for (var k = 0; k < clis.length; k++){ cmap[clis[k].id] = clis[k]; }\n  var filas = [];\n  for (var cid2 in porCliente){\n    var g2 = porCliente[cid2];\n    var c = cmap[cid2];\n    filas.push({\n      cliente: c ? c.nombre : \"Cliente desconocido\",\n      telefono: c ? c.telefono : null,\n      mensajes_cliente: g2.de_cliente,\n      mensajes_agente: g2.de_agente,\n      total_mensajes: g2.total,\n      ultimo_mensaje: fmtB(g2.ultimo),\n      ultimo_rol: g2.ultimo_rol === \"cliente\" ? \"cliente\" : \"agente\",\n      necesita_respuesta: g2.ultimo_rol === \"cliente\",\n      _ts: Date.parse(g2.ultimo)\n    });\n  }\n  filas.sort(function(a, b){ return b._ts - a._ts; });\n  var out = [];\n  for (var j = 0; j < filas.length && j < 200; j++){\n    var f = filas[j];\n    out.push({\n      cliente: f.cliente,\n      telefono: f.telefono,\n      mensajes_cliente: f.mensajes_cliente,\n      mensajes_agente: f.mensajes_agente,\n      total_mensajes: f.total_mensajes,\n      ultimo_mensaje: f.ultimo_mensaje,\n      ultimo_rol: f.ultimo_rol,\n      necesita_respuesta: f.necesita_respuesta\n    });\n  }\n  return out;\n}",
+      "nombre": "Conversaciones de hoy",
+      "descripcion": "Muestra las conversaciones de hoy por cliente con el conteo de mensajes y la última actividad, ya que los datos no incluyen el texto escrito."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "conversaciones-2-t1",
+    "texto": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente.",
+    "ms": 35526.5,
+    "msHastaCabeceras": 160,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Conversaciones de hoy",
+       "pedido": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "telefono",
+          "titulo": "Teléfono"
+         },
+         {
+          "clave": "mensajes_cliente",
+          "titulo": "Mensajes del cliente"
+         },
+         {
+          "clave": "mensajes_agente",
+          "titulo": "Respuestas del agente"
+         },
+         {
+          "clave": "total_mensajes",
+          "titulo": "Total mensajes"
+         },
+         {
+          "clave": "ultimo_mensaje",
+          "titulo": "Último mensaje"
+         },
+         {
+          "clave": "ultimo_rol",
+          "titulo": "Quién habló último"
+         },
+         {
+          "clave": "necesita_respuesta",
+          "titulo": "Necesita respuesta"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0006364,
+        "tokensSalida": 1776,
+        "tokensEntrada": 2812,
+        "msHastaPropuesta": 13327
+       },
+       "nombre": "Conversaciones de hoy",
+       "resumen": "Conversaciones de hoy: Muestra las conversaciones de hoy por cliente con el conteo de mensajes y la última actividad, ya que los datos no incluyen el texto escrito.",
+       "cambioId": "c9c6f3d6-badb-4ed7-8e40-2e38e9df6575",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 3,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "telefono",
+           "titulo": "Teléfono"
+          },
+          {
+           "clave": "mensajes_cliente",
+           "titulo": "Mensajes del cliente"
+          },
+          {
+           "clave": "mensajes_agente",
+           "titulo": "Respuestas del agente"
+          },
+          {
+           "clave": "total_mensajes",
+           "titulo": "Total mensajes"
+          },
+          {
+           "clave": "ultimo_mensaje",
+           "titulo": "Último mensaje"
+          },
+          {
+           "clave": "ultimo_rol",
+           "titulo": "Quién habló último"
+          },
+          {
+           "clave": "necesita_respuesta",
+           "titulo": "Necesita respuesta"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [],
+        "totalFilas": 0
+       }
+      }
+     },
+     {
+      "nombre": "registrar_capacidad_faltante",
+      "estado": "output-available",
+      "entrada": {
+       "motivo": "Los datos para secciones no incluyen el texto de los mensajes, solo conteos y metadatos",
+       "pedido": "Quiero una lista de las conversaciones de hoy con lo que escribió cada cliente."
+      },
+      "salida": {
+       "ok": true
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar esa lista de conversaciones para ti. Te armé la lista de conversaciones de hoy para tu Panel.\nTiene cliente, teléfono, cuántos mensajes mandó, cuántas veces le respondió tu agente, total y quién habló de último.\n\nHoy te sale vacía, con 0 filas.\nY te soy honesto: no te puedo mostrar palabra por palabra lo que escribió cada cliente, solo los conteos.\n\n¿Lo aplico?",
+    "llamadasAlModelo": 4,
+    "llamadasPorRol": {
+     "dueno": 3,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 14,
+    "msEnDb": 1788.6,
+    "tokens": {
+     "entrada": 14173,
+     "salida": 4179,
+     "razonamiento": 2939
+    },
+    "usd": 0.0022531,
+    "usdStandard": 0.035477,
+    "usdPorRol": {
+     "dueno": 0.0016167,
+     "generador": 0.0006364000000000001,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2879.6,
+     "ventanaDeHerramienta": 13646.3,
+     "generar": 12691.7,
+     "simular": 0,
+     "dbEnLaVentana": 1324,
+     "responder": 7878.9,
+     "primerTextoVisible": 28093.1
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 164.5,
+      "ttfb": 414,
+      "ms": 2715,
+      "entrada": 3393,
+      "salida": 345,
+      "razonamiento": 241,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 3269.3,
+      "ttfb": 12689.7,
+      "ms": 12691.7,
+      "entrada": 2812,
+      "salida": 1776,
+      "razonamiento": 839,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 16291,
+      "ttfb": 266.7,
+      "ms": 10811,
+      "entrada": 3912,
+      "salida": 1326,
+      "razonamiento": 1216,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 27336.9,
+      "ttfb": 756.3,
+      "ms": 7878.9,
+      "entrada": 4056,
+      "salida": 732,
+      "razonamiento": 643,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "conversaciones-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 2992.5,
+    "msHastaCabeceras": 157.6,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "c9c6f3d6-badb-4ed7-8e40-2e38e9df6575"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Conversaciones de hoy: Muestra las conversaciones de hoy por cliente con el conteo de mensajes y la última actividad, ya que los datos no incluyen el texto escrito.",
+       "cambioId": "c9c6f3d6-badb-4ed7-8e40-2e38e9df6575",
+       "msHastaAplicado": 35441
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu Panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 539.9,
+    "tokens": {
+     "entrada": 8498,
+     "salida": 163,
+     "razonamiento": 67
+    },
+    "usd": 0.0008824,
+    "usdStandard": 0.011315249999999999,
+    "usdPorRol": {
+     "dueno": 0.0008824,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2138.5,
+     "ventanaDeHerramienta": 237.5,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 231,
+     "responder": 461.6,
+     "primerTextoVisible": 2684.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 160.1,
+      "ttfb": 591,
+      "ms": 1978.4,
+      "entrada": 4152,
+      "salida": 151,
+      "razonamiento": 67,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2376,
+      "ttfb": 308.4,
+      "ms": 461.6,
+      "entrada": 4346,
+      "salida": 12,
+      "razonamiento": 0,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  }
+ ]
+}

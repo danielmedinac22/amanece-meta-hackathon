@@ -1,0 +1,338 @@
+{
+ "huellaB": [
+  {
+   "tabla": "negocios",
+   "antes": "1 filas 78854a890918",
+   "despues": "1 filas 78854a890918",
+   "igual": true
+  },
+  {
+   "tabla": "duenos",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "productos",
+   "antes": "7 filas d42f073aac52",
+   "despues": "7 filas d42f073aac52",
+   "igual": true
+  },
+  {
+   "tabla": "clientes",
+   "antes": "5 filas cbd41794f795",
+   "despues": "5 filas cbd41794f795",
+   "igual": true
+  },
+  {
+   "tabla": "mensajes_cliente",
+   "antes": "48 filas 0c2cadce8e4b",
+   "despues": "48 filas 0c2cadce8e4b",
+   "igual": true
+  },
+  {
+   "tabla": "pedidos",
+   "antes": "12 filas 189e370d6748",
+   "despues": "12 filas 189e370d6748",
+   "igual": true
+  },
+  {
+   "tabla": "casos",
+   "antes": "1 filas 46d462edab1f",
+   "despues": "1 filas 46d462edab1f",
+   "igual": true
+  },
+  {
+   "tabla": "cambios",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "reglas",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "piezas",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "mensajes_dueno",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "capacidades_faltantes",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "turnos",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "sesiones_whatsapp",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  }
+ ],
+ "huellaBTrasLosIntentos": [
+  {
+   "tabla": "negocios",
+   "antes": "1 filas 78854a890918",
+   "despues": "1 filas 78854a890918",
+   "igual": true
+  },
+  {
+   "tabla": "duenos",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "productos",
+   "antes": "7 filas d42f073aac52",
+   "despues": "7 filas d42f073aac52",
+   "igual": true
+  },
+  {
+   "tabla": "clientes",
+   "antes": "5 filas cbd41794f795",
+   "despues": "5 filas cbd41794f795",
+   "igual": true
+  },
+  {
+   "tabla": "mensajes_cliente",
+   "antes": "48 filas 0c2cadce8e4b",
+   "despues": "48 filas 0c2cadce8e4b",
+   "igual": true
+  },
+  {
+   "tabla": "pedidos",
+   "antes": "12 filas 189e370d6748",
+   "despues": "12 filas 189e370d6748",
+   "igual": true
+  },
+  {
+   "tabla": "casos",
+   "antes": "1 filas 46d462edab1f",
+   "despues": "1 filas 46d462edab1f",
+   "igual": true
+  },
+  {
+   "tabla": "cambios",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "reglas",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "piezas",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "mensajes_dueno",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "capacidades_faltantes",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "turnos",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  },
+  {
+   "tabla": "sesiones_whatsapp",
+   "antes": "0 filas d41d8cd98f00",
+   "despues": "0 filas d41d8cd98f00",
+   "igual": true
+  }
+ ],
+ "huellaA": [
+  {
+   "tabla": "negocios",
+   "antes": "1 filas fc63033c0902",
+   "despues": "1 filas d0f24bcb4e9d",
+   "igual": false
+  },
+  {
+   "tabla": "duenos",
+   "antes": "27 filas c5cb4f99bb3e",
+   "despues": "28 filas 8d802162538a",
+   "igual": false
+  },
+  {
+   "tabla": "productos",
+   "antes": "8 filas fc516d4c7d33",
+   "despues": "9 filas 08670b79b680",
+   "igual": false
+  },
+  {
+   "tabla": "clientes",
+   "antes": "12 filas e4b8560881ee",
+   "despues": "12 filas e4b8560881ee",
+   "igual": true
+  },
+  {
+   "tabla": "mensajes_cliente",
+   "antes": "182 filas 2a130188b484",
+   "despues": "182 filas 2a130188b484",
+   "igual": true
+  },
+  {
+   "tabla": "pedidos",
+   "antes": "41 filas 10fac4b7d0b0",
+   "despues": "41 filas 10fac4b7d0b0",
+   "igual": true
+  },
+  {
+   "tabla": "casos",
+   "antes": "4 filas 42c59739b40d",
+   "despues": "4 filas 42c59739b40d",
+   "igual": true
+  },
+  {
+   "tabla": "cambios",
+   "antes": "27 filas 95c2ea075187",
+   "despues": "31 filas 48280c2dbf84",
+   "igual": false
+  },
+  {
+   "tabla": "reglas",
+   "antes": "6 filas 8d3fe47f12fb",
+   "despues": "7 filas 34f852e4b40f",
+   "igual": false
+  },
+  {
+   "tabla": "piezas",
+   "antes": "21 filas 01b917ddbb3a",
+   "despues": "23 filas f0722cf50bf5",
+   "igual": false
+  },
+  {
+   "tabla": "mensajes_dueno",
+   "antes": "112 filas 3a5713dba888",
+   "despues": "112 filas 3a5713dba888",
+   "igual": true
+  },
+  {
+   "tabla": "capacidades_faltantes",
+   "antes": "2 filas 94993a1b21fd",
+   "despues": "2 filas 94993a1b21fd",
+   "igual": true
+  },
+  {
+   "tabla": "turnos",
+   "antes": "96 filas 072890a4adc8",
+   "despues": "98 filas 37370dc80e89",
+   "igual": false
+  },
+  {
+   "tabla": "sesiones_whatsapp",
+   "antes": "1 filas 98c992a336d6",
+   "despues": "1 filas 98c992a336d6",
+   "igual": true
+  }
+ ],
+ "datosBIguales": true,
+ "promptB": {
+  "antes": "72d22f7afabf",
+  "despues": "72d22f7afabf",
+  "igual": true,
+  "diff": {
+   "quitadas": [],
+   "agregadas": []
+  }
+ },
+ "promptA": {
+  "antes": "bb45ff555c1d",
+  "despues": "4cc888ee74e7",
+  "diff": {
+   "quitadas": [
+    "- Horario: Atendemos por WhatsApp de lunes a sábado, de 8:00 a. m. a 6:00 p. m. Despachamos de lunes a viernes.",
+    "Por ahora el Dueño no ha puesto reglas adicionales."
+   ],
+   "agregadas": [
+    "- Horario: Lunes a domingo de 7 a 7",
+    "- Café de aislamiento 250 g — $23.000 — id: ff1dd5a2-1992-4eed-baaa-63769e031952",
+    "1. Si un Cliente pregunta por envíos fuera de Manizales, no prometas fecha de entrega y abre un Caso para que el Dueño responda."
+   ]
+  }
+ },
+ "reglasB": 0,
+ "panelB": 0,
+ "panelA": [
+  {
+   "nombre": "Pedidos confirmados por día",
+   "tipo": "indicador",
+   "ok": true,
+   "ms": 4
+  },
+  {
+   "nombre": "Pedidos con novedad",
+   "tipo": "seccion",
+   "ok": true,
+   "ms": 9
+  }
+ ],
+ "respuestas": {
+  "pregunta": "¿Me pueden enviar a Cali y cuánto demora?",
+  "aAntes": {
+   "md5": "bb45ff555c1d",
+   "lineas": 65,
+   "respuesta": "Claro que sí, te enviamos a Cali y el envío ya va incluido en el precio. ☕\n\nAllá se demora de 2 a 4 días hábiles. ¿Te antojas de algún tueste en especial para contarte opciones?",
+   "herramientas": []
+  },
+  "bAntes": {
+   "md5": "72d22f7afabf",
+   "lineas": 61,
+   "respuesta": "Hola, por ahora no hacemos envíos a Cali, solo entregamos en Bogotá.\n\nSi pasas por Chapinero puedes recoger en la tienda, ¿te antoja algo de la panadería?",
+   "herramientas": []
+  },
+  "aDespues": {
+   "md5": "4cc888ee74e7",
+   "lineas": 66,
+   "respuesta": "Claro que sí, hacemos envíos a Cali y el envío va incluido en el precio. ☕\n\nYa le pasé tu pregunta al Dueño para que te confirme la demora, te aviso por aquí apenas me responda.",
+   "herramientas": [
+    "abrir_caso"
+   ]
+  },
+  "bDespues": {
+   "md5": "72d22f7afabf",
+   "lineas": 61,
+   "respuesta": "Por ahora no hacemos envíos a Cali, solo en Bogotá en Chapinero, Teusaquillo, Usaquén y Chicó por $6.000.",
+   "herramientas": []
+  }
+ },
+ "intentosDesdeB": {
+  "obtenerCambio(B, cambio propuesto de A)": "null",
+  "aplicarCambio(B, cambio propuesto de A)": "rechazado: No encontré ese Cambio propuesto en este Negocio",
+  "revertirCambio(B, cambio aplicado de A)": "rechazado: No encontré ese Cambio aplicado en este Negocio",
+  "listarCambios(B)": "0",
+  "estado del cambio de A tras el intento": "propuesto",
+  "estado de la regla de A tras el intento de revertir": "aplicado"
+ }
+}

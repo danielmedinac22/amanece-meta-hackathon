@@ -1,0 +1,1152 @@
+{
+ "piezas": [
+  "indicador#1",
+  "seccion#1",
+  "indicador#2",
+  "seccion#2",
+  "indicador#3",
+  "seccion#3",
+  "indicador#4",
+  "seccion#4",
+  "indicador#5",
+  "seccion#5"
+ ],
+ "cargaDelWasmMs": 6.3,
+ "datos_LADERA": {
+  "filas": {
+   "pedidos": 41,
+   "mensajes": 182,
+   "casos": 4,
+   "clientes": 12,
+   "productos": 8
+  },
+  "bytesJson": 38182,
+  "cargaDesdeNeonMs": {
+   "mediana": 160.8,
+   "todas": [
+    287.5,
+    160.8,
+    157.2
+   ]
+  }
+ },
+ "datos_TRIGO": {
+  "filas": {
+   "pedidos": 12,
+   "mensajes": 48,
+   "casos": 1,
+   "clientes": 5,
+   "productos": 7
+  },
+  "bytesJson": 11561,
+  "cargaDesdeNeonMs": {
+   "mediana": 157.6,
+   "todas": [
+    156.9,
+    157.6,
+    158.7
+   ]
+  }
+ },
+ "datos_SINTETICO": {
+  "filas": {
+   "pedidos": 2000,
+   "mensajes": 5000,
+   "casos": 500,
+   "clientes": 400,
+   "productos": 12
+  },
+  "bytesJson": 1523206,
+  "cargaDesdeNeonMs": {
+   "mediana": 557.1,
+   "todas": [
+    665.9,
+    553.1,
+    557.1
+   ]
+  }
+ },
+ "filasEnLaBaseDelSintetico": {
+  "pedidos": 10000,
+  "mensajes": 12000,
+  "casos": 700
+ },
+ "porPieza": {
+  "indicador#1": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0.1,
+    "cargaMs": {
+     "mediana": 1.2,
+     "min": 0.7,
+     "max": 10.2
+    },
+    "evalMs": {
+     "mediana": 1.5,
+     "min": 1,
+     "max": 3.7
+    },
+    "calculoMs": 0.3,
+    "correrAisladoMs": 4,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.3
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.3,
+     "max": 0.5
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 2,
+    "cargaMs": {
+     "mediana": 21.7,
+     "min": 20.8,
+     "max": 23.1
+    },
+    "evalMs": {
+     "mediana": 24.8,
+     "min": 24.4,
+     "max": 25.9
+    },
+    "calculoMs": 3.1,
+    "correrAisladoMs": 27,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "seccion#1": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.5
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.7,
+     "max": 1
+    },
+    "calculoMs": 0.2,
+    "correrAisladoMs": 1,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.3
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.2,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.8,
+    "cargaMs": {
+     "mediana": 20.7,
+     "min": 20.5,
+     "max": 21.3
+    },
+    "evalMs": {
+     "mediana": 23.3,
+     "min": 22.9,
+     "max": 23.4
+    },
+    "calculoMs": 2.5,
+    "correrAisladoMs": 26,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "indicador#2": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.5
+    },
+    "evalMs": {
+     "mediana": 0.9,
+     "min": 0.8,
+     "max": 1
+    },
+    "calculoMs": 0.3,
+    "correrAisladoMs": 2,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.3,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.8,
+    "cargaMs": {
+     "mediana": 21.2,
+     "min": 20.8,
+     "max": 37.9
+    },
+    "evalMs": {
+     "mediana": 33.8,
+     "min": 32.9,
+     "max": 35.1
+    },
+    "calculoMs": 12.7,
+    "correrAisladoMs": 33,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "seccion#2": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.5
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.6,
+     "max": 0.7
+    },
+    "calculoMs": 0.2,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.7,
+    "cargaMs": {
+     "mediana": 21.3,
+     "min": 20.6,
+     "max": 22.5
+    },
+    "evalMs": {
+     "mediana": 24.2,
+     "min": 23.5,
+     "max": 24.7
+    },
+    "calculoMs": 2.9,
+    "correrAisladoMs": 27,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "indicador#3": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.6
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.7,
+     "max": 1
+    },
+    "calculoMs": 0.2,
+    "correrAisladoMs": 1,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.8,
+    "cargaMs": {
+     "mediana": 21.3,
+     "min": 21,
+     "max": 21.6
+    },
+    "evalMs": {
+     "mediana": 25.2,
+     "min": 24.7,
+     "max": 25.9
+    },
+    "calculoMs": 3.9,
+    "correrAisladoMs": 26,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "seccion#3": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.6
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.6,
+     "max": 0.8
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 1,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.2,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.7,
+    "cargaMs": {
+     "mediana": 21.3,
+     "min": 21.1,
+     "max": 21.5
+    },
+    "evalMs": {
+     "mediana": 24.4,
+     "min": 23.9,
+     "max": 26.1
+    },
+    "calculoMs": 3.1,
+    "correrAisladoMs": 26,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "indicador#4": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.6,
+     "min": 0.5,
+     "max": 0.7
+    },
+    "evalMs": {
+     "mediana": 0.8,
+     "min": 0.7,
+     "max": 1.1
+    },
+    "calculoMs": 0.2,
+    "correrAisladoMs": 1,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.3,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.8,
+    "cargaMs": {
+     "mediana": 21.8,
+     "min": 20.7,
+     "max": 23.4
+    },
+    "evalMs": {
+     "mediana": 25.3,
+     "min": 24.2,
+     "max": 25.9
+    },
+    "calculoMs": 3.4,
+    "correrAisladoMs": 28,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "seccion#4": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.6
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.6,
+     "max": 0.7
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 1,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.3,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.8,
+    "cargaMs": {
+     "mediana": 21.9,
+     "min": 21.5,
+     "max": 23.3
+    },
+    "evalMs": {
+     "mediana": 24.6,
+     "min": 24.2,
+     "max": 25.7
+    },
+    "calculoMs": 2.7,
+    "correrAisladoMs": 26,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "indicador#5": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0.1,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.6
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.7,
+     "max": 0.7
+    },
+    "calculoMs": 0.2,
+    "correrAisladoMs": 1,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.3,
+     "min": 0.3,
+     "max": 0.3
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.9,
+    "cargaMs": {
+     "mediana": 21.8,
+     "min": 21.6,
+     "max": 22.9
+    },
+    "evalMs": {
+     "mediana": 25.5,
+     "min": 25.2,
+     "max": 29.9
+    },
+    "calculoMs": 3.7,
+    "correrAisladoMs": 26,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  },
+  "seccion#5": {
+   "LADERA": {
+    "bytesJson": 38182,
+    "stringifyDobleMs": 0.1,
+    "cargaMs": {
+     "mediana": 0.5,
+     "min": 0.5,
+     "max": 0.6
+    },
+    "evalMs": {
+     "mediana": 0.7,
+     "min": 0.6,
+     "max": 0.7
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.2,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "TRIGO": {
+    "bytesJson": 11561,
+    "stringifyDobleMs": 0,
+    "cargaMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "evalMs": {
+     "mediana": 0.2,
+     "min": 0.2,
+     "max": 0.2
+    },
+    "calculoMs": 0.1,
+    "correrAisladoMs": 0,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 0.1,
+    "mallocMB": null,
+    "minimoMemoriaMB": 1,
+    "wasmHeapMB": 16,
+    "programaMB": 0
+   },
+   "SINTETICO": {
+    "bytesJson": 1523206,
+    "stringifyDobleMs": 1.8,
+    "cargaMs": {
+     "mediana": 21.6,
+     "min": 21.2,
+     "max": 21.7
+    },
+    "evalMs": {
+     "mediana": 24.1,
+     "min": 23.7,
+     "max": 24.3
+    },
+    "calculoMs": 2.5,
+    "correrAisladoMs": 26,
+    "correrAisladoOk": true,
+    "errorEnLaUltima": null,
+    "memoriaUsadaMB": 2.7,
+    "mallocMB": null,
+    "minimoMemoriaMB": 2,
+    "wasmHeapMB": 16,
+    "programaMB": 1.6
+   }
+  }
+ },
+ "escala": [
+  {
+   "pedidos": 1000,
+   "mensajes": 2500,
+   "pieza": "indicador#1",
+   "bytesJson": 599965,
+   "stringifyDobleMs": 1.1,
+   "cargaMs": {
+    "mediana": 8.4,
+    "min": 8.1,
+    "max": 8.4
+   },
+   "evalMs": {
+    "mediana": 10,
+    "min": 9.9,
+    "max": 10.1
+   },
+   "calculoMs": 1.6,
+   "correrAisladoMs": 10,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 1.1,
+   "mallocMB": null,
+   "minimoMemoriaMB": 1,
+   "wasmHeapMB": 16,
+   "programaMB": 0.6
+  },
+  {
+   "pedidos": 1000,
+   "mensajes": 2500,
+   "pieza": "seccion#1",
+   "bytesJson": 599965,
+   "stringifyDobleMs": 0.7,
+   "cargaMs": {
+    "mediana": 8.3,
+    "min": 8.3,
+    "max": 8.5
+   },
+   "evalMs": {
+    "mediana": 9.8,
+    "min": 9.6,
+    "max": 9.9
+   },
+   "calculoMs": 1.5,
+   "correrAisladoMs": 11,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 1.1,
+   "mallocMB": null,
+   "minimoMemoriaMB": 1,
+   "wasmHeapMB": 16,
+   "programaMB": 0.6
+  },
+  {
+   "pedidos": 2000,
+   "mensajes": 5000,
+   "pieza": "indicador#1",
+   "bytesJson": 1197176,
+   "stringifyDobleMs": 2.1,
+   "cargaMs": {
+    "mediana": 16.7,
+    "min": 16.6,
+    "max": 16.7
+   },
+   "evalMs": {
+    "mediana": 19.3,
+    "min": 19.1,
+    "max": 19.4
+   },
+   "calculoMs": 2.7,
+   "correrAisladoMs": 22,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 2.1,
+   "mallocMB": null,
+   "minimoMemoriaMB": 2,
+   "wasmHeapMB": 16,
+   "programaMB": 1.3
+  },
+  {
+   "pedidos": 2000,
+   "mensajes": 5000,
+   "pieza": "seccion#1",
+   "bytesJson": 1197176,
+   "stringifyDobleMs": 2.2,
+   "cargaMs": {
+    "mediana": 18.1,
+    "min": 16.7,
+    "max": 20.8
+   },
+   "evalMs": {
+    "mediana": 22.4,
+    "min": 20.3,
+    "max": 24.1
+   },
+   "calculoMs": 4.3,
+   "correrAisladoMs": 39,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 2.1,
+   "mallocMB": null,
+   "minimoMemoriaMB": 2,
+   "wasmHeapMB": 16,
+   "programaMB": 1.3
+  },
+  {
+   "pedidos": 5000,
+   "mensajes": 12500,
+   "pieza": "indicador#1",
+   "bytesJson": 2988801,
+   "stringifyDobleMs": 8.9,
+   "cargaMs": {
+    "mediana": 42.2,
+    "min": 41.7,
+    "max": 42.9
+   },
+   "evalMs": {
+    "mediana": 50.3,
+    "min": 48.6,
+    "max": 50.7
+   },
+   "calculoMs": 8.1,
+   "correrAisladoMs": 54,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 5.2,
+   "mallocMB": null,
+   "minimoMemoriaMB": 4,
+   "wasmHeapMB": 23.1,
+   "programaMB": 3.2
+  },
+  {
+   "pedidos": 5000,
+   "mensajes": 12500,
+   "pieza": "seccion#1",
+   "bytesJson": 2988801,
+   "stringifyDobleMs": 3.7,
+   "cargaMs": {
+    "mediana": 41.4,
+    "min": 41,
+    "max": 42.7
+   },
+   "evalMs": {
+    "mediana": 47.9,
+    "min": 47.2,
+    "max": 49.9
+   },
+   "calculoMs": 6.5,
+   "correrAisladoMs": 51,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 5.2,
+   "mallocMB": null,
+   "minimoMemoriaMB": 4,
+   "wasmHeapMB": 23.1,
+   "programaMB": 3.2
+  },
+  {
+   "pedidos": 10000,
+   "mensajes": 25000,
+   "pieza": "indicador#1",
+   "bytesJson": 5974841,
+   "stringifyDobleMs": 11.2,
+   "cargaMs": {
+    "mediana": 83.5,
+    "min": 81.6,
+    "max": 84.4
+   },
+   "evalMs": {
+    "mediana": 98.4,
+    "min": 96.1,
+    "max": 109.1
+   },
+   "calculoMs": 14.8,
+   "correrAisladoMs": 113,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 10.2,
+   "mallocMB": null,
+   "minimoMemoriaMB": 8,
+   "wasmHeapMB": 40,
+   "programaMB": 6.3
+  },
+  {
+   "pedidos": 10000,
+   "mensajes": 25000,
+   "pieza": "seccion#1",
+   "bytesJson": 5974841,
+   "stringifyDobleMs": 10.6,
+   "cargaMs": {
+    "mediana": 82.3,
+    "min": 81.7,
+    "max": 82.8
+   },
+   "evalMs": {
+    "mediana": 94.5,
+    "min": 92.7,
+    "max": 150.8
+   },
+   "calculoMs": 12.3,
+   "correrAisladoMs": 113,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 10.2,
+   "mallocMB": null,
+   "minimoMemoriaMB": 8,
+   "wasmHeapMB": 40,
+   "programaMB": 6.3
+  },
+  {
+   "pedidos": 20000,
+   "mensajes": 50000,
+   "pieza": "indicador#1",
+   "bytesJson": 11956927,
+   "stringifyDobleMs": 32.9,
+   "cargaMs": {
+    "mediana": 185.5,
+    "min": 176,
+    "max": 187.8
+   },
+   "evalMs": {
+    "mediana": 202.9,
+    "min": 199.6,
+    "max": 300.3
+   },
+   "calculoMs": 17.4,
+   "correrAisladoMs": 227,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 20.4,
+   "mallocMB": null,
+   "minimoMemoriaMB": 16,
+   "wasmHeapMB": 69.2,
+   "programaMB": 12.7
+  },
+  {
+   "pedidos": 20000,
+   "mensajes": 50000,
+   "pieza": "seccion#1",
+   "bytesJson": 11956927,
+   "stringifyDobleMs": 20.6,
+   "cargaMs": {
+    "mediana": 168.2,
+    "min": 165.8,
+    "max": 231
+   },
+   "evalMs": {
+    "mediana": 188.3,
+    "min": 187,
+    "max": 191.6
+   },
+   "calculoMs": 20.1,
+   "correrAisladoMs": 220,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 20.4,
+   "mallocMB": null,
+   "minimoMemoriaMB": 16,
+   "wasmHeapMB": 69.2,
+   "programaMB": 12.7
+  },
+  {
+   "pedidos": 50000,
+   "mensajes": 125000,
+   "pieza": "indicador#1",
+   "bytesJson": 29903177,
+   "stringifyDobleMs": 69.6,
+   "cargaMs": {
+    "mediana": 438.3,
+    "min": 427.5,
+    "max": 445.3
+   },
+   "evalMs": {
+    "mediana": 503.5,
+    "min": 502.7,
+    "max": 540.6
+   },
+   "calculoMs": 65.3,
+   "correrAisladoMs": 564,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 50.8,
+   "mallocMB": null,
+   "minimoMemoriaMB": 32,
+   "wasmHeapMB": 162.8,
+   "programaMB": 31.8
+  },
+  {
+   "pedidos": 50000,
+   "mensajes": 125000,
+   "pieza": "seccion#1",
+   "bytesJson": 29903177,
+   "stringifyDobleMs": 49.9,
+   "cargaMs": {
+    "mediana": 427,
+    "min": 421.5,
+    "max": 434.1
+   },
+   "evalMs": {
+    "mediana": 490.7,
+    "min": 474,
+    "max": 504.1
+   },
+   "calculoMs": 63.7,
+   "correrAisladoMs": 555,
+   "correrAisladoOk": true,
+   "errorEnLaUltima": null,
+   "memoriaUsadaMB": 50.8,
+   "mallocMB": null,
+   "minimoMemoriaMB": 32,
+   "wasmHeapMB": 162.8,
+   "programaMB": 31.8
+  },
+  {
+   "pedidos": 100000,
+   "mensajes": 250000,
+   "pieza": "indicador#1",
+   "bytesJson": 59813592,
+   "stringifyDobleMs": 135,
+   "cargaMs": {
+    "mediana": 337.8,
+    "min": 327.6,
+    "max": 385.2
+   },
+   "evalMs": {
+    "mediana": 331.4,
+    "min": 323.9,
+    "max": 333.5
+   },
+   "calculoMs": -6.4,
+   "correrAisladoMs": 516,
+   "correrAisladoOk": false,
+   "errorEnLaUltima": "InternalError: out of memory",
+   "memoriaUsadaMB": null,
+   "mallocMB": null,
+   "minimoMemoriaMB": null,
+   "wasmHeapMB": 162.8,
+   "programaMB": 63.5
+  },
+  {
+   "pedidos": 100000,
+   "mensajes": 250000,
+   "pieza": "seccion#1",
+   "bytesJson": 59813592,
+   "stringifyDobleMs": 97.8,
+   "cargaMs": {
+    "mediana": 312.4,
+    "min": 306.6,
+    "max": 362.9
+   },
+   "evalMs": {
+    "mediana": 313.7,
+    "min": 310.3,
+    "max": 328.4
+   },
+   "calculoMs": 1.3,
+   "correrAisladoMs": 446,
+   "correrAisladoOk": false,
+   "errorEnLaUltima": "InternalError: out of memory",
+   "memoriaUsadaMB": null,
+   "mallocMB": null,
+   "minimoMemoriaMB": 256,
+   "wasmHeapMB": 337.5,
+   "programaMB": 63.5
+  }
+ ]
+}

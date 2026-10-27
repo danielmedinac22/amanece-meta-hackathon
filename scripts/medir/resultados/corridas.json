@@ -1,0 +1,5406 @@
+{
+ "modelo": "muse-spark-1.3-contributor",
+ "base": "ep-damp-scene-b8louqpz-pooler.c-14.us-east-1.aws.neon.tech",
+ "generado": "2026-10-27T22:38:53.337Z",
+ "corridas": [
+  {
+   "tipo": "regla",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:31:59.369Z",
+   "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+   "herramientasTurno1": [
+    "proponer_regla"
+   ],
+   "herramientaEsperada": "proponer_regla",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 319.1,
+   "msHastaAplicadoMaquina": 24184.8,
+   "msHastaVerAplicado": 26326.2,
+   "msTurno1": 21582.5,
+   "msTurno2": 4743.7,
+   "llamadasAlModelo": 7,
+   "tokens": {
+    "entrada": 25095,
+    "salida": 2950,
+    "razonamiento": 2357
+   },
+   "usd": 0.0030995000000000007,
+   "usdStandard": 0.043906249999999994,
+   "usdPorRol": {
+    "dueno": 0.0019287,
+    "generador": 0,
+    "clientes": 0.0011708
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 9756,
+    "tokensSalida": 976,
+    "costoUsd": 0.0011708
+   },
+   "guardadoEnTurnos": {
+    "filas": 2,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 15339,
+    "tokensSalida": 1974,
+    "costoUsd": 0.0019286999999999998
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "5fab5d3d-50b9-4bff-b96f-8ee7e028b2e1",
+     "tipo": "regla",
+     "estado": "aplicado",
+     "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha ni tiempo de entrega y abre un Caso para que el Dueño lo revise.",
+     "tokensEntrada": 9756,
+     "tokensSalida": 976,
+     "costoUsdGuardado": 0.0011708,
+     "msHastaPropuesta": 9149,
+     "msHastaAplicado": 19336,
+     "intentos": null,
+     "msQuickJS": null,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": [],
+     "herramientasDespues": [
+      "abrir_caso"
+     ],
+     "antes": "Hola, claro que sí, enviamos a Medellín ☕\n\nEl envío va incluido en el precio y te llega en *2 a 4 días hábiles*. ¿Te antojas de algún cafecito para pedirlo de una vez?",
+     "despues": "Sí, hacemos envíos a Medellín ☕ Ya se lo pasé al Dueño para que lo revise y te confirmamos por aquí.",
+     "resultado": null,
+     "propuesta": {
+      "texto": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha ni tiempo de entrega y abre un Caso para que el Dueño lo revise.",
+      "preguntaDePrueba": "Hola, ¿hacen envíos a Medellín? ¿En cuántos días me llega?"
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "regla-1-t1",
+    "texto": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+    "ms": 21582.5,
+    "msHastaCabeceras": 168.3,
+    "herramientas": [
+     {
+      "nombre": "proponer_regla",
+      "estado": "output-available",
+      "entrada": {
+       "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+       "textoDeLaRegla": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha ni tiempo de entrega y abre un Caso para que el Dueño lo revise.",
+       "preguntaDePrueba": "Hola, ¿hacen envíos a Medellín? ¿En cuántos días me llega?"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "medida": {
+        "costoUsd": 0.0011708,
+        "tokensSalida": 976,
+        "tokensEntrada": 9756,
+        "msHastaPropuesta": 9149
+       },
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha ni tiempo de entrega y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "5fab5d3d-50b9-4bff-b96f-8ee7e028b2e1",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "antes": "Hola, claro que sí, enviamos a Medellín ☕\n\nEl envío va incluido en el precio y te llega en *2 a 4 días hábiles*. ¿Te antojas de algún cafecito para pedirlo de una vez?",
+        "despues": "Sí, hacemos envíos a Medellín ☕ Ya se lo pasé al Dueño para que lo revise y te confirmamos por aquí.",
+        "preguntaDePrueba": "Hola, ¿hacen envíos a Medellín? ¿En cuántos días me llega?",
+        "herramientasAntes": [],
+        "herramientasDespues": [
+         "abrir_caso"
+        ]
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Propondré esa regla para envíos fuera de la ciudad. Listo. Lo probé con un cliente que pregunta por envío a Medellín.\n\nAntes tu agente le prometía que llegaba en 2 a 4 días. Ahora ya no promete fecha y te deja un caso para que lo revises.\n\n¿Lo aplico?",
+    "llamadasAlModelo": 5,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 3,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 11,
+    "msEnDb": 1545.6,
+    "tokens": {
+     "entrada": 17023,
+     "salida": 2558,
+     "razonamiento": 2084
+    },
+    "usd": 0.0022139000000000004,
+    "usdStandard": 0.03215025,
+    "usdPorRol": {
+     "dueno": 0.0010431,
+     "generador": 0,
+     "clientes": 0.0011708
+    },
+    "fases": {
+     "entender": 5074.6,
+     "ventanaDeHerramienta": 9435.7,
+     "generar": 0,
+     "simular": 8810,
+     "dbEnLaVentana": 1070.2,
+     "responder": 6751.1,
+     "primerTextoVisible": 14928.5
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 173.7,
+      "ttfb": 646.5,
+      "ms": 4900.8,
+      "entrada": 3397,
+      "salida": 700,
+      "razonamiento": 524,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 5410.7,
+      "ttfb": 1867.1,
+      "ms": 1867.6,
+      "entrada": 3174,
+      "salida": 91,
+      "razonamiento": 31,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 5412.4,
+      "ttfb": 4777.1,
+      "ms": 4777.8,
+      "entrada": 3197,
+      "salida": 476,
+      "razonamiento": 338,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 10193.5,
+      "ttfb": 4028.5,
+      "ms": 4030.5,
+      "entrada": 3385,
+      "salida": 409,
+      "razonamiento": 372,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 14510.3,
+      "ttfb": 418.3,
+      "ms": 6751.1,
+      "entrada": 3870,
+      "salida": 882,
+      "razonamiento": 819,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "regla-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4743.7,
+    "msHastaCabeceras": 155.5,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "5fab5d3d-50b9-4bff-b96f-8ee7e028b2e1"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha ni tiempo de entrega y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "5fab5d3d-50b9-4bff-b96f-8ee7e028b2e1",
+       "msHastaAplicado": 19336
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya quedó aplicado. Si preguntan por envíos fuera de la ciudad, tu agente no promete fecha y te deja el caso.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 544.1,
+    "tokens": {
+     "entrada": 8072,
+     "salida": 392,
+     "razonamiento": 273
+    },
+    "usd": 0.0008856000000000001,
+    "usdStandard": 0.011755999999999999,
+    "usdPorRol": {
+     "dueno": 0.0008856000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2354.6,
+     "ventanaDeHerramienta": 247.7,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 237.3,
+     "responder": 1983.1,
+     "primerTextoVisible": 3305.1
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 157.4,
+      "ttfb": 1298.7,
+      "ms": 2197.2,
+      "entrada": 3940,
+      "salida": 171,
+      "razonamiento": 87,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2602.3,
+      "ttfb": 702.8,
+      "ms": 1983.1,
+      "entrada": 4132,
+      "salida": 221,
+      "razonamiento": 186,
+      "enCache": 3569,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "indicador",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:32:27.392Z",
+   "pedido": "Quiero ver los pedidos confirmados por día.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 323,
+   "msHastaAplicadoMaquina": 24936.4,
+   "msHastaVerAplicado": 27132,
+   "msTurno1": 22784,
+   "msTurno2": 4348,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18248,
+    "salida": 3288,
+    "razonamiento": 2614
+   },
+   "usd": 0.0024824,
+   "usdStandard": 0.036784,
+   "usdPorRol": {
+    "dueno": 0.0018809,
+    "generador": 0.0006015,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2829,
+    "tokensSalida": 1593,
+    "costoUsd": 0.0006015
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18248,
+    "tokensSalida": 3288,
+    "costoUsd": 0.0024824
+   },
+   "cotejo": {
+    "serie": true,
+    "puntos": 14,
+    "suma": 27,
+    "coincideConLaAmplia": true,
+    "coincideConLaEstricta": false
+   },
+   "cambios": [
+    {
+     "id": "557b5a36-30d5-47c0-bdde-c91a835f807f",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 14 días.",
+     "tokensEntrada": 2829,
+     "tokensSalida": 1593,
+     "costoUsdGuardado": 0.0006015,
+     "msHastaPropuesta": 11737,
+     "msHastaAplicado": 21227,
+     "intentos": 1,
+     "msQuickJS": 43,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Cuenta pedidos en confirmado, enviado, entregado y novedad de los ultimos 14 dias por dia Bogota.",
+      "serie": [
+       {
+        "valor": 7,
+        "etiqueta": "2026-10-14"
+       },
+       {
+        "valor": 4,
+        "etiqueta": "2026-10-15"
+       },
+       {
+        "valor": 2,
+        "etiqueta": "2026-10-16"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-17"
+       },
+       {
+        "valor": 3,
+        "etiqueta": "2026-10-18"
+       },
+       {
+        "valor": 2,
+        "etiqueta": "2026-10-19"
+       },
+       {
+        "valor": 2,
+        "etiqueta": "2026-10-20"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-21"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-22"
+       },
+       {
+        "valor": 3,
+        "etiqueta": "2026-10-23"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-24"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-25"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-26"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-27"
+       }
+      ],
+      "valor": 27,
+      "unidad": "pedidos"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var dia = function (iso) { return new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10); };\n  var N = 14;\n  var esConfirmado = function (e) { return e === \"confirmado\" || e === \"enviado\" || e === \"entregado\" || e === \"novedad\"; };\n  var conteo = {};\n  var pedidos = (datos && datos.pedidos) || [];\n  for (var i = 0; i < pedidos.length; i++) {\n    var p = pedidos[i];\n    if (!esConfirmado(p.estado)) continue;\n    if (!p.creado) continue;\n    var d = dia(p.creado);\n    conteo[d] = (conteo[d] || 0) + 1;\n  }\n  var serie = [];\n  var hoyMs = Date.parse(datos.hoy);\n  for (var k = N - 1; k >= 0; k--) {\n    var iso = new Date(hoyMs - k * 86400000).toISOString();\n    var etiqueta = dia(iso);\n    serie.push({ etiqueta: etiqueta, valor: conteo[etiqueta] || 0 });\n  }\n  var total = 0;\n  for (var j = 0; j < serie.length; j++) total += serie[j].valor;\n  return {\n    valor: total,\n    unidad: \"pedidos\",\n    serie: serie,\n    nota: \"Cuenta pedidos en confirmado, enviado, entregado y novedad de los ultimos 14 dias por dia Bogota.\"\n  };\n}",
+      "nombre": "Pedidos confirmados por día",
+      "descripcion": "Mide los pedidos confirmados por día en los últimos 14 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "indicador-1-t1",
+    "texto": "Quiero ver los pedidos confirmados por día.",
+    "ms": 22784,
+    "msHastaCabeceras": 157.2,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos confirmados por día",
+       "pedido": "Quiero ver los pedidos confirmados por día."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0006015,
+        "tokensSalida": 1593,
+        "tokensEntrada": 2829,
+        "msHastaPropuesta": 11737
+       },
+       "nombre": "Pedidos confirmados por día",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 14 días.",
+       "cambioId": "557b5a36-30d5-47c0-bdde-c91a835f807f",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 43,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Cuenta pedidos en confirmado, enviado, entregado y novedad de los ultimos 14 dias por dia Bogota.",
+         "serie": [
+          {
+           "valor": 7,
+           "etiqueta": "2026-10-14"
+          },
+          {
+           "valor": 4,
+           "etiqueta": "2026-10-15"
+          },
+          {
+           "valor": 2,
+           "etiqueta": "2026-10-16"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-17"
+          },
+          {
+           "valor": 3,
+           "etiqueta": "2026-10-18"
+          },
+          {
+           "valor": 2,
+           "etiqueta": "2026-10-19"
+          },
+          {
+           "valor": 2,
+           "etiqueta": "2026-10-20"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-21"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-22"
+          },
+          {
+           "valor": 3,
+           "etiqueta": "2026-10-23"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-24"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-25"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-26"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-27"
+          }
+         ],
+         "valor": 27,
+         "unidad": "pedidos"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar ese indicador para ti. Te tengo el dato. Son 27 pedidos confirmados en los últimos 14 días.\n\nEl mejor día fue el 14 de octubre con 7. Hoy van 0. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1605.9,
+    "tokens": {
+     "entrada": 10132,
+     "salida": 2852,
+     "razonamiento": 2276
+    },
+    "usd": 0.0015836000000000001,
+    "usdStandard": 0.024786,
+    "usdPorRol": {
+     "dueno": 0.0009821,
+     "generador": 0.0006015,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 4113.9,
+     "ventanaDeHerramienta": 11830.5,
+     "generar": 11046.8,
+     "simular": 0,
+     "dbEnLaVentana": 1127.3,
+     "responder": 6513.5,
+     "primerTextoVisible": 16793
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 160,
+      "ttfb": 795.8,
+      "ms": 3953.9,
+      "entrada": 3386,
+      "salida": 451,
+      "razonamiento": 353,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 4497,
+      "ttfb": 11045.9,
+      "ms": 11046.8,
+      "entrada": 2829,
+      "salida": 1593,
+      "razonamiento": 1164,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 15944.4,
+      "ttfb": 848.6,
+      "ms": 6513.5,
+      "entrada": 3917,
+      "salida": 808,
+      "razonamiento": 759,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "indicador-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4348,
+    "msHastaCabeceras": 161.6,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "557b5a36-30d5-47c0-bdde-c91a835f807f"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 14 días.",
+       "cambioId": "557b5a36-30d5-47c0-bdde-c91a835f807f",
+       "msHastaAplicado": 21227
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya te quedó en tu Panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 554.2,
+    "tokens": {
+     "entrada": 8116,
+     "salida": 436,
+     "razonamiento": 338
+    },
+    "usd": 0.0008988000000000001,
+    "usdStandard": 0.011998,
+    "usdPorRol": {
+     "dueno": 0.0008988000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1900.3,
+     "ventanaDeHerramienta": 252.1,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 243.2,
+     "responder": 2035.8,
+     "primerTextoVisible": 2831.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 165.3,
+      "ttfb": 614.6,
+      "ms": 1735,
+      "entrada": 3973,
+      "salida": 195,
+      "razonamiento": 116,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2152.4,
+      "ttfb": 678.9,
+      "ms": 2035.8,
+      "entrada": 4143,
+      "salida": 241,
+      "razonamiento": 222,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "seccion",
+   "corrida": 1,
+   "inicio": "2026-10-27T22:32:56.238Z",
+   "pedido": "Quiero ver una lista de los pedidos con novedad.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 305.6,
+   "msHastaAplicadoMaquina": 20983.7,
+   "msHastaVerAplicado": 23125.7,
+   "msTurno1": 18823.5,
+   "msTurno2": 4302.2,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18751,
+    "salida": 2741,
+    "razonamiento": 1829
+   },
+   "usd": 0.0024233,
+   "usdStandard": 0.035088,
+   "usdPorRol": {
+    "dueno": 0.0018558000000000003,
+    "generador": 0.0005675,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2809,
+    "tokensSalida": 1433,
+    "costoUsd": 0.0005675
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18751,
+    "tokensSalida": 2741,
+    "costoUsd": 0.0024233
+   },
+   "cotejo": {
+    "totalFilas": 4,
+    "verdadNovedad": 4
+   },
+   "cambios": [
+    {
+     "id": "46450f61-fd01-4494-81a4-2f74bfb94b33",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Pedidos con novedad: Muestra la lista de pedidos en estado de novedad, los más recientes primero.",
+     "tokensEntrada": 2809,
+     "tokensSalida": 1433,
+     "costoUsdGuardado": 0.0005675,
+     "msHastaPropuesta": 11142,
+     "msHastaAplicado": 17635,
+     "intentos": 1,
+     "msQuickJS": 6,
+     "totalFilas": 4,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "total": 95000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-20 17:09",
+       "numero": 32,
+       "cliente": "Camila Rojas",
+       "detalle": "1 x Caja regalo Ladera",
+       "unidades": 1
+      },
+      {
+       "total": 114000,
+       "ciudad": "Pasto",
+       "creado": "2026-10-18 15:13",
+       "numero": 28,
+       "cliente": "Paola Andrea Vargas",
+       "detalle": "3 x Café Ladera tueste medio, grano 500 g",
+       "unidades": 3
+      },
+      {
+       "total": 112000,
+       "ciudad": "Pereira",
+       "creado": "2026-10-14 09:49",
+       "numero": 14,
+       "cliente": "Daniela Quintero",
+       "detalle": "1 x Café Ladera tueste oscuro, molido 500 g; 2 x Café Ladera tueste medio, grano 500 g",
+       "unidades": 3
+      },
+      {
+       "total": 38000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-12 20:58",
+       "numero": 10,
+       "cliente": "Juan David Cárdenas",
+       "detalle": "1 x Café Ladera tueste medio, molido 500 g",
+       "unidades": 1
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "numero",
+         "titulo": "N.º pedido"
+        },
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "ciudad",
+         "titulo": "Ciudad"
+        },
+        {
+         "clave": "detalle",
+         "titulo": "Detalle"
+        },
+        {
+         "clave": "unidades",
+         "titulo": "Unidades"
+        },
+        {
+         "clave": "total",
+         "titulo": "Total (COP)"
+        },
+        {
+         "clave": "creado",
+         "titulo": "Creado (Bogotá)"
+        }
+       ]
+      },
+      "codigo": "function fmtBogota(iso) {\n  var t = Date.parse(iso);\n  if (isNaN(t)) return \"\";\n  return new Date(t - 5 * 3600 * 1000).toISOString().slice(0, 16).replace(\"T\", \" \");\n}\nfunction resumenItems(items) {\n  if (!items || !items.length) return \"\";\n  var partes = [];\n  for (var i = 0; i < items.length; i++) {\n    var it = items[i];\n    partes.push(it.cantidad + \" x \" + it.nombre);\n  }\n  return partes.join(\"; \");\n}\nfunction consultar(datos) {\n  var pedidos = (datos && datos.pedidos) || [];\n  var clientes = (datos && datos.clientes) || [];\n  var porCliente = {};\n  for (var i = 0; i < clientes.length; i++) {\n    porCliente[clientes[i].id] = clientes[i].nombre;\n  }\n  var lista = [];\n  for (var j = 0; j < pedidos.length; j++) {\n    if (pedidos[j].estado === \"novedad\") lista.push(pedidos[j]);\n  }\n  lista.sort(function (a, b) { return Date.parse(b.creado) - Date.parse(a.creado); });\n  var filas = [];\n  var n = lista.length > 200 ? 200 : lista.length;\n  for (var k = 0; k < n; k++) {\n    var p = lista[k];\n    var totalItems = 0;\n    var its = p.items || [];\n    for (var m = 0; m < its.length; m++) totalItems += its[m].cantidad || 0;\n    filas.push({\n      numero: p.numero,\n      cliente: porCliente[p.clienteId] || \"Sin nombre\",\n      ciudad: p.ciudad || \"\",\n      detalle: resumenItems(its),\n      unidades: totalItems,\n      total: p.total,\n      creado: fmtBogota(p.creado)\n    });\n  }\n  return filas;\n}",
+      "nombre": "Pedidos con novedad",
+      "descripcion": "Muestra la lista de pedidos en estado de novedad, los más recientes primero."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "seccion-1-t1",
+    "texto": "Quiero ver una lista de los pedidos con novedad.",
+    "ms": 18823.5,
+    "msHastaCabeceras": 159.3,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos con novedad",
+       "pedido": "Quiero ver una lista de los pedidos con novedad."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "numero",
+          "titulo": "N.º pedido"
+         },
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "ciudad",
+          "titulo": "Ciudad"
+         },
+         {
+          "clave": "detalle",
+          "titulo": "Detalle"
+         },
+         {
+          "clave": "unidades",
+          "titulo": "Unidades"
+         },
+         {
+          "clave": "total",
+          "titulo": "Total (COP)"
+         },
+         {
+          "clave": "creado",
+          "titulo": "Creado (Bogotá)"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0005675,
+        "tokensSalida": 1433,
+        "tokensEntrada": 2809,
+        "msHastaPropuesta": 11142
+       },
+       "nombre": "Pedidos con novedad",
+       "resumen": "Pedidos con novedad: Muestra la lista de pedidos en estado de novedad, los más recientes primero.",
+       "cambioId": "46450f61-fd01-4494-81a4-2f74bfb94b33",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 6,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "numero",
+           "titulo": "N.º pedido"
+          },
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "ciudad",
+           "titulo": "Ciudad"
+          },
+          {
+           "clave": "detalle",
+           "titulo": "Detalle"
+          },
+          {
+           "clave": "unidades",
+           "titulo": "Unidades"
+          },
+          {
+           "clave": "total",
+           "titulo": "Total (COP)"
+          },
+          {
+           "clave": "creado",
+           "titulo": "Creado (Bogotá)"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "total": 95000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-20 17:09",
+          "numero": 32,
+          "cliente": "Camila Rojas",
+          "detalle": "1 x Caja regalo Ladera",
+          "unidades": 1
+         },
+         {
+          "total": 114000,
+          "ciudad": "Pasto",
+          "creado": "2026-10-18 15:13",
+          "numero": 28,
+          "cliente": "Paola Andrea Vargas",
+          "detalle": "3 x Café Ladera tueste medio, grano 500 g",
+          "unidades": 3
+         },
+         {
+          "total": 112000,
+          "ciudad": "Pereira",
+          "creado": "2026-10-14 09:49",
+          "numero": 14,
+          "cliente": "Daniela Quintero",
+          "detalle": "1 x Café Ladera tueste oscuro, molido 500 g; 2 x Café Ladera tueste medio, grano 500 g",
+          "unidades": 3
+         },
+         {
+          "total": 38000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-12 20:58",
+          "numero": 10,
+          "cliente": "Juan David Cárdenas",
+          "detalle": "1 x Café Ladera tueste medio, molido 500 g",
+          "unidades": 1
+         }
+        ],
+        "totalFilas": 4
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Sigo pendiente para poner a punto tu lista de pedidos. Ya te armé la lista de pedidos con novedad.\n\nTiene número, cliente, ciudad, detalle, unidades, total y fecha. Son 4 pedidos.\n\nPor ejemplo el más reciente es el 32 de Camila Rojas en Bogotá por 95.000. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1802.5,
+    "tokens": {
+     "entrada": 10274,
+     "salida": 2363,
+     "razonamiento": 1549
+    },
+    "usd": 0.0015,
+    "usdStandard": 0.022885250000000003,
+    "usdPorRol": {
+     "dueno": 0.0009325000000000001,
+     "generador": 0.0005675,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 3982.9,
+     "ventanaDeHerramienta": 11281.6,
+     "generar": 10443.9,
+     "simular": 0,
+     "dbEnLaVentana": 1306.4,
+     "responder": 3214,
+     "primerTextoVisible": 15957.1
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 162.2,
+      "ttfb": 769.4,
+      "ms": 3820.8,
+      "entrada": 3389,
+      "salida": 470,
+      "razonamiento": 367,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 4368.8,
+      "ttfb": 10442,
+      "ms": 10443.9,
+      "entrada": 2809,
+      "salida": 1433,
+      "razonamiento": 790,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 15264.5,
+      "ttfb": 692.6,
+      "ms": 3214,
+      "entrada": 4076,
+      "salida": 460,
+      "razonamiento": 392,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "seccion-1-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4302.2,
+    "msHastaCabeceras": 251.6,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "46450f61-fd01-4494-81a4-2f74bfb94b33"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Pedidos con novedad: Muestra la lista de pedidos en estado de novedad, los más recientes primero.",
+       "cambioId": "46450f61-fd01-4494-81a4-2f74bfb94b33",
+       "msHastaAplicado": 17635
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo. Ya quedó en tu Panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 630.1,
+    "tokens": {
+     "entrada": 8477,
+     "salida": 378,
+     "razonamiento": 280
+    },
+    "usd": 0.0009233000000000002,
+    "usdStandard": 0.01220275,
+    "usdPorRol": {
+     "dueno": 0.0009233000000000002,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1920.6,
+     "ventanaDeHerramienta": 239.6,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 230.1,
+     "responder": 1985.3,
+     "primerTextoVisible": 2618.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 256.4,
+      "ttfb": 754.9,
+      "ms": 1664.2,
+      "entrada": 4151,
+      "salida": 168,
+      "razonamiento": 88,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2160.2,
+      "ttfb": 458.1,
+      "ms": 1985.3,
+      "entrada": 4326,
+      "salida": 210,
+      "razonamiento": 192,
+      "enCache": 4081,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "regla",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:33:21.269Z",
+   "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+   "herramientasTurno1": [
+    "proponer_regla"
+   ],
+   "herramientaEsperada": "proponer_regla",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 329.6,
+   "msHastaAplicadoMaquina": 18664.5,
+   "msHastaVerAplicado": 20559.5,
+   "msTurno1": 16764,
+   "msTurno2": 3795.5,
+   "llamadasAlModelo": 7,
+   "tokens": {
+    "entrada": 25119,
+    "salida": 2094,
+    "razonamiento": 1490
+   },
+   "usd": 0.0029307000000000005,
+   "usdStandard": 0.040298249999999994,
+   "usdPorRol": {
+    "dueno": 0.0017683000000000002,
+    "generador": 0,
+    "clientes": 0.0011624
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 9760,
+    "tokensSalida": 932,
+    "costoUsd": 0.0011624
+   },
+   "guardadoEnTurnos": {
+    "filas": 2,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 15359,
+    "tokensSalida": 1162,
+    "costoUsd": 0.0017683
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "636ca27c-b93f-4297-96f5-90dd0485700a",
+     "tipo": "regla",
+     "estado": "aplicado",
+     "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+     "tokensEntrada": 9760,
+     "tokensSalida": 932,
+     "costoUsdGuardado": 0.0011624,
+     "msHastaPropuesta": 8399,
+     "msHastaAplicado": 15555,
+     "intentos": null,
+     "msQuickJS": null,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": [],
+     "herramientasDespues": [
+      "abrir_caso"
+     ],
+     "antes": "Sí, claro que hacemos envíos a Bucaramanga ☕ Te llega en *2 a 4 días hábiles* y el envío ya va incluido en el precio. ¿Qué te provoca pedir?",
+     "despues": "Hola, qué más, bienvenido a Café Ladera ☕\n\nSí hacemos envíos a Bucaramanga, con el envío incluido en el precio. Ya le pasé tu consulta al Dueño para que revise lo del tiempo de entrega y te confirmamos por aquí.\n\n¿Te cuento qué cafés tenemos mientras tanto?",
+     "resultado": null,
+     "propuesta": {
+      "texto": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+      "preguntaDePrueba": "Hola, ¿hacen envíos a Bucaramanga? ¿En cuántos días me llega?"
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "regla-2-t1",
+    "texto": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+    "ms": 16764,
+    "msHastaCabeceras": 153.2,
+    "herramientas": [
+     {
+      "nombre": "proponer_regla",
+      "estado": "output-available",
+      "entrada": {
+       "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+       "textoDeLaRegla": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+       "preguntaDePrueba": "Hola, ¿hacen envíos a Bucaramanga? ¿En cuántos días me llega?"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "medida": {
+        "costoUsd": 0.0011624,
+        "tokensSalida": 932,
+        "tokensEntrada": 9760,
+        "msHastaPropuesta": 8399
+       },
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "636ca27c-b93f-4297-96f5-90dd0485700a",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "antes": "Sí, claro que hacemos envíos a Bucaramanga ☕ Te llega en *2 a 4 días hábiles* y el envío ya va incluido en el precio. ¿Qué te provoca pedir?",
+        "despues": "Hola, qué más, bienvenido a Café Ladera ☕\n\nSí hacemos envíos a Bucaramanga, con el envío incluido en el precio. Ya le pasé tu consulta al Dueño para que revise lo del tiempo de entrega y te confirmamos por aquí.\n\n¿Te cuento qué cafés tenemos mientras tanto?",
+        "preguntaDePrueba": "Hola, ¿hacen envíos a Bucaramanga? ¿En cuántos días me llega?",
+        "herramientasAntes": [],
+        "herramientasDespues": [
+         "abrir_caso"
+        ]
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya lo probé con un ejemplo de envío a Bucaramanga.\nAntes tu agente prometía de 2 a 4 días.\nAhora ya no promete fecha y me deja el caso a ti para revisarlo. ¿Lo aplico?",
+    "llamadasAlModelo": 5,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 3,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 11,
+    "msEnDb": 1176.8,
+    "tokens": {
+     "entrada": 17035,
+     "salida": 1797,
+     "razonamiento": 1319
+    },
+    "usd": 0.0020629000000000003,
+    "usdStandard": 0.028931,
+    "usdPorRol": {
+     "dueno": 0.0009005,
+     "generador": 0,
+     "clientes": 0.0011624
+    },
+    "fases": {
+     "entender": 3372.9,
+     "ventanaDeHerramienta": 8641.4,
+     "generar": 0,
+     "simular": 8239.2,
+     "dbEnLaVentana": 696.9,
+     "responder": 4417.3,
+     "primerTextoVisible": 13194.1
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 155.7,
+      "ttfb": 843.9,
+      "ms": 3217.1,
+      "entrada": 3397,
+      "salida": 368,
+      "razonamiento": 212,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 3529.7,
+      "ttfb": 5032.1,
+      "ms": 5033.1,
+      "entrada": 3198,
+      "salida": 491,
+      "razonamiento": 353,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 3532.7,
+      "ttfb": 2387.5,
+      "ms": 2388.1,
+      "entrada": 3176,
+      "salida": 198,
+      "razonamiento": 147,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 8565.6,
+      "ttfb": 3205.6,
+      "ms": 3206,
+      "entrada": 3386,
+      "salida": 243,
+      "razonamiento": 167,
+      "enCache": 3185,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 12014.3,
+      "ttfb": 1179.8,
+      "ms": 4417.3,
+      "entrada": 3878,
+      "salida": 497,
+      "razonamiento": 440,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "regla-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3795.5,
+    "msHastaCabeceras": 170,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "636ca27c-b93f-4297-96f5-90dd0485700a"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "636ca27c-b93f-4297-96f5-90dd0485700a",
+       "msHastaAplicado": 15555
+      }
+     }
+    ],
+    "respuestaAlDueno": "Lo dejo aplicado para los envíos fuera de la ciudad. Listo, ya quedó aplicado.\nTu agente ya no promete fechas fuera de la ciudad.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 575.7,
+    "tokens": {
+     "entrada": 8084,
+     "salida": 297,
+     "razonamiento": 171
+    },
+    "usd": 0.0008678000000000002,
+    "usdStandard": 0.011367249999999999,
+    "usdPorRol": {
+     "dueno": 0.0008678000000000002,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1641.6,
+     "ventanaDeHerramienta": 258.9,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 250.2,
+     "responder": 1730.9,
+     "primerTextoVisible": 2564.1
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 173.7,
+      "ttfb": 457,
+      "ms": 1467.9,
+      "entrada": 3942,
+      "salida": 164,
+      "razonamiento": 65,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1900.6,
+      "ttfb": 663.6,
+      "ms": 1730.9,
+      "entrada": 4142,
+      "salida": 133,
+      "razonamiento": 106,
+      "enCache": 3569,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "indicador",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:33:43.584Z",
+   "pedido": "Quiero ver los pedidos confirmados por día.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 304.9,
+   "msHastaAplicadoMaquina": 20589.2,
+   "msHastaVerAplicado": 22346.3,
+   "msTurno1": 18130.7,
+   "msTurno2": 4215.6,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17931,
+    "salida": 2479,
+    "razonamiento": 1858
+   },
+   "usd": 0.0022889,
+   "usdStandard": 0.0329495,
+   "usdPorRol": {
+    "dueno": 0.0017634,
+    "generador": 0.0005255,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2829,
+    "tokensSalida": 1213,
+    "costoUsd": 0.0005255
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17931,
+    "tokensSalida": 2479,
+    "costoUsd": 0.0022889
+   },
+   "cotejo": {
+    "serie": true,
+    "puntos": 7,
+    "suma": 6,
+    "coincideConLaAmplia": true,
+    "coincideConLaEstricta": false
+   },
+   "cambios": [
+    {
+     "id": "0a9f3fb9-d60d-4740-976e-da65ffca1c44",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Pedidos confirmados por día: Número de pedidos confirmados por día en los últimos 7 días.",
+     "tokensEntrada": 2829,
+     "tokensSalida": 1213,
+     "costoUsdGuardado": 0.0005255,
+     "msHastaPropuesta": 9204,
+     "msHastaAplicado": 17474,
+     "intentos": 1,
+     "msQuickJS": 7,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por fecha de creación en los últimos 7 días, hora Bogotá.",
+      "serie": [
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-21"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-22"
+       },
+       {
+        "valor": 3,
+        "etiqueta": "2026-10-23"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-24"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-25"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-26"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-27"
+       }
+      ],
+      "valor": 6,
+      "unidad": "pedidos"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var dia = function (iso) { return new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10); };\n  var pedidos = (datos && datos.pedidos) || [];\n  var N = 7;\n  var serie = [];\n  for (var n = N - 1; n >= 0; n--) {\n    var etiqueta = dia(new Date(Date.parse(datos.hoy) - n * 86400000).toISOString());\n    var c = 0;\n    for (var i = 0; i < pedidos.length; i++) {\n      var p = pedidos[i];\n      if (!p || !p.creado) continue;\n      var e = p.estado;\n      if (e !== 'confirmado' && e !== 'enviado' && e !== 'entregado' && e !== 'novedad') continue;\n      if (dia(p.creado) === etiqueta) c++;\n    }\n    serie.push({ etiqueta: etiqueta, valor: c });\n  }\n  var total = 0;\n  for (var j = 0; j < serie.length; j++) total += serie[j].valor;\n  return {\n    valor: total,\n    unidad: 'pedidos',\n    serie: serie,\n    nota: 'Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por fecha de creación en los últimos 7 días, hora Bogotá.'\n  };\n}",
+      "nombre": "Pedidos confirmados por día",
+      "descripcion": "Número de pedidos confirmados por día en los últimos 7 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "indicador-2-t1",
+    "texto": "Quiero ver los pedidos confirmados por día.",
+    "ms": 18130.7,
+    "msHastaCabeceras": 170.6,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos confirmados por día",
+       "pedido": "Quiero ver los pedidos confirmados por día."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005255,
+        "tokensSalida": 1213,
+        "tokensEntrada": 2829,
+        "msHastaPropuesta": 9204
+       },
+       "nombre": "Pedidos confirmados por día",
+       "resumen": "Pedidos confirmados por día: Número de pedidos confirmados por día en los últimos 7 días.",
+       "cambioId": "0a9f3fb9-d60d-4740-976e-da65ffca1c44",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 7,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por fecha de creación en los últimos 7 días, hora Bogotá.",
+         "serie": [
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-21"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-22"
+          },
+          {
+           "valor": 3,
+           "etiqueta": "2026-10-23"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-24"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-25"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-26"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-27"
+          }
+         ],
+         "valor": 6,
+         "unidad": "pedidos"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar ese indicador para ti. Ya lo tengo. Son 6 pedidos en los últimos 7 días.\nEl mejor fue el 23 con 3 pedidos. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1704.8,
+    "tokens": {
+     "entrada": 10032,
+     "salida": 2199,
+     "razonamiento": 1676
+    },
+    "usd": 0.001443,
+    "usdStandard": 0.02188575,
+    "usdPorRol": {
+     "dueno": 0.0009175000000000001,
+     "generador": 0.0005255,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 3529.7,
+     "ventanaDeHerramienta": 9289.7,
+     "generar": 8613.8,
+     "simular": 0,
+     "dbEnLaVentana": 1234.4,
+     "responder": 5004.1,
+     "primerTextoVisible": 13491.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 175.1,
+      "ttfb": 925.6,
+      "ms": 3354.7,
+      "entrada": 3386,
+      "salida": 329,
+      "razonamiento": 231,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 3859.9,
+      "ttfb": 8611,
+      "ms": 8613.8,
+      "entrada": 2829,
+      "salida": 1213,
+      "razonamiento": 828,
+      "enCache": 2703,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 12819.4,
+      "ttfb": 672.1,
+      "ms": 5004.1,
+      "entrada": 3817,
+      "salida": 657,
+      "razonamiento": 617,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "indicador-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4215.6,
+    "msHastaCabeceras": 151.8,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "0a9f3fb9-d60d-4740-976e-da65ffca1c44"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Pedidos confirmados por día: Número de pedidos confirmados por día en los últimos 7 días.",
+       "cambioId": "0a9f3fb9-d60d-4740-976e-da65ffca1c44",
+       "msHastaAplicado": 17474
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 531.9,
+    "tokens": {
+     "entrada": 7899,
+     "salida": 280,
+     "razonamiento": 182
+    },
+    "usd": 0.0008459,
+    "usdStandard": 0.01106375,
+    "usdPorRol": {
+     "dueno": 0.0008459,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2219.4,
+     "ventanaDeHerramienta": 239.1,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 230.8,
+     "responder": 1603.1,
+     "primerTextoVisible": 2959.6
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 153.5,
+      "ttfb": 1112.3,
+      "ms": 2066,
+      "entrada": 3864,
+      "salida": 152,
+      "razonamiento": 72,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2458.5,
+      "ttfb": 501.1,
+      "ms": 1603.1,
+      "entrada": 4035,
+      "salida": 128,
+      "razonamiento": 110,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "seccion",
+   "corrida": 2,
+   "inicio": "2026-10-27T22:34:07.642Z",
+   "pedido": "Quiero ver una lista de los pedidos con novedad.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 331.6,
+   "msHastaAplicadoMaquina": 21251.9,
+   "msHastaVerAplicado": 22933.8,
+   "msTurno1": 19172.8,
+   "msTurno2": 3761,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18754,
+    "salida": 2534,
+    "razonamiento": 1600
+   },
+   "usd": 0.0023822,
+   "usdStandard": 0.034212,
+   "usdPorRol": {
+    "dueno": 0.0018167,
+    "generador": 0.0005655,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2809,
+    "tokensSalida": 1423,
+    "costoUsd": 0.0005655
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18754,
+    "tokensSalida": 2534,
+    "costoUsd": 0.0023822
+   },
+   "cotejo": {
+    "totalFilas": 4,
+    "verdadNovedad": 4
+   },
+   "cambios": [
+    {
+     "id": "e5c65b10-d0cf-4322-9afb-4da8d9a6bd4f",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Pedidos con novedad: Muestra la lista de pedidos con novedad en el envío, los más recientes primero.",
+     "tokensEntrada": 2809,
+     "tokensSalida": 1423,
+     "costoUsdGuardado": 0.0005655,
+     "msHastaPropuesta": 12019,
+     "msHastaAplicado": 18473,
+     "intentos": 1,
+     "msQuickJS": 6,
+     "totalFilas": 4,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "total": 95000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-20 17:09",
+       "numero": 32,
+       "cliente": "Camila Rojas",
+       "cantidad": 1,
+       "productos": "1 x Caja regalo Ladera"
+      },
+      {
+       "total": 114000,
+       "ciudad": "Pasto",
+       "creado": "2026-10-18 15:13",
+       "numero": 28,
+       "cliente": "Paola Andrea Vargas",
+       "cantidad": 3,
+       "productos": "3 x Café Ladera tueste medio, grano 500 g"
+      },
+      {
+       "total": 112000,
+       "ciudad": "Pereira",
+       "creado": "2026-10-14 09:49",
+       "numero": 14,
+       "cliente": "Daniela Quintero",
+       "cantidad": 3,
+       "productos": "1 x Café Ladera tueste oscuro, molido 500 g; 2 x Café Ladera tueste medio, grano 500 g"
+      },
+      {
+       "total": 38000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-12 20:58",
+       "numero": 10,
+       "cliente": "Juan David Cárdenas",
+       "cantidad": 1,
+       "productos": "1 x Café Ladera tueste medio, molido 500 g"
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "numero",
+         "titulo": "Pedido"
+        },
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "ciudad",
+         "titulo": "Ciudad"
+        },
+        {
+         "clave": "productos",
+         "titulo": "Productos"
+        },
+        {
+         "clave": "cantidad",
+         "titulo": "Cantidad"
+        },
+        {
+         "clave": "total",
+         "titulo": "Total (COP)"
+        },
+        {
+         "clave": "creado",
+         "titulo": "Creado (Bogotá)"
+        }
+       ]
+      },
+      "codigo": "function consultar(datos) {\n  var clientes = datos.clientes || [];\n  var pedidos = datos.pedidos || [];\n  var porCliente = {};\n  for (var i = 0; i < clientes.length; i++) {\n    porCliente[clientes[i].id] = clientes[i].nombre;\n  }\n  function fmtBogota(iso) {\n    if (!iso) return null;\n    var t = Date.parse(iso);\n    if (isNaN(t)) return String(iso);\n    return new Date(t - 5 * 3600 * 1000).toISOString().slice(0, 16).replace(\"T\", \" \");\n  }\n  function resumenItems(items) {\n    if (!items || items.length === 0) return \"\";\n    var partes = [];\n    for (var k = 0; k < items.length; k++) {\n      partes.push(items[k].cantidad + \" x \" + items[k].nombre);\n    }\n    return partes.join(\"; \");\n  }\n  var filtrados = [];\n  for (var j = 0; j < pedidos.length; j++) {\n    if (pedidos[j].estado === \"novedad\") filtrados.push(pedidos[j]);\n  }\n  filtrados.sort(function (a, b) { return Date.parse(b.creado) - Date.parse(a.creado); });\n  var filas = [];\n  var n = filtrados.length > 200 ? 200 : filtrados.length;\n  for (var m = 0; m < n; m++) {\n    var p = filtrados[m];\n    var cant = 0;\n    if (p.items) {\n      for (var c = 0; c < p.items.length; c++) cant += p.items[c].cantidad;\n    }\n    filas.push({\n      numero: p.numero,\n      cliente: porCliente[p.clienteId] || \"Sin nombre\",\n      ciudad: p.ciudad,\n      productos: resumenItems(p.items),\n      cantidad: cant,\n      total: p.total,\n      creado: fmtBogota(p.creado)\n    });\n  }\n  return filas;\n}",
+      "nombre": "Pedidos con novedad",
+      "descripcion": "Muestra la lista de pedidos con novedad en el envío, los más recientes primero."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "seccion-2-t1",
+    "texto": "Quiero ver una lista de los pedidos con novedad.",
+    "ms": 19172.8,
+    "msHastaCabeceras": 160.2,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos con novedad",
+       "pedido": "Quiero ver una lista de los pedidos con novedad."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "numero",
+          "titulo": "Pedido"
+         },
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "ciudad",
+          "titulo": "Ciudad"
+         },
+         {
+          "clave": "productos",
+          "titulo": "Productos"
+         },
+         {
+          "clave": "cantidad",
+          "titulo": "Cantidad"
+         },
+         {
+          "clave": "total",
+          "titulo": "Total (COP)"
+         },
+         {
+          "clave": "creado",
+          "titulo": "Creado (Bogotá)"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0005655,
+        "tokensSalida": 1423,
+        "tokensEntrada": 2809,
+        "msHastaPropuesta": 12019
+       },
+       "nombre": "Pedidos con novedad",
+       "resumen": "Pedidos con novedad: Muestra la lista de pedidos con novedad en el envío, los más recientes primero.",
+       "cambioId": "e5c65b10-d0cf-4322-9afb-4da8d9a6bd4f",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 6,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "numero",
+           "titulo": "Pedido"
+          },
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "ciudad",
+           "titulo": "Ciudad"
+          },
+          {
+           "clave": "productos",
+           "titulo": "Productos"
+          },
+          {
+           "clave": "cantidad",
+           "titulo": "Cantidad"
+          },
+          {
+           "clave": "total",
+           "titulo": "Total (COP)"
+          },
+          {
+           "clave": "creado",
+           "titulo": "Creado (Bogotá)"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "total": 95000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-20 17:09",
+          "numero": 32,
+          "cliente": "Camila Rojas",
+          "cantidad": 1,
+          "productos": "1 x Caja regalo Ladera"
+         },
+         {
+          "total": 114000,
+          "ciudad": "Pasto",
+          "creado": "2026-10-18 15:13",
+          "numero": 28,
+          "cliente": "Paola Andrea Vargas",
+          "cantidad": 3,
+          "productos": "3 x Café Ladera tueste medio, grano 500 g"
+         },
+         {
+          "total": 112000,
+          "ciudad": "Pereira",
+          "creado": "2026-10-14 09:49",
+          "numero": 14,
+          "cliente": "Daniela Quintero",
+          "cantidad": 3,
+          "productos": "1 x Café Ladera tueste oscuro, molido 500 g; 2 x Café Ladera tueste medio, grano 500 g"
+         },
+         {
+          "total": 38000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-12 20:58",
+          "numero": 10,
+          "cliente": "Juan David Cárdenas",
+          "cantidad": 1,
+          "productos": "1 x Café Ladera tueste medio, molido 500 g"
+         }
+        ],
+        "totalFilas": 4
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar esa lista para tu panel. Te armé la lista de pedidos con novedad para tu panel.\n\nMuestra 4 pedidos, con estas columnas: pedido, cliente, ciudad, productos, cantidad, total y fecha. Por ejemplo, el más reciente es el 32 de Camila Rojas en Bogotá por 95.000.\n\n¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1595,
+    "tokens": {
+     "entrada": 10263,
+     "salida": 2233,
+     "razonamiento": 1416
+    },
+    "usd": 0.0014729,
+    "usdStandard": 0.022319,
+    "usdPorRol": {
+     "dueno": 0.0009074,
+     "generador": 0.0005655,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 3201.5,
+     "ventanaDeHerramienta": 12112.1,
+     "generar": 11435.8,
+     "simular": 0,
+     "dbEnLaVentana": 1275.4,
+     "responder": 3693,
+     "primerTextoVisible": 15800.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 165.1,
+      "ttfb": 784.9,
+      "ms": 3036.4,
+      "entrada": 3389,
+      "salida": 364,
+      "razonamiento": 264,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 3515.6,
+      "ttfb": 11429.9,
+      "ms": 11435.8,
+      "entrada": 2809,
+      "salida": 1423,
+      "razonamiento": 780,
+      "enCache": 2740,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 15313.5,
+      "ttfb": 486.7,
+      "ms": 3693,
+      "entrada": 4065,
+      "salida": 446,
+      "razonamiento": 372,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "seccion-2-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3761,
+    "msHastaCabeceras": 182.4,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "e5c65b10-d0cf-4322-9afb-4da8d9a6bd4f"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Pedidos con novedad: Muestra la lista de pedidos con novedad en el envío, los más recientes primero.",
+       "cambioId": "e5c65b10-d0cf-4322-9afb-4da8d9a6bd4f",
+       "msHastaAplicado": 18473
+      }
+     }
+    ],
+    "respuestaAlDueno": "Entendido, lo estoy aplicando. Listo, ya quedó en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 575.7,
+    "tokens": {
+     "entrada": 8491,
+     "salida": 301,
+     "razonamiento": 184
+    },
+    "usd": 0.0009093,
+    "usdStandard": 0.011893,
+    "usdPorRol": {
+     "dueno": 0.0009093,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1822.2,
+     "ventanaDeHerramienta": 256.9,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 248.6,
+     "responder": 1518,
+     "primerTextoVisible": 2952.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 184,
+      "ttfb": 627,
+      "ms": 1638.2,
+      "entrada": 4146,
+      "salida": 193,
+      "razonamiento": 94,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2079.1,
+      "ttfb": 873.2,
+      "ms": 1518,
+      "entrada": 4345,
+      "salida": 108,
+      "razonamiento": 90,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "regla",
+   "corrida": 3,
+   "inicio": "2026-10-27T22:34:32.340Z",
+   "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+   "herramientasTurno1": [
+    "proponer_regla"
+   ],
+   "herramientaEsperada": "proponer_regla",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 326.8,
+   "msHastaAplicadoMaquina": 20432.1,
+   "msHastaVerAplicado": 21899.4,
+   "msTurno1": 18303.7,
+   "msTurno2": 3595.7,
+   "llamadasAlModelo": 7,
+   "tokens": {
+    "entrada": 25035,
+    "salida": 2468,
+    "razonamiento": 1889
+   },
+   "usd": 0.0029971000000000004,
+   "usdStandard": 0.04178275,
+   "usdPorRol": {
+    "dueno": 0.0018420000000000003,
+    "generador": 0,
+    "clientes": 0.0011551
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 9729,
+    "tokensSalida": 911,
+    "costoUsd": 0.0011551
+   },
+   "guardadoEnTurnos": {
+    "filas": 2,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 15306,
+    "tokensSalida": 1557,
+    "costoUsd": 0.0018419999999999999
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "e272077c-2538-4363-9aa1-8abb4e5ab5a1",
+     "tipo": "regla",
+     "estado": "aplicado",
+     "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega y abre un Caso",
+     "tokensEntrada": 9729,
+     "tokensSalida": 911,
+     "costoUsdGuardado": 0.0011551,
+     "msHastaPropuesta": 7324,
+     "msHastaAplicado": 15255,
+     "intentos": null,
+     "msQuickJS": null,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": [],
+     "herramientasDespues": [
+      "abrir_caso"
+     ],
+     "antes": "Hola, qué bueno que escribes ☕ Claro que sí, a Cali te llega en *2 a 4 días hábiles* y el envío va incluido. ¿Qué cafecito te provoca probar?",
+     "despues": "Hola, qué rico que nos escribas ☕ Sí hacemos envíos a Cali y el envío va incluido en el precio. Ya le pasé tu pregunta al Dueño para confirmarte lo de la entrega, ¿me esperas un momentico mientras te responde?",
+     "resultado": null,
+     "propuesta": {
+      "texto": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega y abre un Caso",
+      "preguntaDePrueba": "Hola, ¿hacen envíos a Cali? ¿En cuántos días me llega?"
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "regla-3-t1",
+    "texto": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+    "ms": 18303.7,
+    "msHastaCabeceras": 166.5,
+    "herramientas": [
+     {
+      "nombre": "proponer_regla",
+      "estado": "output-available",
+      "entrada": {
+       "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+       "textoDeLaRegla": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega y abre un Caso",
+       "preguntaDePrueba": "Hola, ¿hacen envíos a Cali? ¿En cuántos días me llega?"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "medida": {
+        "costoUsd": 0.0011551,
+        "tokensSalida": 911,
+        "tokensEntrada": 9729,
+        "msHastaPropuesta": 7324
+       },
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega y abre un Caso",
+       "cambioId": "e272077c-2538-4363-9aa1-8abb4e5ab5a1",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "antes": "Hola, qué bueno que escribes ☕ Claro que sí, a Cali te llega en *2 a 4 días hábiles* y el envío va incluido. ¿Qué cafecito te provoca probar?",
+        "despues": "Hola, qué rico que nos escribas ☕ Sí hacemos envíos a Cali y el envío va incluido en el precio. Ya le pasé tu pregunta al Dueño para confirmarte lo de la entrega, ¿me esperas un momentico mientras te responde?",
+        "preguntaDePrueba": "Hola, ¿hacen envíos a Cali? ¿En cuántos días me llega?",
+        "herramientasAntes": [],
+        "herramientasDespues": [
+         "abrir_caso"
+        ]
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar ese ajuste para los envíos fuera de la ciudad. Ya lo probé con un cliente que pregunta por envío a Cali. Antes tu agente prometía que llegaba en 2 a 4 días. Ahora ya no promete fecha y te deja el Caso para que lo confirmemos. ¿Lo aplico?",
+    "llamadasAlModelo": 5,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 3,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 11,
+    "msEnDb": 1578.7,
+    "tokens": {
+     "entrada": 16992,
+     "salida": 2187,
+     "razonamiento": 1716
+    },
+    "usd": 0.0021366000000000002,
+    "usdStandard": 0.03053475,
+    "usdPorRol": {
+     "dueno": 0.0009815000000000002,
+     "generador": 0,
+     "clientes": 0.0011551
+    },
+    "fases": {
+     "entender": 5428.4,
+     "ventanaDeHerramienta": 7584.5,
+     "generar": 0,
+     "simular": 6983,
+     "dbEnLaVentana": 1090.5,
+     "responder": 4961.3,
+     "primerTextoVisible": 13426.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 170.1,
+      "ttfb": 873.3,
+      "ms": 5258.3,
+      "entrada": 3397,
+      "salida": 635,
+      "razonamiento": 467,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 5768.7,
+      "ttfb": 2835.3,
+      "ms": 2835.6,
+      "entrada": 3188,
+      "salida": 285,
+      "razonamiento": 156,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 5773.2,
+      "ttfb": 2729.2,
+      "ms": 2730.7,
+      "entrada": 3174,
+      "salida": 263,
+      "razonamiento": 211,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 8605.7,
+      "ttfb": 4147,
+      "ms": 4147.4,
+      "entrada": 3367,
+      "salida": 363,
+      "razonamiento": 301,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 13012.9,
+      "ttfb": 413.2,
+      "ms": 4961.3,
+      "entrada": 3866,
+      "salida": 641,
+      "razonamiento": 581,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "regla-3-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3595.7,
+    "msHastaCabeceras": 169.1,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "e272077c-2538-4363-9aa1-8abb4e5ab5a1"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega y abre un Caso",
+       "cambioId": "e272077c-2538-4363-9aa1-8abb4e5ab5a1",
+       "msHastaAplicado": 15255
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó aplicado. Tu agente ya no promete fechas fuera de la ciudad.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 575.3,
+    "tokens": {
+     "entrada": 8043,
+     "salida": 281,
+     "razonamiento": 173
+    },
+    "usd": 0.0008605,
+    "usdStandard": 0.011248000000000001,
+    "usdPorRol": {
+     "dueno": 0.0008605,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1877.4,
+     "ventanaDeHerramienta": 251,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 247.2,
+     "responder": 1301.5,
+     "primerTextoVisible": 2533
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 172.9,
+      "ttfb": 541.3,
+      "ms": 1704.5,
+      "entrada": 3933,
+      "salida": 183,
+      "razonamiento": 102,
+      "enCache": 3569,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2128.4,
+      "ttfb": 404.7,
+      "ms": 1301.5,
+      "entrada": 4110,
+      "salida": 98,
+      "razonamiento": 71,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "indicador",
+   "corrida": 3,
+   "inicio": "2026-10-27T22:34:55.987Z",
+   "pedido": "Quiero ver los pedidos confirmados por día.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 308.2,
+   "msHastaAplicadoMaquina": 16505.7,
+   "msHastaVerAplicado": 20904.8,
+   "msTurno1": 14882.9,
+   "msTurno2": 6021.9,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17969,
+    "salida": 2413,
+    "razonamiento": 1751
+   },
+   "usd": 0.0022795000000000003,
+   "usdStandard": 0.0327165,
+   "usdPorRol": {
+    "dueno": 0.0017714,
+    "generador": 0.0005081,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2829,
+    "tokensSalida": 1126,
+    "costoUsd": 0.0005081
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17969,
+    "tokensSalida": 2413,
+    "costoUsd": 0.0022795000000000003
+   },
+   "cotejo": {
+    "serie": true,
+    "puntos": 7,
+    "suma": 6,
+    "coincideConLaAmplia": true,
+    "coincideConLaEstricta": false
+   },
+   "cambios": [
+    {
+     "id": "73024fb6-6000-4f70-9a22-9558a19b398c",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 7 días.",
+     "tokensEntrada": 2829,
+     "tokensSalida": 1126,
+     "costoUsdGuardado": 0.0005081,
+     "msHastaPropuesta": 7598,
+     "msHastaAplicado": 14587,
+     "intentos": 1,
+     "msQuickJS": 5,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Cuenta pedidos en confirmado, enviado, entregado y novedad por dia de creacion (Bogota) en los ultimos 7 dias.",
+      "serie": [
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-21"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-22"
+       },
+       {
+        "valor": 3,
+        "etiqueta": "2026-10-23"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-24"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-25"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-26"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-27"
+       }
+      ],
+      "valor": 6,
+      "unidad": "pedidos"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  const dia = (iso) => new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10);\n  const estadosConfirmados = [\"confirmado\", \"enviado\", \"entregado\", \"novedad\"];\n  const pedidos = Array.isArray(datos.pedidos) ? datos.pedidos : [];\n  const N = 7;\n  const dias = [];\n  for (let i = N - 1; i >= 0; i--) {\n    const iso = new Date(Date.parse(datos.hoy) - i * 86400000).toISOString();\n    dias.push(dia(iso));\n  }\n  const conteo = {};\n  for (const d of dias) conteo[d] = 0;\n  for (const p of pedidos) {\n    if (!p || !p.creado) continue;\n    if (estadosConfirmados.indexOf(p.estado) === -1) continue;\n    const d = dia(p.creado);\n    if (d in conteo) conteo[d] += 1;\n  }\n  const serie = dias.map(function (d) { return { etiqueta: d, valor: conteo[d] }; });\n  let total = 0;\n  for (const s of serie) total += s.valor;\n  return {\n    valor: total,\n    unidad: \"pedidos\",\n    serie: serie,\n    nota: \"Cuenta pedidos en confirmado, enviado, entregado y novedad por dia de creacion (Bogota) en los ultimos 7 dias.\"\n  };\n}",
+      "nombre": "Pedidos confirmados por día",
+      "descripcion": "Mide los pedidos confirmados por día en los últimos 7 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "indicador-3-t1",
+    "texto": "Quiero ver los pedidos confirmados por día.",
+    "ms": 14882.9,
+    "msHastaCabeceras": 162.7,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos confirmados por día",
+       "pedido": "Quiero ver los pedidos confirmados por día."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005081,
+        "tokensSalida": 1126,
+        "tokensEntrada": 2829,
+        "msHastaPropuesta": 7598
+       },
+       "nombre": "Pedidos confirmados por día",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 7 días.",
+       "cambioId": "73024fb6-6000-4f70-9a22-9558a19b398c",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 5,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Cuenta pedidos en confirmado, enviado, entregado y novedad por dia de creacion (Bogota) en los ultimos 7 dias.",
+         "serie": [
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-21"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-22"
+          },
+          {
+           "valor": 3,
+           "etiqueta": "2026-10-23"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-24"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-25"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-26"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-27"
+          }
+         ],
+         "valor": 6,
+         "unidad": "pedidos"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te armo esa vista de tus pedidos por día. Te armé el de pedidos confirmados por día.\n\nTe muestra los últimos 7 días. Fueron 6 pedidos en total. El mejor fue el 23 con 3 pedidos.\n\n¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1626.8,
+    "tokens": {
+     "entrada": 10037,
+     "salida": 1900,
+     "razonamiento": 1336
+    },
+    "usd": 0.0013837,
+    "usdStandard": 0.02062125,
+    "usdPorRol": {
+     "dueno": 0.0008756,
+     "generador": 0.0005081,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2342.4,
+     "ventanaDeHerramienta": 7683.2,
+     "generar": 7026.4,
+     "simular": 0,
+     "dbEnLaVentana": 1133.7,
+     "responder": 4518.4,
+     "primerTextoVisible": 10452.6
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 164.3,
+      "ttfb": 438.7,
+      "ms": 2178.1,
+      "entrada": 3386,
+      "salida": 246,
+      "razonamiento": 144,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 2674.9,
+      "ttfb": 7025.1,
+      "ms": 7026.4,
+      "entrada": 2829,
+      "salida": 1126,
+      "razonamiento": 715,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 10025.6,
+      "ttfb": 426.9,
+      "ms": 4518.4,
+      "entrada": 3822,
+      "salida": 528,
+      "razonamiento": 477,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "indicador-3-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 6021.9,
+    "msHastaCabeceras": 167,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "73024fb6-6000-4f70-9a22-9558a19b398c"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 7 días.",
+       "cambioId": "73024fb6-6000-4f70-9a22-9558a19b398c",
+       "msHastaAplicado": 14587
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo. Ya quedó en tu Panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 714,
+    "tokens": {
+     "entrada": 7932,
+     "salida": 513,
+     "razonamiento": 415
+    },
+    "usd": 0.0008958,
+    "usdStandard": 0.01209525,
+    "usdPorRol": {
+     "dueno": 0.0008958,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1371.9,
+     "ventanaDeHerramienta": 250.9,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 245.4,
+     "responder": 4090.6,
+     "primerTextoVisible": 2783.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 168.8,
+      "ttfb": 377.8,
+      "ms": 1203.2,
+      "entrada": 3880,
+      "salida": 144,
+      "razonamiento": 64,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1622.8,
+      "ttfb": 1160.3,
+      "ms": 4090.6,
+      "entrada": 4052,
+      "salida": 369,
+      "razonamiento": 351,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "seccion",
+   "corrida": 3,
+   "inicio": "2026-10-27T22:35:18.582Z",
+   "pedido": "Quiero ver una lista de los pedidos con novedad.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 340.1,
+   "msHastaAplicadoMaquina": 25550.6,
+   "msHastaVerAplicado": 28493.5,
+   "msTurno1": 23583.8,
+   "msTurno2": 4909.7,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18797,
+    "salida": 3667,
+    "razonamiento": 2574
+   },
+   "usd": 0.0026131000000000006,
+   "usdStandard": 0.03908099999999999,
+   "usdPorRol": {
+    "dueno": 0.0020202,
+    "generador": 0.0005929,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2809,
+    "tokensSalida": 1560,
+    "costoUsd": 0.0005929
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18797,
+    "tokensSalida": 3667,
+    "costoUsd": 0.0026131
+   },
+   "cotejo": {
+    "totalFilas": 4,
+    "verdadNovedad": 4
+   },
+   "cambios": [
+    {
+     "id": "3b4175da-e10b-472e-95c0-afba6d6519c2",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Pedidos con novedad: Muestra la lista de pedidos con novedad, los más recientes primero.",
+     "tokensEntrada": 2809,
+     "tokensSalida": 1560,
+     "costoUsdGuardado": 0.0005929,
+     "msHastaPropuesta": 12424,
+     "msHastaAplicado": 20101,
+     "intentos": 1,
+     "msQuickJS": 5,
+     "totalFilas": 4,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "total": 95000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-20 17:09",
+       "numero": 32,
+       "cliente": "Camila Rojas",
+       "detalle": "1x Caja regalo Ladera",
+       "casos_abiertos": 0
+      },
+      {
+       "total": 114000,
+       "ciudad": "Pasto",
+       "creado": "2026-10-18 15:13",
+       "numero": 28,
+       "cliente": "Paola Andrea Vargas",
+       "detalle": "3x Café Ladera tueste medio, grano 500 g",
+       "casos_abiertos": 0
+      },
+      {
+       "total": 112000,
+       "ciudad": "Pereira",
+       "creado": "2026-10-14 09:49",
+       "numero": 14,
+       "cliente": "Daniela Quintero",
+       "detalle": "1x Café Ladera tueste oscuro, molido 500 g, 2x Café Ladera tueste medio, grano 500 g",
+       "casos_abiertos": 0
+      },
+      {
+       "total": 38000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-12 20:58",
+       "numero": 10,
+       "cliente": "Juan David Cárdenas",
+       "detalle": "1x Café Ladera tueste medio, molido 500 g",
+       "casos_abiertos": 0
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "numero",
+         "titulo": "N.º pedido"
+        },
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "total",
+         "titulo": "Total (COP)"
+        },
+        {
+         "clave": "ciudad",
+         "titulo": "Ciudad"
+        },
+        {
+         "clave": "creado",
+         "titulo": "Creado (Bogotá)"
+        },
+        {
+         "clave": "detalle",
+         "titulo": "Detalle"
+        },
+        {
+         "clave": "casos_abiertos",
+         "titulo": "Casos abiertos"
+        }
+       ]
+      },
+      "codigo": "function fmtBogota(iso) {\n  if (!iso) return null;\n  var t = Date.parse(iso);\n  if (isNaN(t)) return String(iso);\n  return new Date(t - 5 * 3600 * 1000).toISOString().slice(0, 16).replace(\"T\", \" \");\n}\nfunction resumenItems(items) {\n  if (!items || !items.length) return \"\";\n  var partes = [];\n  for (var i = 0; i < items.length; i++) {\n    var it = items[i] || {};\n    var c = Number(it.cantidad) || 0;\n    var n = it.nombre ? String(it.nombre) : \"producto\";\n    partes.push(c + \"x \" + n);\n  }\n  return partes.join(\", \");\n}\nfunction consultar(datos) {\n  var pedidos = (datos && datos.pedidos) || [];\n  var clientes = (datos && datos.clientes) || [];\n  var casos = (datos && datos.casos) || [];\n  var porCliente = {};\n  for (var i = 0; i < clientes.length; i++) {\n    var c = clientes[i];\n    if (c && c.id) porCliente[c.id] = c.nombre ? String(c.nombre) : \"\";\n  }\n  var casosPorPedido = {};\n  for (var j = 0; j < casos.length; j++) {\n    var cs = casos[j];\n    if (cs && cs.pedidoId) {\n      if (!casosPorPedido[cs.pedidoId]) casosPorPedido[cs.pedidoId] = 0;\n      if (cs.estado === \"abierto\" || cs.estado === \"esperando_dueno\") {\n        casosPorPedido[cs.pedidoId] += 1;\n      }\n    }\n  }\n  var filas = [];\n  for (var k = 0; k < pedidos.length; k++) {\n    var p = pedidos[k];\n    if (!p || p.estado !== \"novedad\") continue;\n    var nombreCliente = porCliente[p.clienteId] || \"\";\n    filas.push({\n      numero: Number(p.numero),\n      cliente: nombreCliente,\n      total: Number(p.total),\n      ciudad: p.ciudad ? String(p.ciudad) : \"\",\n      creado: fmtBogota(p.creado),\n      detalle: resumenItems(p.items),\n      casos_abiertos: casosPorPedido[p.id] ? casosPorPedido[p.id] : 0\n    });\n  }\n  filas.sort(function (a, b) {\n    if (a.creado < b.creado) return 1;\n    if (a.creado > b.creado) return -1;\n    return b.numero - a.numero;\n  });\n  if (filas.length > 200) filas = filas.slice(0, 200);\n  return filas;\n}",
+      "nombre": "Pedidos con novedad",
+      "descripcion": "Muestra la lista de pedidos con novedad, los más recientes primero."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "seccion-3-t1",
+    "texto": "Quiero ver una lista de los pedidos con novedad.",
+    "ms": 23583.8,
+    "msHastaCabeceras": 155.1,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos con novedad",
+       "pedido": "Quiero ver una lista de los pedidos con novedad."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "numero",
+          "titulo": "N.º pedido"
+         },
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "total",
+          "titulo": "Total (COP)"
+         },
+         {
+          "clave": "ciudad",
+          "titulo": "Ciudad"
+         },
+         {
+          "clave": "creado",
+          "titulo": "Creado (Bogotá)"
+         },
+         {
+          "clave": "detalle",
+          "titulo": "Detalle"
+         },
+         {
+          "clave": "casos_abiertos",
+          "titulo": "Casos abiertos"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0005929,
+        "tokensSalida": 1560,
+        "tokensEntrada": 2809,
+        "msHastaPropuesta": 12424
+       },
+       "nombre": "Pedidos con novedad",
+       "resumen": "Pedidos con novedad: Muestra la lista de pedidos con novedad, los más recientes primero.",
+       "cambioId": "3b4175da-e10b-472e-95c0-afba6d6519c2",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 5,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "numero",
+           "titulo": "N.º pedido"
+          },
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "total",
+           "titulo": "Total (COP)"
+          },
+          {
+           "clave": "ciudad",
+           "titulo": "Ciudad"
+          },
+          {
+           "clave": "creado",
+           "titulo": "Creado (Bogotá)"
+          },
+          {
+           "clave": "detalle",
+           "titulo": "Detalle"
+          },
+          {
+           "clave": "casos_abiertos",
+           "titulo": "Casos abiertos"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "total": 95000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-20 17:09",
+          "numero": 32,
+          "cliente": "Camila Rojas",
+          "detalle": "1x Caja regalo Ladera",
+          "casos_abiertos": 0
+         },
+         {
+          "total": 114000,
+          "ciudad": "Pasto",
+          "creado": "2026-10-18 15:13",
+          "numero": 28,
+          "cliente": "Paola Andrea Vargas",
+          "detalle": "3x Café Ladera tueste medio, grano 500 g",
+          "casos_abiertos": 0
+         },
+         {
+          "total": 112000,
+          "ciudad": "Pereira",
+          "creado": "2026-10-14 09:49",
+          "numero": 14,
+          "cliente": "Daniela Quintero",
+          "detalle": "1x Café Ladera tueste oscuro, molido 500 g, 2x Café Ladera tueste medio, grano 500 g",
+          "casos_abiertos": 0
+         },
+         {
+          "total": 38000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-12 20:58",
+          "numero": 10,
+          "cliente": "Juan David Cárdenas",
+          "detalle": "1x Café Ladera tueste medio, molido 500 g",
+          "casos_abiertos": 0
+         }
+        ],
+        "totalFilas": 4
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar esa lista de pedidos con novedad para tu panel. Ya te armé la lista de pedidos con novedad.\nTiene 4 filas, con número, cliente, total, ciudad, fecha, detalle y casos abiertos.\nPor ejemplo, el más reciente es el 32 de Camila Rojas por $95.000.\n¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1935.4,
+    "tokens": {
+     "entrada": 10290,
+     "salida": 3181,
+     "razonamiento": 2187
+    },
+    "usd": 0.0016652000000000004,
+    "usdStandard": 0.026381749999999995,
+    "usdPorRol": {
+     "dueno": 0.0010723,
+     "generador": 0.0005929,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 5869.4,
+     "ventanaDeHerramienta": 12516.6,
+     "generar": 11667.3,
+     "simular": 0,
+     "dbEnLaVentana": 1438.1,
+     "responder": 4851,
+     "primerTextoVisible": 19229.5
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 156.6,
+      "ttfb": 391.2,
+      "ms": 5712.8,
+      "entrada": 3389,
+      "salida": 967,
+      "razonamiento": 862,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 6386.8,
+      "ttfb": 11665.7,
+      "ms": 11667.3,
+      "entrada": 2809,
+      "salida": 1560,
+      "razonamiento": 739,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 18386,
+      "ttfb": 843.4,
+      "ms": 4851,
+      "entrada": 4092,
+      "salida": 654,
+      "razonamiento": 586,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "seccion-3-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 4909.7,
+    "msHastaCabeceras": 165.7,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "3b4175da-e10b-472e-95c0-afba6d6519c2"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Pedidos con novedad: Muestra la lista de pedidos con novedad, los más recientes primero.",
+       "cambioId": "3b4175da-e10b-472e-95c0-afba6d6519c2",
+       "msHastaAplicado": 20101
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya la tienes en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 577,
+    "tokens": {
+     "entrada": 8507,
+     "salida": 486,
+     "razonamiento": 387
+    },
+    "usd": 0.0009479000000000001,
+    "usdStandard": 0.012699249999999999,
+    "usdPorRol": {
+     "dueno": 0.0009479000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1709.5,
+     "ventanaDeHerramienta": 257.3,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 250.3,
+     "responder": 2777.6,
+     "primerTextoVisible": 2372
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 167.8,
+      "ttfb": 601,
+      "ms": 1541.7,
+      "entrada": 4167,
+      "salida": 193,
+      "razonamiento": 113,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1966.8,
+      "ttfb": 405.2,
+      "ms": 2777.6,
+      "entrada": 4340,
+      "salida": 293,
+      "razonamiento": 274,
+      "enCache": 4081,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "regla",
+   "corrida": 4,
+   "inicio": "2026-10-27T22:35:48.840Z",
+   "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+   "herramientasTurno1": [
+    "proponer_regla"
+   ],
+   "herramientaEsperada": "proponer_regla",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 304.1,
+   "msHastaAplicadoMaquina": 46465.3,
+   "msHastaVerAplicado": 49965.9,
+   "msTurno1": 44197.2,
+   "msTurno2": 5768.7,
+   "llamadasAlModelo": 7,
+   "tokens": {
+    "entrada": 25110,
+    "salida": 3068,
+    "razonamiento": 2505
+   },
+   "usd": 0.0031246,
+   "usdStandard": 0.0444265,
+   "usdPorRol": {
+    "dueno": 0.0019732,
+    "generador": 0,
+    "clientes": 0.0011514000000000001
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 9756,
+    "tokensSalida": 879,
+    "costoUsd": 0.0011514
+   },
+   "guardadoEnTurnos": {
+    "filas": 2,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 15354,
+    "tokensSalida": 2189,
+    "costoUsd": 0.0019732
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "9e48d776-f95b-4673-82e1-e37f8151579a",
+     "tipo": "regla",
+     "estado": "aplicado",
+     "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega, explica que depende del destino y abre un Caso para que el Dueño lo revise.",
+     "tokensEntrada": 9756,
+     "tokensSalida": 879,
+     "costoUsdGuardado": 0.0011514,
+     "msHastaPropuesta": 32035,
+     "msHastaAplicado": 40348,
+     "intentos": null,
+     "msQuickJS": null,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": [],
+     "herramientasDespues": [
+      "abrir_caso"
+     ],
+     "antes": "Hola, claro que sí ☕ Hacemos envíos a Cali y te llegaría en *2 a 4 días hábiles*, con el envío incluido en el precio.\n\n¿Te antoja algún cafecito en especial?",
+     "despues": "Sí, hacemos envíos a Cali ☕ El tiempo depende del destino y la transportadora, así que ya se lo pasé al Dueño para que lo revise y te confirmamos por aquí.",
+     "resultado": null,
+     "propuesta": {
+      "texto": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega, explica que depende del destino y abre un Caso para que el Dueño lo revise.",
+      "preguntaDePrueba": "Hola, ¿hacen envíos a Cali? ¿En cuántos días me llegaría?"
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "regla-4-t1",
+    "texto": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+    "ms": 44197.2,
+    "msHastaCabeceras": 164.1,
+    "herramientas": [
+     {
+      "nombre": "proponer_regla",
+      "estado": "output-available",
+      "entrada": {
+       "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+       "textoDeLaRegla": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega, explica que depende del destino y abre un Caso para que el Dueño lo revise.",
+       "preguntaDePrueba": "Hola, ¿hacen envíos a Cali? ¿En cuántos días me llegaría?"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "medida": {
+        "costoUsd": 0.0011514,
+        "tokensSalida": 879,
+        "tokensEntrada": 9756,
+        "msHastaPropuesta": 32035
+       },
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega, explica que depende del destino y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "9e48d776-f95b-4673-82e1-e37f8151579a",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "antes": "Hola, claro que sí ☕ Hacemos envíos a Cali y te llegaría en *2 a 4 días hábiles*, con el envío incluido en el precio.\n\n¿Te antoja algún cafecito en especial?",
+        "despues": "Sí, hacemos envíos a Cali ☕ El tiempo depende del destino y la transportadora, así que ya se lo pasé al Dueño para que lo revise y te confirmamos por aquí.",
+        "preguntaDePrueba": "Hola, ¿hacen envíos a Cali? ¿En cuántos días me llegaría?",
+        "herramientasAntes": [],
+        "herramientasDespues": [
+         "abrir_caso"
+        ]
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a dejar lista esa regla para los envíos fuera de la ciudad. Ya lo probé. Antes tu agente prometía de 2 a 4 días. Ahora no promete fecha y me deja un Caso para que lo revises tú. ¿Lo aplico?",
+    "llamadasAlModelo": 5,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 3,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 11,
+    "msEnDb": 1539.7,
+    "tokens": {
+     "entrada": 17040,
+     "salida": 2461,
+     "razonamiento": 1996
+    },
+    "usd": 0.0021961999999999997,
+    "usdStandard": 0.03175925,
+    "usdPorRol": {
+     "dueno": 0.0010448,
+     "generador": 0,
+     "clientes": 0.0011514000000000001
+    },
+    "fases": {
+     "entender": 6353.7,
+     "ventanaDeHerramienta": 32289.2,
+     "generar": 0,
+     "simular": 31697.6,
+     "dbEnLaVentana": 1067.5,
+     "responder": 5240.2,
+     "primerTextoVisible": 39261.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 165.5,
+      "ttfb": 550.5,
+      "ms": 6188.2,
+      "entrada": 3397,
+      "salida": 899,
+      "razonamiento": 716,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 6689.5,
+      "ttfb": 31695.9,
+      "ms": 31697.6,
+      "entrada": 3175,
+      "salida": 190,
+      "razonamiento": 132,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 6692.5,
+      "ttfb": 4542.7,
+      "ms": 4543,
+      "entrada": 3202,
+      "salida": 459,
+      "razonamiento": 332,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 11236.9,
+      "ttfb": 2691.5,
+      "ms": 2691.7,
+      "entrada": 3379,
+      "salida": 230,
+      "razonamiento": 181,
+      "enCache": 3185,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 38643,
+      "ttfb": 618.3,
+      "ms": 5240.2,
+      "entrada": 3887,
+      "salida": 683,
+      "razonamiento": 635,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "regla-4-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 5768.7,
+    "msHastaCabeceras": 158.7,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "9e48d776-f95b-4673-82e1-e37f8151579a"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas fecha de entrega, explica que depende del destino y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "9e48d776-f95b-4673-82e1-e37f8151579a",
+       "msHastaAplicado": 40348
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya te lo dejé aplicado.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 535.3,
+    "tokens": {
+     "entrada": 8070,
+     "salida": 607,
+     "razonamiento": 509
+    },
+    "usd": 0.0009284,
+    "usdStandard": 0.01266725,
+    "usdPorRol": {
+     "dueno": 0.0009284,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2028.8,
+     "ventanaDeHerramienta": 239.3,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 231,
+     "responder": 3348.9,
+     "primerTextoVisible": 2711.8
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 161.4,
+      "ttfb": 512.9,
+      "ms": 1867.4,
+      "entrada": 3942,
+      "salida": 248,
+      "razonamiento": 169,
+      "enCache": 3569,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2268.1,
+      "ttfb": 443.8,
+      "ms": 3348.9,
+      "entrada": 4128,
+      "salida": 359,
+      "razonamiento": 340,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "indicador",
+   "corrida": 4,
+   "inicio": "2026-10-27T22:36:40.482Z",
+   "pedido": "Quiero ver los pedidos confirmados por día.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 327.2,
+   "msHastaAplicadoMaquina": 24081.8,
+   "msHastaVerAplicado": 32094.3,
+   "msTurno1": 22218.9,
+   "msTurno2": 9875.4,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17998,
+    "salida": 3033,
+    "razonamiento": 2329
+   },
+   "usd": 0.0024064000000000004,
+   "usdStandard": 0.035387749999999996,
+   "usdPorRol": {
+    "dueno": 0.0018383000000000002,
+    "generador": 0.0005681,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2829,
+    "tokensSalida": 1426,
+    "costoUsd": 0.0005681
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17998,
+    "tokensSalida": 3033,
+    "costoUsd": 0.0024064
+   },
+   "cotejo": {
+    "serie": true,
+    "puntos": 7,
+    "suma": 6,
+    "coincideConLaAmplia": true,
+    "coincideConLaEstricta": false
+   },
+   "cambios": [
+    {
+     "id": "2d9cecf6-99ed-49a6-ac37-e6ecad8da1af",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 7 días.",
+     "tokensEntrada": 2829,
+     "tokensSalida": 1426,
+     "costoUsdGuardado": 0.0005681,
+     "msHastaPropuesta": 12177,
+     "msHastaAplicado": 19037,
+     "intentos": 1,
+     "msQuickJS": 3,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por día de creación en los últimos 7 días, hora Bogotá.",
+      "serie": [
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-21"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-22"
+       },
+       {
+        "valor": 3,
+        "etiqueta": "2026-10-23"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-24"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-25"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-26"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-27"
+       }
+      ],
+      "valor": 6,
+      "unidad": "pedidos"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "const dia = (iso) => new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10);\nfunction calcular(datos) {\n  var pedidos = (datos && datos.pedidos) || [];\n  var N = 7;\n  var esConfirmado = function (e) {\n    return e === \"confirmado\" || e === \"enviado\" || e === \"entregado\" || e === \"novedad\";\n  };\n  var conteo = {};\n  for (var i = 0; i < pedidos.length; i++) {\n    var p = pedidos[i];\n    if (!p || !esConfirmado(p.estado) || !p.creado) continue;\n    var d = dia(p.creado);\n    conteo[d] = (conteo[d] || 0) + 1;\n  }\n  var serie = [];\n  var total = 0;\n  var hoyMs = Date.parse(datos.hoy);\n  for (var n = N - 1; n >= 0; n--) {\n    var etiqueta = dia(new Date(hoyMs - n * 86400000).toISOString());\n    var v = conteo[etiqueta] || 0;\n    serie.push({ etiqueta: etiqueta, valor: v });\n    total += v;\n  }\n  return {\n    valor: total,\n    unidad: \"pedidos\",\n    serie: serie,\n    nota: \"Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por d\\u00eda de creaci\\u00f3n en los \\u00faltimos 7 d\\u00edas, hora Bogot\\u00e1.\"\n  };\n}",
+      "nombre": "Pedidos confirmados por día",
+      "descripcion": "Mide los pedidos confirmados por día en los últimos 7 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "indicador-4-t1",
+    "texto": "Quiero ver los pedidos confirmados por día.",
+    "ms": 22218.9,
+    "msHastaCabeceras": 154.9,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos confirmados por día",
+       "pedido": "Quiero ver los pedidos confirmados por día."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005681,
+        "tokensSalida": 1426,
+        "tokensEntrada": 2829,
+        "msHastaPropuesta": 12177
+       },
+       "nombre": "Pedidos confirmados por día",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 7 días.",
+       "cambioId": "2d9cecf6-99ed-49a6-ac37-e6ecad8da1af",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 3,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Cuenta pedidos confirmados (confirmado, enviado, entregado y novedad) por día de creación en los últimos 7 días, hora Bogotá.",
+         "serie": [
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-21"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-22"
+          },
+          {
+           "valor": 3,
+           "etiqueta": "2026-10-23"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-24"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-25"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-26"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-27"
+          }
+         ],
+         "valor": 6,
+         "unidad": "pedidos"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a preparar ese indicador de pedidos confirmados por día. Ya te lo dejé listo. Te muestra los pedidos confirmados por día de los últimos 7 días.\n\nEn total van 6. El mejor fue el 23 con 3, luego el 21, 24 y 25 con 1 cada uno. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 3288.8,
+    "tokens": {
+     "entrada": 10036,
+     "salida": 2672,
+     "razonamiento": 2066
+    },
+    "usd": 0.001538,
+    "usdStandard": 0.023901,
+    "usdPorRol": {
+     "dueno": 0.0009699000000000001,
+     "generador": 0.0005681,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 5458.7,
+     "ventanaDeHerramienta": 12266.2,
+     "generar": 10561.8,
+     "simular": 0,
+     "dbEnLaVentana": 2805,
+     "responder": 4159.6,
+     "primerTextoVisible": 18273.5
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 156.9,
+      "ttfb": 402.3,
+      "ms": 5301.8,
+      "entrada": 3386,
+      "salida": 778,
+      "razonamiento": 677,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 6833.8,
+      "ttfb": 10557,
+      "ms": 10561.8,
+      "entrada": 2829,
+      "salida": 1426,
+      "razonamiento": 988,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 17724.9,
+      "ttfb": 548.6,
+      "ms": 4159.6,
+      "entrada": 3821,
+      "salida": 468,
+      "razonamiento": 401,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "indicador-4-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 9875.4,
+    "msHastaCabeceras": 164.2,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "2d9cecf6-99ed-49a6-ac37-e6ecad8da1af"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en los últimos 7 días.",
+       "cambioId": "2d9cecf6-99ed-49a6-ac37-e6ecad8da1af",
+       "msHastaAplicado": 19037
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 762.6,
+    "tokens": {
+     "entrada": 7962,
+     "salida": 361,
+     "razonamiento": 263
+    },
+    "usd": 0.0008684000000000001,
+    "usdStandard": 0.01148675,
+    "usdPorRol": {
+     "dueno": 0.0008684000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1599.8,
+     "ventanaDeHerramienta": 263.1,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 251.3,
+     "responder": 7659.7,
+     "primerTextoVisible": 8212.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 165.3,
+      "ttfb": 536.7,
+      "ms": 1434.5,
+      "entrada": 3895,
+      "salida": 170,
+      "razonamiento": 90,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1862.9,
+      "ttfb": 6349.4,
+      "ms": 7659.7,
+      "entrada": 4067,
+      "salida": 191,
+      "razonamiento": 173,
+      "enCache": 3825,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "seccion",
+   "corrida": 4,
+   "inicio": "2026-10-27T22:37:14.322Z",
+   "pedido": "Quiero ver una lista de los pedidos con novedad.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 338.8,
+   "msHastaAplicadoMaquina": 21989.8,
+   "msHastaVerAplicado": 24606.5,
+   "msTurno1": 19554.5,
+   "msTurno2": 5052,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18791,
+    "salida": 2905,
+    "razonamiento": 1856
+   },
+   "usd": 0.0024601000000000002,
+   "usdStandard": 0.035835,
+   "usdPorRol": {
+    "dueno": 0.0018644000000000002,
+    "generador": 0.0005957,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2809,
+    "tokensSalida": 1574,
+    "costoUsd": 0.0005957
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18791,
+    "tokensSalida": 2905,
+    "costoUsd": 0.0024601
+   },
+   "cotejo": {
+    "totalFilas": 4,
+    "verdadNovedad": 4
+   },
+   "cambios": [
+    {
+     "id": "708a4196-079e-4591-aaa7-25d5154369d7",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Pedidos con novedad: Muestra los pedidos con novedad, los más recientes primero, con cliente, detalle, total y fecha en hora de Bogotá.",
+     "tokensEntrada": 2809,
+     "tokensSalida": 1574,
+     "costoUsdGuardado": 0.0005957,
+     "msHastaPropuesta": 11971,
+     "msHastaAplicado": 19819,
+     "intentos": 1,
+     "msQuickJS": 7,
+     "totalFilas": 4,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "total": 95000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-20 17:09",
+       "numero": 32,
+       "cliente": "Camila Rojas",
+       "detalle": "Caja regalo Ladera x1",
+       "unidades": 1
+      },
+      {
+       "total": 114000,
+       "ciudad": "Pasto",
+       "creado": "2026-10-18 15:13",
+       "numero": 28,
+       "cliente": "Paola Andrea Vargas",
+       "detalle": "Café Ladera tueste medio, grano 500 g x3",
+       "unidades": 3
+      },
+      {
+       "total": 112000,
+       "ciudad": "Pereira",
+       "creado": "2026-10-14 09:49",
+       "numero": 14,
+       "cliente": "Daniela Quintero",
+       "detalle": "Café Ladera tueste oscuro, molido 500 g x1, Café Ladera tueste medio, grano 500 g x2",
+       "unidades": 3
+      },
+      {
+       "total": 38000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-12 20:58",
+       "numero": 10,
+       "cliente": "Juan David Cárdenas",
+       "detalle": "Café Ladera tueste medio, molido 500 g x1",
+       "unidades": 1
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "numero",
+         "titulo": "Pedido"
+        },
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "detalle",
+         "titulo": "Detalle"
+        },
+        {
+         "clave": "unidades",
+         "titulo": "Unidades"
+        },
+        {
+         "clave": "total",
+         "titulo": "Total (COP)"
+        },
+        {
+         "clave": "ciudad",
+         "titulo": "Ciudad"
+        },
+        {
+         "clave": "creado",
+         "titulo": "Creado (Bogotá)"
+        }
+       ]
+      },
+      "codigo": "function fmtBogota(iso) {\n  if (!iso) return null;\n  var t = Date.parse(iso);\n  if (isNaN(t)) return String(iso);\n  var d = new Date(t - 5 * 3600 * 1000);\n  return d.toISOString().slice(0, 16).replace(\"T\", \" \");\n}\nfunction resumenItems(items) {\n  if (!items || items.length === 0) return \"\";\n  var partes = [];\n  for (var i = 0; i < items.length; i++) {\n    var it = items[i];\n    var n = it.nombre || \"Producto\";\n    var c = Number(it.cantidad) || 0;\n    partes.push(n + \" x\" + c);\n  }\n  var s = partes.join(\", \");\n  if (s.length > 120) s = s.slice(0, 117) + \"...\";\n  return s;\n}\nfunction consultar(datos) {\n  var porCliente = {};\n  var cs = datos.clientes || [];\n  for (var i = 0; i < cs.length; i++) {\n    porCliente[cs[i].id] = cs[i].nombre;\n  }\n  var pedidos = datos.pedidos || [];\n  var filt = [];\n  for (var j = 0; j < pedidos.length; j++) {\n    if (pedidos[j].estado === \"novedad\") filt.push(pedidos[j]);\n  }\n  filt.sort(function (a, b) {\n    var ta = Date.parse(a.creado);\n    var tb = Date.parse(b.creado);\n    if (tb === ta) return (b.numero || 0) - (a.numero || 0);\n    return tb - ta;\n  });\n  var out = [];\n  var n = filt.length > 200 ? 200 : filt.length;\n  for (var k = 0; k < n; k++) {\n    var p = filt[k];\n    var totalItems = 0;\n    var its = p.items || [];\n    for (var m = 0; m < its.length; m++) totalItems += Number(its[m].cantidad) || 0;\n    out.push({\n      numero: p.numero,\n      cliente: porCliente[p.clienteId] || \"Cliente no registrado\",\n      detalle: resumenItems(its),\n      unidades: totalItems,\n      total: p.total,\n      ciudad: p.ciudad || \"\",\n      creado: fmtBogota(p.creado)\n    });\n  }\n  return out;\n}",
+      "nombre": "Pedidos con novedad",
+      "descripcion": "Muestra los pedidos con novedad, los más recientes primero, con cliente, detalle, total y fecha en hora de Bogotá."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "seccion-4-t1",
+    "texto": "Quiero ver una lista de los pedidos con novedad.",
+    "ms": 19554.5,
+    "msHastaCabeceras": 173.3,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos con novedad",
+       "pedido": "Quiero ver una lista de los pedidos con novedad."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "numero",
+          "titulo": "Pedido"
+         },
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "detalle",
+          "titulo": "Detalle"
+         },
+         {
+          "clave": "unidades",
+          "titulo": "Unidades"
+         },
+         {
+          "clave": "total",
+          "titulo": "Total (COP)"
+         },
+         {
+          "clave": "ciudad",
+          "titulo": "Ciudad"
+         },
+         {
+          "clave": "creado",
+          "titulo": "Creado (Bogotá)"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0005957,
+        "tokensSalida": 1574,
+        "tokensEntrada": 2809,
+        "msHastaPropuesta": 11971
+       },
+       "nombre": "Pedidos con novedad",
+       "resumen": "Pedidos con novedad: Muestra los pedidos con novedad, los más recientes primero, con cliente, detalle, total y fecha en hora de Bogotá.",
+       "cambioId": "708a4196-079e-4591-aaa7-25d5154369d7",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 7,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "numero",
+           "titulo": "Pedido"
+          },
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "detalle",
+           "titulo": "Detalle"
+          },
+          {
+           "clave": "unidades",
+           "titulo": "Unidades"
+          },
+          {
+           "clave": "total",
+           "titulo": "Total (COP)"
+          },
+          {
+           "clave": "ciudad",
+           "titulo": "Ciudad"
+          },
+          {
+           "clave": "creado",
+           "titulo": "Creado (Bogotá)"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "total": 95000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-20 17:09",
+          "numero": 32,
+          "cliente": "Camila Rojas",
+          "detalle": "Caja regalo Ladera x1",
+          "unidades": 1
+         },
+         {
+          "total": 114000,
+          "ciudad": "Pasto",
+          "creado": "2026-10-18 15:13",
+          "numero": 28,
+          "cliente": "Paola Andrea Vargas",
+          "detalle": "Café Ladera tueste medio, grano 500 g x3",
+          "unidades": 3
+         },
+         {
+          "total": 112000,
+          "ciudad": "Pereira",
+          "creado": "2026-10-14 09:49",
+          "numero": 14,
+          "cliente": "Daniela Quintero",
+          "detalle": "Café Ladera tueste oscuro, molido 500 g x1, Café Ladera tueste medio, grano 500 g x2",
+          "unidades": 3
+         },
+         {
+          "total": 38000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-12 20:58",
+          "numero": 10,
+          "cliente": "Juan David Cárdenas",
+          "detalle": "Café Ladera tueste medio, molido 500 g x1",
+          "unidades": 1
+         }
+        ],
+        "totalFilas": 4
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te preparo esa lista para que puedas revisarla. Te armé la lista de pedidos con novedad para tu Panel. Tiene pedido, cliente, detalle, unidades, total, ciudad y fecha. Salen 4 pedidos. El más nuevo es el de Camila Rojas por 95.000. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1653.6,
+    "tokens": {
+     "entrada": 10283,
+     "salida": 2394,
+     "razonamiento": 1467
+    },
+    "usd": 0.0015071000000000001,
+    "usdStandard": 0.02302825,
+    "usdPorRol": {
+     "dueno": 0.0009114000000000001,
+     "generador": 0.0005957,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2606.1,
+     "ventanaDeHerramienta": 12059.7,
+     "generar": 11307.7,
+     "simular": 0,
+     "dbEnLaVentana": 1142.2,
+     "responder": 4545.4,
+     "primerTextoVisible": 15205
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 175,
+      "ttfb": 769.4,
+      "ms": 2431.1,
+      "entrada": 3389,
+      "salida": 280,
+      "razonamiento": 176,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 3007.3,
+      "ttfb": 11306.3,
+      "ms": 11307.7,
+      "entrada": 2809,
+      "salida": 1574,
+      "razonamiento": 815,
+      "enCache": 2740,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 14665.9,
+      "ttfb": 539.1,
+      "ms": 4545.4,
+      "entrada": 4085,
+      "salida": 540,
+      "razonamiento": 476,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "seccion-4-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 5052,
+    "msHastaCabeceras": 166.7,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "708a4196-079e-4591-aaa7-25d5154369d7"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Pedidos con novedad: Muestra los pedidos con novedad, los más recientes primero, con cliente, detalle, total y fecha en hora de Bogotá.",
+       "cambioId": "708a4196-079e-4591-aaa7-25d5154369d7",
+       "msHastaAplicado": 19819
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, lo dejo aplicado. Listo, ya quedó en tu Panel. La encuentras como Pedidos con novedad.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 580.9,
+    "tokens": {
+     "entrada": 8508,
+     "salida": 511,
+     "razonamiento": 389
+    },
+    "usd": 0.0009530000000000001,
+    "usdStandard": 0.01280675,
+    "usdPorRol": {
+     "dueno": 0.0009530000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2178.9,
+     "ventanaDeHerramienta": 256.4,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 251.7,
+     "responder": 2450.2,
+     "primerTextoVisible": 3026.6
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 168.6,
+      "ttfb": 674.3,
+      "ms": 2010.4,
+      "entrada": 4156,
+      "salida": 229,
+      "razonamiento": 135,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2435.4,
+      "ttfb": 591.2,
+      "ms": 2450.2,
+      "entrada": 4352,
+      "salida": 282,
+      "razonamiento": 254,
+      "enCache": 4081,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "regla",
+   "corrida": 5,
+   "inicio": "2026-10-27T22:37:40.716Z",
+   "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+   "herramientasTurno1": [
+    "proponer_regla"
+   ],
+   "herramientaEsperada": "proponer_regla",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 724.6,
+   "msHastaAplicadoMaquina": 20535,
+   "msHastaVerAplicado": 22120.6,
+   "msTurno1": 18712.2,
+   "msTurno2": 3408.4,
+   "llamadasAlModelo": 7,
+   "tokens": {
+    "entrada": 25127,
+    "salida": 2638,
+    "razonamiento": 2057
+   },
+   "usd": 0.0030403,
+   "usdStandard": 0.04262025,
+   "usdPorRol": {
+    "dueno": 0.0018786,
+    "generador": 0,
+    "clientes": 0.0011617
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 9765,
+    "tokensSalida": 926,
+    "costoUsd": 0.0011617
+   },
+   "guardadoEnTurnos": {
+    "filas": 2,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0
+    },
+    "tokensEntrada": 15362,
+    "tokensSalida": 1712,
+    "costoUsd": 0.0018785999999999998
+   },
+   "cotejo": null,
+   "cambios": [
+    {
+     "id": "d10c149d-710d-4b69-b2db-fcfdbac6794e",
+     "tipo": "regla",
+     "estado": "aplicado",
+     "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+     "tokensEntrada": 9765,
+     "tokensSalida": 926,
+     "costoUsdGuardado": 0.0011617,
+     "msHastaPropuesta": 7025,
+     "msHastaAplicado": 13984,
+     "intentos": null,
+     "msQuickJS": null,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": [],
+     "herramientasDespues": [
+      "abrir_caso"
+     ],
+     "antes": "Hola, claro que sí. Enviamos a Bucaramanga y te llegaría en *2 a 4 días hábiles*, con el envío incluido. ☕\n\n¿Te provoca un cafecito en grano o molido?",
+     "despues": "Sí, hacemos envíos a Bucaramanga y el envío va incluido ☕\n\nSobre el tiempo de entrega ya se lo pasé al Dueño para que te lo confirme, apenas me responda te aviso.",
+     "resultado": null,
+     "propuesta": {
+      "texto": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+      "preguntaDePrueba": "Hola, ¿hacen envíos a Bucaramanga? ¿En cuántos días me llegaría?"
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "regla-5-t1",
+    "texto": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+    "ms": 18712.2,
+    "msHastaCabeceras": 169.5,
+    "herramientas": [
+     {
+      "nombre": "proponer_regla",
+      "estado": "output-available",
+      "entrada": {
+       "pedido": "Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso.",
+       "textoDeLaRegla": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+       "preguntaDePrueba": "Hola, ¿hacen envíos a Bucaramanga? ¿En cuántos días me llegaría?"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "medida": {
+        "costoUsd": 0.0011617,
+        "tokensSalida": 926,
+        "tokensEntrada": 9765,
+        "msHastaPropuesta": 7025
+       },
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "d10c149d-710d-4b69-b2db-fcfdbac6794e",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "antes": "Hola, claro que sí. Enviamos a Bucaramanga y te llegaría en *2 a 4 días hábiles*, con el envío incluido. ☕\n\n¿Te provoca un cafecito en grano o molido?",
+        "despues": "Sí, hacemos envíos a Bucaramanga y el envío va incluido ☕\n\nSobre el tiempo de entrega ya se lo pasé al Dueño para que te lo confirme, apenas me responda te aviso.",
+        "preguntaDePrueba": "Hola, ¿hacen envíos a Bucaramanga? ¿En cuántos días me llegaría?",
+        "herramientasAntes": [],
+        "herramientasDespues": [
+         "abrir_caso"
+        ]
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Voy a dejar lista esa regla para los envíos fuera de la ciudad. Probé con un cliente que pregunta por envío a Bucaramanga. Antes tu agente prometía 2 a 4 días. Ahora no promete fecha y me deja el caso para que lo confirmes tú. ¿Lo aplico?",
+    "llamadasAlModelo": 5,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 3,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 11,
+    "msEnDb": 1595.7,
+    "tokens": {
+     "entrada": 17048,
+     "salida": 2366,
+     "razonamiento": 1880
+    },
+    "usd": 0.0021780000000000002,
+    "usdStandard": 0.0313655,
+    "usdPorRol": {
+     "dueno": 0.0010163,
+     "generador": 0,
+     "clientes": 0.0011617
+    },
+    "fases": {
+     "entender": 6811.9,
+     "ventanaDeHerramienta": 7280,
+     "generar": 0,
+     "simular": 6673.2,
+     "dbEnLaVentana": 1099.4,
+     "responder": 4288.3,
+     "primerTextoVisible": 14619.3
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 172.6,
+      "ttfb": 1510.7,
+      "ms": 6639.3,
+      "entrada": 3397,
+      "salida": 873,
+      "razonamiento": 693,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 7164.7,
+      "ttfb": 3610.2,
+      "ms": 3610.6,
+      "entrada": 3199,
+      "salida": 446,
+      "razonamiento": 306,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 7168,
+      "ttfb": 2518.7,
+      "ms": 2519.2,
+      "entrada": 3177,
+      "salida": 219,
+      "razonamiento": 161,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "clientes",
+      "desde": 10777,
+      "ttfb": 3061.9,
+      "ms": 3062.6,
+      "entrada": 3389,
+      "salida": 261,
+      "razonamiento": 209,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 14091.9,
+      "ttfb": 527.4,
+      "ms": 4288.3,
+      "entrada": 3886,
+      "salida": 567,
+      "razonamiento": 511,
+      "enCache": 3441,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "regla-5-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3408.4,
+    "msHastaCabeceras": 171.9,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "d10c149d-710d-4b69-b2db-fcfdbac6794e"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "regla",
+       "resumen": "Si un cliente pregunta por envíos fuera de la ciudad, no prometas ninguna fecha de entrega y abre un Caso para que el Dueño lo revise.",
+       "cambioId": "d10c149d-710d-4b69-b2db-fcfdbac6794e",
+       "msHastaAplicado": 13984
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó aplicado.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 593.2,
+    "tokens": {
+     "entrada": 8079,
+     "salida": 272,
+     "razonamiento": 177
+    },
+    "usd": 0.0008623000000000001,
+    "usdStandard": 0.01125475,
+    "usdPorRol": {
+     "dueno": 0.0008623000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1569.8,
+     "ventanaDeHerramienta": 253,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 248.7,
+     "responder": 1407.5,
+     "primerTextoVisible": 2430.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 175.7,
+      "ttfb": 497.6,
+      "ms": 1394.1,
+      "entrada": 3949,
+      "salida": 155,
+      "razonamiento": 76,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 1822.8,
+      "ttfb": 607.7,
+      "ms": 1407.5,
+      "entrada": 4130,
+      "salida": 117,
+      "razonamiento": 101,
+      "enCache": 3825,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "indicador",
+   "corrida": 5,
+   "inicio": "2026-10-27T22:38:05.785Z",
+   "pedido": "Quiero ver los pedidos confirmados por día.",
+   "herramientasTurno1": [
+    "proponer_indicador"
+   ],
+   "herramientaEsperada": "proponer_indicador",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 331.6,
+   "msHastaAplicadoMaquina": 21876.1,
+   "msHastaVerAplicado": 24341,
+   "msTurno1": 19325,
+   "msTurno2": 5016,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 17949,
+    "salida": 2566,
+    "razonamiento": 1886
+   },
+   "usd": 0.0023081000000000004,
+   "usdStandard": 0.03334175,
+   "usdPorRol": {
+    "dueno": 0.0018028,
+    "generador": 0.0005053000000000001,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2829,
+    "tokensSalida": 1112,
+    "costoUsd": 0.0005053
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 17949,
+    "tokensSalida": 2566,
+    "costoUsd": 0.0023081
+   },
+   "cotejo": {
+    "serie": true,
+    "puntos": 7,
+    "suma": 6,
+    "coincideConLaAmplia": true,
+    "coincideConLaEstricta": false
+   },
+   "cambios": [
+    {
+     "id": "293a3bf7-dc97-4ed5-9c88-672d5508df36",
+     "tipo": "indicador",
+     "estado": "aplicado",
+     "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en Bogotá en los últimos 7 días.",
+     "tokensEntrada": 2829,
+     "tokensSalida": 1112,
+     "costoUsdGuardado": 0.0005053,
+     "msHastaPropuesta": 8039,
+     "msHastaAplicado": 18066,
+     "intentos": 1,
+     "msQuickJS": 4,
+     "totalFilas": null,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": {
+      "nota": "Cuenta pedidos en confirmado, enviado, entregado y novedad por día de Bogotá en los últimos 7 días.",
+      "serie": [
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-21"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-22"
+       },
+       {
+        "valor": 3,
+        "etiqueta": "2026-10-23"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-24"
+       },
+       {
+        "valor": 1,
+        "etiqueta": "2026-10-25"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-26"
+       },
+       {
+        "valor": 0,
+        "etiqueta": "2026-10-27"
+       }
+      ],
+      "valor": 6,
+      "unidad": "pedidos"
+     },
+     "propuesta": {
+      "vista": null,
+      "codigo": "function calcular(datos) {\n  var dia = function (iso) { return new Date(Date.parse(iso) - 5 * 3600 * 1000).toISOString().slice(0, 10); };\n  var esConfirmado = function (e) { return e === \"confirmado\" || e === \"enviado\" || e === \"entregado\" || e === \"novedad\"; };\n  var N = 7;\n  var serie = [];\n  for (var i = N - 1; i >= 0; i--) {\n    var etiqueta = dia(new Date(Date.parse(datos.hoy) - i * 86400000).toISOString());\n    serie.push({ etiqueta: etiqueta, valor: 0 });\n  }\n  var idx = {};\n  for (var k = 0; k < serie.length; k++) { idx[serie[k].etiqueta] = k; }\n  var pedidos = (datos && datos.pedidos) || [];\n  for (var j = 0; j < pedidos.length; j++) {\n    var p = pedidos[j];\n    if (!esConfirmado(p.estado)) continue;\n    if (!p.creado) continue;\n    var d = dia(p.creado);\n    if (d in idx) { serie[idx[d]].valor += 1; }\n  }\n  var total = 0;\n  for (var t = 0; t < serie.length; t++) { total += serie[t].valor; }\n  return { valor: total, unidad: \"pedidos\", serie: serie, nota: \"Cuenta pedidos en confirmado, enviado, entregado y novedad por día de Bogotá en los últimos 7 días.\" };\n}",
+      "nombre": "Pedidos confirmados por día",
+      "descripcion": "Mide los pedidos confirmados por día en Bogotá en los últimos 7 días."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "indicador-5-t1",
+    "texto": "Quiero ver los pedidos confirmados por día.",
+    "ms": 19325,
+    "msHastaCabeceras": 660.8,
+    "herramientas": [
+     {
+      "nombre": "proponer_indicador",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos confirmados por día",
+       "pedido": "Quiero ver los pedidos confirmados por día."
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "vista": null,
+       "medida": {
+        "costoUsd": 0.0005053,
+        "tokensSalida": 1112,
+        "tokensEntrada": 2829,
+        "msHastaPropuesta": 8039
+       },
+       "nombre": "Pedidos confirmados por día",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en Bogotá en los últimos 7 días.",
+       "cambioId": "293a3bf7-dc97-4ed5-9c88-672d5508df36",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 4,
+        "tipo": "indicador",
+        "vista": null,
+        "intentos": 1,
+        "resultado": {
+         "nota": "Cuenta pedidos en confirmado, enviado, entregado y novedad por día de Bogotá en los últimos 7 días.",
+         "serie": [
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-21"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-22"
+          },
+          {
+           "valor": 3,
+           "etiqueta": "2026-10-23"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-24"
+          },
+          {
+           "valor": 1,
+           "etiqueta": "2026-10-25"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-26"
+          },
+          {
+           "valor": 0,
+           "etiqueta": "2026-10-27"
+          }
+         ],
+         "valor": 6,
+         "unidad": "pedidos"
+        }
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te preparo ese dato de pedidos confirmados por día. Tienes 6 pedidos confirmados en los últimos 7 días. El mejor fue el 23 con 3 pedidos. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 2958.9,
+    "tokens": {
+     "entrada": 10033,
+     "salida": 2161,
+     "razonamiento": 1595
+    },
+    "usd": 0.0014355000000000001,
+    "usdStandard": 0.021725500000000002,
+    "usdPorRol": {
+     "dueno": 0.0009302,
+     "generador": 0.0005053000000000001,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 4231.8,
+     "ventanaDeHerramienta": 8132.6,
+     "generar": 7118.7,
+     "simular": 0,
+     "dbEnLaVentana": 1966.5,
+     "responder": 6622.3,
+     "primerTextoVisible": 14285.5
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 663.4,
+      "ttfb": 1149.7,
+      "ms": 3568.4,
+      "entrada": 3386,
+      "salida": 376,
+      "razonamiento": 274,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 4896.9,
+      "ttfb": 7116.2,
+      "ms": 7118.7,
+      "entrada": 2829,
+      "salida": 1112,
+      "razonamiento": 686,
+      "enCache": 2703,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 12364.3,
+      "ttfb": 1921.1,
+      "ms": 6622.3,
+      "entrada": 3818,
+      "salida": 673,
+      "razonamiento": 635,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "indicador-5-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 5016,
+    "msHastaCabeceras": 169.6,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "293a3bf7-dc97-4ed5-9c88-672d5508df36"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "indicador",
+       "resumen": "Pedidos confirmados por día: Mide los pedidos confirmados por día en Bogotá en los últimos 7 días.",
+       "cambioId": "293a3bf7-dc97-4ed5-9c88-672d5508df36",
+       "msHastaAplicado": 18066
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, lo dejo aplicado. Listo, ya quedó en tu panel.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 585.4,
+    "tokens": {
+     "entrada": 7916,
+     "salida": 405,
+     "razonamiento": 291
+    },
+    "usd": 0.0008726000000000001,
+    "usdStandard": 0.01161625,
+    "usdPorRol": {
+     "dueno": 0.0008726000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2291.3,
+     "ventanaDeHerramienta": 259.8,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 252.5,
+     "responder": 2291.3,
+     "primerTextoVisible": 3175.8
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 173.3,
+      "ttfb": 960.4,
+      "ms": 2118,
+      "entrada": 3863,
+      "salida": 196,
+      "razonamiento": 100,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2551.1,
+      "ttfb": 624.7,
+      "ms": 2291.3,
+      "entrada": 4053,
+      "salida": 209,
+      "razonamiento": 191,
+      "enCache": 3825,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  },
+  {
+   "tipo": "seccion",
+   "corrida": 5,
+   "inicio": "2026-10-27T22:38:31.913Z",
+   "pedido": "Quiero ver una lista de los pedidos con novedad.",
+   "herramientasTurno1": [
+    "proponer_seccion"
+   ],
+   "herramientaEsperada": "proponer_seccion",
+   "eligioLaHerramientaEsperada": true,
+   "cambiosCreados": 1,
+   "estadoFinal": "aplicado",
+   "aplicadoALaPrimera": true,
+   "errores": [],
+   "msRevertir": 319.6,
+   "msHastaAplicadoMaquina": 18084.6,
+   "msHastaVerAplicado": 19772.5,
+   "msTurno1": 15950.6,
+   "msTurno2": 3821.9,
+   "llamadasAlModelo": 5,
+   "tokens": {
+    "entrada": 18699,
+    "salida": 2298,
+    "razonamiento": 1422
+   },
+   "usd": 0.0023295,
+   "usdStandard": 0.033140249999999996,
+   "usdPorRol": {
+    "dueno": 0.0018031,
+    "generador": 0.0005264000000000001,
+    "clientes": 0
+   },
+   "guardadoEnCambios": {
+    "tokensEntrada": 2808,
+    "tokensSalida": 1228,
+    "costoUsd": 0.0005264
+   },
+   "guardadoEnTurnos": {
+    "filas": 3,
+    "porAgente": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0
+    },
+    "tokensEntrada": 18699,
+    "tokensSalida": 2298,
+    "costoUsd": 0.0023295
+   },
+   "cotejo": {
+    "totalFilas": 4,
+    "verdadNovedad": 4
+   },
+   "cambios": [
+    {
+     "id": "d1eb417b-6645-4916-9117-fea6805c7c9a",
+     "tipo": "seccion",
+     "estado": "aplicado",
+     "resumen": "Pedidos con novedad: Muestra los pedidos con novedad en el envío, los más recientes primero.",
+     "tokensEntrada": 2808,
+     "tokensSalida": 1228,
+     "costoUsdGuardado": 0.0005264,
+     "msHastaPropuesta": 9748,
+     "msHastaAplicado": 15948,
+     "intentos": 1,
+     "msQuickJS": 2,
+     "totalFilas": 4,
+     "error": null,
+     "herramientasAntes": null,
+     "herramientasDespues": null,
+     "antes": null,
+     "despues": null,
+     "resultado": [
+      {
+       "total": 95000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-20 17:09",
+       "estado": "novedad",
+       "numero": 32,
+       "cliente": "Camila Rojas",
+       "detalle": "Caja regalo Ladera x1"
+      },
+      {
+       "total": 114000,
+       "ciudad": "Pasto",
+       "creado": "2026-10-18 15:13",
+       "estado": "novedad",
+       "numero": 28,
+       "cliente": "Paola Andrea Vargas",
+       "detalle": "Café Ladera tueste medio, grano 500 g x3"
+      },
+      {
+       "total": 112000,
+       "ciudad": "Pereira",
+       "creado": "2026-10-14 09:49",
+       "estado": "novedad",
+       "numero": 14,
+       "cliente": "Daniela Quintero",
+       "detalle": "Café Ladera tueste oscuro, molido 500 g x1; Café Ladera tueste medio, grano 500 g x2"
+      },
+      {
+       "total": 38000,
+       "ciudad": "Bogotá",
+       "creado": "2026-10-12 20:58",
+       "estado": "novedad",
+       "numero": 10,
+       "cliente": "Juan David Cárdenas",
+       "detalle": "Café Ladera tueste medio, molido 500 g x1"
+      }
+     ],
+     "propuesta": {
+      "vista": {
+       "tipo": "tabla",
+       "columnas": [
+        {
+         "clave": "numero",
+         "titulo": "Pedido No."
+        },
+        {
+         "clave": "cliente",
+         "titulo": "Cliente"
+        },
+        {
+         "clave": "ciudad",
+         "titulo": "Ciudad"
+        },
+        {
+         "clave": "total",
+         "titulo": "Total (COP)"
+        },
+        {
+         "clave": "creado",
+         "titulo": "Creado (Bogotá)"
+        },
+        {
+         "clave": "detalle",
+         "titulo": "Detalle"
+        }
+       ]
+      },
+      "codigo": "function fmtBogota(iso) {\n  if (!iso) return null;\n  var d = new Date(Date.parse(iso) - 5 * 3600 * 1000);\n  var s = d.toISOString();\n  return s.slice(0, 10) + \" \" + s.slice(11, 16);\n}\nfunction consultar(datos) {\n  var pedidos = (datos && datos.pedidos) ? datos.pedidos : [];\n  var clientes = (datos && datos.clientes) ? datos.clientes : [];\n  var porCliente = {};\n  for (var i = 0; i < clientes.length; i++) {\n    porCliente[clientes[i].id] = clientes[i].nombre;\n  }\n  var filtrados = [];\n  for (var j = 0; j < pedidos.length; j++) {\n    if (pedidos[j].estado === \"novedad\") filtrados.push(pedidos[j]);\n  }\n  filtrados.sort(function (a, b) {\n    if (a.creado < b.creado) return 1;\n    if (a.creado > b.creado) return -1;\n    return 0;\n  });\n  var filas = [];\n  var n = filtrados.length > 200 ? 200 : filtrados.length;\n  for (var k = 0; k < n; k++) {\n    var p = filtrados[k];\n    var items = p.items ? p.items : [];\n    var partes = [];\n    for (var m = 0; m < items.length; m++) {\n      partes.push(items[m].nombre + \" x\" + items[m].cantidad);\n    }\n    filas.push({\n      numero: p.numero,\n      cliente: porCliente[p.clienteId] || \"Sin nombre\",\n      ciudad: p.ciudad,\n      total: p.total,\n      estado: p.estado,\n      creado: fmtBogota(p.creado),\n      detalle: partes.join(\"; \")\n    });\n  }\n  return filas;\n}",
+      "nombre": "Pedidos con novedad",
+      "descripcion": "Muestra los pedidos con novedad en el envío, los más recientes primero."
+     }
+    }
+   ],
+   "turno1": {
+    "etiqueta": "seccion-5-t1",
+    "texto": "Quiero ver una lista de los pedidos con novedad.",
+    "ms": 15950.6,
+    "msHastaCabeceras": 167.2,
+    "herramientas": [
+     {
+      "nombre": "proponer_seccion",
+      "estado": "output-available",
+      "entrada": {
+       "nombre": "Pedidos con novedad",
+       "pedido": "Quiero ver una lista de los pedidos con novedad"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "vista": {
+        "tipo": "tabla",
+        "columnas": [
+         {
+          "clave": "numero",
+          "titulo": "Pedido No."
+         },
+         {
+          "clave": "cliente",
+          "titulo": "Cliente"
+         },
+         {
+          "clave": "ciudad",
+          "titulo": "Ciudad"
+         },
+         {
+          "clave": "total",
+          "titulo": "Total (COP)"
+         },
+         {
+          "clave": "creado",
+          "titulo": "Creado (Bogotá)"
+         },
+         {
+          "clave": "detalle",
+          "titulo": "Detalle"
+         }
+        ]
+       },
+       "medida": {
+        "costoUsd": 0.0005264,
+        "tokensSalida": 1228,
+        "tokensEntrada": 2808,
+        "msHastaPropuesta": 9748
+       },
+       "nombre": "Pedidos con novedad",
+       "resumen": "Pedidos con novedad: Muestra los pedidos con novedad en el envío, los más recientes primero.",
+       "cambioId": "d1eb417b-6645-4916-9117-fea6805c7c9a",
+       "siguiente": "Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.",
+       "vistaPrevia": {
+        "ms": 2,
+        "tipo": "seccion",
+        "vista": {
+         "tipo": "tabla",
+         "columnas": [
+          {
+           "clave": "numero",
+           "titulo": "Pedido No."
+          },
+          {
+           "clave": "cliente",
+           "titulo": "Cliente"
+          },
+          {
+           "clave": "ciudad",
+           "titulo": "Ciudad"
+          },
+          {
+           "clave": "total",
+           "titulo": "Total (COP)"
+          },
+          {
+           "clave": "creado",
+           "titulo": "Creado (Bogotá)"
+          },
+          {
+           "clave": "detalle",
+           "titulo": "Detalle"
+          }
+         ]
+        },
+        "intentos": 1,
+        "resultado": [
+         {
+          "total": 95000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-20 17:09",
+          "estado": "novedad",
+          "numero": 32,
+          "cliente": "Camila Rojas",
+          "detalle": "Caja regalo Ladera x1"
+         },
+         {
+          "total": 114000,
+          "ciudad": "Pasto",
+          "creado": "2026-10-18 15:13",
+          "estado": "novedad",
+          "numero": 28,
+          "cliente": "Paola Andrea Vargas",
+          "detalle": "Café Ladera tueste medio, grano 500 g x3"
+         },
+         {
+          "total": 112000,
+          "ciudad": "Pereira",
+          "creado": "2026-10-14 09:49",
+          "estado": "novedad",
+          "numero": 14,
+          "cliente": "Daniela Quintero",
+          "detalle": "Café Ladera tueste oscuro, molido 500 g x1; Café Ladera tueste medio, grano 500 g x2"
+         },
+         {
+          "total": 38000,
+          "ciudad": "Bogotá",
+          "creado": "2026-10-12 20:58",
+          "estado": "novedad",
+          "numero": 10,
+          "cliente": "Juan David Cárdenas",
+          "detalle": "Café Ladera tueste medio, molido 500 g x1"
+         }
+        ],
+        "totalFilas": 4
+       }
+      }
+     }
+    ],
+    "respuestaAlDueno": "Ya te preparo esa lista. Te tengo la lista de pedidos con novedad. Tiene 6 columnas: número, cliente, ciudad, total, fecha y detalle.\n\nSalieron 4 pedidos. Por ejemplo el más reciente es el 32 de Camila Rojas en Bogotá por 95 mil. ¿Lo aplico?",
+    "llamadasAlModelo": 3,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 1,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 13,
+    "msEnDb": 1667,
+    "tokens": {
+     "entrada": 10257,
+     "salida": 1976,
+     "razonamiento": 1208
+    },
+    "usd": 0.0014209000000000001,
+    "usdStandard": 0.02121925,
+    "usdPorRol": {
+     "dueno": 0.0008944999999999999,
+     "generador": 0.0005264000000000001,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 2540.5,
+     "ventanaDeHerramienta": 9831.8,
+     "generar": 9150.8,
+     "simular": 0,
+     "dbEnLaVentana": 1332.2,
+     "responder": 3405.2,
+     "primerTextoVisible": 13397.2
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 169.3,
+      "ttfb": 600.6,
+      "ms": 2371.2,
+      "entrada": 3389,
+      "salida": 291,
+      "razonamiento": 193,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "generador",
+      "desde": 2881.8,
+      "ttfb": 9149.6,
+      "ms": 9150.8,
+      "entrada": 2808,
+      "salida": 1228,
+      "razonamiento": 625,
+      "enCache": 0,
+      "stream": false,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 12372.3,
+      "ttfb": 1024.9,
+      "ms": 3405.2,
+      "entrada": 4060,
+      "salida": 457,
+      "razonamiento": 390,
+      "enCache": 0,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   },
+   "turno2": {
+    "etiqueta": "seccion-5-t2",
+    "texto": "Sí, aplícalo.",
+    "ms": 3821.9,
+    "msHastaCabeceras": 165,
+    "herramientas": [
+     {
+      "nombre": "aplicar_cambio",
+      "estado": "output-available",
+      "entrada": {
+       "cambioId": "d1eb417b-6645-4916-9117-fea6805c7c9a"
+      },
+      "salida": {
+       "ok": true,
+       "tipo": "seccion",
+       "resumen": "Pedidos con novedad: Muestra los pedidos con novedad en el envío, los más recientes primero.",
+       "cambioId": "d1eb417b-6645-4916-9117-fea6805c7c9a",
+       "msHastaAplicado": 15948
+      }
+     }
+    ],
+    "respuestaAlDueno": "Listo, ya quedó en tu panel. La encuentras como Pedidos con novedad.",
+    "llamadasAlModelo": 2,
+    "llamadasPorRol": {
+     "dueno": 2,
+     "generador": 0,
+     "clientes": 0,
+     "aviso": 0,
+     "otro": 0
+    },
+    "consultasADb": 7,
+    "msEnDb": 580.6,
+    "tokens": {
+     "entrada": 8442,
+     "salida": 322,
+     "razonamiento": 214
+    },
+    "usd": 0.0009086000000000001,
+    "usdStandard": 0.011921,
+    "usdPorRol": {
+     "dueno": 0.0009086000000000001,
+     "generador": 0,
+     "clientes": 0
+    },
+    "fases": {
+     "entender": 1870.2,
+     "ventanaDeHerramienta": 263.8,
+     "generar": 0,
+     "simular": 0,
+     "dbEnLaVentana": 258.7,
+     "responder": 1524.6,
+     "primerTextoVisible": 2551.4
+    },
+    "pasos": [
+     {
+      "rol": "dueno",
+      "desde": 168.8,
+      "ttfb": 882.6,
+      "ms": 1701.4,
+      "entrada": 4134,
+      "salida": 157,
+      "razonamiento": 77,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     },
+     {
+      "rol": "dueno",
+      "desde": 2134,
+      "ttfb": 417.3,
+      "ms": 1524.6,
+      "entrada": 4308,
+      "salida": 165,
+      "razonamiento": 137,
+      "enCache": 3313,
+      "stream": true,
+      "status": 200
+     }
+    ]
+   }
+  }
+ ]
+}
