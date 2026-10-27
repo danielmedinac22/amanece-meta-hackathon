@@ -28,7 +28,10 @@ export type MensajeEntrante = {
 
 /** Saca el mensaje de texto de un evento `whatsapp.message.received`. Lo demás devuelve `null`. */
 export function leerMensajeEntrante(cuerpo: unknown): MensajeEntrante | null {
+  // El cuerpo viene de afuera y cambia de forma; se lee campo por campo con cuidado.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const crudo = cuerpo as Record<string, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raiz = (crudo?.data && !crudo.message ? crudo.data : crudo) as Record<string, any>
   const mensaje = raiz?.message
   if (!mensaje?.id || !mensaje.from) return null

@@ -6,6 +6,8 @@ const meta = createOpenAICompatible({
   baseURL: 'https://api.meta.ai/v1',
   apiKey: process.env.META_MODEL_API_KEY,
   includeUsage: true,
+  // Muse Spark acepta `json_schema`; sin esto el SDK manda `json_object` y deja el esquema fuera.
+  supportsStructuredOutputs: true,
 })
 
 /** `muse-spark-1.3-contributor` mientras probamos; `muse-spark-1.3` cuando lo prueben personas. */
