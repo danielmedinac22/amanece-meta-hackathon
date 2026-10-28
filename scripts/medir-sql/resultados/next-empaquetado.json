@@ -1,0 +1,135 @@
+{
+ "etiqueta": "empaquetado",
+ "externo": false,
+ "msBuild": 7123,
+ "erroresDeBuild": [
+  "failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'",
+  "Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')",
+  "RuntimeError: Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'). Build with -sASSERTIONS for more info."
+ ],
+ "bytesWasm": 1717872,
+ "pesos": {
+  "validar": {
+   "archivosTrazados": 114,
+   "bytesTrazados": 1742462,
+   "bytesLibpgQuery": 0,
+   "archivosLibpgQuery": []
+  },
+  "ping": {
+   "archivosTrazados": 114,
+   "bytesTrazados": 1683126,
+   "bytesLibpgQuery": 0,
+   "archivosLibpgQuery": []
+  },
+  "bytesRouteJsValidar": 426,
+  "bytesRouteJsPing": 399
+ },
+ "arranque": {
+  "listoMsMediana": 324,
+  "primerPingDesdeElArranqueMsMediana": 450,
+  "primeraValidacionMsMediana": 7,
+  "primeraValidacionMsMax": 8,
+  "validarSimpleServidorMsMediana": 0,
+  "validarComplejoServidorMsMediana": 0,
+  "validarComplejoCalienteRoundTripMsMediana": 1.3,
+  "rssMbMediana": 0,
+  "todasOk": false
+ },
+ "arranques": [
+  {
+   "listoMs": 296.9437079999998,
+   "primerPing": {
+    "desdeElArranqueMs": 421.4025419999998,
+    "soloLaLlamadaMs": 108.41591600000083
+   },
+   "primeraValidacionMs": 8.082166000000143,
+   "primeraStatus": 500,
+   "primeraOk": null,
+   "cargaDelParserMs": null,
+   "validarMs": null,
+   "validarComplejoCalienteMsMediana": 1.279583000000457,
+   "msValidarComplejoServidor": null,
+   "rssMb": null,
+   "errorDeProceso": [
+    "failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'",
+    "Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')"
+   ]
+  },
+  {
+   "listoMs": 321.4554159999989,
+   "primerPing": {
+    "desdeElArranqueMs": 436.11141599999974,
+    "soloLaLlamadaMs": 115.05433300000004
+   },
+   "primeraValidacionMs": 6.722125000000233,
+   "primeraStatus": 500,
+   "primeraOk": null,
+   "cargaDelParserMs": null,
+   "validarMs": null,
+   "validarComplejoCalienteMsMediana": 1.1564999999991414,
+   "msValidarComplejoServidor": null,
+   "rssMb": null,
+   "errorDeProceso": [
+    "failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'",
+    "Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')"
+   ]
+  },
+  {
+   "listoMs": 333.2034160000003,
+   "primerPing": {
+    "desdeElArranqueMs": 451.27549999999974,
+    "soloLaLlamadaMs": 110.11408400000073
+   },
+   "primeraValidacionMs": 6.9444169999987935,
+   "primeraStatus": 500,
+   "primeraOk": null,
+   "cargaDelParserMs": null,
+   "validarMs": null,
+   "validarComplejoCalienteMsMediana": 1.1066249999985303,
+   "msValidarComplejoServidor": null,
+   "rssMb": null,
+   "errorDeProceso": [
+    "failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'",
+    "Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')"
+   ]
+  },
+  {
+   "listoMs": 324.1703749999997,
+   "primerPing": {
+    "desdeElArranqueMs": 449.56224999999904,
+    "soloLaLlamadaMs": 107.90020799999911
+   },
+   "primeraValidacionMs": 8.379499999999098,
+   "primeraStatus": 500,
+   "primeraOk": null,
+   "cargaDelParserMs": null,
+   "validarMs": null,
+   "validarComplejoCalienteMsMediana": 1.5467920000010054,
+   "msValidarComplejoServidor": null,
+   "rssMb": null,
+   "errorDeProceso": [
+    "failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'",
+    "Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')"
+   ]
+  },
+  {
+   "listoMs": 335.87958400000025,
+   "primerPing": {
+    "desdeElArranqueMs": 465.8832089999996,
+    "soloLaLlamadaMs": 120.96837500000038
+   },
+   "primeraValidacionMs": 7.440916999999899,
+   "primeraStatus": 500,
+   "primeraOk": null,
+   "cargaDelParserMs": null,
+   "validarMs": null,
+   "validarComplejoCalienteMsMediana": 1.3108749999992142,
+   "msValidarComplejoServidor": null,
+   "rssMb": null,
+   "errorDeProceso": [
+    "failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'",
+    "Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')"
+   ]
+  }
+ ]
+}

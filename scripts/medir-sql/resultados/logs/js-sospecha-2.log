@@ -1,0 +1,24 @@
+confirmados_por_dia        correcta         1ra=si d=1 c=1 21.9s $0.0129 179 días, todos coinciden
+confirmados_30_dias        correcta         1ra=si d=1 c=1 20.8s $0.0120 29 filas coinciden
+novedad_lista              correcta         1ra=si d=1 c=1 20.8s $0.0133 32 filas coinciden
+recompra_60                correcta         1ra=si d=1 c=1 25.0s $0.0119 1 filas coinciden
+mejores_clientes           correcta         1ra=si d=1 c=1 28.6s $0.0158 10 filas coinciden
+margen_producto            declino_bien     1ra=no d=1 c=0 6.7s $0.0041 motivo campo_inexistente: costo unitario o costo de compra por producto para calcular la g
+dias_confirmado_entregado  declino_bien     1ra=no d=1 c=0 9.8s $0.0059 motivo campo_inexistente: Fecha y hora en que cada pedido pasó a confirmado y fecha y hora
+lo_que_escribio            declino_bien     1ra=no d=1 c=0 14.2s $0.0077 motivo campo_inexistente: El texto o contenido de lo que escribió cada cliente; la tabla m
+contadores_estado          mal_en_silencio  1ra=si d=1 c=1 18.4s $0.0113 0 filas y la base dice 6
+contadores_producto        correcta         1ra=no d=1 c=2 34.0s $0.0229 14 filas coinciden
+ventas_dia_ciudad          correcta         1ra=si d=1 c=1 19.4s $0.0117 104 filas coinciden
+ticket_ciudad              correcta         1ra=no d=1 c=2 35.1s $0.0217 8 filas coinciden
+primera_respuesta          mal_en_silencio  1ra=si d=1 c=1 23.5s $0.0142 no encuentro el valor 278.9710000000002
+se_compran_juntos          correcta         1ra=no d=1 c=2 42.5s $0.0280 5 filas coinciden
+cohortes_retencion         mal_en_silencio  1ra=si d=1 c=1 28.0s $0.0170 no encuentro la fila {"mes":"2026-08-01","ret30":59.6,"ret60":74.5,"ret90":78.4,"clientes"
+clientes_inactivos         correcta         1ra=si d=1 c=1 29.8s $0.0165 1 filas coinciden
+cancelados_ciudad          correcta         1ra=no d=1 c=2 44.2s $0.0211 8 filas coinciden
+pedidos_por_hora           correcta         1ra=si d=1 c=1 24.5s $0.0133 18 filas coinciden
+casos_resolucion           correcta         1ra=si d=1 c=1 18.5s $0.0121 1 filas coinciden
+ventas_semana              correcta         1ra=si d=1 c=1 24.1s $0.0147 los valores coinciden (sin importar cómo vengan repartidos en filas)
+clientes_nuevos_mes        correcta         1ra=si d=1 c=1 20.0s $0.0120 6 filas coinciden
+pendientes_viejos          correcta         1ra=si d=1 c=1 23.7s $0.0147 165 filas coinciden
+costo_envios               declino_bien     1ra=no d=1 c=0 14.6s $0.0080 motivo campo_inexistente: valor o costo de envío por pedido, el contrato de pedidos no tra
+guardado scripts/medir-sql/resultados/js-sospecha-rep2.json

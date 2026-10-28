@@ -1,0 +1,161 @@
+{
+ "A": "2679bfd4-ef21-4663-8a65-df9cc4d97992",
+ "B": "35007b78-ce6e-4db9-9f4f-832f81ab4438",
+ "pruebas": [
+  {
+   "nombre": "rol + variable + tope en una transacción HTTP",
+   "ok": true,
+   "detalle": {
+    "usuario": "amanece_consultas",
+    "negocio": "2679bfd4-ef21-4663-8a65-df9cc4d97992",
+    "tope": "2s",
+    "bypassrls": false
+   }
+  },
+  {
+   "nombre": "llamadas HTTP sueltas pierden SET LOCAL",
+   "ok": true,
+   "detalle": {
+    "usuario": "neondb_owner",
+    "negocio": ""
+   }
+  },
+  {
+   "nombre": "aislamiento con la política real (negocio_id = current_setting)",
+   "ok": true,
+   "detalle": {
+    "A_ve": {
+     "n": 10000,
+     "negocios": 1
+    },
+    "B_ve": {
+     "n": 800,
+     "negocios": 1
+    },
+    "A_pide_filas_de_B": 0,
+    "A_pide_clientes_de_B": 0,
+    "A_pide_casos_de_B": 0,
+    "filtro_de_la_CTE_apuntando_a_B": 0
+   }
+  },
+  {
+   "nombre": "aislamiento con la política mutada a true (se espera FALLA)",
+   "ok": false,
+   "detalle": {
+    "A_ve": {
+     "n": 10853,
+     "negocios": 4
+    },
+    "B_ve": {
+     "n": 10853,
+     "negocios": 4
+    },
+    "A_pide_filas_de_B": 800,
+    "A_pide_clientes_de_B": 300,
+    "A_pide_casos_de_B": 56,
+    "filtro_de_la_CTE_apuntando_a_B": 800
+   }
+  },
+  {
+   "nombre": "aislamiento con la política restaurada",
+   "ok": true,
+   "detalle": {
+    "A_ve": {
+     "n": 10000,
+     "negocios": 1
+    },
+    "B_ve": {
+     "n": 800,
+     "negocios": 1
+    },
+    "A_pide_filas_de_B": 0,
+    "A_pide_clientes_de_B": 0,
+    "A_pide_casos_de_B": 0,
+    "filtro_de_la_CTE_apuntando_a_B": 0
+   }
+  },
+  {
+   "nombre": "la mutación de control hace fallar la prueba (y la restauración la arregla)",
+   "ok": true,
+   "detalle": {
+    "base": true,
+    "conMutacion": false,
+    "restaurada": true
+   }
+  },
+  {
+   "nombre": "sin app.negocio_id la consulta falla (no devuelve todo)",
+   "ok": true,
+   "detalle": "invalid input syntax for type uuid: \"\""
+  },
+  {
+   "nombre": "ataque: leer otra tabla sin permiso (negocios)",
+   "ok": true,
+   "detalle": "permission denied for table negocios (87 ms)"
+  },
+  {
+   "nombre": "ataque: leer pg_authid",
+   "ok": true,
+   "detalle": "permission denied for table pg_authid (86 ms)"
+  },
+  {
+   "nombre": "ataque: leer la columna no concedida (texto de mensajes)",
+   "ok": true,
+   "detalle": "permission denied for table mensajes_cliente (83 ms)"
+  },
+  {
+   "nombre": "ataque: leer la columna no concedida (dirección)",
+   "ok": true,
+   "detalle": "permission denied for table pedidos (82 ms)"
+  },
+  {
+   "nombre": "ataque: escribir",
+   "ok": true,
+   "detalle": "cannot execute UPDATE in a read-only transaction (82 ms)"
+  },
+  {
+   "nombre": "ataque: borrar",
+   "ok": true,
+   "detalle": "cannot execute DELETE in a read-only transaction (82 ms)"
+  },
+  {
+   "nombre": "ataque: pg_sleep(5) con tope de 2 s",
+   "ok": true,
+   "detalle": "canceling statement due to statement timeout (2083 ms)"
+  },
+  {
+   "nombre": "ataque: cambiarse de rol",
+   "ok": false,
+   "detalle": "NO se frenó: []"
+  },
+  {
+   "nombre": "ataque: consulta pesada (producto cartesiano)",
+   "ok": true,
+   "detalle": "canceling statement due to statement timeout (2087 ms)"
+  },
+  {
+   "nombre": "ataque: set_config dentro del SELECT para cambiar de Negocio",
+   "ok": false,
+   "detalle": {
+    "n": 800,
+    "negocios": 1
+   }
+  },
+  {
+   "nombre": "referencia: set_config como sentencia aparte SÍ cambia de Negocio (por eso el validador prohíbe set_config)",
+   "ok": true,
+   "detalle": {
+    "n": 800,
+    "negocios": 1
+   }
+  },
+  {
+   "nombre": "mediana de 7 llamadas: una consulta suelta vs la transacción de 4 sentencias",
+   "ok": true,
+   "detalle": {
+    "sueltaMs": 78,
+    "transaccionMs": 85
+   }
+  }
+ ]
+}

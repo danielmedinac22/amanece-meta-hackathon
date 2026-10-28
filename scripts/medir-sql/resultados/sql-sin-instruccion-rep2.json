@@ -1,0 +1,222 @@
+[
+ {
+  "id": "margen_producto",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: costo de compra por producto o costo de cada producto vendido para calcular el margen",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 4542.721958,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1440,
+   "salida": 499,
+   "razonamiento": 419,
+   "enCache": 1406,
+   "usdStandard": 0.00392075,
+   "usdContributor": 0.00024380000000000002
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "No se puede calcular el margen de ganancia por producto porque no hay datos de costo",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "No se puede calcular el margen de ganancia por producto porque no hay datos de costo",
+    "falta": "costo de compra por producto o costo de cada producto vendido para calcular el margen",
+    "validador": "",
+    "postgres": "",
+    "ms": 4542.6475,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1440,
+     "salida": 499,
+     "razonamiento": 419,
+     "enCache": 1406,
+     "usdStandard": 0.00392075,
+     "usdContributor": 0.00024380000000000002
+    }
+   }
+  ]
+ },
+ {
+  "id": "dias_confirmado_entregado",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: cuándo se confirmó y cuándo se entregó cada pedido; pedidos solo trae creado y estado actual",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 5652.520334,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1436,
+   "salida": 649,
+   "razonamiento": 545,
+   "enCache": 1278,
+   "usdStandard": 0.00455325,
+   "usdContributor": 0.0002734
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "Días promedio de confirmado a entregado no calculable con el catálogo actual",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "Días promedio de confirmado a entregado no calculable con el catálogo actual",
+    "falta": "cuándo se confirmó y cuándo se entregó cada pedido; pedidos solo trae creado y estado actual",
+    "validador": "",
+    "postgres": "",
+    "ms": 5652.517208000001,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1436,
+     "salida": 649,
+     "razonamiento": 545,
+     "enCache": 1278,
+     "usdStandard": 0.00455325,
+     "usdContributor": 0.0002734
+    }
+   }
+  ]
+ },
+ {
+  "id": "lo_que_escribio",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: El texto de lo que escribió cada cliente; conversaciones solo trae conteos y tiempos por cliente y día, no el contenido de los mensajes",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 6069.423541000002,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1443,
+   "salida": 649,
+   "razonamiento": 548,
+   "enCache": 0,
+   "usdStandard": 0.004562,
+   "usdContributor": 0.00027410000000000005
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "No se puede mostrar lo que escribió cada cliente en las conversaciones de hoy",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "No se puede mostrar lo que escribió cada cliente en las conversaciones de hoy",
+    "falta": "El texto de lo que escribió cada cliente; conversaciones solo trae conteos y tiempos por cliente y día, no el contenido de los mensajes",
+    "validador": "",
+    "postgres": "",
+    "ms": 6069.405083,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1443,
+     "salida": 649,
+     "razonamiento": 548,
+     "enCache": 0,
+     "usdStandard": 0.004562,
+     "usdContributor": 0.00027410000000000005
+    }
+   }
+  ]
+ },
+ {
+  "id": "costo_envios",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: costo de envío por pedido, ninguna fuente trae lo gastado en envíos",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 6313.272792,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1438,
+   "salida": 597,
+   "razonamiento": 516,
+   "enCache": 0,
+   "usdStandard": 0.00433475,
+   "usdContributor": 0.00026320000000000006
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "Gasto en envíos del mes en curso",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "Gasto en envíos del mes en curso",
+    "falta": "costo de envío por pedido, ninguna fuente trae lo gastado en envíos",
+    "validador": "",
+    "postgres": "",
+    "ms": 6313.262750000002,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1438,
+     "salida": 597,
+     "razonamiento": 516,
+     "enCache": 0,
+     "usdStandard": 0.00433475,
+     "usdContributor": 0.00026320000000000006
+    }
+   }
+  ]
+ }
+]

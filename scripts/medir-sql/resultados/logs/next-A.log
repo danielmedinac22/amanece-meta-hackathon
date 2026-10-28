@@ -1,0 +1,12 @@
+▲ Next.js 16.4.3
+- Local:         http://localhost:3099
+- Network:       http://192.168.78.239:3099
+✓ Ready in 59ms
+✓ Running next.config.ts took 14ms
+failed to asynchronously prepare wasm: Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'
+Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm')
+⨯ RuntimeError: Aborted(Error: ENOENT: no such file or directory, open '/ROOT/node_modules/.pnpm/libpg-query@18.1.5/node_modules/libpg-query/wasm/libpg-query.wasm'). Build with -sASSERTIONS for more info.
+    at M (.next/server/chunks/[root-of-the-server]__0egl2o_gyugbq._.js:1:1622)
+    at $ (.next/server/chunks/[root-of-the-server]__0egl2o_gyugbq._.js:1:1948)
+    at async j (.next/server/chunks/[root-of-the-server]__0egl2o_gyugbq._.js:1:2736)
+    at async n (.next/server/chunks/[root-of-the-server]__0egl2o_gyugbq._.js:1:38615)

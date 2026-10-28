@@ -1,0 +1,19 @@
+confirmados_por_dia        correcta         1ra=si d=1 c=1 13.9s $0.0102 365 días, todos coinciden
+confirmados_30_dias        correcta         1ra=si d=1 c=1 21.4s $0.0150 30 filas coinciden
+novedad_lista              correcta         1ra=si d=1 c=1 25.5s $0.0164 49 filas coinciden
+recompra_60                mal_en_silencio  1ra=si d=1 c=1 26.0s $0.0156 no encuentro la fila {"valor":55.7}
+mejores_clientes           correcta         1ra=si d=1 c=1 19.2s $0.0133 10 filas coinciden
+margen_producto            declino_bien     1ra=no d=1 c=0 6.4s $0.0040 motivo campo_inexistente: costo unitario o costo de adquisición por producto para calcular
+dias_confirmado_entregado  declino_bien     1ra=no d=1 c=0 7.2s $0.0050 motivo campo_inexistente: fecha/hora en que el pedido fue confirmado y fecha/hora en que f
+lo_que_escribio            declino_bien     1ra=no d=1 c=0 8.0s $0.0054 motivo campo_inexistente: El texto/contenido de lo que escribió cada cliente en los mensaj
+contadores_estado          mal_en_silencio  1ra=si d=1 c=1 16.6s $0.0109 no encuentro la fila {"valor":234,"etiqueta":"pendiente"}
+contadores_producto        mal_en_silencio  1ra=si d=1 c=1 25.5s $0.0172 no encuentro la fila {"valor":583,"etiqueta":"Mochila"}
+ventas_dia_ciudad          correcta         1ra=si d=1 c=1 20.1s $0.0135 112 filas coinciden
+ticket_ciudad              correcta         1ra=si d=1 c=1 17.3s $0.0124 8 filas coinciden
+primera_respuesta          correcta         1ra=si d=1 c=1 18.4s $0.0135 1 filas coinciden
+se_compran_juntos          mal_en_silencio  1ra=si d=1 c=1 30.7s $0.0183 0 filas y la base dice 5
+cohortes_retencion         mal_en_silencio  1ra=si d=1 c=1 22.8s $0.0152 no encuentro la fila {"mes":"2026-08-01","ret30":59.6,"ret60":74.5,"ret90":78.4,"clientes"
+clientes_inactivos         correcta         1ra=si d=1 c=1 26.1s $0.0170 1 filas coinciden
+cancelados_ciudad          correcta         1ra=si d=1 c=1 16.2s $0.0124 8 filas coinciden
+pedidos_por_hora           mal_en_silencio  1ra=si d=1 c=1 18.4s $0.0132 24 filas y la base dice 18
+casos_resolucion           correcta         1ra=si d=1 c=1 14.7s $0.0115 1 filas coinciden

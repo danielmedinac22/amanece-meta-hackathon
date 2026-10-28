@@ -1,0 +1,6781 @@
+[
+ {
+  "id": "confirmados_por_dia",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "30 días, todos coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 8460.514667,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1505,
+   "salida": 953,
+   "razonamiento": 830,
+   "enCache": 1406,
+   "usdStandard": 0.0059315,
+   "usdContributor": 0.0003411
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT p.dia_local::text AS etiqueta, COUNT(*) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.cuenta_como_venta = true AND p.dia_local > h.hoy_local - 30 GROUP BY p.dia_local ORDER BY p.dia_local",
+  "enPalabras": "Cuenta los pedidos que cuentan como venta por día en los últimos 30 días incluyendo hoy",
+  "filas": 30,
+  "total": 30,
+  "muestra": [
+   {
+    "valor": 98,
+    "etiqueta": "2026-09-28"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-09-29"
+   },
+   {
+    "valor": 92,
+    "etiqueta": "2026-09-30"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 98,
+    "etiqueta": "2026-09-28"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-09-29"
+   },
+   {
+    "valor": 92,
+    "etiqueta": "2026-09-30"
+   },
+   {
+    "valor": 87,
+    "etiqueta": "2026-10-01"
+   },
+   {
+    "valor": 88,
+    "etiqueta": "2026-10-02"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-03"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-10-04"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-05"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-06"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-10-07"
+   },
+   {
+    "valor": 77,
+    "etiqueta": "2026-10-08"
+   },
+   {
+    "valor": 63,
+    "etiqueta": "2026-10-09"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-10-10"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-11"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-12"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-13"
+   },
+   {
+    "valor": 100,
+    "etiqueta": "2026-10-14"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-15"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-16"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-17"
+   },
+   {
+    "valor": 104,
+    "etiqueta": "2026-10-18"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-19"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-20"
+   },
+   {
+    "valor": 97,
+    "etiqueta": "2026-10-21"
+   },
+   {
+    "valor": 107,
+    "etiqueta": "2026-10-22"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-23"
+   },
+   {
+    "valor": 105,
+    "etiqueta": "2026-10-24"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-25"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-26"
+   },
+   {
+    "valor": 52,
+    "etiqueta": "2026-10-27"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 22,
+    "etiqueta": "2026-06-16"
+   },
+   {
+    "valor": 69,
+    "etiqueta": "2026-09-18"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-03"
+   },
+   {
+    "valor": 14,
+    "etiqueta": "2026-05-20"
+   },
+   {
+    "valor": 69,
+    "etiqueta": "2026-09-02"
+   },
+   {
+    "valor": 49,
+    "etiqueta": "2026-08-04"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-09-04"
+   },
+   {
+    "valor": 3,
+    "etiqueta": "2026-05-11"
+   },
+   {
+    "valor": 6,
+    "etiqueta": "2026-05-07"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-13"
+   },
+   {
+    "valor": 7,
+    "etiqueta": "2026-05-24"
+   },
+   {
+    "valor": 19,
+    "etiqueta": "2026-06-11"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-09-17"
+   },
+   {
+    "valor": 54,
+    "etiqueta": "2026-07-13"
+   },
+   {
+    "valor": 13,
+    "etiqueta": "2026-06-06"
+   },
+   {
+    "valor": 9,
+    "etiqueta": "2026-05-16"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "2026-08-13"
+   },
+   {
+    "valor": 15,
+    "etiqueta": "2026-05-30"
+   },
+   {
+    "valor": 14,
+    "etiqueta": "2026-05-25"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-17"
+   },
+   {
+    "valor": 65,
+    "etiqueta": "2026-08-30"
+   },
+   {
+    "valor": 52,
+    "etiqueta": "2026-08-06"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-08-01"
+   },
+   {
+    "valor": 64,
+    "etiqueta": "2026-08-20"
+   },
+   {
+    "valor": 73,
+    "etiqueta": "2026-09-07"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-11"
+   },
+   {
+    "valor": 36,
+    "etiqueta": "2026-07-18"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-07-08"
+   },
+   {
+    "valor": 66,
+    "etiqueta": "2026-09-24"
+   },
+   {
+    "valor": 65,
+    "etiqueta": "2026-09-26"
+   },
+   {
+    "valor": 87,
+    "etiqueta": "2026-10-01"
+   },
+   {
+    "valor": 86,
+    "etiqueta": "2026-09-08"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "2026-08-09"
+   },
+   {
+    "valor": 66,
+    "etiqueta": "2026-09-03"
+   },
+   {
+    "valor": 83,
+    "etiqueta": "2026-09-16"
+   },
+   {
+    "valor": 24,
+    "etiqueta": "2026-06-25"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "2026-07-17"
+   },
+   {
+    "valor": 9,
+    "etiqueta": "2026-05-13"
+   },
+   {
+    "valor": 62,
+    "etiqueta": "2026-08-19"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "2026-08-22"
+   },
+   {
+    "valor": 21,
+    "etiqueta": "2026-06-05"
+   },
+   {
+    "valor": 5,
+    "etiqueta": "2026-05-14"
+   },
+   {
+    "valor": 30,
+    "etiqueta": "2026-06-24"
+   },
+   {
+    "valor": 25,
+    "etiqueta": "2026-06-14"
+   },
+   {
+    "valor": 97,
+    "etiqueta": "2026-10-21"
+   },
+   {
+    "valor": 55,
+    "etiqueta": "2026-08-08"
+   },
+   {
+    "valor": 46,
+    "etiqueta": "2026-08-15"
+   },
+   {
+    "valor": 57,
+    "etiqueta": "2026-08-10"
+   },
+   {
+    "valor": 11,
+    "etiqueta": "2026-05-31"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-20"
+   },
+   {
+    "valor": 71,
+    "etiqueta": "2026-09-05"
+   },
+   {
+    "valor": 29,
+    "etiqueta": "2026-06-22"
+   },
+   {
+    "valor": 71,
+    "etiqueta": "2026-09-23"
+   },
+   {
+    "valor": 26,
+    "etiqueta": "2026-06-08"
+   },
+   {
+    "valor": 28,
+    "etiqueta": "2026-06-27"
+   },
+   {
+    "valor": 64,
+    "etiqueta": "2026-09-19"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-09-12"
+   },
+   {
+    "valor": 34,
+    "etiqueta": "2026-06-28"
+   },
+   {
+    "valor": 58,
+    "etiqueta": "2026-08-17"
+   },
+   {
+    "valor": 73,
+    "etiqueta": "2026-09-21"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-15"
+   },
+   {
+    "valor": 40,
+    "etiqueta": "2026-06-23"
+   },
+   {
+    "valor": 22,
+    "etiqueta": "2026-06-02"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-16"
+   },
+   {
+    "valor": 54,
+    "etiqueta": "2026-07-27"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-19"
+   },
+   {
+    "valor": 12,
+    "etiqueta": "2026-05-27"
+   },
+   {
+    "valor": 9,
+    "etiqueta": "2026-05-12"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-09-27"
+   },
+   {
+    "valor": 59,
+    "etiqueta": "2026-08-18"
+   },
+   {
+    "valor": 25,
+    "etiqueta": "2026-06-07"
+   },
+   {
+    "valor": 15,
+    "etiqueta": "2026-06-01"
+   },
+   {
+    "valor": 16,
+    "etiqueta": "2026-06-03"
+   },
+   {
+    "valor": 26,
+    "etiqueta": "2026-07-03"
+   },
+   {
+    "valor": 36,
+    "etiqueta": "2026-07-10"
+   },
+   {
+    "valor": 39,
+    "etiqueta": "2026-07-11"
+   },
+   {
+    "valor": 55,
+    "etiqueta": "2026-07-19"
+   },
+   {
+    "valor": 40,
+    "etiqueta": "2026-07-22"
+   },
+   {
+    "valor": 33,
+    "etiqueta": "2026-07-14"
+   },
+   {
+    "valor": 92,
+    "etiqueta": "2026-09-30"
+   },
+   {
+    "valor": 7,
+    "etiqueta": "2026-05-19"
+   },
+   {
+    "valor": 10,
+    "etiqueta": "2026-05-26"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-06"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-23"
+   },
+   {
+    "valor": 100,
+    "etiqueta": "2026-10-14"
+   },
+   {
+    "valor": 105,
+    "etiqueta": "2026-10-24"
+   },
+   {
+    "valor": 7,
+    "etiqueta": "2026-05-17"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-26"
+   },
+   {
+    "valor": 6,
+    "etiqueta": "2026-05-29"
+   },
+   {
+    "valor": 11,
+    "etiqueta": "2026-05-28"
+   },
+   {
+    "valor": 58,
+    "etiqueta": "2026-08-05"
+   },
+   {
+    "valor": 51,
+    "etiqueta": "2026-07-29"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-07-02"
+   },
+   {
+    "valor": 58,
+    "etiqueta": "2026-07-30"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-09-29"
+   },
+   {
+    "valor": 24,
+    "etiqueta": "2026-06-19"
+   },
+   {
+    "valor": 61,
+    "etiqueta": "2026-08-02"
+   },
+   {
+    "valor": 73,
+    "etiqueta": "2026-08-29"
+   },
+   {
+    "valor": 5,
+    "etiqueta": "2026-05-10"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "2026-07-26"
+   },
+   {
+    "valor": 88,
+    "etiqueta": "2026-09-25"
+   },
+   {
+    "valor": 9,
+    "etiqueta": "2026-05-15"
+   },
+   {
+    "valor": 59,
+    "etiqueta": "2026-08-03"
+   },
+   {
+    "valor": 10,
+    "etiqueta": "2026-05-21"
+   },
+   {
+    "valor": 88,
+    "etiqueta": "2026-10-02"
+   },
+   {
+    "valor": 84,
+    "etiqueta": "2026-08-31"
+   },
+   {
+    "valor": 77,
+    "etiqueta": "2026-10-08"
+   },
+   {
+    "valor": 1,
+    "etiqueta": "2026-05-02"
+   },
+   {
+    "valor": 35,
+    "etiqueta": "2026-07-01"
+   },
+   {
+    "valor": 29,
+    "etiqueta": "2026-06-10"
+   },
+   {
+    "valor": 27,
+    "etiqueta": "2026-06-21"
+   },
+   {
+    "valor": 16,
+    "etiqueta": "2026-06-18"
+   },
+   {
+    "valor": 42,
+    "etiqueta": "2026-07-06"
+   },
+   {
+    "valor": 38,
+    "etiqueta": "2026-07-21"
+   },
+   {
+    "valor": 23,
+    "etiqueta": "2026-06-12"
+   },
+   {
+    "valor": 23,
+    "etiqueta": "2026-06-17"
+   },
+   {
+    "valor": 71,
+    "etiqueta": "2026-08-28"
+   },
+   {
+    "valor": 11,
+    "etiqueta": "2026-06-04"
+   },
+   {
+    "valor": 67,
+    "etiqueta": "2026-09-14"
+   },
+   {
+    "valor": 60,
+    "etiqueta": "2026-09-01"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-25"
+   },
+   {
+    "valor": 1,
+    "etiqueta": "2026-05-04"
+   },
+   {
+    "valor": 28,
+    "etiqueta": "2026-06-20"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-07-23"
+   },
+   {
+    "valor": 98,
+    "etiqueta": "2026-09-28"
+   },
+   {
+    "valor": 63,
+    "etiqueta": "2026-10-09"
+   },
+   {
+    "valor": 104,
+    "etiqueta": "2026-10-18"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-06-26"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-10-10"
+   },
+   {
+    "valor": 52,
+    "etiqueta": "2026-08-14"
+   },
+   {
+    "valor": 32,
+    "etiqueta": "2026-07-04"
+   },
+   {
+    "valor": 8,
+    "etiqueta": "2026-05-18"
+   },
+   {
+    "valor": 42,
+    "etiqueta": "2026-07-28"
+   },
+   {
+    "valor": 6,
+    "etiqueta": "2026-05-09"
+   },
+   {
+    "valor": 68,
+    "etiqueta": "2026-09-09"
+   },
+   {
+    "valor": 13,
+    "etiqueta": "2026-05-23"
+   },
+   {
+    "valor": 28,
+    "etiqueta": "2026-06-15"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-07-24"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-08-27"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-05"
+   },
+   {
+    "valor": 60,
+    "etiqueta": "2026-09-06"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-10-04"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "2026-07-20"
+   },
+   {
+    "valor": 34,
+    "etiqueta": "2026-06-29"
+   },
+   {
+    "valor": 64,
+    "etiqueta": "2026-08-23"
+   },
+   {
+    "valor": 71,
+    "etiqueta": "2026-09-11"
+   },
+   {
+    "valor": 20,
+    "etiqueta": "2026-06-13"
+   },
+   {
+    "valor": 42,
+    "etiqueta": "2026-07-25"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-10-07"
+   },
+   {
+    "valor": 56,
+    "etiqueta": "2026-08-24"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-08-25"
+   },
+   {
+    "valor": 68,
+    "etiqueta": "2026-09-20"
+   },
+   {
+    "valor": 75,
+    "etiqueta": "2026-09-15"
+   },
+   {
+    "valor": 37,
+    "etiqueta": "2026-07-15"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-12"
+   },
+   {
+    "valor": 45,
+    "etiqueta": "2026-08-12"
+   },
+   {
+    "valor": 32,
+    "etiqueta": "2026-06-30"
+   },
+   {
+    "valor": 70,
+    "etiqueta": "2026-09-22"
+   },
+   {
+    "valor": 3,
+    "etiqueta": "2026-05-06"
+   },
+   {
+    "valor": 41,
+    "etiqueta": "2026-07-07"
+   },
+   {
+    "valor": 67,
+    "etiqueta": "2026-08-21"
+   },
+   {
+    "valor": 107,
+    "etiqueta": "2026-10-22"
+   },
+   {
+    "valor": 50,
+    "etiqueta": "2026-08-26"
+   },
+   {
+    "valor": 24,
+    "etiqueta": "2026-06-09"
+   },
+   {
+    "valor": 2,
+    "etiqueta": "2026-05-05"
+   },
+   {
+    "valor": 57,
+    "etiqueta": "2026-08-07"
+   },
+   {
+    "valor": 55,
+    "etiqueta": "2026-07-16"
+   },
+   {
+    "valor": 1,
+    "etiqueta": "2026-05-03"
+   },
+   {
+    "valor": 3,
+    "etiqueta": "2026-05-08"
+   },
+   {
+    "valor": 34,
+    "etiqueta": "2026-07-09"
+   },
+   {
+    "valor": 49,
+    "etiqueta": "2026-08-16"
+   },
+   {
+    "valor": 52,
+    "etiqueta": "2026-10-27"
+   },
+   {
+    "valor": 59,
+    "etiqueta": "2026-08-11"
+   },
+   {
+    "valor": 75,
+    "etiqueta": "2026-09-13"
+   },
+   {
+    "valor": 45,
+    "etiqueta": "2026-07-05"
+   },
+   {
+    "valor": 39,
+    "etiqueta": "2026-07-31"
+   },
+   {
+    "valor": 32,
+    "etiqueta": "2026-07-12"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-09-10"
+   },
+   {
+    "valor": 15,
+    "etiqueta": "2026-05-22"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.dia_local::text AS etiqueta, COUNT(*) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.cuenta_como_venta = true AND p.dia_local > h.hoy_local - 30 GROUP BY p.dia_local ORDER BY p.dia_local",
+    "enPalabras": "Cuenta los pedidos que cuentan como venta por día en los últimos 30 días incluyendo hoy",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 8408.257792,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1505,
+     "salida": 953,
+     "razonamiento": 830,
+     "enCache": 1406,
+     "usdStandard": 0.0059315,
+     "usdContributor": 0.0003411
+    }
+   }
+  ]
+ },
+ {
+  "id": "confirmados_30_dias",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "30 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 16071.547166,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1511,
+   "salida": 1509,
+   "razonamiento": 1359,
+   "enCache": 1406,
+   "usdStandard": 0.008302,
+   "usdContributor": 0.0004529
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "WITH dias AS (SELECT ((SELECT hoy_local FROM hoy) - g.i)::date AS dia FROM generate_series(0, 29) AS g(i)) SELECT dias.dia::text AS etiqueta, COUNT(pedidos.id) AS valor FROM dias LEFT JOIN pedidos ON pedidos.dia_local = dias.dia AND pedidos.cuenta_como_venta = true GROUP BY dias.dia ORDER BY dias.dia",
+  "enPalabras": "Cuenta los pedidos que cuentan como venta por día en los últimos 30 días incluyendo hoy",
+  "filas": 30,
+  "total": 30,
+  "muestra": [
+   {
+    "valor": 98,
+    "etiqueta": "2026-09-28"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-09-29"
+   },
+   {
+    "valor": 92,
+    "etiqueta": "2026-09-30"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 98,
+    "etiqueta": "2026-09-28"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-09-29"
+   },
+   {
+    "valor": 92,
+    "etiqueta": "2026-09-30"
+   },
+   {
+    "valor": 87,
+    "etiqueta": "2026-10-01"
+   },
+   {
+    "valor": 88,
+    "etiqueta": "2026-10-02"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-03"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-10-04"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-05"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-06"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-10-07"
+   },
+   {
+    "valor": 77,
+    "etiqueta": "2026-10-08"
+   },
+   {
+    "valor": 63,
+    "etiqueta": "2026-10-09"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-10-10"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-11"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-12"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-13"
+   },
+   {
+    "valor": 100,
+    "etiqueta": "2026-10-14"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-15"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-16"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-17"
+   },
+   {
+    "valor": 104,
+    "etiqueta": "2026-10-18"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-19"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-20"
+   },
+   {
+    "valor": 97,
+    "etiqueta": "2026-10-21"
+   },
+   {
+    "valor": 107,
+    "etiqueta": "2026-10-22"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-23"
+   },
+   {
+    "valor": 105,
+    "etiqueta": "2026-10-24"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-25"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-26"
+   },
+   {
+    "valor": 52,
+    "etiqueta": "2026-10-27"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-03"
+   },
+   {
+    "valor": 92,
+    "etiqueta": "2026-09-30"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-10-10"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-06"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-23"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-13"
+   },
+   {
+    "valor": 100,
+    "etiqueta": "2026-10-14"
+   },
+   {
+    "valor": 105,
+    "etiqueta": "2026-10-24"
+   },
+   {
+    "valor": 97,
+    "etiqueta": "2026-10-21"
+   },
+   {
+    "valor": 81,
+    "etiqueta": "2026-10-26"
+   },
+   {
+    "valor": 95,
+    "etiqueta": "2026-10-20"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-05"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-17"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "2026-10-04"
+   },
+   {
+    "valor": 79,
+    "etiqueta": "2026-09-29"
+   },
+   {
+    "valor": 78,
+    "etiqueta": "2026-10-07"
+   },
+   {
+    "valor": 88,
+    "etiqueta": "2026-10-02"
+   },
+   {
+    "valor": 77,
+    "etiqueta": "2026-10-08"
+   },
+   {
+    "valor": 101,
+    "etiqueta": "2026-10-15"
+   },
+   {
+    "valor": 89,
+    "etiqueta": "2026-10-12"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-11"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-16"
+   },
+   {
+    "valor": 90,
+    "etiqueta": "2026-10-19"
+   },
+   {
+    "valor": 107,
+    "etiqueta": "2026-10-22"
+   },
+   {
+    "valor": 87,
+    "etiqueta": "2026-10-01"
+   },
+   {
+    "valor": 82,
+    "etiqueta": "2026-10-25"
+   },
+   {
+    "valor": 52,
+    "etiqueta": "2026-10-27"
+   },
+   {
+    "valor": 98,
+    "etiqueta": "2026-09-28"
+   },
+   {
+    "valor": 63,
+    "etiqueta": "2026-10-09"
+   },
+   {
+    "valor": 104,
+    "etiqueta": "2026-10-18"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "WITH dias AS (SELECT ((SELECT hoy_local FROM hoy) - g.i)::date AS dia FROM generate_series(0, 29) AS g(i)) SELECT dias.dia::text AS etiqueta, COUNT(pedidos.id) AS valor FROM dias LEFT JOIN pedidos ON pedidos.dia_local = dias.dia AND pedidos.cuenta_como_venta = true GROUP BY dias.dia ORDER BY dias.dia",
+    "enPalabras": "Cuenta los pedidos que cuentan como venta por día en los últimos 30 días incluyendo hoy",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 16019.285790999998,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1511,
+     "salida": 1509,
+     "razonamiento": 1359,
+     "enCache": 1406,
+     "usdStandard": 0.008302,
+     "usdContributor": 0.0004529
+    }
+   }
+  ]
+ },
+ {
+  "id": "novedad_lista",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "49 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 11270.930042,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1519,
+   "salida": 1461,
+   "razonamiento": 1293,
+   "enCache": 1406,
+   "usdStandard": 0.008108,
+   "usdContributor": 0.0004441
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": true,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT p.numero AS numero_pedido, c.nombre AS cliente, p.ciudad AS ciudad_entrega, p.total AS total_cop, p.creado AS creado, p.dia_local AS dia_creacion, p.estado AS estado FROM pedidos p CROSS JOIN hoy h LEFT JOIN clientes c ON c.id = p.cliente_id WHERE p.estado = 'novedad' AND p.dia_local > h.hoy_local - 7 ORDER BY p.creado DESC",
+  "enPalabras": "Lista de pedidos creados en los últimos 7 días, hoy incluido, que hoy están en estado novedad",
+  "filas": 49,
+  "total": 49,
+  "muestra": [
+   {
+    "creado": "2026-10-26T20:38:34.73+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1175",
+    "total_cop": 370000,
+    "dia_creacion": "2026-10-26",
+    "numero_pedido": 9836,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-26T20:23:00.812+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1167",
+    "total_cop": 104000,
+    "dia_creacion": "2026-10-26",
+    "numero_pedido": 9833,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-26T16:02:03.272+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1171",
+    "total_cop": 336000,
+    "dia_creacion": "2026-10-26",
+    "numero_pedido": 9804,
+    "ciudad_entrega": "Bucaramanga"
+   }
+  ],
+  "filasFinales": [
+   {
+    "creado": "2026-10-26T20:38:34.73+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1175",
+    "total_cop": 370000,
+    "dia_creacion": "2026-10-26",
+    "numero_pedido": 9836,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-26T20:23:00.812+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1167",
+    "total_cop": 104000,
+    "dia_creacion": "2026-10-26",
+    "numero_pedido": 9833,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-26T16:02:03.272+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1171",
+    "total_cop": 336000,
+    "dia_creacion": "2026-10-26",
+    "numero_pedido": 9804,
+    "ciudad_entrega": "Bucaramanga"
+   },
+   {
+    "creado": "2026-10-25T23:30:18.779+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1836",
+    "total_cop": 76000,
+    "dia_creacion": "2026-10-25",
+    "numero_pedido": 9770,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-25T17:04:01.383+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1338",
+    "total_cop": 119000,
+    "dia_creacion": "2026-10-25",
+    "numero_pedido": 9726,
+    "ciudad_entrega": "Pasto"
+   },
+   {
+    "creado": "2026-10-25T16:33:05.711+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1098",
+    "total_cop": 283000,
+    "dia_creacion": "2026-10-25",
+    "numero_pedido": 9724,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-25T01:59:09.374+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1488",
+    "total_cop": 212000,
+    "dia_creacion": "2026-10-24",
+    "numero_pedido": 9687,
+    "ciudad_entrega": "Medellín"
+   },
+   {
+    "creado": "2026-10-24T18:02:17.627+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 230",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-24",
+    "numero_pedido": 9609,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-24T17:36:11.847+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1626",
+    "total_cop": 119000,
+    "dia_creacion": "2026-10-24",
+    "numero_pedido": 9606,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-24T16:16:51.643+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 539",
+    "total_cop": 181000,
+    "dia_creacion": "2026-10-24",
+    "numero_pedido": 9595,
+    "ciudad_entrega": "Bucaramanga"
+   },
+   {
+    "creado": "2026-10-24T11:47:05.103+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1854",
+    "total_cop": 100000,
+    "dia_creacion": "2026-10-24",
+    "numero_pedido": 9577,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-24T02:58:46.267+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 496",
+    "total_cop": 52000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9568,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-24T02:40:18.902+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2181",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9567,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-24T00:50:18.323+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 202",
+    "total_cop": 277000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9555,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-24T00:47:19.779+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1082",
+    "total_cop": 209000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9554,
+    "ciudad_entrega": "Pereira"
+   },
+   {
+    "creado": "2026-10-24T00:36:46.235+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 465",
+    "total_cop": 38000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9552,
+    "ciudad_entrega": "Pereira"
+   },
+   {
+    "creado": "2026-10-23T22:59:17.701+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 502",
+    "total_cop": 342000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9529,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-23T22:59:00.466+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 45",
+    "total_cop": 24000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9528,
+    "ciudad_entrega": "Bucaramanga"
+   },
+   {
+    "creado": "2026-10-23T22:21:33.438+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 443",
+    "total_cop": 86000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9524,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-23T20:21:01.996+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1449",
+    "total_cop": 119000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9511,
+    "ciudad_entrega": "Medellín"
+   },
+   {
+    "creado": "2026-10-23T19:39:48.599+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2079",
+    "total_cop": 159000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9504,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-23T16:44:13.377+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1061",
+    "total_cop": 89000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9483,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-23T16:24:48.409+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2095",
+    "total_cop": 100000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9480,
+    "ciudad_entrega": "Bucaramanga"
+   },
+   {
+    "creado": "2026-10-23T02:25:02.952+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1021",
+    "total_cop": 271000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9459,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-23T01:54:21.835+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1715",
+    "total_cop": 238000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9454,
+    "ciudad_entrega": "Medellín"
+   },
+   {
+    "creado": "2026-10-23T01:15:02.821+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1445",
+    "total_cop": 164000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9445,
+    "ciudad_entrega": "Medellín"
+   },
+   {
+    "creado": "2026-10-22T23:57:37.747+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 17",
+    "total_cop": 84000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9435,
+    "ciudad_entrega": "Pasto"
+   },
+   {
+    "creado": "2026-10-22T22:20:39.58+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1336",
+    "total_cop": 89000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9410,
+    "ciudad_entrega": "Pereira"
+   },
+   {
+    "creado": "2026-10-22T20:59:18.643+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 258",
+    "total_cop": 38000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9397,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-22T19:13:38.39+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2370",
+    "total_cop": 378000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9385,
+    "ciudad_entrega": "Cali"
+   },
+   {
+    "creado": "2026-10-22T17:54:12.487+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 664",
+    "total_cop": 62000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9379,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-22T13:01:26.569+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1914",
+    "total_cop": 86000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9353,
+    "ciudad_entrega": "Cali"
+   },
+   {
+    "creado": "2026-10-22T04:10:50.083+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 237",
+    "total_cop": 238000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9350,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-22T02:52:31.705+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1151",
+    "total_cop": 62000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9344,
+    "ciudad_entrega": "Pereira"
+   },
+   {
+    "creado": "2026-10-22T00:50:50.003+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2497",
+    "total_cop": 119000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9328,
+    "ciudad_entrega": "Bucaramanga"
+   },
+   {
+    "creado": "2026-10-22T00:49:46.941+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 718",
+    "total_cop": 117000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9327,
+    "ciudad_entrega": "Pereira"
+   },
+   {
+    "creado": "2026-10-22T00:33:31.213+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1691",
+    "total_cop": 156000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9324,
+    "ciudad_entrega": "Barranquilla"
+   },
+   {
+    "creado": "2026-10-21T22:38:35.365+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 192",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9307,
+    "ciudad_entrega": "Pasto"
+   },
+   {
+    "creado": "2026-10-21T22:03:50.529+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1186",
+    "total_cop": 24000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9304,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-21T20:37:27.127+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2144",
+    "total_cop": 76000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9293,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-21T20:32:48.615+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2133",
+    "total_cop": 225000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9291,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-21T19:48:53.195+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 443",
+    "total_cop": 164000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9286,
+    "ciudad_entrega": "Cali"
+   },
+   {
+    "creado": "2026-10-21T19:48:38.306+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 717",
+    "total_cop": 62000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9285,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-21T19:18:46.119+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 717",
+    "total_cop": 45000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9282,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-21T19:07:48.403+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 1105",
+    "total_cop": 124000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9280,
+    "ciudad_entrega": "Medellín"
+   },
+   {
+    "creado": "2026-10-21T16:52:41.383+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2262",
+    "total_cop": 62000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9267,
+    "ciudad_entrega": "Pereira"
+   },
+   {
+    "creado": "2026-10-21T16:38:39.249+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 925",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9266,
+    "ciudad_entrega": "Bogotá"
+   },
+   {
+    "creado": "2026-10-21T15:19:46.478+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 912",
+    "total_cop": 507000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9257,
+    "ciudad_entrega": "Cali"
+   },
+   {
+    "creado": "2026-10-21T14:09:52.401+00:00",
+    "estado": "novedad",
+    "cliente": "Cliente 2260",
+    "total_cop": 135000,
+    "dia_creacion": "2026-10-21",
+    "numero_pedido": 9249,
+    "ciudad_entrega": "Barranquilla"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "numero": 9249
+   },
+   {
+    "numero": 9257
+   },
+   {
+    "numero": 9266
+   },
+   {
+    "numero": 9267
+   },
+   {
+    "numero": 9280
+   },
+   {
+    "numero": 9282
+   },
+   {
+    "numero": 9285
+   },
+   {
+    "numero": 9286
+   },
+   {
+    "numero": 9291
+   },
+   {
+    "numero": 9293
+   },
+   {
+    "numero": 9304
+   },
+   {
+    "numero": 9307
+   },
+   {
+    "numero": 9324
+   },
+   {
+    "numero": 9327
+   },
+   {
+    "numero": 9328
+   },
+   {
+    "numero": 9344
+   },
+   {
+    "numero": 9350
+   },
+   {
+    "numero": 9353
+   },
+   {
+    "numero": 9379
+   },
+   {
+    "numero": 9385
+   },
+   {
+    "numero": 9397
+   },
+   {
+    "numero": 9410
+   },
+   {
+    "numero": 9435
+   },
+   {
+    "numero": 9445
+   },
+   {
+    "numero": 9454
+   },
+   {
+    "numero": 9459
+   },
+   {
+    "numero": 9480
+   },
+   {
+    "numero": 9483
+   },
+   {
+    "numero": 9504
+   },
+   {
+    "numero": 9511
+   },
+   {
+    "numero": 9524
+   },
+   {
+    "numero": 9528
+   },
+   {
+    "numero": 9529
+   },
+   {
+    "numero": 9552
+   },
+   {
+    "numero": 9554
+   },
+   {
+    "numero": 9555
+   },
+   {
+    "numero": 9567
+   },
+   {
+    "numero": 9568
+   },
+   {
+    "numero": 9577
+   },
+   {
+    "numero": 9595
+   },
+   {
+    "numero": 9606
+   },
+   {
+    "numero": 9609
+   },
+   {
+    "numero": 9687
+   },
+   {
+    "numero": 9724
+   },
+   {
+    "numero": 9726
+   },
+   {
+    "numero": 9770
+   },
+   {
+    "numero": 9804
+   },
+   {
+    "numero": 9833
+   },
+   {
+    "numero": 9836
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.numero AS numero_pedido, c.nombre AS cliente, p.ciudad AS ciudad_entrega, p.total AS total_cop, p.creado AS creado, p.dia_local AS dia_creacion, p.estado AS estado FROM pedidos p CROSS JOIN hoy h LEFT JOIN clientes c ON c.id = p.cliente_id WHERE p.estado = 'novedad' AND p.dia_local > h.hoy_local - 7 ORDER BY p.creado DESC",
+    "enPalabras": "Lista de pedidos creados en los últimos 7 días, hoy incluido, que hoy están en estado novedad",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 11218.289834000003,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1519,
+     "salida": 1461,
+     "razonamiento": 1293,
+     "enCache": 1406,
+     "usdStandard": 0.008108,
+     "usdContributor": 0.0004441
+    }
+   }
+  ]
+ },
+ {
+  "id": "recompra_60",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "1 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 7249.153957999995,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1515,
+   "salida": 926,
+   "razonamiento": 766,
+   "enCache": 1406,
+   "usdStandard": 0.00582925,
+   "usdContributor": 0.00033670000000000005
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "WITH limite AS (SELECT hoy_local - 60 AS desde FROM hoy), compradores AS (SELECT cliente_id, COUNT(*) AS n FROM pedidos CROSS JOIN limite WHERE cuenta_como_venta = true AND dia_local > limite.desde GROUP BY cliente_id) SELECT CASE WHEN COUNT(*) = 0 THEN 0 ELSE 100.0 * COUNT(*) FILTER (WHERE n > 1) / COUNT(*) END AS valor FROM compradores",
+  "enPalabras": "Porcentaje de clientes que compraron que repitieron compra más de una vez en los últimos 60 días",
+  "filas": 1,
+  "total": 1,
+  "muestra": [
+   {
+    "valor": 55.6992337164751
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 55.6992337164751
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 55.7
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "WITH limite AS (SELECT hoy_local - 60 AS desde FROM hoy), compradores AS (SELECT cliente_id, COUNT(*) AS n FROM pedidos CROSS JOIN limite WHERE cuenta_como_venta = true AND dia_local > limite.desde GROUP BY cliente_id) SELECT CASE WHEN COUNT(*) = 0 THEN 0 ELSE 100.0 * COUNT(*) FILTER (WHERE n > 1) / COUNT(*) END AS valor FROM compradores",
+    "enPalabras": "Porcentaje de clientes que compraron que repitieron compra más de una vez en los últimos 60 días",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 7198.004000000001,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1515,
+     "salida": 926,
+     "razonamiento": 766,
+     "enCache": 1406,
+     "usdStandard": 0.00582925,
+     "usdContributor": 0.00033670000000000005
+    }
+   }
+  ]
+ },
+ {
+  "id": "mejores_clientes",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "10 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 5864.242416999994,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1511,
+   "salida": 671,
+   "razonamiento": 552,
+   "enCache": 1406,
+   "usdStandard": 0.0047405,
+   "usdContributor": 0.0002853
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT c.nombre AS cliente, SUM(p.total) AS total_comprado, COUNT(*) AS numero_pedidos FROM pedidos p JOIN clientes c ON c.id = p.cliente_id WHERE p.cuenta_como_venta = true GROUP BY c.id, c.nombre ORDER BY total_comprado DESC LIMIT 10",
+  "enPalabras": "Los 10 clientes con mayor total comprado en ventas de todo el historial",
+  "filas": 10,
+  "total": 10,
+  "muestra": [
+   {
+    "cliente": "Cliente 51",
+    "numero_pedidos": 40,
+    "total_comprado": 6610000
+   },
+   {
+    "cliente": "Cliente 40",
+    "numero_pedidos": 31,
+    "total_comprado": 6037000
+   },
+   {
+    "cliente": "Cliente 242",
+    "numero_pedidos": 29,
+    "total_comprado": 5861000
+   }
+  ],
+  "filasFinales": [
+   {
+    "cliente": "Cliente 51",
+    "numero_pedidos": 40,
+    "total_comprado": 6610000
+   },
+   {
+    "cliente": "Cliente 40",
+    "numero_pedidos": 31,
+    "total_comprado": 6037000
+   },
+   {
+    "cliente": "Cliente 242",
+    "numero_pedidos": 29,
+    "total_comprado": 5861000
+   },
+   {
+    "cliente": "Cliente 170",
+    "numero_pedidos": 35,
+    "total_comprado": 5370000
+   },
+   {
+    "cliente": "Cliente 48",
+    "numero_pedidos": 29,
+    "total_comprado": 5063000
+   },
+   {
+    "cliente": "Cliente 35",
+    "numero_pedidos": 35,
+    "total_comprado": 5001000
+   },
+   {
+    "cliente": "Cliente 20",
+    "numero_pedidos": 29,
+    "total_comprado": 4871000
+   },
+   {
+    "cliente": "Cliente 241",
+    "numero_pedidos": 24,
+    "total_comprado": 4371000
+   },
+   {
+    "cliente": "Cliente 201",
+    "numero_pedidos": 27,
+    "total_comprado": 4213000
+   },
+   {
+    "cliente": "Cliente 217",
+    "numero_pedidos": 24,
+    "total_comprado": 4207000
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "total": 6610000,
+    "nombre": "Cliente 51"
+   },
+   {
+    "total": 6037000,
+    "nombre": "Cliente 40"
+   },
+   {
+    "total": 5861000,
+    "nombre": "Cliente 242"
+   },
+   {
+    "total": 5370000,
+    "nombre": "Cliente 170"
+   },
+   {
+    "total": 5063000,
+    "nombre": "Cliente 48"
+   },
+   {
+    "total": 5001000,
+    "nombre": "Cliente 35"
+   },
+   {
+    "total": 4871000,
+    "nombre": "Cliente 20"
+   },
+   {
+    "total": 4371000,
+    "nombre": "Cliente 241"
+   },
+   {
+    "total": 4213000,
+    "nombre": "Cliente 201"
+   },
+   {
+    "total": 4207000,
+    "nombre": "Cliente 217"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT c.nombre AS cliente, SUM(p.total) AS total_comprado, COUNT(*) AS numero_pedidos FROM pedidos p JOIN clientes c ON c.id = p.cliente_id WHERE p.cuenta_como_venta = true GROUP BY c.id, c.nombre ORDER BY total_comprado DESC LIMIT 10",
+    "enPalabras": "Los 10 clientes con mayor total comprado en ventas de todo el historial",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 5812.168958999995,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1511,
+     "salida": 671,
+     "razonamiento": 552,
+     "enCache": 1406,
+     "usdStandard": 0.0047405,
+     "usdContributor": 0.0002853
+    }
+   }
+  ]
+ },
+ {
+  "id": "margen_producto",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: costo de compra o costo de cada producto para calcular el margen de ganancia",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 4217.378499999999,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1509,
+   "salida": 560,
+   "razonamiento": 482,
+   "enCache": 1406,
+   "usdStandard": 0.00426625,
+   "usdContributor": 0.0002629
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "No se puede calcular el margen de ganancia por producto porque falta el costo",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "No se puede calcular el margen de ganancia por producto porque falta el costo",
+    "falta": "costo de compra o costo de cada producto para calcular el margen de ganancia",
+    "validador": "",
+    "postgres": "",
+    "ms": 4217.371625,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1509,
+     "salida": 560,
+     "razonamiento": 482,
+     "enCache": 1406,
+     "usdStandard": 0.00426625,
+     "usdContributor": 0.0002629
+    }
+   }
+  ]
+ },
+ {
+  "id": "dias_confirmado_entregado",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: cuándo se confirmó y cuándo se entregó cada pedido (el catálogo solo trae cuándo se creó y el estado actual)",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 4711.175000000003,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1505,
+   "salida": 603,
+   "razonamiento": 521,
+   "enCache": 1406,
+   "usdStandard": 0.004444,
+   "usdContributor": 0.00027110000000000003
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "Días promedio de confirmado a entregado de los pedidos",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "Días promedio de confirmado a entregado de los pedidos",
+    "falta": "cuándo se confirmó y cuándo se entregó cada pedido (el catálogo solo trae cuándo se creó y el estado actual)",
+    "validador": "",
+    "postgres": "",
+    "ms": 4711.166833000003,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1505,
+     "salida": 603,
+     "razonamiento": 521,
+     "enCache": 1406,
+     "usdStandard": 0.004444,
+     "usdContributor": 0.00027110000000000003
+    }
+   }
+  ]
+ },
+ {
+  "id": "lo_que_escribio",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: el texto de los mensajes de los clientes (conversaciones solo trae conteos y tiempos, no el texto)",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 4381.901041000005,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1512,
+   "salida": 539,
+   "razonamiento": 455,
+   "enCache": 1406,
+   "usdStandard": 0.00418075,
+   "usdContributor": 0.000259
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "No se puede mostrar lo que escribió cada cliente hoy",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "No se puede mostrar lo que escribió cada cliente hoy",
+    "falta": "el texto de los mensajes de los clientes (conversaciones solo trae conteos y tiempos, no el texto)",
+    "validador": "",
+    "postgres": "",
+    "ms": 4381.897082999996,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1512,
+     "salida": 539,
+     "razonamiento": 455,
+     "enCache": 1406,
+     "usdStandard": 0.00418075,
+     "usdContributor": 0.000259
+    }
+   }
+  ]
+ },
+ {
+  "id": "contadores_estado",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "6 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 5421.002999999997,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1504,
+   "salida": 595,
+   "razonamiento": 519,
+   "enCache": 0,
+   "usdStandard": 0.00440875,
+   "usdContributor": 0.0002694
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT estado AS etiqueta, COUNT(*) AS valor FROM pedidos GROUP BY estado ORDER BY valor DESC",
+  "enPalabras": "Cuenta cuántos pedidos hay en cada estado considerando todos los pedidos registrados",
+  "filas": 6,
+  "total": 6,
+  "muestra": [
+   {
+    "valor": 7401,
+    "etiqueta": "entregado"
+   },
+   {
+    "valor": 1114,
+    "etiqueta": "cancelado"
+   },
+   {
+    "valor": 783,
+    "etiqueta": "novedad"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 7401,
+    "etiqueta": "entregado"
+   },
+   {
+    "valor": 1114,
+    "etiqueta": "cancelado"
+   },
+   {
+    "valor": 783,
+    "etiqueta": "novedad"
+   },
+   {
+    "valor": 293,
+    "etiqueta": "enviado"
+   },
+   {
+    "valor": 234,
+    "etiqueta": "pendiente"
+   },
+   {
+    "valor": 175,
+    "etiqueta": "confirmado"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 234,
+    "etiqueta": "pendiente"
+   },
+   {
+    "valor": 293,
+    "etiqueta": "enviado"
+   },
+   {
+    "valor": 1114,
+    "etiqueta": "cancelado"
+   },
+   {
+    "valor": 7401,
+    "etiqueta": "entregado"
+   },
+   {
+    "valor": 175,
+    "etiqueta": "confirmado"
+   },
+   {
+    "valor": 783,
+    "etiqueta": "novedad"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT estado AS etiqueta, COUNT(*) AS valor FROM pedidos GROUP BY estado ORDER BY valor DESC",
+    "enPalabras": "Cuenta cuántos pedidos hay en cada estado considerando todos los pedidos registrados",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 5370.557499999995,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1504,
+     "salida": 595,
+     "razonamiento": 519,
+     "enCache": 0,
+     "usdStandard": 0.00440875,
+     "usdContributor": 0.0002694
+    }
+   }
+  ]
+ },
+ {
+  "id": "contadores_producto",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "14 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 6044.151500000007,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1505,
+   "salida": 727,
+   "razonamiento": 644,
+   "enCache": 1406,
+   "usdStandard": 0.004971,
+   "usdContributor": 0.0002959
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT producto AS etiqueta, SUM(cantidad) AS valor FROM pedido_items WHERE cuenta_como_venta = true GROUP BY producto ORDER BY valor DESC",
+  "enPalabras": "Unidades vendidas por producto en total histórico",
+  "filas": 14,
+  "total": 14,
+  "muestra": [
+   {
+    "valor": 3481,
+    "etiqueta": "Medias x3"
+   },
+   {
+    "valor": 3203,
+    "etiqueta": "Camiseta básica"
+   },
+   {
+    "valor": 2523,
+    "etiqueta": "Jean slim"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 3481,
+    "etiqueta": "Medias x3"
+   },
+   {
+    "valor": 3203,
+    "etiqueta": "Camiseta básica"
+   },
+   {
+    "valor": 2523,
+    "etiqueta": "Jean slim"
+   },
+   {
+    "valor": 1919,
+    "etiqueta": "Correa de cuero"
+   },
+   {
+    "valor": 1841,
+    "etiqueta": "Gorra"
+   },
+   {
+    "valor": 1476,
+    "etiqueta": "Tenis urbanos"
+   },
+   {
+    "valor": 934,
+    "etiqueta": "Chaqueta ligera"
+   },
+   {
+    "valor": 859,
+    "etiqueta": "Buso con capucha"
+   },
+   {
+    "valor": 802,
+    "etiqueta": "Billetera"
+   },
+   {
+    "valor": 583,
+    "etiqueta": "Mochila"
+   },
+   {
+    "valor": 533,
+    "etiqueta": "Cinturón tejido"
+   },
+   {
+    "valor": 448,
+    "etiqueta": "Pantaloneta"
+   },
+   {
+    "valor": 407,
+    "etiqueta": "Camisa lino"
+   },
+   {
+    "valor": 393,
+    "etiqueta": "Bufanda"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 583,
+    "etiqueta": "Mochila"
+   },
+   {
+    "valor": 859,
+    "etiqueta": "Buso con capucha"
+   },
+   {
+    "valor": 393,
+    "etiqueta": "Bufanda"
+   },
+   {
+    "valor": 448,
+    "etiqueta": "Pantaloneta"
+   },
+   {
+    "valor": 3203,
+    "etiqueta": "Camiseta básica"
+   },
+   {
+    "valor": 934,
+    "etiqueta": "Chaqueta ligera"
+   },
+   {
+    "valor": 533,
+    "etiqueta": "Cinturón tejido"
+   },
+   {
+    "valor": 802,
+    "etiqueta": "Billetera"
+   },
+   {
+    "valor": 3481,
+    "etiqueta": "Medias x3"
+   },
+   {
+    "valor": 407,
+    "etiqueta": "Camisa lino"
+   },
+   {
+    "valor": 1841,
+    "etiqueta": "Gorra"
+   },
+   {
+    "valor": 2523,
+    "etiqueta": "Jean slim"
+   },
+   {
+    "valor": 1476,
+    "etiqueta": "Tenis urbanos"
+   },
+   {
+    "valor": 1919,
+    "etiqueta": "Correa de cuero"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT producto AS etiqueta, SUM(cantidad) AS valor FROM pedido_items WHERE cuenta_como_venta = true GROUP BY producto ORDER BY valor DESC",
+    "enPalabras": "Unidades vendidas por producto en total histórico",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 5993.233208999998,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1505,
+     "salida": 727,
+     "razonamiento": 644,
+     "enCache": 1406,
+     "usdStandard": 0.004971,
+     "usdContributor": 0.0002959
+    }
+   }
+  ]
+ },
+ {
+  "id": "ventas_dia_ciudad",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "112 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 5941.552291999993,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1517,
+   "salida": 796,
+   "razonamiento": 654,
+   "enCache": 1406,
+   "usdStandard": 0.00527925,
+   "usdContributor": 0.0003109
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT p.dia_local AS dia, p.ciudad AS ciudad, SUM(p.total) AS ventas_pesos FROM pedidos p, hoy h WHERE p.cuenta_como_venta = true AND p.dia_local > h.hoy_local - 14 GROUP BY p.dia_local, p.ciudad ORDER BY p.dia_local, p.ciudad",
+  "enPalabras": "Suma de ventas en pesos por día y por ciudad de los últimos 14 días, hoy incluido",
+  "filas": 112,
+  "total": 112,
+  "muestra": [
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1621000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 3250000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 1370000
+   }
+  ],
+  "filasFinales": [
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1621000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 3250000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 1370000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Cali",
+    "ventas_pesos": 1506000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Manizales",
+    "ventas_pesos": 699000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Medellín",
+    "ventas_pesos": 3485000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Pasto",
+    "ventas_pesos": 620000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Pereira",
+    "ventas_pesos": 1643000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 983000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 4268000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 1067000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Cali",
+    "ventas_pesos": 2237000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Manizales",
+    "ventas_pesos": 551000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Medellín",
+    "ventas_pesos": 4122000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Pasto",
+    "ventas_pesos": 291000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Pereira",
+    "ventas_pesos": 1177000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 964000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 3801000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 918000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Cali",
+    "ventas_pesos": 1927000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Manizales",
+    "ventas_pesos": 893000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Medellín",
+    "ventas_pesos": 2633000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Pasto",
+    "ventas_pesos": 261000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Pereira",
+    "ventas_pesos": 1072000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1909000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 4950000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 734000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Cali",
+    "ventas_pesos": 1405000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Manizales",
+    "ventas_pesos": 827000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Medellín",
+    "ventas_pesos": 2806000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Pasto",
+    "ventas_pesos": 157000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Pereira",
+    "ventas_pesos": 1567000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 2767000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 3559000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 658000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Cali",
+    "ventas_pesos": 2797000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Manizales",
+    "ventas_pesos": 1184000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Medellín",
+    "ventas_pesos": 2893000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Pasto",
+    "ventas_pesos": 245000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Pereira",
+    "ventas_pesos": 926000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1562000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 2828000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 453000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Cali",
+    "ventas_pesos": 3636000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Manizales",
+    "ventas_pesos": 866000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Medellín",
+    "ventas_pesos": 3129000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Pasto",
+    "ventas_pesos": 996000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Pereira",
+    "ventas_pesos": 646000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 2213000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 3864000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 449000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Cali",
+    "ventas_pesos": 2189000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Manizales",
+    "ventas_pesos": 584000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Medellín",
+    "ventas_pesos": 4641000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Pasto",
+    "ventas_pesos": 493000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Pereira",
+    "ventas_pesos": 1078000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1815000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 4701000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 700000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Cali",
+    "ventas_pesos": 3057000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Manizales",
+    "ventas_pesos": 385000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Medellín",
+    "ventas_pesos": 4089000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Pasto",
+    "ventas_pesos": 671000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Pereira",
+    "ventas_pesos": 405000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 2149000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 7232000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 671000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Cali",
+    "ventas_pesos": 1898000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Manizales",
+    "ventas_pesos": 208000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Medellín",
+    "ventas_pesos": 3689000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Pasto",
+    "ventas_pesos": 677000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Pereira",
+    "ventas_pesos": 576000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1208000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 5221000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 717000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Cali",
+    "ventas_pesos": 1358000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Manizales",
+    "ventas_pesos": 521000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Medellín",
+    "ventas_pesos": 2082000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Pasto",
+    "ventas_pesos": 1440000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Pereira",
+    "ventas_pesos": 1268000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 1612000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 4349000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 1956000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Cali",
+    "ventas_pesos": 1982000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Manizales",
+    "ventas_pesos": 1854000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Medellín",
+    "ventas_pesos": 3928000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Pasto",
+    "ventas_pesos": 637000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Pereira",
+    "ventas_pesos": 838000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 907000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 5538000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 762000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Cali",
+    "ventas_pesos": 2256000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Manizales",
+    "ventas_pesos": 370000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Medellín",
+    "ventas_pesos": 3288000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Pasto",
+    "ventas_pesos": 196000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Pereira",
+    "ventas_pesos": 528000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 2312000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 3297000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 1355000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Cali",
+    "ventas_pesos": 1287000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Manizales",
+    "ventas_pesos": 407000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Medellín",
+    "ventas_pesos": 3370000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Pasto",
+    "ventas_pesos": 1405000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Pereira",
+    "ventas_pesos": 310000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Barranquilla",
+    "ventas_pesos": 693000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Bogotá",
+    "ventas_pesos": 2077000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Bucaramanga",
+    "ventas_pesos": 729000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Cali",
+    "ventas_pesos": 1261000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Manizales",
+    "ventas_pesos": 366000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Medellín",
+    "ventas_pesos": 1329000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Pasto",
+    "ventas_pesos": 314000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Pereira",
+    "ventas_pesos": 931000
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Cali",
+    "ventas": 2256000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Medellín",
+    "ventas": 4122000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Pereira",
+    "ventas": 926000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Manizales",
+    "ventas": 584000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Bucaramanga",
+    "ventas": 1067000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Bucaramanga",
+    "ventas": 734000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Medellín",
+    "ventas": 2893000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Medellín",
+    "ventas": 3370000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Manizales",
+    "ventas": 370000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Pasto",
+    "ventas": 996000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Cali",
+    "ventas": 1506000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Barranquilla",
+    "ventas": 907000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Barranquilla",
+    "ventas": 2213000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Pereira",
+    "ventas": 1567000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Bucaramanga",
+    "ventas": 762000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Bucaramanga",
+    "ventas": 729000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Medellín",
+    "ventas": 3129000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Pasto",
+    "ventas": 1405000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Cali",
+    "ventas": 1287000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Pasto",
+    "ventas": 620000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Cali",
+    "ventas": 2189000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Medellín",
+    "ventas": 3485000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Medellín",
+    "ventas": 1329000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Bogotá",
+    "ventas": 7232000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Medellín",
+    "ventas": 2082000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Bucaramanga",
+    "ventas": 918000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Bogotá",
+    "ventas": 4950000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Pereira",
+    "ventas": 1078000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Bogotá",
+    "ventas": 5538000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Pasto",
+    "ventas": 637000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Pasto",
+    "ventas": 677000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Manizales",
+    "ventas": 551000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Manizales",
+    "ventas": 1184000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Pasto",
+    "ventas": 261000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Pasto",
+    "ventas": 157000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Cali",
+    "ventas": 3057000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Pasto",
+    "ventas": 196000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Bogotá",
+    "ventas": 2828000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Pereira",
+    "ventas": 646000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Cali",
+    "ventas": 3636000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Manizales",
+    "ventas": 385000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Manizales",
+    "ventas": 893000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Barranquilla",
+    "ventas": 983000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Bogotá",
+    "ventas": 4268000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Cali",
+    "ventas": 1927000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Barranquilla",
+    "ventas": 964000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Bucaramanga",
+    "ventas": 700000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Barranquilla",
+    "ventas": 1621000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Bogotá",
+    "ventas": 5221000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Bucaramanga",
+    "ventas": 671000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Bucaramanga",
+    "ventas": 717000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Barranquilla",
+    "ventas": 2149000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Pereira",
+    "ventas": 1643000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Pereira",
+    "ventas": 310000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Medellín",
+    "ventas": 2633000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Barranquilla",
+    "ventas": 693000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Pasto",
+    "ventas": 493000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Pereira",
+    "ventas": 1177000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Pereira",
+    "ventas": 931000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Pasto",
+    "ventas": 245000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Medellín",
+    "ventas": 3288000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Medellín",
+    "ventas": 3928000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Bucaramanga",
+    "ventas": 453000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Pereira",
+    "ventas": 405000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Cali",
+    "ventas": 2797000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Manizales",
+    "ventas": 366000
+   },
+   {
+    "dia": "2026-10-25",
+    "ciudad": "Pereira",
+    "ventas": 528000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Bucaramanga",
+    "ventas": 1355000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Bogotá",
+    "ventas": 4701000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Barranquilla",
+    "ventas": 1815000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Pereira",
+    "ventas": 576000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Cali",
+    "ventas": 1358000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Barranquilla",
+    "ventas": 1562000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Barranquilla",
+    "ventas": 2767000
+   },
+   {
+    "dia": "2026-10-19",
+    "ciudad": "Manizales",
+    "ventas": 866000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Pereira",
+    "ventas": 1268000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Bucaramanga",
+    "ventas": 1956000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Cali",
+    "ventas": 1982000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Manizales",
+    "ventas": 827000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Bogotá",
+    "ventas": 3801000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Bogotá",
+    "ventas": 2077000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Bogotá",
+    "ventas": 3250000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Cali",
+    "ventas": 1405000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Barranquilla",
+    "ventas": 1208000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Bogotá",
+    "ventas": 4349000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Bucaramanga",
+    "ventas": 449000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Medellín",
+    "ventas": 2806000
+   },
+   {
+    "dia": "2026-10-17",
+    "ciudad": "Barranquilla",
+    "ventas": 1909000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Barranquilla",
+    "ventas": 1612000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Pereira",
+    "ventas": 838000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Cali",
+    "ventas": 1898000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Medellín",
+    "ventas": 4089000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Manizales",
+    "ventas": 521000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Cali",
+    "ventas": 1261000
+   },
+   {
+    "dia": "2026-10-23",
+    "ciudad": "Pasto",
+    "ventas": 1440000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Bogotá",
+    "ventas": 3864000
+   },
+   {
+    "dia": "2026-10-27",
+    "ciudad": "Pasto",
+    "ventas": 314000
+   },
+   {
+    "dia": "2026-10-16",
+    "ciudad": "Pereira",
+    "ventas": 1072000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Barranquilla",
+    "ventas": 2312000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Bogotá",
+    "ventas": 3297000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Pasto",
+    "ventas": 291000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Medellín",
+    "ventas": 3689000
+   },
+   {
+    "dia": "2026-10-15",
+    "ciudad": "Cali",
+    "ventas": 2237000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Bucaramanga",
+    "ventas": 1370000
+   },
+   {
+    "dia": "2026-10-22",
+    "ciudad": "Manizales",
+    "ventas": 208000
+   },
+   {
+    "dia": "2026-10-26",
+    "ciudad": "Manizales",
+    "ventas": 407000
+   },
+   {
+    "dia": "2026-10-21",
+    "ciudad": "Pasto",
+    "ventas": 671000
+   },
+   {
+    "dia": "2026-10-20",
+    "ciudad": "Medellín",
+    "ventas": 4641000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Bogotá",
+    "ventas": 3559000
+   },
+   {
+    "dia": "2026-10-24",
+    "ciudad": "Manizales",
+    "ventas": 1854000
+   },
+   {
+    "dia": "2026-10-14",
+    "ciudad": "Manizales",
+    "ventas": 699000
+   },
+   {
+    "dia": "2026-10-18",
+    "ciudad": "Bucaramanga",
+    "ventas": 658000
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.dia_local AS dia, p.ciudad AS ciudad, SUM(p.total) AS ventas_pesos FROM pedidos p, hoy h WHERE p.cuenta_como_venta = true AND p.dia_local > h.hoy_local - 14 GROUP BY p.dia_local, p.ciudad ORDER BY p.dia_local, p.ciudad",
+    "enPalabras": "Suma de ventas en pesos por día y por ciudad de los últimos 14 días, hoy incluido",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 5890.191584,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1517,
+     "salida": 796,
+     "razonamiento": 654,
+     "enCache": 1406,
+     "usdStandard": 0.00527925,
+     "usdContributor": 0.0003109
+    }
+   }
+  ]
+ },
+ {
+  "id": "ticket_ciudad",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "mal_en_silencio",
+  "razon": "no encuentro la fila {\"valor\":152645.83333333334,\"etiqueta\":\"Bucaramanga\"}",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 7207.409166999991,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1501,
+   "salida": 900,
+   "razonamiento": 788,
+   "enCache": 0,
+   "usdStandard": 0.00570125,
+   "usdContributor": 0.0003301
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT p.ciudad AS etiqueta, ROUND(AVG(p.total)) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.cuenta_como_venta AND p.dia_local > h.hoy_local - 30 GROUP BY p.ciudad ORDER BY valor DESC",
+  "enPalabras": "Ticket promedio por ciudad de las ventas de los últimos 30 días",
+  "filas": 8,
+  "total": 8,
+  "muestra": [
+   {
+    "valor": 164212,
+    "etiqueta": "Medellín"
+   },
+   {
+    "valor": 159091,
+    "etiqueta": "Bogotá"
+   },
+   {
+    "valor": 151856,
+    "etiqueta": "Barranquilla"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 164212,
+    "etiqueta": "Medellín"
+   },
+   {
+    "valor": 159091,
+    "etiqueta": "Bogotá"
+   },
+   {
+    "valor": 151856,
+    "etiqueta": "Barranquilla"
+   },
+   {
+    "valor": 150077,
+    "etiqueta": "Pereira"
+   },
+   {
+    "valor": 150075,
+    "etiqueta": "Manizales"
+   },
+   {
+    "valor": 149849,
+    "etiqueta": "Cali"
+   },
+   {
+    "valor": 141881,
+    "etiqueta": "Bucaramanga"
+   },
+   {
+    "valor": 134730,
+    "etiqueta": "Pasto"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 152645.83333333334,
+    "etiqueta": "Bucaramanga"
+   },
+   {
+    "valor": 155863.1539044731,
+    "etiqueta": "Bogotá"
+   },
+   {
+    "valor": 150919.29285165257,
+    "etiqueta": "Cali"
+   },
+   {
+    "valor": 145844.55128205128,
+    "etiqueta": "Pereira"
+   },
+   {
+    "valor": 148663.8655462185,
+    "etiqueta": "Pasto"
+   },
+   {
+    "valor": 156070.9534368071,
+    "etiqueta": "Manizales"
+   },
+   {
+    "valor": 154138.79003558718,
+    "etiqueta": "Medellín"
+   },
+   {
+    "valor": 153726.977248104,
+    "etiqueta": "Barranquilla"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.ciudad AS etiqueta, ROUND(AVG(p.total)) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.cuenta_como_venta AND p.dia_local > h.hoy_local - 30 GROUP BY p.ciudad ORDER BY valor DESC",
+    "enPalabras": "Ticket promedio por ciudad de las ventas de los últimos 30 días",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 7155.812833999997,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1501,
+     "salida": 900,
+     "razonamiento": 788,
+     "enCache": 0,
+     "usdStandard": 0.00570125,
+     "usdContributor": 0.0003301
+    }
+   }
+  ]
+ },
+ {
+  "id": "primera_respuesta",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "1 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 6703.653707999998,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1525,
+   "salida": 803,
+   "razonamiento": 658,
+   "enCache": 0,
+   "usdStandard": 0.005319,
+   "usdContributor": 0.0003131
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY segundos_primera_respuesta) AS mediana_segundos, percentile_cont(0.9) WITHIN GROUP (ORDER BY segundos_primera_respuesta) AS percentil_90_segundos FROM conversaciones WHERE dia_local > (SELECT hoy_local - 30 FROM hoy) AND segundos_primera_respuesta IS NOT NULL",
+  "enPalabras": "Mediana y percentil 90 del tiempo de primera respuesta del agente en segundos en los últimos 30 días",
+  "filas": 1,
+  "total": 1,
+  "muestra": [
+   {
+    "mediana_segundos": 29.4015,
+    "percentil_90_segundos": 278.14300000000003
+   }
+  ],
+  "filasFinales": [
+   {
+    "mediana_segundos": 29.4015,
+    "percentil_90_segundos": 278.14300000000003
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "p90": 278.14300000000003,
+    "mediana": 29.4015
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY segundos_primera_respuesta) AS mediana_segundos, percentile_cont(0.9) WITHIN GROUP (ORDER BY segundos_primera_respuesta) AS percentil_90_segundos FROM conversaciones WHERE dia_local > (SELECT hoy_local - 30 FROM hoy) AND segundos_primera_respuesta IS NOT NULL",
+    "enPalabras": "Mediana y percentil 90 del tiempo de primera respuesta del agente en segundos en los últimos 30 días",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 6651.382834000004,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1525,
+     "salida": 803,
+     "razonamiento": 658,
+     "enCache": 0,
+     "usdStandard": 0.005319,
+     "usdContributor": 0.0003131
+    }
+   }
+  ]
+ },
+ {
+  "id": "se_compran_juntos",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "5 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 11665.89991600001,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1532,
+   "salida": 1419,
+   "razonamiento": 1225,
+   "enCache": 1406,
+   "usdStandard": 0.00794575,
+   "usdContributor": 0.000437
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT MAX(p1.nombre) AS producto_1, MAX(p2.nombre) AS producto_2, COUNT(DISTINCT a.pedido_id) AS pedidos_con_el_par FROM pedido_items a JOIN pedido_items b ON b.pedido_id = a.pedido_id AND b.producto_id > a.producto_id JOIN productos p1 ON p1.id = a.producto_id JOIN productos p2 ON p2.id = b.producto_id WHERE a.cuenta_como_venta AND b.cuenta_como_venta GROUP BY a.producto_id, b.producto_id ORDER BY pedidos_con_el_par DESC LIMIT 5",
+  "enPalabras": "Los 5 pares de productos que más se compran juntos en pedidos que cuentan como venta, en todo el historial",
+  "filas": 5,
+  "total": 5,
+  "muestra": [
+   {
+    "producto_1": "Camiseta básica",
+    "producto_2": "Medias x3",
+    "pedidos_con_el_par": 1340
+   },
+   {
+    "producto_1": "Jean slim",
+    "producto_2": "Correa de cuero",
+    "pedidos_con_el_par": 957
+   },
+   {
+    "producto_1": "Tenis urbanos",
+    "producto_2": "Medias x3",
+    "pedidos_con_el_par": 611
+   }
+  ],
+  "filasFinales": [
+   {
+    "producto_1": "Camiseta básica",
+    "producto_2": "Medias x3",
+    "pedidos_con_el_par": 1340
+   },
+   {
+    "producto_1": "Jean slim",
+    "producto_2": "Correa de cuero",
+    "pedidos_con_el_par": 957
+   },
+   {
+    "producto_1": "Tenis urbanos",
+    "producto_2": "Medias x3",
+    "pedidos_con_el_par": 611
+   },
+   {
+    "producto_1": "Buso con capucha",
+    "producto_2": "Chaqueta ligera",
+    "pedidos_con_el_par": 292
+   },
+   {
+    "producto_1": "Billetera",
+    "producto_2": "Mochila",
+    "pedidos_con_el_par": 150
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "pedidos": 1340,
+    "producto_a": "Camiseta básica",
+    "producto_b": "Medias x3"
+   },
+   {
+    "pedidos": 957,
+    "producto_a": "Correa de cuero",
+    "producto_b": "Jean slim"
+   },
+   {
+    "pedidos": 611,
+    "producto_a": "Medias x3",
+    "producto_b": "Tenis urbanos"
+   },
+   {
+    "pedidos": 292,
+    "producto_a": "Buso con capucha",
+    "producto_b": "Chaqueta ligera"
+   },
+   {
+    "pedidos": 150,
+    "producto_a": "Billetera",
+    "producto_b": "Mochila"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT MAX(p1.nombre) AS producto_1, MAX(p2.nombre) AS producto_2, COUNT(DISTINCT a.pedido_id) AS pedidos_con_el_par FROM pedido_items a JOIN pedido_items b ON b.pedido_id = a.pedido_id AND b.producto_id > a.producto_id JOIN productos p1 ON p1.id = a.producto_id JOIN productos p2 ON p2.id = b.producto_id WHERE a.cuenta_como_venta AND b.cuenta_como_venta GROUP BY a.producto_id, b.producto_id ORDER BY pedidos_con_el_par DESC LIMIT 5",
+    "enPalabras": "Los 5 pares de productos que más se compran juntos en pedidos que cuentan como venta, en todo el historial",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 11613.928332999989,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1532,
+     "salida": 1419,
+     "razonamiento": 1225,
+     "enCache": 1406,
+     "usdStandard": 0.00794575,
+     "usdContributor": 0.000437
+    }
+   }
+  ]
+ },
+ {
+  "id": "cohortes_retencion",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "6 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 18740.984916999994,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1555,
+   "salida": 2636,
+   "razonamiento": 2170,
+   "enCache": 1534,
+   "usdStandard": 0.01314675,
+   "usdContributor": 0.0006827000000000001
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "WITH primera_compra AS ( SELECT cliente_id, MIN(dia_local) AS primera_fecha FROM pedidos WHERE cuenta_como_venta = true GROUP BY cliente_id ), segunda_compra AS ( SELECT pc.cliente_id, MIN(p.dia_local) AS segunda_fecha FROM primera_compra pc JOIN pedidos p ON p.cliente_id = pc.cliente_id AND p.cuenta_como_venta = true AND p.dia_local > pc.primera_fecha GROUP BY pc.cliente_id ), marcado AS ( SELECT DATE_TRUNC('month', pc.primera_fecha::timestamp)::date AS mes_primera_compra, CASE WHEN sc.segunda_fecha IS NOT NULL AND sc.segunda_fecha <= pc.primera_fecha + 30 THEN 1 ELSE 0 END AS volvio_30, CASE WHEN sc.segunda_fecha IS NOT NULL AND sc.segunda_fecha <= pc.primera_fecha + 60 THEN 1 ELSE 0 END AS volvio_60, CASE WHEN sc.segunda_fecha IS NOT NULL AND sc.segunda_fecha <= pc.primera_fecha + 90 THEN 1 ELSE 0 END AS volvio_90 FROM primera_compra pc LEFT JOIN segunda_compra sc ON sc.cliente_id = pc.cliente_id ) SELECT mes_primera_compra AS mes_cohorte, COUNT(*) AS clientes_nuevos, ROUND(AVG(volvio_30) * 100, 1) AS pct_volvio_30_dias, ROUND(AVG(volvio_60) * 100, 1) AS pct_volvio_60_dias, ROUND(AVG(volvio_90) * 100, 1) AS pct_volvio_90_dias FROM marcado GROUP BY mes_primera_compra ORDER BY mes_primera_compra",
+  "enPalabras": "Cohortes por mes de primera compra con clientes nuevos y porcentaje que repitió a 30, 60 y 90 días, usando todo el historial sin recorte de fechas",
+  "filas": 6,
+  "total": 6,
+  "muestra": [
+   {
+    "mes_cohorte": "2026-05-01",
+    "clientes_nuevos": 78,
+    "pct_volvio_30_dias": 94.9,
+    "pct_volvio_60_dias": 98.7,
+    "pct_volvio_90_dias": 98.7
+   },
+   {
+    "mes_cohorte": "2026-06-01",
+    "clientes_nuevos": 204,
+    "pct_volvio_30_dias": 76.5,
+    "pct_volvio_60_dias": 86.8,
+    "pct_volvio_90_dias": 90.2
+   },
+   {
+    "mes_cohorte": "2026-07-01",
+    "clientes_nuevos": 388,
+    "pct_volvio_30_dias": 69.3,
+    "pct_volvio_60_dias": 80.7,
+    "pct_volvio_90_dias": 87.1
+   }
+  ],
+  "filasFinales": [
+   {
+    "mes_cohorte": "2026-05-01",
+    "clientes_nuevos": 78,
+    "pct_volvio_30_dias": 94.9,
+    "pct_volvio_60_dias": 98.7,
+    "pct_volvio_90_dias": 98.7
+   },
+   {
+    "mes_cohorte": "2026-06-01",
+    "clientes_nuevos": 204,
+    "pct_volvio_30_dias": 76.5,
+    "pct_volvio_60_dias": 86.8,
+    "pct_volvio_90_dias": 90.2
+   },
+   {
+    "mes_cohorte": "2026-07-01",
+    "clientes_nuevos": 388,
+    "pct_volvio_30_dias": 69.3,
+    "pct_volvio_60_dias": 80.7,
+    "pct_volvio_90_dias": 87.1
+   },
+   {
+    "mes_cohorte": "2026-08-01",
+    "clientes_nuevos": 522,
+    "pct_volvio_30_dias": 59.6,
+    "pct_volvio_60_dias": 74.5,
+    "pct_volvio_90_dias": 78.4
+   },
+   {
+    "mes_cohorte": "2026-09-01",
+    "clientes_nuevos": 694,
+    "pct_volvio_30_dias": 51.3,
+    "pct_volvio_60_dias": 58.9,
+    "pct_volvio_90_dias": 58.9
+   },
+   {
+    "mes_cohorte": "2026-10-01",
+    "clientes_nuevos": 498,
+    "pct_volvio_30_dias": 37.3,
+    "pct_volvio_60_dias": 37.3,
+    "pct_volvio_90_dias": 37.3
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "mes": "2026-05-01",
+    "ret30": 94.9,
+    "ret60": 98.7,
+    "ret90": 98.7,
+    "clientes": 78
+   },
+   {
+    "mes": "2026-08-01",
+    "ret30": 59.6,
+    "ret60": 74.5,
+    "ret90": 78.4,
+    "clientes": 522
+   },
+   {
+    "mes": "2026-07-01",
+    "ret30": 69.3,
+    "ret60": 80.7,
+    "ret90": 87.1,
+    "clientes": 388
+   },
+   {
+    "mes": "2026-09-01",
+    "ret30": 51.3,
+    "ret60": 58.9,
+    "ret90": 58.9,
+    "clientes": 694
+   },
+   {
+    "mes": "2026-10-01",
+    "ret30": 37.3,
+    "ret60": 37.3,
+    "ret90": 37.3,
+    "clientes": 498
+   },
+   {
+    "mes": "2026-06-01",
+    "ret30": 76.5,
+    "ret60": 86.8,
+    "ret90": 90.2,
+    "clientes": 204
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "WITH primera_compra AS ( SELECT cliente_id, MIN(dia_local) AS primera_fecha FROM pedidos WHERE cuenta_como_venta = true GROUP BY cliente_id ), segunda_compra AS ( SELECT pc.cliente_id, MIN(p.dia_local) AS segunda_fecha FROM primera_compra pc JOIN pedidos p ON p.cliente_id = pc.cliente_id AND p.cuenta_como_venta = true AND p.dia_local > pc.primera_fecha GROUP BY pc.cliente_id ), marcado AS ( SELECT DATE_TRUNC('month', pc.primera_fecha::timestamp)::date AS mes_primera_compra, CASE WHEN sc.segunda_fecha IS NOT NULL AND sc.segunda_fecha <= pc.primera_fecha + 30 THEN 1 ELSE 0 END AS volvio_30, CASE WHEN sc.segunda_fecha IS NOT NULL AND sc.segunda_fecha <= pc.primera_fecha + 60 THEN 1 ELSE 0 END AS volvio_60, CASE WHEN sc.segunda_fecha IS NOT NULL AND sc.segunda_fecha <= pc.primera_fecha + 90 THEN 1 ELSE 0 END AS volvio_90 FROM primera_compra pc LEFT JOIN segunda_compra sc ON sc.cliente_id = pc.cliente_id ) SELECT mes_primera_compra AS mes_cohorte, COUNT(*) AS clientes_nuevos, ROUND(AVG(volvio_30) * 100, 1) AS pct_volvio_30_dias, ROUND(AVG(volvio_60) * 100, 1) AS pct_volvio_60_dias, ROUND(AVG(volvio_90) * 100, 1) AS pct_volvio_90_dias FROM marcado GROUP BY mes_primera_compra ORDER BY mes_primera_compra",
+    "enPalabras": "Cohortes por mes de primera compra con clientes nuevos y porcentaje que repitió a 30, 60 y 90 días, usando todo el historial sin recorte de fechas",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 18690.47716699999,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1555,
+     "salida": 2636,
+     "razonamiento": 2170,
+     "enCache": 1534,
+     "usdStandard": 0.01314675,
+     "usdContributor": 0.0006827000000000001
+    }
+   }
+  ]
+ },
+ {
+  "id": "clientes_inactivos",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "1 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 8445.978667000003,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1513,
+   "salida": 935,
+   "razonamiento": 805,
+   "enCache": 0,
+   "usdStandard": 0.005865,
+   "usdContributor": 0.00033830000000000004
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "SELECT COUNT(*) AS valor FROM (SELECT cliente_id, MAX(dia_local) AS ultima FROM pedidos WHERE cuenta_como_venta = true GROUP BY cliente_id) u CROSS JOIN hoy h WHERE h.hoy_local - u.ultima > 45",
+  "enPalabras": "Cuenta cuántos clientes con al menos una compra tienen su última compra hace más de 45 días respecto a hoy",
+  "filas": 1,
+  "total": 1,
+  "muestra": [
+   {
+    "valor": 528
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 528
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 528
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT COUNT(*) AS valor FROM (SELECT cliente_id, MAX(dia_local) AS ultima FROM pedidos WHERE cuenta_como_venta = true GROUP BY cliente_id) u CROSS JOIN hoy h WHERE h.hoy_local - u.ultima > 45",
+    "enPalabras": "Cuenta cuántos clientes con al menos una compra tienen su última compra hace más de 45 días respecto a hoy",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 8393.556792000003,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1513,
+     "salida": 935,
+     "razonamiento": 805,
+     "enCache": 0,
+     "usdStandard": 0.005865,
+     "usdContributor": 0.00033830000000000004
+    }
+   }
+  ]
+ },
+ {
+  "id": "cancelados_ciudad",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "8 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 6131.034291000018,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1511,
+   "salida": 731,
+   "razonamiento": 601,
+   "enCache": 1278,
+   "usdStandard": 0.0049955,
+   "usdContributor": 0.0002973
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": true,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT p.ciudad AS etiqueta, ROUND(100.0 * COUNT(*) FILTER (WHERE p.estado = 'cancelado') / NULLIF(COUNT(*), 0), 2) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.dia_local > h.hoy_local - 30 GROUP BY p.ciudad ORDER BY valor DESC",
+  "enPalabras": "Porcentaje de pedidos cancelados por ciudad en los últimos 30 días",
+  "filas": 8,
+  "total": 8,
+  "muestra": [
+   {
+    "valor": 21.82,
+    "etiqueta": "Pasto"
+   },
+   {
+    "valor": 10.98,
+    "etiqueta": "Bogotá"
+   },
+   {
+    "valor": 10.74,
+    "etiqueta": "Bucaramanga"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 21.82,
+    "etiqueta": "Pasto"
+   },
+   {
+    "valor": 10.98,
+    "etiqueta": "Bogotá"
+   },
+   {
+    "valor": 10.74,
+    "etiqueta": "Bucaramanga"
+   },
+   {
+    "valor": 10.63,
+    "etiqueta": "Pereira"
+   },
+   {
+    "valor": 10.16,
+    "etiqueta": "Medellín"
+   },
+   {
+    "valor": 9.74,
+    "etiqueta": "Manizales"
+   },
+   {
+    "valor": 8.76,
+    "etiqueta": "Cali"
+   },
+   {
+    "valor": 4.52,
+    "etiqueta": "Barranquilla"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 11,
+    "etiqueta": "Bogotá"
+   },
+   {
+    "valor": 10.7,
+    "etiqueta": "Bucaramanga"
+   },
+   {
+    "valor": 8.8,
+    "etiqueta": "Cali"
+   },
+   {
+    "valor": 10.6,
+    "etiqueta": "Pereira"
+   },
+   {
+    "valor": 21.8,
+    "etiqueta": "Pasto"
+   },
+   {
+    "valor": 9.7,
+    "etiqueta": "Manizales"
+   },
+   {
+    "valor": 10.2,
+    "etiqueta": "Medellín"
+   },
+   {
+    "valor": 4.5,
+    "etiqueta": "Barranquilla"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.ciudad AS etiqueta, ROUND(100.0 * COUNT(*) FILTER (WHERE p.estado = 'cancelado') / NULLIF(COUNT(*), 0), 2) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.dia_local > h.hoy_local - 30 GROUP BY p.ciudad ORDER BY valor DESC",
+    "enPalabras": "Porcentaje de pedidos cancelados por ciudad en los últimos 30 días",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 6078.661083999992,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1511,
+     "salida": 731,
+     "razonamiento": 601,
+     "enCache": 1278,
+     "usdStandard": 0.0049955,
+     "usdContributor": 0.0002973
+    }
+   }
+  ]
+ },
+ {
+  "id": "pedidos_por_hora",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "mal_en_silencio",
+  "razon": "no encuentro la fila {\"valor\":632,\"etiqueta\":10}",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 10228.489166999992,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1511,
+   "salida": 1212,
+   "razonamiento": 1103,
+   "enCache": 0,
+   "usdStandard": 0.00703975,
+   "usdContributor": 0.0003935
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT p.hora_local::text AS etiqueta, COUNT(*) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.dia_local > h.hoy_local - 30 GROUP BY p.hora_local ORDER BY p.hora_local",
+  "enPalabras": "Pedidos por hora local de llegada en los últimos 30 días, hoy incluido",
+  "filas": 18,
+  "total": 18,
+  "muestra": [
+   {
+    "valor": 17,
+    "etiqueta": "6"
+   },
+   {
+    "valor": 28,
+    "etiqueta": "7"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "8"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 17,
+    "etiqueta": "6"
+   },
+   {
+    "valor": 28,
+    "etiqueta": "7"
+   },
+   {
+    "valor": 72,
+    "etiqueta": "8"
+   },
+   {
+    "valor": 123,
+    "etiqueta": "9"
+   },
+   {
+    "valor": 197,
+    "etiqueta": "10"
+   },
+   {
+    "valor": 219,
+    "etiqueta": "11"
+   },
+   {
+    "valor": 177,
+    "etiqueta": "12"
+   },
+   {
+    "valor": 179,
+    "etiqueta": "13"
+   },
+   {
+    "valor": 163,
+    "etiqueta": "14"
+   },
+   {
+    "valor": 203,
+    "etiqueta": "15"
+   },
+   {
+    "valor": 208,
+    "etiqueta": "16"
+   },
+   {
+    "valor": 230,
+    "etiqueta": "17"
+   },
+   {
+    "valor": 309,
+    "etiqueta": "18"
+   },
+   {
+    "valor": 276,
+    "etiqueta": "19"
+   },
+   {
+    "valor": 293,
+    "etiqueta": "20"
+   },
+   {
+    "valor": 189,
+    "etiqueta": "21"
+   },
+   {
+    "valor": 134,
+    "etiqueta": "22"
+   },
+   {
+    "valor": 47,
+    "etiqueta": "23"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 632,
+    "etiqueta": 10
+   },
+   {
+    "valor": 548,
+    "etiqueta": 13
+   },
+   {
+    "valor": 593,
+    "etiqueta": 12
+   },
+   {
+    "valor": 47,
+    "etiqueta": 6
+   },
+   {
+    "valor": 623,
+    "etiqueta": 15
+   },
+   {
+    "valor": 936,
+    "etiqueta": 20
+   },
+   {
+    "valor": 535,
+    "etiqueta": 14
+   },
+   {
+    "valor": 683,
+    "etiqueta": 21
+   },
+   {
+    "valor": 160,
+    "etiqueta": 23
+   },
+   {
+    "valor": 951,
+    "etiqueta": 19
+   },
+   {
+    "valor": 372,
+    "etiqueta": 9
+   },
+   {
+    "valor": 759,
+    "etiqueta": 11
+   },
+   {
+    "valor": 415,
+    "etiqueta": 22
+   },
+   {
+    "valor": 937,
+    "etiqueta": 18
+   },
+   {
+    "valor": 204,
+    "etiqueta": 8
+   },
+   {
+    "valor": 100,
+    "etiqueta": 7
+   },
+   {
+    "valor": 775,
+    "etiqueta": 17
+   },
+   {
+    "valor": 730,
+    "etiqueta": 16
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.hora_local::text AS etiqueta, COUNT(*) AS valor FROM pedidos p CROSS JOIN hoy h WHERE p.dia_local > h.hoy_local - 30 GROUP BY p.hora_local ORDER BY p.hora_local",
+    "enPalabras": "Pedidos por hora local de llegada en los últimos 30 días, hoy incluido",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 10176.046208999993,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1511,
+     "salida": 1212,
+     "razonamiento": 1103,
+     "enCache": 0,
+     "usdStandard": 0.00703975,
+     "usdContributor": 0.0003935
+    }
+   }
+  ]
+ },
+ {
+  "id": "casos_resolucion",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "1 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 7831.866709000024,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1515,
+   "salida": 994,
+   "razonamiento": 884,
+   "enCache": 1278,
+   "usdStandard": 0.00611825,
+   "usdContributor": 0.0003503
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": true,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT AVG(EXTRACT(EPOCH FROM (resuelto - creado)) / 3600.0) AS valor FROM casos WHERE estado = 'resuelto' AND creado IS NOT NULL AND resuelto IS NOT NULL",
+  "enPalabras": "Promedio de horas que tardan en resolverse los casos ya resueltos, considerando todos los casos resueltos hasta hoy",
+  "filas": 1,
+  "total": 1,
+  "muestra": [
+   {
+    "valor": 7.518564391392466
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 7.518564391392466
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 7.518564391392466
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT AVG(EXTRACT(EPOCH FROM (resuelto - creado)) / 3600.0) AS valor FROM casos WHERE estado = 'resuelto' AND creado IS NOT NULL AND resuelto IS NOT NULL",
+    "enPalabras": "Promedio de horas que tardan en resolverse los casos ya resueltos, considerando todos los casos resueltos hasta hoy",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 7780.614292000013,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1515,
+     "salida": 994,
+     "razonamiento": 884,
+     "enCache": 1278,
+     "usdStandard": 0.00611825,
+     "usdContributor": 0.0003503
+    }
+   }
+  ]
+ },
+ {
+  "id": "ventas_semana",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "1 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 9377.021207999991,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1521,
+   "salida": 1220,
+   "razonamiento": 1013,
+   "enCache": 1406,
+   "usdStandard": 0.00708625,
+   "usdContributor": 0.00039610000000000003
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": true,
+  "laVerdadUsaVenta": true,
+  "sqlFinal": "WITH h AS (SELECT hoy_local FROM hoy) SELECT SUM(CASE WHEN p.dia_local > h.hoy_local - 7 THEN p.total ELSE 0 END) AS ventas_ultimos_7_dias_cop, SUM(CASE WHEN p.dia_local <= h.hoy_local - 7 AND p.dia_local > h.hoy_local - 14 THEN p.total ELSE 0 END) AS ventas_7_dias_anteriores_cop FROM pedidos p CROSS JOIN h WHERE p.cuenta_como_venta = true AND p.dia_local > h.hoy_local - 14 AND p.dia_local <= h.hoy_local",
+  "enPalabras": "Suma en pesos de las ventas de los últimos 7 días incluido hoy y de los 7 días anteriores a esos",
+  "filas": 1,
+  "total": 1,
+  "muestra": [
+   {
+    "ventas_ultimos_7_dias_cop": 99182000,
+    "ventas_7_dias_anteriores_cop": 100370000
+   }
+  ],
+  "filasFinales": [
+   {
+    "ventas_ultimos_7_dias_cop": 99182000,
+    "ventas_7_dias_anteriores_cop": 100370000
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "ultimos_7": 99182000,
+    "anteriores_7": 100370000
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "WITH h AS (SELECT hoy_local FROM hoy) SELECT SUM(CASE WHEN p.dia_local > h.hoy_local - 7 THEN p.total ELSE 0 END) AS ventas_ultimos_7_dias_cop, SUM(CASE WHEN p.dia_local <= h.hoy_local - 7 AND p.dia_local > h.hoy_local - 14 THEN p.total ELSE 0 END) AS ventas_7_dias_anteriores_cop FROM pedidos p CROSS JOIN h WHERE p.cuenta_como_venta = true AND p.dia_local > h.hoy_local - 14 AND p.dia_local <= h.hoy_local",
+    "enPalabras": "Suma en pesos de las ventas de los últimos 7 días incluido hoy y de los 7 días anteriores a esos",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 9326.462333000003,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1521,
+     "salida": 1220,
+     "razonamiento": 1013,
+     "enCache": 1406,
+     "usdStandard": 0.00708625,
+     "usdContributor": 0.00039610000000000003
+    }
+   }
+  ]
+ },
+ {
+  "id": "clientes_nuevos_mes",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "6 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 6123.669167000015,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1506,
+   "salida": 664,
+   "razonamiento": 581,
+   "enCache": 0,
+   "usdStandard": 0.0047045,
+   "usdContributor": 0.0002834
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT mes_local::text AS etiqueta, COUNT(*) AS valor FROM clientes GROUP BY mes_local ORDER BY mes_local",
+  "enPalabras": "Cuenta cuántos clientes nuevos entraron en cada mes, usando todo el historial disponible",
+  "filas": 6,
+  "total": 6,
+  "muestra": [
+   {
+    "valor": 83,
+    "etiqueta": "2026-05-01"
+   },
+   {
+    "valor": 217,
+    "etiqueta": "2026-06-01"
+   },
+   {
+    "valor": 400,
+    "etiqueta": "2026-07-01"
+   }
+  ],
+  "filasFinales": [
+   {
+    "valor": 83,
+    "etiqueta": "2026-05-01"
+   },
+   {
+    "valor": 217,
+    "etiqueta": "2026-06-01"
+   },
+   {
+    "valor": 400,
+    "etiqueta": "2026-07-01"
+   },
+   {
+    "valor": 554,
+    "etiqueta": "2026-08-01"
+   },
+   {
+    "valor": 728,
+    "etiqueta": "2026-09-01"
+   },
+   {
+    "valor": 518,
+    "etiqueta": "2026-10-01"
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "valor": 518,
+    "etiqueta": "2026-10-01"
+   },
+   {
+    "valor": 554,
+    "etiqueta": "2026-08-01"
+   },
+   {
+    "valor": 217,
+    "etiqueta": "2026-06-01"
+   },
+   {
+    "valor": 728,
+    "etiqueta": "2026-09-01"
+   },
+   {
+    "valor": 83,
+    "etiqueta": "2026-05-01"
+   },
+   {
+    "valor": 400,
+    "etiqueta": "2026-07-01"
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT mes_local::text AS etiqueta, COUNT(*) AS valor FROM clientes GROUP BY mes_local ORDER BY mes_local",
+    "enPalabras": "Cuenta cuántos clientes nuevos entraron en cada mes, usando todo el historial disponible",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 6072.794292000006,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1506,
+     "salida": 664,
+     "razonamiento": 581,
+     "enCache": 0,
+     "usdStandard": 0.0047045,
+     "usdContributor": 0.0002834
+    }
+   }
+  ]
+ },
+ {
+  "id": "pendientes_viejos",
+  "rep": "2",
+  "esperado": "respuesta",
+  "veredicto": "correcta",
+  "razon": "155 filas coinciden",
+  "validaALaPrimera": true,
+  "validaEnTres": true,
+  "intentos": 1,
+  "ms": 9189.524833000003,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1515,
+   "salida": 1107,
+   "razonamiento": 933,
+   "enCache": 0,
+   "usdStandard": 0.0065985,
+   "usdContributor": 0.00037289999999999996
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": true,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "SELECT p.numero AS numero_pedido, c.nombre AS cliente, p.ciudad AS ciudad_entrega, p.total AS total_cop, p.dia_local AS dia_creacion, (h.hoy_local - p.dia_local) AS dias_pendientes FROM pedidos p CROSS JOIN hoy h LEFT JOIN clientes c ON c.id = p.cliente_id WHERE p.estado = 'pendiente' AND (h.hoy_local - p.dia_local) > 3 ORDER BY p.dia_local ASC, p.numero ASC",
+  "enPalabras": "Lista de pedidos que siguen pendientes y fueron creados hace más de 3 días contando hasta hoy",
+  "filas": 155,
+  "total": 155,
+  "muestra": [
+   {
+    "cliente": "Cliente 48",
+    "total_cop": 62000,
+    "dia_creacion": "2026-05-24",
+    "numero_pedido": 172,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 156
+   },
+   {
+    "cliente": "Cliente 97",
+    "total_cop": 90000,
+    "dia_creacion": "2026-06-04",
+    "numero_pedido": 334,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 145
+   },
+   {
+    "cliente": "Cliente 22",
+    "total_cop": 38000,
+    "dia_creacion": "2026-06-04",
+    "numero_pedido": 336,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 145
+   }
+  ],
+  "filasFinales": [
+   {
+    "cliente": "Cliente 48",
+    "total_cop": 62000,
+    "dia_creacion": "2026-05-24",
+    "numero_pedido": 172,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 156
+   },
+   {
+    "cliente": "Cliente 97",
+    "total_cop": 90000,
+    "dia_creacion": "2026-06-04",
+    "numero_pedido": 334,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 145
+   },
+   {
+    "cliente": "Cliente 22",
+    "total_cop": 38000,
+    "dia_creacion": "2026-06-04",
+    "numero_pedido": 336,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 145
+   },
+   {
+    "cliente": "Cliente 95",
+    "total_cop": 233000,
+    "dia_creacion": "2026-06-04",
+    "numero_pedido": 343,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 145
+   },
+   {
+    "cliente": "Cliente 118",
+    "total_cop": 496000,
+    "dia_creacion": "2026-06-08",
+    "numero_pedido": 431,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 141
+   },
+   {
+    "cliente": "Cliente 149",
+    "total_cop": 337000,
+    "dia_creacion": "2026-06-13",
+    "numero_pedido": 560,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 136
+   },
+   {
+    "cliente": "Cliente 99",
+    "total_cop": 283000,
+    "dia_creacion": "2026-06-14",
+    "numero_pedido": 580,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 135
+   },
+   {
+    "cliente": "Cliente 55",
+    "total_cop": 104000,
+    "dia_creacion": "2026-06-16",
+    "numero_pedido": 640,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 133
+   },
+   {
+    "cliente": "Cliente 182",
+    "total_cop": 283000,
+    "dia_creacion": "2026-06-16",
+    "numero_pedido": 645,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 133
+   },
+   {
+    "cliente": "Cliente 35",
+    "total_cop": 133000,
+    "dia_creacion": "2026-06-22",
+    "numero_pedido": 810,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 127
+   },
+   {
+    "cliente": "Cliente 127",
+    "total_cop": 185000,
+    "dia_creacion": "2026-06-23",
+    "numero_pedido": 834,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 126
+   },
+   {
+    "cliente": "Cliente 64",
+    "total_cop": 213000,
+    "dia_creacion": "2026-06-27",
+    "numero_pedido": 987,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 122
+   },
+   {
+    "cliente": "Cliente 170",
+    "total_cop": 159000,
+    "dia_creacion": "2026-06-28",
+    "numero_pedido": 1017,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 121
+   },
+   {
+    "cliente": "Cliente 77",
+    "total_cop": 283000,
+    "dia_creacion": "2026-07-05",
+    "numero_pedido": 1293,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 114
+   },
+   {
+    "cliente": "Cliente 244",
+    "total_cop": 62000,
+    "dia_creacion": "2026-07-05",
+    "numero_pedido": 1318,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 114
+   },
+   {
+    "cliente": "Cliente 286",
+    "total_cop": 189000,
+    "dia_creacion": "2026-07-05",
+    "numero_pedido": 1326,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 114
+   },
+   {
+    "cliente": "Cliente 146",
+    "total_cop": 29000,
+    "dia_creacion": "2026-07-06",
+    "numero_pedido": 1376,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 113
+   },
+   {
+    "cliente": "Cliente 81",
+    "total_cop": 86000,
+    "dia_creacion": "2026-07-06",
+    "numero_pedido": 1383,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 113
+   },
+   {
+    "cliente": "Cliente 274",
+    "total_cop": 72000,
+    "dia_creacion": "2026-07-07",
+    "numero_pedido": 1415,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 112
+   },
+   {
+    "cliente": "Cliente 411",
+    "total_cop": 188000,
+    "dia_creacion": "2026-07-09",
+    "numero_pedido": 1513,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 110
+   },
+   {
+    "cliente": "Cliente 55",
+    "total_cop": 283000,
+    "dia_creacion": "2026-07-10",
+    "numero_pedido": 1529,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 109
+   },
+   {
+    "cliente": "Cliente 442",
+    "total_cop": 188000,
+    "dia_creacion": "2026-07-13",
+    "numero_pedido": 1682,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 106
+   },
+   {
+    "cliente": "Cliente 370",
+    "total_cop": 159000,
+    "dia_creacion": "2026-07-13",
+    "numero_pedido": 1695,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 106
+   },
+   {
+    "cliente": "Cliente 246",
+    "total_cop": 213000,
+    "dia_creacion": "2026-07-14",
+    "numero_pedido": 1735,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 105
+   },
+   {
+    "cliente": "Cliente 468",
+    "total_cop": 238000,
+    "dia_creacion": "2026-07-15",
+    "numero_pedido": 1768,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 104
+   },
+   {
+    "cliente": "Cliente 506",
+    "total_cop": 57000,
+    "dia_creacion": "2026-07-18",
+    "numero_pedido": 1904,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 101
+   },
+   {
+    "cliente": "Cliente 494",
+    "total_cop": 81000,
+    "dia_creacion": "2026-07-19",
+    "numero_pedido": 1999,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 100
+   },
+   {
+    "cliente": "Cliente 204",
+    "total_cop": 82000,
+    "dia_creacion": "2026-07-20",
+    "numero_pedido": 2015,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 99
+   },
+   {
+    "cliente": "Cliente 120",
+    "total_cop": 124000,
+    "dia_creacion": "2026-07-20",
+    "numero_pedido": 2055,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 99
+   },
+   {
+    "cliente": "Cliente 552",
+    "total_cop": 292000,
+    "dia_creacion": "2026-07-21",
+    "numero_pedido": 2086,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 98
+   },
+   {
+    "cliente": "Cliente 572",
+    "total_cop": 42000,
+    "dia_creacion": "2026-07-23",
+    "numero_pedido": 2145,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 96
+   },
+   {
+    "cliente": "Cliente 618",
+    "total_cop": 268000,
+    "dia_creacion": "2026-07-26",
+    "numero_pedido": 2294,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 93
+   },
+   {
+    "cliente": "Cliente 628",
+    "total_cop": 24000,
+    "dia_creacion": "2026-07-26",
+    "numero_pedido": 2295,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 93
+   },
+   {
+    "cliente": "Cliente 329",
+    "total_cop": 209000,
+    "dia_creacion": "2026-07-26",
+    "numero_pedido": 2298,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 93
+   },
+   {
+    "cliente": "Cliente 284",
+    "total_cop": 76000,
+    "dia_creacion": "2026-07-26",
+    "numero_pedido": 2331,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 93
+   },
+   {
+    "cliente": "Cliente 76",
+    "total_cop": 318000,
+    "dia_creacion": "2026-07-27",
+    "numero_pedido": 2393,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 92
+   },
+   {
+    "cliente": "Cliente 35",
+    "total_cop": 451000,
+    "dia_creacion": "2026-07-31",
+    "numero_pedido": 2572,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 88
+   },
+   {
+    "cliente": "Cliente 613",
+    "total_cop": 62000,
+    "dia_creacion": "2026-08-01",
+    "numero_pedido": 2648,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 87
+   },
+   {
+    "cliente": "Cliente 131",
+    "total_cop": 159000,
+    "dia_creacion": "2026-08-02",
+    "numero_pedido": 2672,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 86
+   },
+   {
+    "cliente": "Cliente 109",
+    "total_cop": 238000,
+    "dia_creacion": "2026-08-03",
+    "numero_pedido": 2761,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 85
+   },
+   {
+    "cliente": "Cliente 724",
+    "total_cop": 76000,
+    "dia_creacion": "2026-08-04",
+    "numero_pedido": 2806,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 84
+   },
+   {
+    "cliente": "Cliente 83",
+    "total_cop": 86000,
+    "dia_creacion": "2026-08-04",
+    "numero_pedido": 2841,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 84
+   },
+   {
+    "cliente": "Cliente 474",
+    "total_cop": 213000,
+    "dia_creacion": "2026-08-06",
+    "numero_pedido": 2948,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 82
+   },
+   {
+    "cliente": "Cliente 688",
+    "total_cop": 411000,
+    "dia_creacion": "2026-08-06",
+    "numero_pedido": 2959,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 82
+   },
+   {
+    "cliente": "Cliente 803",
+    "total_cop": 29000,
+    "dia_creacion": "2026-08-07",
+    "numero_pedido": 2994,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 81
+   },
+   {
+    "cliente": "Cliente 872",
+    "total_cop": 100000,
+    "dia_creacion": "2026-08-10",
+    "numero_pedido": 3175,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 78
+   },
+   {
+    "cliente": "Cliente 342",
+    "total_cop": 52000,
+    "dia_creacion": "2026-08-11",
+    "numero_pedido": 3226,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 77
+   },
+   {
+    "cliente": "Cliente 441",
+    "total_cop": 357000,
+    "dia_creacion": "2026-08-11",
+    "numero_pedido": 3246,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 77
+   },
+   {
+    "cliente": "Cliente 895",
+    "total_cop": 164000,
+    "dia_creacion": "2026-08-12",
+    "numero_pedido": 3296,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 76
+   },
+   {
+    "cliente": "Cliente 539",
+    "total_cop": 500000,
+    "dia_creacion": "2026-08-12",
+    "numero_pedido": 3299,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 76
+   },
+   {
+    "cliente": "Cliente 611",
+    "total_cop": 502000,
+    "dia_creacion": "2026-08-15",
+    "numero_pedido": 3487,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 73
+   },
+   {
+    "cliente": "Cliente 587",
+    "total_cop": 42000,
+    "dia_creacion": "2026-08-16",
+    "numero_pedido": 3548,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 72
+   },
+   {
+    "cliente": "Cliente 725",
+    "total_cop": 29000,
+    "dia_creacion": "2026-08-16",
+    "numero_pedido": 3558,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 72
+   },
+   {
+    "cliente": "Cliente 910",
+    "total_cop": 207000,
+    "dia_creacion": "2026-08-17",
+    "numero_pedido": 3612,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 71
+   },
+   {
+    "cliente": "Cliente 404",
+    "total_cop": 294000,
+    "dia_creacion": "2026-08-18",
+    "numero_pedido": 3703,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 70
+   },
+   {
+    "cliente": "Cliente 821",
+    "total_cop": 119000,
+    "dia_creacion": "2026-08-19",
+    "numero_pedido": 3727,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 69
+   },
+   {
+    "cliente": "Cliente 410",
+    "total_cop": 24000,
+    "dia_creacion": "2026-08-20",
+    "numero_pedido": 3808,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 68
+   },
+   {
+    "cliente": "Cliente 232",
+    "total_cop": 119000,
+    "dia_creacion": "2026-08-20",
+    "numero_pedido": 3842,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 68
+   },
+   {
+    "cliente": "Cliente 930",
+    "total_cop": 24000,
+    "dia_creacion": "2026-08-21",
+    "numero_pedido": 3856,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 67
+   },
+   {
+    "cliente": "Cliente 568",
+    "total_cop": 58000,
+    "dia_creacion": "2026-08-21",
+    "numero_pedido": 3909,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 67
+   },
+   {
+    "cliente": "Cliente 942",
+    "total_cop": 62000,
+    "dia_creacion": "2026-08-22",
+    "numero_pedido": 3937,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 66
+   },
+   {
+    "cliente": "Cliente 1088",
+    "total_cop": 164000,
+    "dia_creacion": "2026-08-22",
+    "numero_pedido": 3982,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 66
+   },
+   {
+    "cliente": "Cliente 930",
+    "total_cop": 283000,
+    "dia_creacion": "2026-08-26",
+    "numero_pedido": 4254,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 62
+   },
+   {
+    "cliente": "Cliente 1147",
+    "total_cop": 213000,
+    "dia_creacion": "2026-08-26",
+    "numero_pedido": 4258,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 62
+   },
+   {
+    "cliente": "Cliente 503",
+    "total_cop": 100000,
+    "dia_creacion": "2026-08-27",
+    "numero_pedido": 4278,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 61
+   },
+   {
+    "cliente": "Cliente 60",
+    "total_cop": 128000,
+    "dia_creacion": "2026-08-28",
+    "numero_pedido": 4376,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 60
+   },
+   {
+    "cliente": "Cliente 501",
+    "total_cop": 378000,
+    "dia_creacion": "2026-08-29",
+    "numero_pedido": 4445,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 59
+   },
+   {
+    "cliente": "Cliente 1204",
+    "total_cop": 104000,
+    "dia_creacion": "2026-08-29",
+    "numero_pedido": 4468,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 59
+   },
+   {
+    "cliente": "Cliente 930",
+    "total_cop": 407000,
+    "dia_creacion": "2026-08-30",
+    "numero_pedido": 4582,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 58
+   },
+   {
+    "cliente": "Cliente 30",
+    "total_cop": 100000,
+    "dia_creacion": "2026-08-31",
+    "numero_pedido": 4639,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 57
+   },
+   {
+    "cliente": "Cliente 932",
+    "total_cop": 86000,
+    "dia_creacion": "2026-09-01",
+    "numero_pedido": 4682,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 56
+   },
+   {
+    "cliente": "Cliente 68",
+    "total_cop": 29000,
+    "dia_creacion": "2026-09-01",
+    "numero_pedido": 4687,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 56
+   },
+   {
+    "cliente": "Cliente 1222",
+    "total_cop": 283000,
+    "dia_creacion": "2026-09-03",
+    "numero_pedido": 4825,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 54
+   },
+   {
+    "cliente": "Cliente 781",
+    "total_cop": 124000,
+    "dia_creacion": "2026-09-03",
+    "numero_pedido": 4854,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 54
+   },
+   {
+    "cliente": "Cliente 1326",
+    "total_cop": 38000,
+    "dia_creacion": "2026-09-03",
+    "numero_pedido": 4885,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 54
+   },
+   {
+    "cliente": "Cliente 512",
+    "total_cop": 48000,
+    "dia_creacion": "2026-09-03",
+    "numero_pedido": 4889,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 54
+   },
+   {
+    "cliente": "Cliente 697",
+    "total_cop": 62000,
+    "dia_creacion": "2026-09-04",
+    "numero_pedido": 4905,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 53
+   },
+   {
+    "cliente": "Cliente 1349",
+    "total_cop": 67000,
+    "dia_creacion": "2026-09-04",
+    "numero_pedido": 4999,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 53
+   },
+   {
+    "cliente": "Cliente 692",
+    "total_cop": 209000,
+    "dia_creacion": "2026-09-05",
+    "numero_pedido": 5050,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 52
+   },
+   {
+    "cliente": "Cliente 1305",
+    "total_cop": 29000,
+    "dia_creacion": "2026-09-06",
+    "numero_pedido": 5124,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 51
+   },
+   {
+    "cliente": "Cliente 29",
+    "total_cop": 86000,
+    "dia_creacion": "2026-09-08",
+    "numero_pedido": 5334,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 49
+   },
+   {
+    "cliente": "Cliente 1467",
+    "total_cop": 127000,
+    "dia_creacion": "2026-09-09",
+    "numero_pedido": 5346,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 48
+   },
+   {
+    "cliente": "Cliente 1463",
+    "total_cop": 164000,
+    "dia_creacion": "2026-09-09",
+    "numero_pedido": 5384,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 48
+   },
+   {
+    "cliente": "Cliente 958",
+    "total_cop": 248000,
+    "dia_creacion": "2026-09-09",
+    "numero_pedido": 5402,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 48
+   },
+   {
+    "cliente": "Cliente 242",
+    "total_cop": 29000,
+    "dia_creacion": "2026-09-09",
+    "numero_pedido": 5414,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 48
+   },
+   {
+    "cliente": "Cliente 217",
+    "total_cop": 556000,
+    "dia_creacion": "2026-09-10",
+    "numero_pedido": 5446,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 47
+   },
+   {
+    "cliente": "Cliente 1496",
+    "total_cop": 237000,
+    "dia_creacion": "2026-09-11",
+    "numero_pedido": 5514,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 46
+   },
+   {
+    "cliente": "Cliente 911",
+    "total_cop": 77000,
+    "dia_creacion": "2026-09-13",
+    "numero_pedido": 5693,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 44
+   },
+   {
+    "cliente": "Cliente 1325",
+    "total_cop": 45000,
+    "dia_creacion": "2026-09-15",
+    "numero_pedido": 5880,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 42
+   },
+   {
+    "cliente": "Cliente 125",
+    "total_cop": 100000,
+    "dia_creacion": "2026-09-15",
+    "numero_pedido": 5881,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 42
+   },
+   {
+    "cliente": "Cliente 1610",
+    "total_cop": 119000,
+    "dia_creacion": "2026-09-15",
+    "numero_pedido": 5896,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 42
+   },
+   {
+    "cliente": "Cliente 747",
+    "total_cop": 38000,
+    "dia_creacion": "2026-09-15",
+    "numero_pedido": 5908,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 42
+   },
+   {
+    "cliente": "Cliente 762",
+    "total_cop": 189000,
+    "dia_creacion": "2026-09-15",
+    "numero_pedido": 5909,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 42
+   },
+   {
+    "cliente": "Cliente 1667",
+    "total_cop": 303000,
+    "dia_creacion": "2026-09-18",
+    "numero_pedido": 6118,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 39
+   },
+   {
+    "cliente": "Cliente 502",
+    "total_cop": 458000,
+    "dia_creacion": "2026-09-18",
+    "numero_pedido": 6145,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 39
+   },
+   {
+    "cliente": "Cliente 1672",
+    "total_cop": 38000,
+    "dia_creacion": "2026-09-18",
+    "numero_pedido": 6169,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 39
+   },
+   {
+    "cliente": "Cliente 904",
+    "total_cop": 24000,
+    "dia_creacion": "2026-09-18",
+    "numero_pedido": 6173,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 39
+   },
+   {
+    "cliente": "Cliente 1697",
+    "total_cop": 279000,
+    "dia_creacion": "2026-09-19",
+    "numero_pedido": 6193,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 38
+   },
+   {
+    "cliente": "Cliente 1328",
+    "total_cop": 29000,
+    "dia_creacion": "2026-09-19",
+    "numero_pedido": 6252,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 38
+   },
+   {
+    "cliente": "Cliente 667",
+    "total_cop": 189000,
+    "dia_creacion": "2026-09-20",
+    "numero_pedido": 6297,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 37
+   },
+   {
+    "cliente": "Cliente 1107",
+    "total_cop": 38000,
+    "dia_creacion": "2026-09-20",
+    "numero_pedido": 6318,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 37
+   },
+   {
+    "cliente": "Cliente 862",
+    "total_cop": 189000,
+    "dia_creacion": "2026-09-20",
+    "numero_pedido": 6343,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 37
+   },
+   {
+    "cliente": "Cliente 772",
+    "total_cop": 598000,
+    "dia_creacion": "2026-09-21",
+    "numero_pedido": 6370,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 36
+   },
+   {
+    "cliente": "Cliente 1095",
+    "total_cop": 45000,
+    "dia_creacion": "2026-09-21",
+    "numero_pedido": 6397,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 36
+   },
+   {
+    "cliente": "Cliente 1734",
+    "total_cop": 95000,
+    "dia_creacion": "2026-09-21",
+    "numero_pedido": 6400,
+    "ciudad_entrega": "Manizales",
+    "dias_pendientes": 36
+   },
+   {
+    "cliente": "Cliente 599",
+    "total_cop": 29000,
+    "dia_creacion": "2026-09-22",
+    "numero_pedido": 6498,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 35
+   },
+   {
+    "cliente": "Cliente 877",
+    "total_cop": 109000,
+    "dia_creacion": "2026-09-22",
+    "numero_pedido": 6504,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 35
+   },
+   {
+    "cliente": "Cliente 1787",
+    "total_cop": 48000,
+    "dia_creacion": "2026-09-23",
+    "numero_pedido": 6557,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 34
+   },
+   {
+    "cliente": "Cliente 1631",
+    "total_cop": 95000,
+    "dia_creacion": "2026-09-24",
+    "numero_pedido": 6642,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 33
+   },
+   {
+    "cliente": "Cliente 1295",
+    "total_cop": 258000,
+    "dia_creacion": "2026-09-25",
+    "numero_pedido": 6708,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 32
+   },
+   {
+    "cliente": "Cliente 875",
+    "total_cop": 90000,
+    "dia_creacion": "2026-09-25",
+    "numero_pedido": 6718,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 32
+   },
+   {
+    "cliente": "Cliente 1359",
+    "total_cop": 58000,
+    "dia_creacion": "2026-09-26",
+    "numero_pedido": 6819,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 31
+   },
+   {
+    "cliente": "Cliente 1218",
+    "total_cop": 379000,
+    "dia_creacion": "2026-09-28",
+    "numero_pedido": 6954,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 29
+   },
+   {
+    "cliente": "Cliente 1647",
+    "total_cop": 456000,
+    "dia_creacion": "2026-09-29",
+    "numero_pedido": 7100,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 28
+   },
+   {
+    "cliente": "Cliente 1130",
+    "total_cop": 328000,
+    "dia_creacion": "2026-09-29",
+    "numero_pedido": 7125,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 28
+   },
+   {
+    "cliente": "Cliente 2008",
+    "total_cop": 255000,
+    "dia_creacion": "2026-10-01",
+    "numero_pedido": 7263,
+    "ciudad_entrega": "Pasto",
+    "dias_pendientes": 26
+   },
+   {
+    "cliente": "Cliente 312",
+    "total_cop": 24000,
+    "dia_creacion": "2026-10-02",
+    "numero_pedido": 7418,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 25
+   },
+   {
+    "cliente": "Cliente 2052",
+    "total_cop": 378000,
+    "dia_creacion": "2026-10-03",
+    "numero_pedido": 7541,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 24
+   },
+   {
+    "cliente": "Cliente 603",
+    "total_cop": 86000,
+    "dia_creacion": "2026-10-04",
+    "numero_pedido": 7610,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 23
+   },
+   {
+    "cliente": "Cliente 1032",
+    "total_cop": 45000,
+    "dia_creacion": "2026-10-05",
+    "numero_pedido": 7637,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 22
+   },
+   {
+    "cliente": "Cliente 2088",
+    "total_cop": 58000,
+    "dia_creacion": "2026-10-05",
+    "numero_pedido": 7653,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 22
+   },
+   {
+    "cliente": "Cliente 2115",
+    "total_cop": 189000,
+    "dia_creacion": "2026-10-06",
+    "numero_pedido": 7809,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 21
+   },
+   {
+    "cliente": "Cliente 1561",
+    "total_cop": 237000,
+    "dia_creacion": "2026-10-06",
+    "numero_pedido": 7820,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 21
+   },
+   {
+    "cliente": "Cliente 77",
+    "total_cop": 42000,
+    "dia_creacion": "2026-10-08",
+    "numero_pedido": 8007,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 19
+   },
+   {
+    "cliente": "Cliente 455",
+    "total_cop": 76000,
+    "dia_creacion": "2026-10-09",
+    "numero_pedido": 8029,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 18
+   },
+   {
+    "cliente": "Cliente 2152",
+    "total_cop": 159000,
+    "dia_creacion": "2026-10-09",
+    "numero_pedido": 8031,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 18
+   },
+   {
+    "cliente": "Cliente 814",
+    "total_cop": 45000,
+    "dia_creacion": "2026-10-09",
+    "numero_pedido": 8088,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 18
+   },
+   {
+    "cliente": "Cliente 249",
+    "total_cop": 115000,
+    "dia_creacion": "2026-10-10",
+    "numero_pedido": 8110,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 17
+   },
+   {
+    "cliente": "Cliente 1946",
+    "total_cop": 119000,
+    "dia_creacion": "2026-10-10",
+    "numero_pedido": 8127,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 17
+   },
+   {
+    "cliente": "Cliente 1807",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-10",
+    "numero_pedido": 8154,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 17
+   },
+   {
+    "cliente": "Cliente 2240",
+    "total_cop": 90000,
+    "dia_creacion": "2026-10-10",
+    "numero_pedido": 8165,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 17
+   },
+   {
+    "cliente": "Cliente 869",
+    "total_cop": 299000,
+    "dia_creacion": "2026-10-11",
+    "numero_pedido": 8227,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 16
+   },
+   {
+    "cliente": "Cliente 2257",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-11",
+    "numero_pedido": 8258,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 16
+   },
+   {
+    "cliente": "Cliente 2296",
+    "total_cop": 45000,
+    "dia_creacion": "2026-10-12",
+    "numero_pedido": 8341,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 15
+   },
+   {
+    "cliente": "Cliente 675",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-12",
+    "numero_pedido": 8367,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 15
+   },
+   {
+    "cliente": "Cliente 1962",
+    "total_cop": 98000,
+    "dia_creacion": "2026-10-13",
+    "numero_pedido": 8412,
+    "ciudad_entrega": "Bucaramanga",
+    "dias_pendientes": 14
+   },
+   {
+    "cliente": "Cliente 603",
+    "total_cop": 447000,
+    "dia_creacion": "2026-10-15",
+    "numero_pedido": 8611,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 12
+   },
+   {
+    "cliente": "Cliente 509",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-15",
+    "numero_pedido": 8702,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 12
+   },
+   {
+    "cliente": "Cliente 424",
+    "total_cop": 38000,
+    "dia_creacion": "2026-10-17",
+    "numero_pedido": 8816,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 10
+   },
+   {
+    "cliente": "Cliente 2428",
+    "total_cop": 62000,
+    "dia_creacion": "2026-10-17",
+    "numero_pedido": 8882,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 10
+   },
+   {
+    "cliente": "Cliente 509",
+    "total_cop": 38000,
+    "dia_creacion": "2026-10-17",
+    "numero_pedido": 8897,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 10
+   },
+   {
+    "cliente": "Cliente 1494",
+    "total_cop": 29000,
+    "dia_creacion": "2026-10-18",
+    "numero_pedido": 8993,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 9
+   },
+   {
+    "cliente": "Cliente 2471",
+    "total_cop": 391000,
+    "dia_creacion": "2026-10-19",
+    "numero_pedido": 9030,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 8
+   },
+   {
+    "cliente": "Cliente 311",
+    "total_cop": 357000,
+    "dia_creacion": "2026-10-19",
+    "numero_pedido": 9043,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 8
+   },
+   {
+    "cliente": "Cliente 1206",
+    "total_cop": 283000,
+    "dia_creacion": "2026-10-19",
+    "numero_pedido": 9090,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 8
+   },
+   {
+    "cliente": "Cliente 2405",
+    "total_cop": 196000,
+    "dia_creacion": "2026-10-20",
+    "numero_pedido": 9150,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 7
+   },
+   {
+    "cliente": "Cliente 1669",
+    "total_cop": 254000,
+    "dia_creacion": "2026-10-20",
+    "numero_pedido": 9231,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 7
+   },
+   {
+    "cliente": "Cliente 2384",
+    "total_cop": 328000,
+    "dia_creacion": "2026-10-22",
+    "numero_pedido": 9390,
+    "ciudad_entrega": "Barranquilla",
+    "dias_pendientes": 5
+   },
+   {
+    "cliente": "Cliente 26",
+    "total_cop": 27000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9495,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 4
+   },
+   {
+    "cliente": "Cliente 1782",
+    "total_cop": 238000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9515,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 4
+   },
+   {
+    "cliente": "Cliente 84",
+    "total_cop": 76000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9539,
+    "ciudad_entrega": "Cali",
+    "dias_pendientes": 4
+   },
+   {
+    "cliente": "Cliente 2367",
+    "total_cop": 137000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9540,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 4
+   },
+   {
+    "cliente": "Cliente 1927",
+    "total_cop": 150000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9549,
+    "ciudad_entrega": "Medellín",
+    "dias_pendientes": 4
+   },
+   {
+    "cliente": "Cliente 1531",
+    "total_cop": 494000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9557,
+    "ciudad_entrega": "Pereira",
+    "dias_pendientes": 4
+   },
+   {
+    "cliente": "Cliente 443",
+    "total_cop": 24000,
+    "dia_creacion": "2026-10-23",
+    "numero_pedido": 9564,
+    "ciudad_entrega": "Bogotá",
+    "dias_pendientes": 4
+   }
+  ],
+  "filasDeLaVerdad": [
+   {
+    "numero": 172
+   },
+   {
+    "numero": 334
+   },
+   {
+    "numero": 336
+   },
+   {
+    "numero": 343
+   },
+   {
+    "numero": 431
+   },
+   {
+    "numero": 560
+   },
+   {
+    "numero": 580
+   },
+   {
+    "numero": 640
+   },
+   {
+    "numero": 645
+   },
+   {
+    "numero": 810
+   },
+   {
+    "numero": 834
+   },
+   {
+    "numero": 987
+   },
+   {
+    "numero": 1017
+   },
+   {
+    "numero": 1293
+   },
+   {
+    "numero": 1318
+   },
+   {
+    "numero": 1326
+   },
+   {
+    "numero": 1376
+   },
+   {
+    "numero": 1383
+   },
+   {
+    "numero": 1415
+   },
+   {
+    "numero": 1513
+   },
+   {
+    "numero": 1529
+   },
+   {
+    "numero": 1682
+   },
+   {
+    "numero": 1695
+   },
+   {
+    "numero": 1735
+   },
+   {
+    "numero": 1768
+   },
+   {
+    "numero": 1904
+   },
+   {
+    "numero": 1999
+   },
+   {
+    "numero": 2015
+   },
+   {
+    "numero": 2055
+   },
+   {
+    "numero": 2086
+   },
+   {
+    "numero": 2145
+   },
+   {
+    "numero": 2294
+   },
+   {
+    "numero": 2295
+   },
+   {
+    "numero": 2298
+   },
+   {
+    "numero": 2331
+   },
+   {
+    "numero": 2393
+   },
+   {
+    "numero": 2572
+   },
+   {
+    "numero": 2648
+   },
+   {
+    "numero": 2672
+   },
+   {
+    "numero": 2761
+   },
+   {
+    "numero": 2806
+   },
+   {
+    "numero": 2841
+   },
+   {
+    "numero": 2948
+   },
+   {
+    "numero": 2959
+   },
+   {
+    "numero": 2994
+   },
+   {
+    "numero": 3175
+   },
+   {
+    "numero": 3226
+   },
+   {
+    "numero": 3246
+   },
+   {
+    "numero": 3296
+   },
+   {
+    "numero": 3299
+   },
+   {
+    "numero": 3487
+   },
+   {
+    "numero": 3548
+   },
+   {
+    "numero": 3558
+   },
+   {
+    "numero": 3612
+   },
+   {
+    "numero": 3703
+   },
+   {
+    "numero": 3727
+   },
+   {
+    "numero": 3808
+   },
+   {
+    "numero": 3842
+   },
+   {
+    "numero": 3856
+   },
+   {
+    "numero": 3909
+   },
+   {
+    "numero": 3937
+   },
+   {
+    "numero": 3982
+   },
+   {
+    "numero": 4254
+   },
+   {
+    "numero": 4258
+   },
+   {
+    "numero": 4278
+   },
+   {
+    "numero": 4376
+   },
+   {
+    "numero": 4445
+   },
+   {
+    "numero": 4468
+   },
+   {
+    "numero": 4582
+   },
+   {
+    "numero": 4639
+   },
+   {
+    "numero": 4682
+   },
+   {
+    "numero": 4687
+   },
+   {
+    "numero": 4825
+   },
+   {
+    "numero": 4854
+   },
+   {
+    "numero": 4885
+   },
+   {
+    "numero": 4889
+   },
+   {
+    "numero": 4905
+   },
+   {
+    "numero": 4999
+   },
+   {
+    "numero": 5050
+   },
+   {
+    "numero": 5124
+   },
+   {
+    "numero": 5334
+   },
+   {
+    "numero": 5346
+   },
+   {
+    "numero": 5384
+   },
+   {
+    "numero": 5402
+   },
+   {
+    "numero": 5414
+   },
+   {
+    "numero": 5446
+   },
+   {
+    "numero": 5514
+   },
+   {
+    "numero": 5693
+   },
+   {
+    "numero": 5880
+   },
+   {
+    "numero": 5881
+   },
+   {
+    "numero": 5896
+   },
+   {
+    "numero": 5908
+   },
+   {
+    "numero": 5909
+   },
+   {
+    "numero": 6118
+   },
+   {
+    "numero": 6145
+   },
+   {
+    "numero": 6169
+   },
+   {
+    "numero": 6173
+   },
+   {
+    "numero": 6193
+   },
+   {
+    "numero": 6252
+   },
+   {
+    "numero": 6297
+   },
+   {
+    "numero": 6318
+   },
+   {
+    "numero": 6343
+   },
+   {
+    "numero": 6370
+   },
+   {
+    "numero": 6397
+   },
+   {
+    "numero": 6400
+   },
+   {
+    "numero": 6498
+   },
+   {
+    "numero": 6504
+   },
+   {
+    "numero": 6557
+   },
+   {
+    "numero": 6642
+   },
+   {
+    "numero": 6708
+   },
+   {
+    "numero": 6718
+   },
+   {
+    "numero": 6819
+   },
+   {
+    "numero": 6954
+   },
+   {
+    "numero": 7100
+   },
+   {
+    "numero": 7125
+   },
+   {
+    "numero": 7263
+   },
+   {
+    "numero": 7418
+   },
+   {
+    "numero": 7541
+   },
+   {
+    "numero": 7610
+   },
+   {
+    "numero": 7637
+   },
+   {
+    "numero": 7653
+   },
+   {
+    "numero": 7809
+   },
+   {
+    "numero": 7820
+   },
+   {
+    "numero": 8007
+   },
+   {
+    "numero": 8029
+   },
+   {
+    "numero": 8031
+   },
+   {
+    "numero": 8088
+   },
+   {
+    "numero": 8110
+   },
+   {
+    "numero": 8127
+   },
+   {
+    "numero": 8154
+   },
+   {
+    "numero": 8165
+   },
+   {
+    "numero": 8227
+   },
+   {
+    "numero": 8258
+   },
+   {
+    "numero": 8341
+   },
+   {
+    "numero": 8367
+   },
+   {
+    "numero": 8412
+   },
+   {
+    "numero": 8611
+   },
+   {
+    "numero": 8702
+   },
+   {
+    "numero": 8816
+   },
+   {
+    "numero": 8882
+   },
+   {
+    "numero": 8897
+   },
+   {
+    "numero": 8993
+   },
+   {
+    "numero": 9030
+   },
+   {
+    "numero": 9043
+   },
+   {
+    "numero": 9090
+   },
+   {
+    "numero": 9150
+   },
+   {
+    "numero": 9231
+   },
+   {
+    "numero": 9390
+   },
+   {
+    "numero": 9495
+   },
+   {
+    "numero": 9515
+   },
+   {
+    "numero": 9539
+   },
+   {
+    "numero": 9540
+   },
+   {
+    "numero": 9549
+   },
+   {
+    "numero": 9557
+   },
+   {
+    "numero": 9564
+   }
+  ],
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "consulta",
+    "motivo": "ninguno",
+    "sql": "SELECT p.numero AS numero_pedido, c.nombre AS cliente, p.ciudad AS ciudad_entrega, p.total AS total_cop, p.dia_local AS dia_creacion, (h.hoy_local - p.dia_local) AS dias_pendientes FROM pedidos p CROSS JOIN hoy h LEFT JOIN clientes c ON c.id = p.cliente_id WHERE p.estado = 'pendiente' AND (h.hoy_local - p.dia_local) > 3 ORDER BY p.dia_local ASC, p.numero ASC",
+    "enPalabras": "Lista de pedidos que siguen pendientes y fueron creados hace más de 3 días contando hasta hoy",
+    "falta": "",
+    "validador": "ok",
+    "postgres": "ok",
+    "ms": 9137.276333000016,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1515,
+     "salida": 1107,
+     "razonamiento": 933,
+     "enCache": 0,
+     "usdStandard": 0.0065985,
+     "usdContributor": 0.00037289999999999996
+    }
+   }
+  ]
+ },
+ {
+  "id": "costo_envios",
+  "rep": "2",
+  "esperado": "declinar",
+  "veredicto": "declino_bien",
+  "razon": "motivo dato_inexistente: costo de envío",
+  "validaALaPrimera": false,
+  "validaEnTres": false,
+  "intentos": 1,
+  "ms": 3659.612792,
+  "gasto": {
+   "llamadas": 1,
+   "entrada": 1507,
+   "salida": 492,
+   "razonamiento": 423,
+   "enCache": 0,
+   "usdStandard": 0.00397475,
+   "usdContributor": 0.00024910000000000004
+  },
+  "zonaOLiteralDeTiempoEnAlgunIntento": false,
+  "zonaOLiteralDeTiempoEnElFinal": false,
+  "listaDeEstadosEnElFinal": false,
+  "estadoLiteralEnElFinal": false,
+  "usaCuentaComoVentaEnElFinal": false,
+  "laVerdadUsaVenta": false,
+  "sqlFinal": "",
+  "enPalabras": "No se puede calcular lo gastado en envíos este mes",
+  "filas": null,
+  "total": null,
+  "muestra": null,
+  "filasFinales": null,
+  "filasDeLaVerdad": null,
+  "intentosDetalle": [
+   {
+    "n": 1,
+    "decision": "no_se_puede",
+    "motivo": "dato_inexistente",
+    "sql": "",
+    "enPalabras": "No se puede calcular lo gastado en envíos este mes",
+    "falta": "costo de envío",
+    "validador": "",
+    "postgres": "",
+    "ms": 3659.608749999985,
+    "gasto": {
+     "llamadas": 1,
+     "entrada": 1507,
+     "salida": 492,
+     "razonamiento": 423,
+     "enCache": 0,
+     "usdStandard": 0.00397475,
+     "usdContributor": 0.00024910000000000004
+    }
+   }
+  ]
+ }
+]

@@ -1,0 +1,122 @@
+{
+ "etiqueta": "externo",
+ "externo": true,
+ "msBuild": 6934,
+ "erroresDeBuild": [],
+ "bytesWasm": 1717872,
+ "pesos": {
+  "validar": {
+   "archivosTrazados": 127,
+   "bytesTrazados": 3512684,
+   "bytesLibpgQuery": 1809745,
+   "archivosLibpgQuery": [
+    "libpg-query/package.json 1617",
+    "wasm/index.cjs 14957",
+    "wasm/index.js 13638",
+    "wasm/libpg-query.js 61661",
+    "wasm/libpg-query.wasm 1717872"
+   ]
+  },
+  "ping": {
+   "archivosTrazados": 114,
+   "bytesTrazados": 1683126,
+   "bytesLibpgQuery": 0,
+   "archivosLibpgQuery": []
+  },
+  "bytesRouteJsValidar": 426,
+  "bytesRouteJsPing": 399
+ },
+ "arranque": {
+  "listoMsMediana": 357,
+  "primerPingDesdeElArranqueMsMediana": 493,
+  "primeraValidacionMsMediana": 17,
+  "primeraValidacionMsMax": 20,
+  "validarSimpleServidorMsMediana": 7.77,
+  "validarComplejoServidorMsMediana": 0.34,
+  "validarComplejoCalienteRoundTripMsMediana": 3,
+  "rssMbMediana": 190,
+  "todasOk": true
+ },
+ "arranques": [
+  {
+   "listoMs": 348.1862919999994,
+   "primerPing": {
+    "desdeElArranqueMs": 477.21145799999977,
+    "soloLaLlamadaMs": 121.53070800000023
+   },
+   "primeraValidacionMs": 16.925250000000233,
+   "primeraStatus": 200,
+   "primeraOk": true,
+   "cargaDelParserMs": 1.9171249999999986,
+   "validarMs": 7.212625000000003,
+   "validarComplejoCalienteMsMediana": 2.878458999999566,
+   "msValidarComplejoServidor": 0.3795000000000073,
+   "rssMb": 190,
+   "errorDeProceso": []
+  },
+  {
+   "listoMs": 304.86204200000066,
+   "primerPing": {
+    "desdeElArranqueMs": 430.8134170000012,
+    "soloLaLlamadaMs": 109.8535410000004
+   },
+   "primeraValidacionMs": 14.315999999998894,
+   "primeraStatus": 200,
+   "primeraOk": true,
+   "cargaDelParserMs": 1.1788329999999974,
+   "validarMs": 6.393332999999984,
+   "validarComplejoCalienteMsMediana": 2.899541999999201,
+   "msValidarComplejoServidor": 0.29849999999999,
+   "rssMb": 190,
+   "errorDeProceso": []
+  },
+  {
+   "listoMs": 462.2841669999998,
+   "primerPing": {
+    "desdeElArranqueMs": 600.1666249999998,
+    "soloLaLlamadaMs": 135.53758300000118
+   },
+   "primeraValidacionMs": 20.356832999999824,
+   "primeraStatus": 200,
+   "primeraOk": true,
+   "cargaDelParserMs": 1.84699999999998,
+   "validarMs": 8.986458000000027,
+   "validarComplejoCalienteMsMediana": 3.3298329999997804,
+   "msValidarComplejoServidor": 0.4635830000000283,
+   "rssMb": 189,
+   "errorDeProceso": []
+  },
+  {
+   "listoMs": 511.33479199999965,
+   "primerPing": {
+    "desdeElArranqueMs": 672.7436249999992,
+    "soloLaLlamadaMs": 156.79375000000073
+   },
+   "primeraValidacionMs": 19.83391699999993,
+   "primeraStatus": 200,
+   "primeraOk": true,
+   "cargaDelParserMs": 1.7032080000000178,
+   "validarMs": 9.113166999999976,
+   "validarComplejoCalienteMsMediana": 3.6988749999982247,
+   "msValidarComplejoServidor": 0.33437500000002274,
+   "rssMb": 186,
+   "errorDeProceso": []
+  },
+  {
+   "listoMs": 357.3568750000013,
+   "primerPing": {
+    "desdeElArranqueMs": 493.33475,
+    "soloLaLlamadaMs": 129.119834000001
+   },
+   "primeraValidacionMs": 17.46991700000035,
+   "primeraStatus": 200,
+   "primeraOk": true,
+   "cargaDelParserMs": 1.6722090000000094,
+   "validarMs": 7.765500000000003,
+   "validarComplejoCalienteMsMediana": 3.0073750000010477,
+   "msValidarComplejoServidor": 0.3414579999999887,
+   "rssMb": 191,
+   "errorDeProceso": []
+  }
+ ]
+}

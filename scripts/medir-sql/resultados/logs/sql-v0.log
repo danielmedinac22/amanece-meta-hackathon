@@ -1,0 +1,39 @@
+confirmados_por_dia        correcta         1ra=no int=2 18.7s $0.0144 30 días, todos coinciden
+confirmados_30_dias        correcta         1ra=si int=1 6.8s $0.0054 30 filas coinciden
+novedad_lista              correcta         1ra=si int=1 6.7s $0.0053 49 filas coinciden
+recompra_60                correcta         1ra=si int=1 7.0s $0.0056 1 filas coinciden
+mejores_clientes           correcta         1ra=si int=1 4.7s $0.0046 10 filas coinciden
+margen_producto            declino_bien     1ra=no int=1 4.1s $0.0043 motivo dato_inexistente: costo de compra / costo de cada producto para calcular el margen 
+dias_confirmado_entregado  declino_bien     1ra=no int=1 5.9s $0.0049 motivo dato_inexistente: cuándo se confirmó y cuándo se entregó cada pedido (pedidos solo 
+lo_que_escribio            declino_bien     1ra=no int=1 3.4s $0.0036 motivo dato_inexistente: El texto/contenido de los mensajes del cliente de hoy; conversaci
+contadores_estado          correcta         1ra=si int=1 6.8s $0.0050 6 filas coinciden
+contadores_producto        correcta         1ra=si int=1 8.1s $0.0060 14 filas coinciden
+ventas_dia_ciudad          correcta         1ra=si int=1 5.0s $0.0047 112 filas coinciden
+ticket_ciudad              correcta         1ra=si int=1 7.9s $0.0059 8 filas coinciden
+primera_respuesta          correcta         1ra=si int=1 6.0s $0.0051 1 filas coinciden
+se_compran_juntos          invalida         1ra=no int=3 29.2s $0.0213 
+cohortes_retencion         correcta         1ra=si int=1 10.4s $0.0075 6 filas coinciden
+clientes_inactivos         correcta         1ra=si int=1 6.0s $0.0051 1 filas coinciden
+cancelados_ciudad          correcta         1ra=si int=1 7.9s $0.0063 8 filas coinciden
+pedidos_por_hora           invalida         1ra=no int=3 24.7s $0.0200 
+casos_resolucion           correcta         1ra=si int=1 4.9s $0.0045 1 filas coinciden
+ventas_semana              correcta         1ra=si int=1 8.5s $0.0065 1 filas coinciden
+clientes_nuevos_mes        correcta         1ra=si int=1 4.9s $0.0042 6 filas coinciden
+pendientes_viejos          correcta         1ra=si int=1 9.5s $0.0070 155 filas coinciden
+costo_envios               declino_bien     1ra=no int=1 3.8s $0.0039 motivo dato_inexistente: costo de envío
+guardado scripts/medir-sql/resultados/sql-rep1.json
+confirmados_por_dia        correcta         1ra=si int=1 5.5s $0.0047 30 días, todos coinciden
+confirmados_30_dias        correcta         1ra=si int=1 8.6s $0.0067 30 filas coinciden
+novedad_lista              correcta         1ra=si int=1 8.5s $0.0065 49 filas coinciden
+recompra_60                correcta         1ra=si int=1 9.5s $0.0063 1 filas coinciden
+mejores_clientes           correcta         1ra=si int=1 6.4s $0.0045 10 filas coinciden
+margen_producto            declino_bien     1ra=no int=1 5.0s $0.0045 motivo dato_inexistente: costo de compra de cada producto (productos y pedido_items no lo 
+dias_confirmado_entregado  declino_bien     1ra=no int=1 4.6s $0.0044 motivo dato_inexistente: cuándo se confirmó y cuándo se entregó cada pedido, solo se guard
+lo_que_escribio            declino_bien     1ra=no int=1 6.3s $0.0056 motivo dato_inexistente: El texto de los mensajes escritos por cada cliente; la fuente con
+contadores_estado          correcta         1ra=si int=1 8.1s $0.0060 6 filas coinciden
+contadores_producto        correcta         1ra=si int=1 9.6s $0.0069 14 filas coinciden
+ventas_dia_ciudad          correcta         1ra=si int=1 7.1s $0.0056 112 filas coinciden
+ticket_ciudad              mal_en_silencio  1ra=si int=1 7.7s $0.0061 no encuentro la fila {"valor":152645.83333333334,"etiqueta":"Bucaramanga"}
+primera_respuesta          correcta         1ra=si int=1 6.9s $0.0052 1 filas coinciden
+se_compran_juntos          correcta         1ra=si int=1 11.0s $0.0074 5 filas coinciden
+cohortes_retencion         correcta         1ra=si int=1 13.8s $0.0106 6 filas coinciden

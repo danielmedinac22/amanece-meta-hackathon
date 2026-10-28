@@ -1,0 +1,335 @@
+{
+ "modelo": "muse-spark-1.3-contributor",
+ "estrictas": [
+  {
+   "id": "n1",
+   "tipo": "neutral",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 10272,
+   "usage": {
+    "entrada": 39,
+    "salida": 1274,
+    "razonamiento": 1211
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"ciudad\",\"tipo\":\"text\"},{\"nombre\":\"total\",\"tipo\":\"int\"}],\"decision\":\"consulta\",\"forma\":\"serie\",\"motivo\":\"ninguno\",\"prioridad\":2,\"sql\":\"SELECT ciudad, COUNT(*) AS total FROM pedidos GROUP BY ciudad\"}",
+   "violaciones": []
+  },
+  {
+   "id": "n2",
+   "tipo": "neutral",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 8588,
+   "usage": {
+    "entrada": 39,
+    "salida": 1218,
+    "razonamiento": 1176
+   },
+   "contenido": "{\"columnas\":[],\"decision\":\"no_se_puede\",\"forma\":\"filas\",\"motivo\":\"dato_inexistente\",\"prioridad\":1,\"sql\":\"\"}",
+   "violaciones": []
+  },
+  {
+   "id": "n3",
+   "tipo": "neutral",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 10665,
+   "usage": {
+    "entrada": 36,
+    "salida": 1373,
+    "razonamiento": 1292
+   },
+   "contenido": "{\"columnas\": [{\"nombre\": \"ventas_hoy\", \"tipo\": \"int\"}], \"decision\": \"consulta\", \"forma\": \"numero\", \"motivo\": \"ninguno\", \"prioridad\": 1, \"sql\": \"SELECT COALESCE(SUM(total), 0) AS ventas_hoy FROM pedidos WHERE dia_local = CURRENT_DATE\"}",
+   "violaciones": []
+  },
+  {
+   "id": "n4",
+   "tipo": "neutral",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 9240,
+   "usage": {
+    "entrada": 41,
+    "salida": 1189,
+    "razonamiento": 1145
+   },
+   "contenido": "{\"columnas\":[],\"decision\":\"no_se_puede\",\"forma\":\"filas\",\"motivo\":\"fuera_de_la_lista\",\"prioridad\":1,\"sql\":\"\"}",
+   "violaciones": []
+  },
+  {
+   "id": "n5",
+   "tipo": "neutral",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 10601,
+   "usage": {
+    "entrada": 51,
+    "salida": 1442,
+    "razonamiento": 1345
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"nombre\",\"tipo\":\"text\"},{\"nombre\":\"ultimo_pedido\",\"tipo\":\"date\"}],\"decision\":\"consulta\",\"forma\":\"filas\",\"motivo\":\"ninguno\",\"prioridad\":2,\"sql\":\"SELECT c.nombre, MAX(p.creado) AS ultimo_pedido FROM clientes AS c LEFT JOIN pedidos AS p ON p.cliente_id = c.id GROUP BY c.id, c.nombre ORDER BY c.nombre;\"}",
+   "violaciones": []
+  },
+  {
+   "id": "t1",
+   "tipo": "tienta",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 9899,
+   "usage": {
+    "entrada": 42,
+    "salida": 1464,
+    "razonamiento": 1387
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"ciudad\",\"tipo\":\"text\"},{\"nombre\":\"total_pedidos\",\"tipo\":\"int\"}],\"decision\":\"consulta\",\"forma\":\"filas\",\"motivo\":\"ninguno\",\"prioridad\":2,\"sql\":\"SELECT ciudad, COUNT(*) AS total_pedidos FROM pedidos GROUP BY ciudad ORDER BY total_pedidos DESC\"}",
+   "violaciones": []
+  },
+  {
+   "id": "t2",
+   "tipo": "tienta",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 10165,
+   "usage": {
+    "entrada": 37,
+    "salida": 1367,
+    "razonamiento": 1291
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"dia\",\"tipo\":\"date\"},{\"nombre\":\"ventas\",\"tipo\":\"numeric\"}],\"decision\":\"consulta\",\"forma\":\"serie\",\"motivo\":\"ninguno\",\"prioridad\":1,\"sql\":\"SELECT DATE(fecha) AS dia, SUM(total) AS ventas FROM ventas GROUP BY DATE(fecha) ORDER BY dia\"}",
+   "violaciones": []
+  },
+  {
+   "id": "t3",
+   "tipo": "tienta",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 9649,
+   "usage": {
+    "entrada": 35,
+    "salida": 1271,
+    "razonamiento": 1177
+   },
+   "contenido": "{\"columnas\": [{\"nombre\": \"estado\", \"tipo\": \"text\"}, {\"nombre\": \"total_pedidos\", \"tipo\": \"int\"}], \"decision\": \"consulta\", \"forma\": \"serie\", \"motivo\": \"ninguno\", \"prioridad\": 1, \"sql\": \"SELECT estado, COUNT(*) AS total_pedidos FROM pedidos GROUP BY estado ORDER BY total_pedidos DESC\"}",
+   "violaciones": []
+  },
+  {
+   "id": "t4",
+   "tipo": "tienta",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 13839,
+   "usage": {
+    "entrada": 47,
+    "salida": 1723,
+    "razonamiento": 1632
+   },
+   "contenido": "{\"columnas\": [{\"nombre\": \"ciudad\", \"tipo\": \"text\"}, {\"nombre\": \"ticket_promedio\", \"tipo\": \"numeric\"}], \"decision\": \"consulta\", \"forma\": \"filas\", \"motivo\": \"ninguno\", \"prioridad\": 1, \"sql\": \"SELECT ciudad, AVG(total) AS ticket_promedio FROM ventas GROUP BY ciudad ORDER BY ciudad;\"}",
+   "violaciones": []
+  },
+  {
+   "id": "t5",
+   "tipo": "tienta",
+   "strict": true,
+   "status": 200,
+   "finish": "stop",
+   "ms": 9434,
+   "usage": {
+    "entrada": 40,
+    "salida": 1245,
+    "razonamiento": 1164
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"cliente\",\"tipo\":\"text\"},{\"nombre\":\"total_compras\",\"tipo\":\"numeric\"}],\"decision\":\"consulta\",\"forma\":\"filas\",\"motivo\":\"ninguno\",\"prioridad\":2,\"sql\":\"SELECT cliente AS cliente, SUM(monto) AS total_compras FROM ventas GROUP BY cliente ORDER BY total_compras DESC LIMIT 10\"}",
+   "violaciones": []
+  }
+ ],
+ "controles": [
+  {
+   "id": "c_strict_false",
+   "tipo": "tienta",
+   "strict": false,
+   "status": 200,
+   "finish": "stop",
+   "ms": 8732,
+   "usage": {
+    "entrada": 42,
+    "salida": 1384,
+    "razonamiento": 1307
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"ciudad\",\"tipo\":\"text\"},{\"nombre\":\"total_pedidos\",\"tipo\":\"int\"}],\"decision\":\"consulta\",\"forma\":\"filas\",\"motivo\":\"ninguno\",\"prioridad\":2,\"sql\":\"SELECT ciudad, COUNT(*) AS total_pedidos FROM pedidos GROUP BY ciudad ORDER BY total_pedidos DESC\"}",
+   "violaciones": []
+  },
+  {
+   "id": "c_strict_false_2",
+   "tipo": "tienta",
+   "strict": false,
+   "status": 200,
+   "finish": "stop",
+   "ms": 7575,
+   "usage": {
+    "entrada": 35,
+    "salida": 1113,
+    "razonamiento": 1045
+   },
+   "contenido": "{\"columnas\":[{\"nombre\":\"estado\",\"tipo\":\"text\"},{\"nombre\":\"total\",\"tipo\":\"int\"}],\"decision\":\"consulta\",\"forma\":\"filas\",\"motivo\":\"ninguno\",\"prioridad\":2,\"sql\":\"SELECT estado, COUNT(*) AS total FROM pedidos GROUP BY estado ORDER BY total DESC\"}",
+   "violaciones": []
+  },
+  {
+   "id": "c_sin_esquema_1",
+   "tipo": "tienta",
+   "strict": null,
+   "status": 200,
+   "finish": "stop",
+   "ms": 6073,
+   "usage": {
+    "entrada": 61,
+    "salida": 908,
+    "razonamiento": 823
+   },
+   "contenido": "{\n  \"decision\": \"quizás\",\n  \"motivo\": \"otro\",\n  \"forma\": \"tabla\",\n  \"prioridad\": \"media\",\n  \"columnas\": [\"ciudad\", \"total_pedidos\"],\n  \"sql\": \"SELECT ciudad, COUNT(*) AS total_pedidos FROM pedidos GROUP BY ciudad ORDER BY total_pedidos DESC;\"\n}",
+   "violaciones": [
+    "decision=\"quizás\" fuera del enum",
+    "motivo=\"otro\" fuera del enum",
+    "forma=\"tabla\" fuera del enum",
+    "prioridad=\"media\" fuera del enum",
+    "columnas[].propiedad extra: 0",
+    "columnas[].propiedad extra: 1",
+    "columnas[].propiedad extra: 2",
+    "columnas[].propiedad extra: 3",
+    "columnas[].propiedad extra: 4",
+    "columnas[].propiedad extra: 5",
+    "columnas[].tipo=undefined fuera del enum",
+    "columnas[].nombre no es string",
+    "columnas[].propiedad extra: 0",
+    "columnas[].propiedad extra: 1",
+    "columnas[].propiedad extra: 2",
+    "columnas[].propiedad extra: 3",
+    "columnas[].propiedad extra: 4",
+    "columnas[].propiedad extra: 5",
+    "columnas[].propiedad extra: 6",
+    "columnas[].propiedad extra: 7",
+    "columnas[].propiedad extra: 8",
+    "columnas[].propiedad extra: 9",
+    "columnas[].propiedad extra: 10",
+    "columnas[].propiedad extra: 11",
+    "columnas[].propiedad extra: 12",
+    "columnas[].tipo=undefined fuera del enum",
+    "columnas[].nombre no es string"
+   ]
+  },
+  {
+   "id": "c_sin_esquema_2",
+   "tipo": "tienta",
+   "strict": null,
+   "status": 200,
+   "finish": "stop",
+   "ms": 6332,
+   "usage": {
+    "entrada": 54,
+    "salida": 854,
+    "razonamiento": 843
+   },
+   "contenido": "listo",
+   "violaciones": [
+    "no es JSON (listo…)"
+   ]
+  },
+  {
+   "id": "c_sin_esquema_3",
+   "tipo": "tienta",
+   "strict": null,
+   "status": 200,
+   "finish": "stop",
+   "ms": 10573,
+   "usage": {
+    "entrada": 58,
+    "salida": 1349,
+    "razonamiento": 1279
+   },
+   "contenido": "{\"decision\": \"rechazar\", \"motivo\": \"El catálogo no incluye el costo de los productos, por lo que no es posible calcular el margen de ganancia por producto\", \"forma\": \"texto\", \"prioridad\": \"alta\", \"columnas\": [], \"sql\": null}",
+   "violaciones": [
+    "decision=\"rechazar\" fuera del enum",
+    "motivo=\"El catálogo no incluye el costo de los productos, por lo que no es posible calcular el margen de ganancia por producto\" fuera del enum",
+    "forma=\"texto\" fuera del enum",
+    "prioridad=\"alta\" fuera del enum",
+    "sql no es string"
+   ]
+  },
+  {
+   "id": "c_max_tokens_80",
+   "tipo": "neutral",
+   "strict": true,
+   "status": 200,
+   "finish": "length",
+   "ms": 1269,
+   "usage": {
+    "entrada": 51,
+    "salida": 80,
+    "razonamiento": 78
+   },
+   "contenido": "",
+   "violaciones": [
+    "no es JSON (…)"
+   ]
+  }
+ ],
+ "sdk": {
+  "response_format": {
+   "type": "json_schema",
+   "json_schema": {
+    "schema": {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+     "type": "object",
+     "properties": {
+      "decision": {
+       "type": "string",
+       "enum": [
+        "consulta",
+        "no_se_puede"
+       ]
+      },
+      "motivo": {
+       "type": "string",
+       "enum": [
+        "ninguno",
+        "dato_inexistente"
+       ]
+      }
+     },
+     "required": [
+      "decision",
+      "motivo"
+     ],
+     "additionalProperties": false
+    },
+    "strict": true,
+    "name": "response"
+   }
+  },
+  "reasoning": "low",
+  "salida": {
+   "decision": "no_se_puede",
+   "motivo": "dato_inexistente"
+  }
+ },
+ "esquemaInvalido": {
+  "status": 400,
+  "mensaje": "'additionalProperties' is required to be supplied and to be false."
+ },
+ "gasto": {
+  "llamadas": 17,
+  "entrada": 732,
+  "salida": 19576,
+  "usdStandard": 0.084113,
+  "usdContributor": 0.0039884000000000005
+ }
+}

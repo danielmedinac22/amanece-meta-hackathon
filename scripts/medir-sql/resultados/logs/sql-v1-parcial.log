@@ -1,0 +1,2 @@
+confirmados_por_dia        correcta         1ra=si int=1 9.0s $0.0071 7 días, todos coinciden
+confirmados_30_dias        mal_en_silencio  1ra=si int=1 10.8s $0.0079 31 filas y la base dice 30
