@@ -15,6 +15,7 @@
     "@neondatabase/serverless": "^1.2.0",
     "ai": "^7.0.153",
     "drizzle-orm": "^0.45.4",
+    "libpg-query": "18.1.5",
     "next": "16.4.3",
     "quickjs-emscripten": "^0.32.0",
     "react": "19.3.0",
