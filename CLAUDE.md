@@ -21,7 +21,9 @@ Se aplica lo de la fila que corresponde y, además, lo de **Siempre**.
 
 Las **piezas compartidas** son lo que tocan todos los Negocios a la vez:
 
-- La compuerta de envío: `enviarAlCliente` en `src/negocio/whatsapp.ts` y el webhook de `src/app/api/kapso/webhook/route.ts`.
+- La salida: `src/nucleo/salida/`. `despachar` es la única salida, `decidir` la compuerta y `kapso.ts` el único `fetch` a Kapso, con `ENVIO_SIMULADO`. `enviarAlCliente` en `src/negocio/whatsapp.ts` queda hasta la demo encima de `despachar`.
+- La entrada: `src/nucleo/entrada.ts` (el webhook, la ficha `(CODIGO)` y quién es cada teléfono) y `src/app/api/kapso/webhook/route.ts`.
+- El estado de un Negocio: `src/nucleo/estado/escribir.ts`, su único escritor, desde el 31-oct.
 - La puerta del Negocio: `src/negocio/sesion.ts`. El Negocio sale de la sesión y nunca entra como parámetro.
 - Los permisos del Agente del dueño: las herramientas de `src/agentes/dueno.ts`, qué existe y qué pide aprobación.
 - El generador de Cambios y su aplicación: `src/agentes/generador.ts` y `src/negocio/cambios.ts`.
