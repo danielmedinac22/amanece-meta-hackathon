@@ -1,13 +1,12 @@
-import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, generateId, isStepCount, streamText, toUIMessageStream, type UIMessage } from 'ai'
+import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from 'ai'
 import type { esquema } from '@/db'
 import { crearAgenteDelDueno, parteDeDatosParaElModelo } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
-import { guardarEnElHilo, leerHilo } from '@/negocio/dueno-hilo'
+import { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
 import { registrarTurno } from '@/negocio/medir'
 
 /** Cuántos mensajes del Hilo ve el modelo en cada turno. */
 const MENSAJES_QUE_VE_EL_MODELO = 40
-const LARGO_MAXIMO = 4000
 
 /** Del mensaje que manda el navegador solo se toma el texto: las demás partes no se le creen. */
 export function mensajeDelDueno(crudo: unknown): UIMessage | null {
@@ -19,9 +18,7 @@ export function mensajeDelDueno(crudo: unknown): UIMessage | null {
           .filter((p) => p?.type === 'text' && typeof p.text === 'string')
           .map((p) => p.text as string)
           .join('\n')
-  const limpio = texto.trim().slice(0, LARGO_MAXIMO)
-  if (!limpio) return null
-  return { id: generateId(), role: 'user', parts: [{ type: 'text', text: limpio }] }
+  return mensajeDelDuenoEnTexto(texto)
 }
 
 /**

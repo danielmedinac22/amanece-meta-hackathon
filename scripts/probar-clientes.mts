@@ -1,7 +1,8 @@
 /**
  * Prueba del Agente de clientes contra Café Ladera, sin mandar nada por WhatsApp:
  *  1. el agente en modo simulación, con tres mensajes seguidos;
- *  2. `recibirMensaje` de punta a punta con el envío simulado (ENVIO_SIMULADO=1, que se pone aquí);
+ *  2. `recibirMensaje` de punta a punta con el envío simulado (ENVIO_SIMULADO=1, que se pone aquí), entrando por
+ *     `leerMensajeEntrante` con un evento de Kapso como el del webhook;
  *  3. con `--pedido`, también un pedido y un Caso de verdad en la base.
  *
  * Cada caso se afirma contra lo que quedó en la base o lo que se habría enviado, nunca contra el texto del
@@ -10,8 +11,8 @@
  *   pnpm tsx scripts/probar-clientes.mts [--pedido]
  */
 import { config } from 'dotenv'
-import { and, asc, desc, eq, gte, inArray, ne } from 'drizzle-orm'
-import { afirmar, capturarEnvios, capturarErrores, terminar } from './afirmar.mjs'
+import { and, asc, desc, eq, gte, inArray, like, ne } from 'drizzle-orm'
+import { afirmar, capturarEnvios, capturarErrores, eventoDeKapso, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
 // Antes de cargar nada: en esta prueba no sale ni un mensaje.
@@ -21,12 +22,16 @@ const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
 const { responderComoAgenteDeClientes } = await import('../src/agentes/clientes')
-const { recibirMensaje, enviarAlCliente, ErrorDeEnvio } = await import('../src/negocio/whatsapp')
+const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
+const { enviarAlCliente, ErrorDeEnvio } = await import('../src/negocio/whatsapp')
 const { MODELO_ID } = await import('../src/lib/modelo')
 
 const inicio = new Date()
 const telefono = '573000000001'
 const telefonoVencido = `570${String(Date.now()).slice(-9)}`
+const telefonoSinSesion = '573000000999'
+const base = `wamid.PRUEBA.${Date.now()}`
+const entrante = (m: Parameters<typeof eventoDeKapso>[0]) => leerMensajeEntrante(eventoDeKapso(m))!
 let laderaId: string | undefined
 let camilaId: string | undefined
 let ultimoMensajeDeCamila: Date | null = null
@@ -59,12 +64,14 @@ async function limpiar() {
   if (idsDeCasos.length) await db.delete(esquema.casos).where(inArray(esquema.casos.id, idsDeCasos))
   await db.delete(esquema.pedidos).where(and(eq(esquema.pedidos.clienteId, camilaId), gte(esquema.pedidos.creado, inicio)))
   await db.delete(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.clienteId, camilaId), gte(esquema.mensajesCliente.creado, inicio)))
+  await db.delete(esquema.mensajesSalientes).where(and(inArray(esquema.mensajesSalientes.telefono, [telefono, telefonoSinSesion]), gte(esquema.mensajesSalientes.creado, inicio)))
+  await db.delete(esquema.mensajesEntrantes).where(like(esquema.mensajesEntrantes.wamid, `${base}%`))
   await db.delete(esquema.turnos).where(and(eq(esquema.turnos.negocioId, laderaId), inArray(esquema.turnos.agente, ['clientes', 'dueno']), gte(esquema.turnos.creado, inicio)))
   // Al borrar al Cliente de la ventana vencida se van también sus mensajes.
   await db.delete(esquema.clientes).where(and(eq(esquema.clientes.negocioId, laderaId), eq(esquema.clientes.telefono, telefonoVencido)))
   await db.update(esquema.clientes).set({ ultimoMensajeEntrante: ultimoMensajeDeCamila }).where(eq(esquema.clientes.id, camilaId))
   if (!sesionLeida) return
-  if (sesionPrevia) await db.update(esquema.sesionesWhatsapp).set(sesionPrevia).where(eq(esquema.sesionesWhatsapp.telefono, telefono))
+  if (sesionPrevia) await db.insert(esquema.sesionesWhatsapp).values(sesionPrevia).onConflictDoUpdate({ target: esquema.sesionesWhatsapp.telefono, set: sesionPrevia })
   else await db.delete(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, telefono))
 }
 
@@ -99,7 +106,6 @@ try {
   afirmar('simulación: no escribe clientes, pedidos, Casos, mensajes ni turnos en la base', JSON.stringify(despues) === JSON.stringify(antes), { antes, despues })
 
   console.log('\n=== 2. recibirMensaje de punta a punta (envío simulado) ===')
-  const base = `wamid.PRUEBA.${Date.now()}`
   const enviosA = (tel: string, desde: number) => envios.slice(desde).filter((e) => e.telefono === tel)
   const mensajesDeCamila = () =>
     db
@@ -122,30 +128,45 @@ try {
     afirmar(`${caso}: lo que salió es lo que quedó guardado`, respuesta !== undefined && salidos[0]?.texto === respuesta.texto, { guardado: respuesta?.texto, salido: salidos[0]?.texto })
   }
 
-  console.log('\n-- Con el código del Negocio en el texto')
+  const salidasDe = (wamid: string) => db.select().from(esquema.mensajesSalientes).where(eq(esquema.mensajesSalientes.enRespuestaA, wamid))
+
+  console.log('\n-- Con la ficha del Negocio al inicio, como la pone el link')
+  // Con otra sesión, la ficha de LADERA sería un segundo código y se le preguntaría. `limpiar` la restaura.
+  await db.delete(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, telefono))
   let desde = envios.length
-  await recibirMensaje({ wamid: `${base}.1`, telefono, nombre: 'Camila Rojas', texto: 'Hola Café Ladera (LADERA)' })
-  await afirmarTurno('con código', `${base}.1`, desde)
+  const deMeta = new Date(Math.floor(Date.now() / 1000) * 1000)
+  await recibirMensaje(entrante({ wamid: `${base}.1`, telefono, nombre: 'Camila Rojas', texto: '(LADERA) Hola Café Ladera', enviadoEn: deMeta }))
+  await afirmarTurno('con ficha', `${base}.1`, desde)
+  const [ficha] = await db.select({ ultimo: esquema.clientes.ultimoMensajeEntrante }).from(esquema.clientes).where(eq(esquema.clientes.id, camila.id))
+  afirmar('con ficha: el último entrante de Camila es el timestamp de Meta', ficha?.ultimo?.getTime() === deMeta.getTime(), { ficha, deMeta })
+  const [salida] = await salidasDe(`${base}.1`)
+  afirmar(
+    'con ficha: la respuesta dejó su fila de salida (respuesta, sale, simulado, de Camila en LADERA)',
+    salida?.clase === 'respuesta' && salida.veredicto === 'sale' && salida.estado === 'simulado' && salida.clienteId === camila.id && salida.negocioId === ladera.id,
+    salida,
+  )
 
   console.log('\n-- Sin código: usa la sesión')
   desde = envios.length
-  await recibirMensaje({ wamid: `${base}.2`, telefono, nombre: 'Camila Rojas', texto: '¿Tienen café molido para greca?' })
+  await recibirMensaje(entrante({ wamid: `${base}.2`, telefono, nombre: 'Camila Rojas', texto: '¿Tienen café molido para greca?' }))
   await afirmarTurno('sin código', `${base}.2`, desde)
 
   console.log('\n-- El mismo wamid otra vez: no debe responder')
   desde = envios.length
-  await recibirMensaje({ wamid: `${base}.2`, telefono, nombre: 'Camila Rojas', texto: '¿Tienen café molido para greca?' })
+  await recibirMensaje(entrante({ wamid: `${base}.2`, telefono, nombre: 'Camila Rojas', texto: '¿Tienen café molido para greca?' }))
   afirmar('wamid repetido: no sale ningún envío', envios.length === desde, envios.slice(desde))
+  afirmar('wamid repetido: queda una sola fila de salida para ese mensaje', (await salidasDe(`${base}.2`)).length === 1)
   const repetidos = (await mensajesDeCamila()).filter((m) => m.wamid === `${base}.2`)
   afirmar('wamid repetido: queda una sola fila con ese wamid', repetidos.length === 1, repetidos)
 
   console.log('\n-- Un teléfono sin sesión ni código')
   desde = envios.length
-  const telefonoSinSesion = '573000000999'
-  await recibirMensaje({ wamid: `${base}.3`, telefono: telefonoSinSesion, nombre: '', texto: 'Hola' })
+  await recibirMensaje(entrante({ wamid: `${base}.3`, telefono: telefonoSinSesion, texto: 'Hola' }))
   afirmar('sin sesión ni código: sale un solo envío simulado a ese teléfono', enviosA(telefonoSinSesion, desde).length === 1, envios.slice(desde))
   const fichas = await db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(eq(esquema.clientes.telefono, telefonoSinSesion))
   afirmar('sin sesión ni código: no se crea ficha de Cliente', fichas.length === 0, fichas)
+  const [aviso] = await salidasDe(`${base}.3`)
+  afirmar('sin sesión ni código: el aviso dejó fila (aviso_del_nucleo, sin Negocio ni Cliente, sale)', aviso?.clase === 'aviso_del_nucleo' && aviso.negocioId === null && aviso.clienteId === null && aviso.veredicto === 'sale', aviso)
 
   console.log('\nÚltimos mensajes guardados de Camila:')
   for (const m of (await mensajesDeCamila()).slice(-6)) console.log(`  [${m.rol}] ${m.texto.slice(0, 90).replace(/\n/g, ' ')}`)
@@ -180,7 +201,7 @@ try {
     for (const [i, texto] of pasos.entries()) {
       if (i === pasos.length - 1) casosPrevios = await casosDeCamila()
       console.log(`\nCliente: ${texto}`)
-      await recibirMensaje({ wamid: `${base}.p${i}`, telefono, nombre: 'Camila Rojas', texto })
+      await recibirMensaje(entrante({ wamid: `${base}.p${i}`, telefono, nombre: 'Camila Rojas', texto }))
     }
     const pedidos = await db.select().from(esquema.pedidos).where(eq(esquema.pedidos.clienteId, camila.id)).orderBy(desc(esquema.pedidos.numero))
     console.log('\nPedidos de Camila (los 2 últimos):', pedidos.slice(0, 2).map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: p.items.map((x) => `${x.cantidad} x ${x.nombre}`) })))

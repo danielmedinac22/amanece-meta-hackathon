@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { linkDeWhatsapp } from '@/lib/kapso'
+import { linkDeWhatsapp } from '@/nucleo/entrada'
 
 export default function Portada() {
   return (
