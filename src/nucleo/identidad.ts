@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm'
+import { db, esquema } from '@/db'
+
 declare const marca: unique symbol
 /** Un valor que solo produce el núcleo: un `string` cualquiera no compila donde va un `NegocioId`. */
 export type Marca<T, M extends string> = T & { readonly [marca]: M }
@@ -34,6 +37,14 @@ export type ContextoDelDueno = {
   readonly negocio: NegocioId
   readonly dueno: DuenoId
   readonly medio: Medio
+}
+
+export async function contextoDelTelefonoDelDueno(telefono: string): Promise<ContextoDelDueno | null> {
+  const [fila] = await db
+    .select({ dueno: esquema.duenos.id, negocio: esquema.duenos.negocioId })
+    .from(esquema.duenos)
+    .where(eq(esquema.duenos.telefono, telefono))
+  return fila ? { negocio: marcar.negocio(fila.negocio), dueno: marcar.dueno(fila.dueno), medio: 'whatsapp' } : null
 }
 
 /**

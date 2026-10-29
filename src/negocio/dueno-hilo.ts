@@ -23,3 +23,7 @@ export async function guardarEnElHilo(negocioId: string, duenoId: string, rol: '
 export function mensajeDelAgente(texto: string, partesExtra: UIMessage['parts'] = []): UIMessage {
   return { id: generateId(), role: 'assistant', parts: [{ type: 'text', text: texto, state: 'done' }, ...partesExtra] }
 }
+
+export function mensajeDelDuenoEnTexto(texto: string): UIMessage {
+  return { id: generateId(), role: 'user', parts: [{ type: 'text', text: texto }] }
+}
