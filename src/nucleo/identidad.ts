@@ -52,6 +52,9 @@ export async function contextoDelTelefonoDelDueno(telefono: string): Promise<Con
  * que llega a otro. `telefono` es el de los links `wa.me`.
  */
 export const NUMERO_DE_AMANECE = {
-  id: process.env.KAPSO_PHONE_NUMBER_ID ?? '',
+  /** Se lee al enviar y no al importar: `probar-salida` lo vacía para ver a Kapso caído sin red. */
+  get id(): string {
+    return process.env.KAPSO_PHONE_NUMBER_ID ?? ''
+  },
   telefono: process.env.NEXT_PUBLIC_TELEFONO_DE_AMANECE ?? '12058633828',
 } as const

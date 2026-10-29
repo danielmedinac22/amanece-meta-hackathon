@@ -1,6 +1,6 @@
 /**
  * La salida: las importaciones que no pueden existir, la tabla de `decidir`, la de `seCumple` en los dos modos
- * y `despachar` contra Neon con el envío simulado. Sin modelo. Los casos contra la base leen
+ * y `despachar` contra Neon con el envío simulado y con Kapso caído, sin red. Sin modelo. Los casos contra la base leen
  * `MODO_DE_LA_COMPUERTA`, así que siguen verdes el día que la compuerta haga cumplir. Lo que la corrida crea
  * se borra al final.
  *
@@ -272,7 +272,54 @@ try {
     { r9, agentes9: agentes9.map((m) => m.negocioId) },
   )
 
-  console.log('\n=== 5. enviarAlCliente sobre despachar ===')
+  console.log('\n=== 5. Kapso caído, sin red ===')
+  const aKapso: string[] = []
+  const conKapsoCaido = async <T,>(f: () => Promise<T>): Promise<T> => {
+    const fetchDeVerdad = globalThis.fetch
+    const numero = process.env.KAPSO_PHONE_NUMBER_ID
+    globalThis.fetch = (async (entrada: string | URL | Request, init?: RequestInit) => {
+      const url = entrada instanceof Request ? entrada.url : String(entrada)
+      if (url.includes('api.kapso.ai')) {
+        aKapso.push(url)
+        throw new Error('probar-salida no llama a Kapso')
+      }
+      return fetchDeVerdad(entrada, init)
+    }) as typeof fetch
+    try {
+      process.env.KAPSO_PHONE_NUMBER_ID = ''
+      delete process.env.ENVIO_SIMULADO
+      return await f()
+    } finally {
+      globalThis.fetch = fetchDeVerdad
+      process.env.ENVIO_SIMULADO = '1'
+      if (numero === undefined) delete process.env.KAPSO_PHONE_NUMBER_ID
+      else process.env.KAPSO_PHONE_NUMBER_ID = numero
+    }
+  }
+  const caida = intencion.respuesta({ destinatario: aEnVentana, texto: 'Con Kapso caído', enRespuestaA: w('k') })
+  const agentesAntesDeLaCaida = (await agentesDe(enVentana.id)).length
+  const erroresAntes = errores.length
+  const r10 = await conKapsoCaido(() => despacharAnotada(caida))
+  const fila10 = await filaDe(caida.clave)
+  const errorDeLaCaida = errores.slice(erroresAntes).findIndex((e) => e.includes(caida.clave))
+  if (errorDeLaCaida >= 0) errores.splice(erroresAntes + errorDeLaCaida, 1)
+  afirmar('Kapso caído: nadie llamó a api.kapso.ai', aKapso.length === 0, aKapso)
+  afirmar('Kapso caído: no quedó fila agente en mensajes_cliente', (await agentesDe(enVentana.id)).length === agentesAntesDeLaCaida)
+  if (observa) {
+    afirmar('Kapso caído: despachar devuelve por_enviar y la fila queda por_enviar con el error', r10.tipo === 'por_enviar' && fila10?.estado === 'por_enviar' && !!fila10.error && fila10.error === r10.error, { r10, fila10 })
+    afirmar('Kapso caído: despachar escribió un console.error con la clave', errorDeLaCaida >= 0, errores.slice(erroresAntes))
+  } else {
+    afirmar('Kapso caído: sin número, la compuerta frena con numero_no_permitido', r10.tipo === 'no_salio' && r10.motivo === 'numero_no_permitido' && fila10?.estado === 'no_salio', { r10, fila10 })
+  }
+  desde = envios.length
+  const r11 = await despacharAnotada(caida)
+  afirmar(
+    `Kapso caído: la misma intención otra vez devuelve ${observa ? 'por_enviar' : 'no_salio'} desde lo guardado y no sale nada`,
+    (observa ? r11.tipo === 'por_enviar' && r11.error === fila10?.error : r11.tipo === 'no_salio') && enviosA(telEnVentana, desde).length === 0,
+    { r11, envios: enviosA(telEnVentana, desde) },
+  )
+
+  console.log('\n=== 6. enviarAlCliente sobre despachar ===')
   desde = envios.length
   const agentesAntesDelCaso = (await agentesDe(enVentana.id)).length
   const salio = await enviarAlCliente(enVentana.id, 'Respuesta del Dueño a un Caso')
