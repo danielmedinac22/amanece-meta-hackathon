@@ -27,6 +27,7 @@ const { MODELO_ID } = await import('../src/lib/modelo')
 const inicio = new Date()
 const telefono = '573000000001'
 const telefonoVencido = `570${String(Date.now()).slice(-9)}`
+const telefonoSinSesion = '573000000999'
 let laderaId: string | undefined
 let camilaId: string | undefined
 let ultimoMensajeDeCamila: Date | null = null
@@ -59,6 +60,7 @@ async function limpiar() {
   if (idsDeCasos.length) await db.delete(esquema.casos).where(inArray(esquema.casos.id, idsDeCasos))
   await db.delete(esquema.pedidos).where(and(eq(esquema.pedidos.clienteId, camilaId), gte(esquema.pedidos.creado, inicio)))
   await db.delete(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.clienteId, camilaId), gte(esquema.mensajesCliente.creado, inicio)))
+  await db.delete(esquema.mensajesSalientes).where(and(inArray(esquema.mensajesSalientes.telefono, [telefono, telefonoSinSesion]), gte(esquema.mensajesSalientes.creado, inicio)))
   await db.delete(esquema.turnos).where(and(eq(esquema.turnos.negocioId, laderaId), inArray(esquema.turnos.agente, ['clientes', 'dueno']), gte(esquema.turnos.creado, inicio)))
   // Al borrar al Cliente de la ventana vencida se van también sus mensajes.
   await db.delete(esquema.clientes).where(and(eq(esquema.clientes.negocioId, laderaId), eq(esquema.clientes.telefono, telefonoVencido)))
@@ -141,7 +143,6 @@ try {
 
   console.log('\n-- Un teléfono sin sesión ni código')
   desde = envios.length
-  const telefonoSinSesion = '573000000999'
   await recibirMensaje({ wamid: `${base}.3`, telefono: telefonoSinSesion, nombre: '', texto: 'Hola' })
   afirmar('sin sesión ni código: sale un solo envío simulado a ese teléfono', enviosA(telefonoSinSesion, desde).length === 1, envios.slice(desde))
   const fichas = await db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(eq(esquema.clientes.telefono, telefonoSinSesion))

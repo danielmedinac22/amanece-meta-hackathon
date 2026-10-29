@@ -1,19 +1,18 @@
+import { randomUUID } from 'node:crypto'
 import { and, desc, eq, ne, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { esperarTrabajosEnSegundoPlano, responderComoAgenteDeClientes } from '@/agentes/clientes'
-import { enviarTexto, type MensajeEntrante } from '@/lib/kapso'
+import { type MensajeEntrante } from '@/lib/kapso'
+import { marcar } from '@/nucleo/identidad'
+import { despachar, intencion } from '@/nucleo/salida'
+import { VENTANA_MS } from '@/nucleo/salida/compuerta'
 
-const VENTANA_MS = 24 * 60 * 60 * 1000
 const HISTORIAL = 20
 
-const SIN_NEGOCIO = '¿Con qué negocio quieres hablar? Escribe su código.'
-const NEGOCIO_ARMANDO = 'Este negocio todavía no está listo para atender por aquí. Vuelve a escribirnos en un rato.'
-const FALLA_TECNICA = 'Tuve un problema técnico y no pude responderte. ¿Me escribes de nuevo en un momento?'
-
-/** Error de `enviarAlCliente`: `fuera_de_ventana` es la regla de las 24 horas de WhatsApp. */
+/** `no_salio`: otra regla de la compuerta frenó el mensaje, cuando haga cumplir. */
 export class ErrorDeEnvio extends Error {
   constructor(
-    public codigo: 'fuera_de_ventana' | 'sin_cliente',
+    public codigo: 'fuera_de_ventana' | 'sin_cliente' | 'no_salio',
     mensaje: string,
   ) {
     super(mensaje)
@@ -22,50 +21,42 @@ export class ErrorDeEnvio extends Error {
 }
 
 /**
- * Único punto donde sale un texto hacia WhatsApp. Con `ENVIO_SIMULADO=1` no sale nada: solo se escribe
- * en el log, para probar el flujo completo sin tocar el número de Amanece.
+ * La respuesta del Dueño a un Caso (`resolver_caso`), hasta la demo. Revisa la ventana por su cuenta antes de
+ * despachar para que, mientras la compuerta observa, `resolver_caso` siga recibiendo `fuera_de_ventana` y no
+ * salga nada, como antes.
  */
-async function mandar(telefono: string, texto: string) {
-  if (process.env.ENVIO_SIMULADO === '1') {
-    console.log(`[envío simulado a ${telefono}] ${texto}`)
-    return null
-  }
-  return enviarTexto(telefono, texto)
-}
-
-/**
- * Le escribe a un Cliente desde el número de Amanece y guarda el mensaje. Es la única puerta de salida
- * hacia un Cliente: rechaza si su último mensaje tiene más de 24 horas.
- */
-export async function enviarAlCliente(clienteId: string, texto: string) {
-  const [cliente] = await db.select().from(esquema.clientes).where(eq(esquema.clientes.id, clienteId))
+export async function enviarAlCliente(clienteId: string, texto: string): Promise<{ wamid: string | null }> {
+  const [cliente] = await db
+    .select({ negocioId: esquema.clientes.negocioId, ultimo: esquema.clientes.ultimoMensajeEntrante })
+    .from(esquema.clientes)
+    .where(eq(esquema.clientes.id, clienteId))
   if (!cliente) throw new ErrorDeEnvio('sin_cliente', 'El Cliente no existe')
-
-  const ultimo = cliente.ultimoMensajeEntrante?.getTime() ?? 0
-  if (Date.now() - ultimo > VENTANA_MS) {
+  if (Date.now() - (cliente.ultimo?.getTime() ?? 0) > VENTANA_MS) {
     throw new ErrorDeEnvio('fuera_de_ventana', 'Han pasado más de 24 horas desde el último mensaje del Cliente')
   }
 
-  const wamid = await mandar(cliente.telefono, texto)
-  await db.insert(esquema.mensajesCliente).values({
-    negocioId: cliente.negocioId,
-    clienteId: cliente.id,
-    rol: 'agente',
-    texto,
-    wamid,
-  })
-  return { wamid }
+  const r = await despachar(
+    intencion.resolucionDeCaso({
+      destinatario: { tipo: 'cliente', negocio: marcar.negocio(cliente.negocioId), cliente: marcar.cliente(clienteId) },
+      texto,
+      caso: null,
+      vez: randomUUID(),
+    }),
+  )
+  switch (r.tipo) {
+    case 'enviado':
+      return { wamid: r.wamid }
+    case 'simulado':
+      return { wamid: null }
+    case 'no_salio':
+      if (r.motivo === 'fuera_de_ventana') throw new ErrorDeEnvio('fuera_de_ventana', 'Han pasado más de 24 horas desde el último mensaje del Cliente')
+      throw new ErrorDeEnvio('no_salio', `La compuerta no lo dejó salir: ${r.motivo}`)
+    case 'por_enviar':
+      throw new Error(`Kapso no tomó el mensaje: ${r.error}`)
+  }
 }
 
 const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-/** Los mensajes que ya vimos, para los casos en que no hay dónde guardarlos (aún no hay Negocio). */
-const recientes = new Set<string>()
-
-function recordar(wamid: string) {
-  recientes.add(wamid)
-  if (recientes.size > 500) recientes.delete(recientes.values().next().value!)
-}
 
 /**
  * Todo lo que pasa cuando un Cliente escribe: dedupe, a qué Negocio habla, su ficha, el Agente de
@@ -73,7 +64,7 @@ function recordar(wamid: string) {
  */
 export async function recibirMensaje(m: MensajeEntrante) {
   // 1. Dedupe: Kapso reintenta, y el mismo wamid no se procesa dos veces.
-  if (recientes.has(m.wamid)) return
+  const wamid = marcar.wamid(m.wamid)
   const [repetido] = await db
     .select({ id: esquema.mensajesCliente.id })
     .from(esquema.mensajesCliente)
@@ -101,8 +92,13 @@ export async function recibirMensaje(m: MensajeEntrante) {
   }
 
   if (!negocio || negocio.estado === 'armando') {
-    recordar(m.wamid)
-    await mandar(m.telefono, negocio ? NEGOCIO_ARMANDO : SIN_NEGOCIO)
+    await despachar(
+      intencion.aviso({
+        destinatario: { tipo: 'telefono', telefono: m.telefono, negocio: negocio ? marcar.negocio(negocio.id) : null },
+        aviso: { cual: negocio ? 'negocio_armando' : 'sin_negocio' },
+        enRespuestaA: wamid,
+      }),
+    )
     return
   }
 
@@ -127,6 +123,7 @@ export async function recibirMensaje(m: MensajeEntrante) {
     .returning({ id: esquema.mensajesCliente.id })
   if (!guardado) return
 
+  const destinatario = { tipo: 'cliente', negocio: marcar.negocio(negocio.id), cliente: marcar.cliente(cliente.id) } as const
   try {
     // 5. Los últimos mensajes, sin el de ahora, que va aparte como `texto`.
     const anteriores = await db
@@ -146,10 +143,10 @@ export async function recibirMensaje(m: MensajeEntrante) {
     })
 
     // 7 y 8. Sale por la puerta única, que también guarda el mensaje.
-    await enviarAlCliente(cliente.id, respuesta.texto)
+    await despachar(intencion.respuesta({ destinatario, texto: respuesta.texto, enRespuestaA: wamid }))
   } catch (error) {
     console.error('[whatsapp] no se pudo responder', error)
-    await enviarAlCliente(cliente.id, FALLA_TECNICA).catch((e) => console.error('[whatsapp] tampoco la disculpa', e))
+    await despachar(intencion.aviso({ destinatario, aviso: { cual: 'falla_tecnica' }, enRespuestaA: wamid })).catch((e) => console.error('[whatsapp] tampoco la disculpa', e))
   } finally {
     // Lo que dejó el turno (por ejemplo, traer un Caso al Dueño) termina después de responderle al Cliente.
     await esperarTrabajosEnSegundoPlano()

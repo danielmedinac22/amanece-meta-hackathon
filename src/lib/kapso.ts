@@ -9,8 +9,6 @@ export const NUMERO_DE_AMANECE = process.env.KAPSO_PHONE_NUMBER_ID ?? ''
 /** El número de Amanece para armar links `wa.me`, sin signos. */
 export const TELEFONO_DE_AMANECE = process.env.NEXT_PUBLIC_TELEFONO_DE_AMANECE ?? '12058633828'
 
-const BASE = 'https://api.kapso.ai/meta/whatsapp/v24.0'
-
 /** Firma de Kapso: HMAC-SHA256 del cuerpo crudo, en hex, en `X-Webhook-Signature` (a veces con `sha256=`). */
 export function firmaValida(cuerpo: string, firma: string | null, secreto = process.env.KAPSO_WEBHOOK_SECRET ?? '') {
   if (!firma || !secreto) return false
@@ -55,24 +53,6 @@ export function leerMensajeEntrante(cuerpo: unknown): MensajeEntrante | null {
     nombre: raiz.conversation?.contact_name ?? raiz.conversation?.kapso?.contact_name ?? '',
     texto: texto.trim(),
   }
-}
-
-/** Manda un texto desde el número de Amanece. No revisa la ventana de 24 horas: eso lo hace `enviarAlCliente`. */
-export async function enviarTexto(telefono: string, texto: string) {
-  if (!NUMERO_DE_AMANECE) throw new Error('Falta KAPSO_PHONE_NUMBER_ID')
-  const respuesta = await fetch(`${BASE}/${NUMERO_DE_AMANECE}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': process.env.KAPSO_API_KEY ?? '' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: telefono,
-      type: 'text',
-      text: { body: texto.slice(0, 4096), preview_url: false },
-    }),
-  })
-  if (!respuesta.ok) throw new Error(`Kapso respondió ${respuesta.status}: ${await respuesta.text()}`)
-  const datos = (await respuesta.json()) as { messages?: { id: string }[] }
-  return datos.messages?.[0]?.id ?? null
 }
 
 /** Link `wa.me` con el código del Negocio ya escrito, para que el Cliente llegue a su Agente de clientes. */
