@@ -63,7 +63,11 @@ try {
     const leido = FICHA_DE_ENRUTAMIENTO.exec(textoDelLink(linkDeWhatsapp('Un Negocio', codigo)))?.[1]
     afirmar(`ficha: el link de ${codigo} se lee de vuelta como ${codigo}`, leido === codigo, leido)
   }
-  for (const t of ['quiero pan de trigo', 'Hola Café Ladera (LADERA)', 'hola (TRIGO)', '(trigo) hola', 'LADERA hola']) {
+  for (const [t, codigo] of [['(trigo) hola', 'TRIGO'], ['(Ladera) hola', 'LADERA']]) {
+    const leido = FICHA_DE_ENRUTAMIENTO.exec(t)?.[1]
+    afirmar(`ficha: "${t}" se lee como ${codigo}, sin importar mayúsculas`, leido?.toUpperCase() === codigo, leido)
+  }
+  for (const t of ['quiero pan de trigo', 'Hola Café Ladera (LADERA)', 'hola (TRIGO)', 'hola (trigo)', 'LADERA hola']) {
     afirmar(`ficha: "${t}" no enruta`, FICHA_DE_ENRUTAMIENTO.exec(t) === null)
   }
 
@@ -122,12 +126,12 @@ try {
 
   r = await repartir(entrante(telNuevo, 'Hola Café Ladera (LADERA)'))
   afirmar('repartir: el link viejo, con el código al final, no enruta', r.tipo === 'preguntar' && r.por === 'sin_negocio' && (await sesionDe(telNuevo)) === null, r)
-  r = await repartir(entrante(telNuevo, '(TRIGO) hola'))
-  afirmar('repartir: la ficha sin sesión enruta y guarda la sesión', r.tipo === 'cliente' && r.negocio === trigo.id && (await sesionDe(telNuevo)) === trigo.id, r)
-  for (const vez of ['primera', 'segunda']) {
-    r = await repartir(entrante(telNuevo, '(LADERA) hola'))
+  r = await repartir(entrante(telNuevo, '(trigo) hola'))
+  afirmar('repartir: la ficha en minúsculas, sin sesión, enruta a TRIGO y guarda la sesión', r.tipo === 'cliente' && r.negocio === trigo.id && (await sesionDe(telNuevo)) === trigo.id, r)
+  for (const [vez, texto] of [['primera', '(LADERA) hola'], ['segunda', '(Ladera) hola']]) {
+    r = await repartir(entrante(telNuevo, texto))
     afirmar(
-      `repartir: un segundo código, la ${vez} vez, pregunta y la sesión sigue en TRIGO`,
+      `repartir: un segundo código, la ${vez} vez (${texto}), pregunta y la sesión sigue en TRIGO`,
       r.tipo === 'preguntar' && r.por === 'otro_negocio' && r.actual.id === trigo.id && r.nuevo.id === ladera.id && (await sesionDe(telNuevo)) === trigo.id,
       r,
     )

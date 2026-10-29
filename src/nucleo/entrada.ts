@@ -76,8 +76,8 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
   }
 }
 
-/** La ficha del link `wa.me`: `(CODIGO)` al inicio del texto. Nada más del texto enruta. */
-export const FICHA_DE_ENRUTAMIENTO = /^\(([A-Z0-9]{3,12})\)/
+/** La ficha del link `wa.me`: `(CODIGO)` al inicio del texto, en mayúsculas o minúsculas. Nada más del texto enruta. */
+export const FICHA_DE_ENRUTAMIENTO = /^\(([A-Za-z0-9]{3,12})\)/
 
 export function linkDeWhatsapp(nombre: string, codigo: string): string {
   return `https://wa.me/${NUMERO_DE_AMANECE.telefono}?text=${encodeURIComponent(`(${codigo}) Hola ${nombre}`)}`
@@ -110,7 +110,7 @@ export function elegirReparto(h: HechosDelReparto, boton: string | null): { read
 }
 
 export async function repartir(m: MensajeEntrante): Promise<Reparto> {
-  const codigo = FICHA_DE_ENRUTAMIENTO.exec(m.texto)?.[1] ?? null
+  const codigo = FICHA_DE_ENRUTAMIENTO.exec(m.texto)?.[1].toUpperCase() ?? null
   const negocio = { id: esquema.negocios.id, nombre: esquema.negocios.nombre }
   const [dueno, [fichas, sesiones]] = await Promise.all([
     contextoDelTelefonoDelDueno(m.telefono),
