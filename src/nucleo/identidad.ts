@@ -1,0 +1,46 @@
+declare const marca: unique symbol
+/** Un valor que solo produce el núcleo: un `string` cualquiera no compila donde va un `NegocioId`. */
+export type Marca<T, M extends string> = T & { readonly [marca]: M }
+
+export type NegocioId = Marca<string, 'NegocioId'>
+export type DuenoId = Marca<string, 'DuenoId'>
+export type ClienteId = Marca<string, 'ClienteId'>
+export type CasoId = Marca<string, 'CasoId'>
+export type Wamid = Marca<string, 'Wamid'>
+/** UTC, ISO 8601. */
+export type Instante = Marca<string, 'Instante'>
+
+/** Las únicas puertas de un `string` a una marca. `probar-salida` afirma quién las importa. */
+export const marcar = {
+  negocio: (id: string) => id as NegocioId,
+  dueno: (id: string) => id as DuenoId,
+  cliente: (id: string) => id as ClienteId,
+  caso: (id: string) => id as CasoId,
+  wamid: (id: string) => id as Wamid,
+  instante: (d: Date) => d.toISOString() as Instante,
+} as const
+
+/** `en_sombra` no tiene productor a propósito: mientras la compuerta observa, un Negocio en sombra le hablaría a sus Clientes. */
+export type ModoDelNegocio = 'armando' | 'atendiendo' | 'en_sombra'
+
+export function modoDelNegocio(estado: 'armando' | 'listo'): ModoDelNegocio {
+  return estado === 'armando' ? 'armando' : 'atendiendo'
+}
+
+export type Medio = 'web' | 'whatsapp'
+
+/** Sale de la sesión o del teléfono de un Dueño registrado, nunca del modelo. */
+export type ContextoDelDueno = {
+  readonly negocio: NegocioId
+  readonly dueno: DuenoId
+  readonly medio: Medio
+}
+
+/**
+ * El proyecto de Kapso también tiene números de otros negocios: se envía solo desde `id` y se descarta lo
+ * que llega a otro. `telefono` es el de los links `wa.me`.
+ */
+export const NUMERO_DE_AMANECE = {
+  id: process.env.KAPSO_PHONE_NUMBER_ID ?? '',
+  telefono: process.env.NEXT_PUBLIC_TELEFONO_DE_AMANECE ?? '12058633828',
+} as const
