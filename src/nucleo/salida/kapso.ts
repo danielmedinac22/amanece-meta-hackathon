@@ -10,7 +10,7 @@ export type EnvioPorKapso =
 // La guarda vive en el adaptador y no en `despachar`: si se reescribe la salida, los `probar-*` no le escriben a teléfonos reales.
 const simulado = () => process.env.ENVIO_SIMULADO === '1'
 
-/** Nunca lanza: `despachar` decide si reintenta. La línea simulada lleva el texto entero, aunque Kapso corte en 4096. */
+/** Nunca lanza: un fallo vuelve como `fallo`. La línea simulada lleva el texto entero, aunque Kapso corte en 4096. */
 export async function enviarPorKapso(telefono: string, texto: string): Promise<EnvioPorKapso> {
   if (simulado()) {
     console.log(`[envío simulado a ${telefono}] ${texto}`)

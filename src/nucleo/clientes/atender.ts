@@ -52,8 +52,8 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
       .limit(HISTORIAL)
     const respuesta = await responderComoAgenteDeClientes({ negocioId: negocio, clienteId: cliente.id, historial: anteriores.reverse(), texto: m.texto, modo: 'real' })
     const salida = await despachar(intencion.respuesta({ destinatario, texto: respuesta.texto, enRespuestaA: m.wamid }))
-    // `warn` y no `error`: los `probar-*` cuentan cada `console.error` como un fallo escondido.
-    if (salida.tipo === 'no_salio' || salida.tipo === 'por_enviar') console.warn('[atender] la respuesta no salió', m.wamid, salida)
+    if (salida.tipo === 'por_enviar') throw new Error(`Kapso no tomó la respuesta: ${salida.error}`)
+    if (salida.tipo === 'no_salio') console.error('[atender] la respuesta no salió', m.wamid, salida.motivo)
   } catch (error) {
     console.error('[atender] no se pudo responder', error)
     await despachar(intencion.aviso({ destinatario, aviso: { cual: 'falla_tecnica' }, enRespuestaA: m.wamid })).catch((e) => console.error('[atender] tampoco el aviso', e))

@@ -62,7 +62,7 @@ export type ResultadoDeEnvio =
   | { readonly tipo: 'enviado'; readonly wamid: Wamid | null }
   | { readonly tipo: 'simulado' }
   | { readonly tipo: 'no_salio'; readonly motivo: MotivoDeSilencio }
-  /** Kapso falló dos veces. La fila queda `por_enviar`. */
+  /** Kapso falló. La fila queda `por_enviar`, con su error. */
   | { readonly tipo: 'por_enviar'; readonly error: string }
 
 /**
@@ -78,10 +78,12 @@ export async function despachar(i: IntencionDeEnvio): Promise<ResultadoDeEnvio> 
     case 'frenado':
       return { tipo: 'no_salio', motivo: reclamo.motivo }
     case 'a_kapso': {
-      let envio = await enviarPorKapso(reclamo.telefono, i.texto)
-      if (envio.tipo === 'fallo') envio = await enviarPorKapso(reclamo.telefono, i.texto)
+      // Sin reintento: Meta no tiene llave de idempotencia, y un reintento ciego puede mandar dos veces.
+      const envio = await enviarPorKapso(reclamo.telefono, i.texto)
       await registrarEnvio(reclamo.id, i, hechos.cliente, envio)
-      return envio.tipo === 'fallo' ? { tipo: 'por_enviar', error: envio.error } : envio
+      if (envio.tipo !== 'fallo') return envio
+      console.error('[salida] Kapso no tomó el mensaje', i.clave, envio.error)
+      return { tipo: 'por_enviar', error: envio.error }
     }
   }
 }
