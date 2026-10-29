@@ -1,11 +1,12 @@
 /**
  * La entrada: la lectura del webhook, la ficha del link, la tabla de `elegirReparto` y el reparto contra Neon.
- * Sin modelo: los casos contra la base llaman a `repartir`, que no atiende, o a `recibirMensaje` con teléfonos
- * sin Negocio, un segundo código o un Negocio armando, que no llegan al Agente de clientes. Lo que la corrida
- * crea se borra al final.
+ * Sin modelo: los casos contra la base llaman a `repartir`, que no atiende, a `recibirMensaje` con teléfonos
+ * sin Negocio, un segundo código o un Negocio armando, o a `atenderMensaje` con un Negocio que ya no está, y
+ * ninguno llega al Agente de clientes. Lo que la corrida crea se borra al final.
  *
  *   pnpm tsx scripts/probar-entrada.mts
  */
+import { randomUUID } from 'node:crypto'
 import { config } from 'dotenv'
 import { and, eq, gte, inArray, like } from 'drizzle-orm'
 import { afirmar, capturarEnvios, capturarErrores, eventoDeKapso, terminar } from './afirmar.mjs'
@@ -19,6 +20,7 @@ const errores = capturarErrores()
 const { db, esquema } = await import('../src/db')
 const { elegirReparto, FICHA_DE_ENRUTAMIENTO, leerMensajeEntrante, linkDeWhatsapp, recibirMensaje, repartir } = await import('../src/nucleo/entrada')
 const { marcar } = await import('../src/nucleo/identidad')
+const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
 
 const inicio = new Date()
 const marca = String(Date.now()).slice(-8)
@@ -28,7 +30,8 @@ const telNuevo = `5721${marca}`
 const telSinNegocio = `5722${marca}`
 const telDeBoton = `5723${marca}`
 const telDelArmando = `5724${marca}`
-const telefonos = [telConSesion, telNuevo, telSinNegocio, telDeBoton, telDelArmando]
+const telHuerfano = `5725${marca}`
+const telefonos = [telConSesion, telNuevo, telSinNegocio, telDeBoton, telDelArmando, telHuerfano]
 const codigoArmando = `PR${marca}`
 let armandoId: string | undefined
 
@@ -168,6 +171,18 @@ try {
   const [filaArmando] = await db.select().from(esquema.mensajesSalientes).where(eq(esquema.mensajesSalientes.enRespuestaA, alArmando.wamid))
   afirmar('recibirMensaje: un Negocio armando manda su aviso, una vez', enviosA(telDelArmando, desde).length === 1, enviosA(telDelArmando, desde))
   afirmar('recibirMensaje: ese aviso queda a nombre del Negocio armando, sin ficha de Cliente', filaArmando?.clase === 'aviso_del_nucleo' && filaArmando.negocioId === armando.id && filaArmando.clienteId === null && (await fichasDe(telDelArmando)) === 0, filaArmando)
+
+  desde = envios.length
+  const erroresAntes = errores.length
+  const negocioQueYaNoEsta = marcar.negocio(randomUUID())
+  const lanzo = await atenderMensaje(entrante(telHuerfano, 'hola'), negocioQueYaNoEsta).then(
+    () => null,
+    (e: unknown) => e,
+  )
+  const errorDelHuerfano = errores.slice(erroresAntes).findIndex((e) => e.includes(negocioQueYaNoEsta))
+  if (errorDelHuerfano >= 0) errores.splice(erroresAntes + errorDelHuerfano, 1)
+  afirmar('atenderMensaje: con un Negocio que ya no está sale sin lanzar y deja un console.error', lanzo === null && errorDelHuerfano >= 0, { lanzo, errores: errores.slice(erroresAntes) })
+  afirmar('atenderMensaje: ese mensaje no crea ficha de Cliente ni manda nada', (await fichasDe(telHuerfano)) === 0 && enviosA(telHuerfano, desde).length === 0, enviosA(telHuerfano, desde))
 } catch (e) {
   afirmar('probar-entrada terminó sin error inesperado', false, e)
 } finally {

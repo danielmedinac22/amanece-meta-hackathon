@@ -10,6 +10,10 @@ const HISTORIAL = 20
 /** El turno de un Cliente, ya repartido. Nunca lanza por el turno: el Cliente recibe el aviso `falla_tecnica`. */
 export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Promise<void> {
   const [fila] = await db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio))
+  if (!fila) {
+    console.error('[atender] el Negocio ya no está', negocio, m.wamid)
+    return
+  }
   switch (modoDelNegocio(fila.estado)) {
     case 'en_sombra':
       return
