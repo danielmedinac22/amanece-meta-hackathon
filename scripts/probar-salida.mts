@@ -1,8 +1,8 @@
 /**
- * La salida: las importaciones que no pueden existir, la tabla de `decidir`, la de `seCumple` en los dos modos
- * y `despachar` contra Neon con el envío simulado y con Kapso caído, sin red. Sin modelo. Los casos contra la base leen
- * `MODO_DE_LA_COMPUERTA`, así que siguen verdes el día que la compuerta haga cumplir. Lo que la corrida crea
- * se borra al final.
+ * La salida: lo que el texto de `src` no puede tener (el grafo de imports lo cuida `pnpm lint`), la tabla de
+ * `decidir`, la de `seCumple` en los dos modos y `despachar` contra Neon con el envío simulado y con Kapso caído,
+ * sin red. Sin modelo. Los casos contra la base leen `MODO_DE_LA_COMPUERTA`, así que siguen verdes el día que la
+ * compuerta haga cumplir. Lo que la corrida crea se borra al final.
  *
  *   pnpm tsx scripts/probar-salida.mts
  */
@@ -53,16 +53,13 @@ try {
   const conTexto = (re: RegExp) => fuentes.filter((f) => re.test(f.texto)).map((f) => f.ruta).sort()
   const solo = (re: RegExp, rutas: string[]) => JSON.stringify(conTexto(re)) === JSON.stringify(rutas)
 
-  afirmar('importaciones: solo salida/index.ts importa el adaptador de Kapso', solo(/from '(\.\/kapso|@\/nucleo\/salida\/kapso|\.\.\/salida\/kapso)'/, ['src/nucleo/salida/index.ts']), conTexto(/salida\/kapso'|'\.\/kapso'/))
   afirmar('importaciones: solo salida/kapso.ts lee ENVIO_SIMULADO', solo(/process\.env\.ENVIO_SIMULADO/, ['src/nucleo/salida/kapso.ts']), conTexto(/process\.env\.ENVIO_SIMULADO/))
   afirmar('importaciones: api.kapso.ai aparece solo en salida/kapso.ts', solo(/api\.kapso\.ai/, ['src/nucleo/salida/kapso.ts']), conTexto(/api\.kapso\.ai/))
   afirmar('importaciones: src/lib/kapso.ts ya no existe y nadie lo importa', !fuentes.some((f) => f.ruta === 'src/lib/kapso.ts') && conTexto(/@\/lib\/kapso/).length === 0, conTexto(/@\/lib\/kapso/))
   afirmar('importaciones: la línea del envío simulado solo la imprime salida/kapso.ts', solo(/envío simulado a/, ['src/nucleo/salida/kapso.ts']), conTexto(/envío simulado a/))
   const PUEDEN_ARMAR_INTENCIONES = ['src/negocio/whatsapp.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/entrada.ts']
   const arman = conTexto(/\bintencion\b[^\n]*from '(@\/nucleo\/salida|\.\/salida|\.\.\/salida)'/)
-  afirmar('importaciones: solo entrada, atender y enviarAlCliente arman intenciones', arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
-  const marcan = conTexto(/\bmarcar\b[^\n]*from '(@\/nucleo\/identidad|\.\/identidad|\.\.\/identidad)'/).filter((r) => !r.startsWith('src/nucleo/'))
-  afirmar('importaciones: fuera de src/nucleo solo enviarAlCliente marca ids', marcan.every((r) => r === 'src/negocio/whatsapp.ts'), marcan)
+  afirmar('importaciones: solo entrada, atender y enviarAlCliente arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
 
   console.log('\n=== 2. decidir ===')
   const A = marcar.negocio('00000000-0000-4000-8000-00000000000a')
