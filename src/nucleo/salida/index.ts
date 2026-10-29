@@ -156,10 +156,19 @@ type Reclamo =
 
 /**
  * El INSERT es el reclamo. Si no entra, chocó con `clave` (el mismo intento: se devuelve lo guardado) o con el
- * índice parcial (otra instancia ya respondió ese mensaje entre la lectura y el INSERT: va otra vez como
- * `una_respuesta_por_mensaje`, que no choca con ese índice).
+ * índice parcial (otra instancia ya respondió ese mensaje entre la lectura y el INSERT). Entonces va una segunda y
+ * última vez como `una_respuesta_por_mensaje`, que no choca con ese índice.
  */
 async function reclamar(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: string | null, v: Veredicto): Promise<Reclamo> {
+  const primero = await intentarReclamo(i, hechos, telefono, v)
+  if (primero) return primero
+  const segundo = await intentarReclamo(i, hechos, telefono, { tipo: 'no_sale', motivo: 'una_respuesta_por_mensaje' })
+  if (segundo) return segundo
+  throw new Error(`[salida] ${i.clave} no entró ni quedó guardada`)
+}
+
+/** `null`: no entró y no hay fila con su clave, así que chocó con el índice parcial. */
+async function intentarReclamo(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: string | null, v: Veredicto): Promise<Reclamo | null> {
   const destino = destinoDe(v, telefono)
   const [fila] = await db
     .insert(esquema.mensajesSalientes)
@@ -183,8 +192,7 @@ async function reclamar(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: st
     .select({ estado: esquema.mensajesSalientes.estado, wamid: esquema.mensajesSalientes.wamid, motivo: esquema.mensajesSalientes.motivo, error: esquema.mensajesSalientes.error })
     .from(esquema.mensajesSalientes)
     .where(eq(esquema.mensajesSalientes.clave, i.clave))
-  if (guardada) return { tipo: 'ya_estaba', resultado: resultadoGuardado(guardada) }
-  return reclamar(i, hechos, telefono, { tipo: 'no_sale', motivo: 'una_respuesta_por_mensaje' })
+  return guardada ? { tipo: 'ya_estaba', resultado: resultadoGuardado(guardada) } : null
 }
 
 function resultadoGuardado(f: {
