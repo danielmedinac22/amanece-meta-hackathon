@@ -1,0 +1,12 @@
+import { config } from 'dotenv'
+config({ path: '.env.local', quiet: true })
+const { db, esquema } = await import('../src/db')
+const negocios = await db.select({ id: esquema.negocios.id, codigo: esquema.negocios.codigo, nombre: esquema.negocios.nombre, estado: esquema.negocios.estado, conocimiento: esquema.negocios.conocimiento }).from(esquema.negocios)
+for (const n of negocios) console.log(n.codigo, n.nombre, n.estado, JSON.stringify(n.conocimiento).slice(0, 600))
+const reglas = await db.select().from(esquema.reglas)
+console.log('reglas', reglas.length, reglas.map(r => [r.negocioId.slice(0,8), r.activa, r.texto]))
+const duenos = await db.select().from(esquema.duenos)
+console.log('duenos', duenos.length, duenos.map(d => [d.negocioId.slice(0,8), d.nombre, d.telefono]))
+const ped = await db.select({ n: esquema.pedidos.numero, neg: esquema.pedidos.negocioId, c: esquema.pedidos.clienteId, e: esquema.pedidos.estado }).from(esquema.pedidos).limit(5)
+console.log(ped)
+process.exit(0)
