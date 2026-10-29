@@ -17,6 +17,7 @@ const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
+const { mensajeDelDueno } = await import('../src/negocio/dueno-chat')
 
 const inicio = new Date()
 const marca = String(Date.now()).slice(-8)
@@ -111,9 +112,20 @@ try {
   afirmar('4 repetido del Dueño: el Hilo no cambia y no sale nada', (await hilo()).length === 2 && enviosAP(desde).length === 0)
   afirmar('4 repetido del Dueño: queda una sola fila en mensajes_entrantes con ese wamid', (await db.$count(esquema.mensajesEntrantes, eq(esquema.mensajesEntrantes.wamid, m2.wamid))) === 1)
 
-  console.log('\n=== 5. TRIGO, menos lo de P, no se movió ===')
+  console.log('\n=== 5. El texto del Dueño por WhatsApp lleva el tope de la web ===')
+  const largo = `Un mensaje largo del Dueño ${'pan '.repeat(1500)}fin`
+  await recibirMensaje(entrante('5', largo))
+  const delWhatsapp = (await hilo()).map((m) => textoDe(m.mensaje)).find((t) => t.startsWith('Un mensaje largo'))
+  const deLaWeb = textoDe(mensajeDelDueno({ parts: [{ type: 'text', text: largo }] }))
+  afirmar(
+    '5 tope: el texto del Dueño queda en su Hilo cortado en 4000 caracteres, igual que por la web',
+    largo.length > 4000 && delWhatsapp === largo.slice(0, 4000) && deLaWeb === delWhatsapp,
+    { largo: largo.length, whatsapp: delWhatsapp?.length, web: deLaWeb.length },
+  )
+
+  console.log('\n=== 6. TRIGO, menos lo de P, no se movió ===')
   const despuesDeTrigo = await huellaDeLosDemas(trigo.id)
-  afirmar('5 TRIGO intacto: clientes, mensajes, pedidos, Casos, salidas, sesiones e Hilos de los demás', despuesDeTrigo === antesDeTrigo, { antesDeTrigo, despuesDeTrigo })
+  afirmar('6 TRIGO intacto: clientes, mensajes, pedidos, Casos, salidas, sesiones e Hilos de los demás', despuesDeTrigo === antesDeTrigo, { antesDeTrigo, despuesDeTrigo })
 } catch (e) {
   afirmar('probar-aislamiento terminó sin error inesperado', false, e)
 } finally {

@@ -148,9 +148,11 @@ export async function recibirMensaje(m: MensajeEntrante): Promise<void> {
 
   const r = await repartir(m)
   switch (r.tipo) {
-    case 'dueno':
-      await guardarEnElHilo(r.ctx.negocio, r.ctx.dueno, 'dueno', mensajeDelDuenoEnTexto(m.texto))
+    case 'dueno': {
+      const mensaje = mensajeDelDuenoEnTexto(m.texto)
+      if (mensaje) await guardarEnElHilo(r.ctx.negocio, r.ctx.dueno, 'dueno', mensaje)
       return
+    }
     case 'cliente':
       await atenderMensaje(m, r.negocio)
       return
