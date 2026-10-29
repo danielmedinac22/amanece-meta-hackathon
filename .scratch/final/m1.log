@@ -1,0 +1,600 @@
+Medición del aislamiento · rama desechable de Neon · ENVIO_SIMULADO=1 · fase m1
+Sin modelo y sin Kapso: el único destino de red permitido es Neon.
+### Red (al empezar): select 1 por el driver HTTP de Neon, 30 repeticiones tras una de calentamiento
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| select 1 por el driver HTTP | 30 | 77.0 | 138 | 139 | 75.9 | 373 |
+
+## M1. Cola justa por Negocio
+
+-- FIFO global (el reclamo de #13) · 2 drenadores · turno de 200 ms
+   listo en 198 s: B esperó 988 reclamos y 194873 ms; C 989 y 194874 ms; máximo de A en curso 2
+-- FIFO global + tope por Negocio contado en la misma sentencia, sin cerrojo (ingenuo) · 2 drenadores · turno de 200 ms
+   listo en 12.1 s: B esperó 3 reclamos y 436 ms; C 1 y 79.5 ms; máximo de A en curso 2
+-- round-robin por Negocio (el que lleva más tiempo sin turno), SKIP LOCKED, cerrojo · 2 drenadores · turno de 200 ms
+   listo en 12.1 s: B esperó 1 reclamos y 373 ms; C 0 y 371 ms; máximo de A en curso 2
+-- tope duro de en_curso por Negocio + el que tiene menos en curso, SKIP LOCKED, cerrojo · 2 drenadores · turno de 200 ms
+   listo en 12.2 s: B esperó 1 reclamos y 209 ms; C 0 y 45.9 ms; máximo de A en curso 1
+-- tope blando: el tope solo vale mientras otro Negocio tiene trabajo; si no, usa todo (SKIP LOCKED, cerrojo) · 2 drenadores · turno de 200 ms
+   listo en 12.5 s: B esperó 1 reclamos y 358 ms; C 0 y 2.0 ms; máximo de A en curso 2
+-- FIFO global (el reclamo de #13) · 4 drenadores · turno de 200 ms
+   listo en 98.4 s: B esperó 978 reclamos y 95693 ms; C 977 y 95386 ms; máximo de A en curso 4
+-- FIFO global + tope por Negocio contado en la misma sentencia, sin cerrojo (ingenuo) · 4 drenadores · turno de 200 ms
+   listo en 12.1 s: B esperó 1 reclamos y 46.1 ms; C 0 y 44.0 ms; máximo de A en curso 4
+-- round-robin por Negocio (el que lleva más tiempo sin turno), SKIP LOCKED, cerrojo · 4 drenadores · turno de 200 ms
+   listo en 12.6 s: B esperó 1 reclamos y 7.9 ms; C 0 y 5.5 ms; máximo de A en curso 4
+-- tope duro de en_curso por Negocio + el que tiene menos en curso, SKIP LOCKED, cerrojo · 4 drenadores · turno de 200 ms
+   listo en 12.9 s: B esperó 1 reclamos y 6.2 ms; C 0 y 4.0 ms; máximo de A en curso 2
+-- tope blando: el tope solo vale mientras otro Negocio tiene trabajo; si no, usa todo (SKIP LOCKED, cerrojo) · 4 drenadores · turno de 200 ms
+   listo en 12.5 s: B esperó 1 reclamos y 50.8 ms; C 0 y 48.8 ms; máximo de A en curso 4
+
+### 1. A encola 1.000 trabajos de golpe; 2 s después B y C encolan uno cada uno
+| reclamo | drenadores | tope | B: reclamos que esperó | B: ms hasta el reclamo | B: ms hasta hecho | C: reclamos | C: ms hasta el reclamo | C: ms hasta hecho | A hechos | máx. de A en curso | dobles | duración (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| fifo | 2 | - | 988 | 194873 | 195152 | 989 | 194874 | 195152 | 1000 | 2 | 0 | 198 |
+| fifo+tope | 2 | 1 | 3 | 436 | 730 | 1 | 79.5 | 359 | 47 | 2 | 0 | 12.1 |
+| rr | 2 | - | 1 | 373 | 651 | 0 | 371 | 651 | 60 | 2 | 0 | 12.1 |
+| tope | 2 | 1 | 1 | 209 | 490 | 0 | 45.9 | 324 | 33 | 1 | 0 | 12.2 |
+| blando | 2 | 1 (blando) | 1 | 358 | 723 | 0 | 2.0 | 280 | 62 | 2 | 0 | 12.5 |
+| fifo | 4 | - | 978 | 95693 | 95993 | 977 | 95386 | 95667 | 1000 | 4 | 0 | 98.4 |
+| fifo+tope | 4 | 2 | 1 | 46.1 | 367 | 0 | 44.0 | 367 | 78 | 4 | 0 | 12.1 |
+| rr | 4 | - | 1 | 7.9 | 287 | 0 | 5.5 | 287 | 126 | 4 | 0 | 12.6 |
+| tope | 4 | 2 | 1 | 6.2 | 289 | 0 | 4.0 | 288 | 73 | 2 | 0 | 12.9 |
+| blando | 4 | 2 (blando) | 1 | 50.8 | 328 | 0 | 48.8 | 328 | 126 | 4 | 0 | 12.5 |
+  ✓ M1 [fifo, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [fifo, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [fifo, 2 drenadores]: control: con FIFO global B y C esperan detrás de la campaña (más de 300 reclamos)
+  ✓ M1 [fifo+tope, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [fifo+tope, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [fifo+tope, 2 drenadores]: B y C se atienden de inmediato (a lo sumo 4 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [rr, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [rr, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [rr, 2 drenadores]: B y C se atienden de inmediato (a lo sumo 4 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [tope, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [tope, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [tope, 2 drenadores]: B y C se atienden de inmediato (a lo sumo 4 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [tope, 2 drenadores]: el tope se respeta bajo concurrencia (A nunca más de 1 en curso; máximo visto 1)
+  ✓ M1 [blando, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [blando, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [blando, 2 drenadores]: B y C se atienden de inmediato (a lo sumo 4 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [fifo, 4 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [fifo, 4 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [fifo, 4 drenadores]: control: con FIFO global B y C esperan detrás de la campaña (más de 300 reclamos)
+  ✓ M1 [fifo+tope, 4 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [fifo+tope, 4 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [fifo+tope, 4 drenadores]: B y C se atienden de inmediato (a lo sumo 6 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [rr, 4 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [rr, 4 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [rr, 4 drenadores]: B y C se atienden de inmediato (a lo sumo 6 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [tope, 4 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [tope, 4 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [tope, 4 drenadores]: B y C se atienden de inmediato (a lo sumo 6 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [tope, 4 drenadores]: el tope se respeta bajo concurrencia (A nunca más de 2 en curso; máximo visto 2)
+  ✓ M1 [blando, 4 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [blando, 4 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [blando, 4 drenadores]: B y C se atienden de inmediato (a lo sumo 6 reclamos y menos de 1,5 s hasta el reclamo)
+
+### 2. Dobles reclamos con mucha concurrencia: 8 drenadores sin espera, 200 trabajos de tres Negocios
+  ✓ M1 dobles [fifo]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [fifo]: los 200 terminaron `hecho`
+  ✓ M1 dobles [fifo+tope]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [fifo+tope]: los 200 terminaron `hecho`
+  ✓ M1 dobles [rr]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [rr]: los 200 terminaron `hecho`
+  ✓ M1 dobles [tope]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [tope]: los 200 terminaron `hecho`
+  ✓ M1 dobles [blando]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [blando]: los 200 terminaron `hecho`
+| reclamo | reclamos | trabajos reclamados dos veces | intentos > 1 | máx. de A en curso (tope 2) |
+| --- | --- | --- | --- | --- |
+| fifo | 200 | 0 | 0 | - |
+| fifo+tope | 200 | 0 | 0 | - |
+| rr | 200 | 0 | 0 | - |
+| tope | 200 | 0 | 0 | 2 |
+| blando | 200 | 0 | 0 | - |
+  ✓ M1 dobles [tope]: con 8 drenadores A nunca pasa de 2 en curso
+
+### 3. El tope bajo una carrera: 24 reclamos a la vez sobre A (100 pendientes, tope 2), cinco rondas
+| reclamo | trabajos de A en curso tras cada ronda | máximo |
+| --- | --- | --- |
+| fifo+tope | 8, 13, 20, 20, 20 | 20 |
+| tope | 2, 2, 2, 2, 2 | 2 |
+  ✓ M1 carrera [tope]: con 24 reclamos a la vez A queda en exactamente 2 en curso en cada ronda
+  ✓ M1 carrera: control: el tope ingenuo (sin cerrojo) SÍ se pasa de 2 al menos en una ronda
+
+### 4. Lo que cuesta el tope: A solo con 200 trabajos y 4 drenadores (turno de 200 ms)
+| reclamo | vuelta | segundos para vaciar 200 | trabajos por segundo | máx. de A en curso |
+| --- | --- | --- | --- | --- |
+| blando | 1 | 19.8 | 10.1 | 4 |
+| blando | 2 | 19.9 | 10.0 | 4 |
+| fifo | 1 | 22.2 | 9.0 | 4 |
+| fifo | 2 | 19.8 | 10.1 | 4 |
+| rr | 1 | 22.9 | 8.7 | 4 |
+| rr | 2 | 19.8 | 10.1 | 4 |
+| tope | 1 | 38.5 | 5.2 | 2 |
+| tope | 2 | 39.1 | 5.1 | 2 |
+
+### 5. Costo de la sentencia de reclamo con 0, 1.000 y 10.000 pendientes de A (más 100 de B y 100 de C), o repartidos en 10 Negocios (40 reclamos cada fila; cada uno, en un lote HTTP con reloj del servidor)
+| reclamo | pendientes | reclamos con trabajo | HTTP p50 (ms) | HTTP p95 | HTTP p50 menos RTT | servidor p50 (ms) | servidor p95 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| fifo | vacío 0 | 0 | 78.6 | 131 | 1.5 | 0.8 | 1.0 |
+| fifo | campaña 1000 | 43 | 79.2 | 135 | 2.2 | 0.9 | 1.1 |
+| fifo | campaña 10000 | 43 | 79.2 | 139 | 2.2 | 0.8 | 1.2 |
+| fifo | repartido 10000 | 43 | 79.2 | 87.1 | 2.2 | 1.1 | 1.8 |
+| fifo+tope | vacío 0 | 0 | 78.2 | 134 | 1.2 | 0.8 | 0.9 |
+| fifo+tope | campaña 1000 | 43 | 78.6 | 80.2 | 1.6 | 0.9 | 1.0 |
+| fifo+tope | campaña 10000 | 43 | 78.6 | 82.6 | 1.5 | 0.9 | 1.2 |
+| fifo+tope | repartido 10000 | 43 | 78.9 | 137 | 1.8 | 0.9 | 1.0 |
+| rr | vacío 0 | 0 | 78.4 | 133 | 1.3 | 1.2 | 1.5 |
+| rr | campaña 1000 | 43 | 79.5 | 149 | 2.4 | 1.4 | 1.9 |
+| rr | campaña 10000 | 43 | 79.6 | 82.8 | 2.5 | 1.9 | 2.1 |
+| rr | repartido 10000 | 43 | 79.3 | 88.1 | 2.3 | 1.5 | 1.7 |
+| tope | vacío 0 | 0 | 79.0 | 132 | 1.9 | 1.4 | 1.8 |
+| tope | campaña 1000 | 43 | 80.6 | 136 | 3.6 | 1.9 | 2.1 |
+| tope | campaña 10000 | 43 | 112 | 223 | 34.5 | 1.6 | 1.8 |
+| tope | repartido 10000 | 43 | 115 | 178 | 38.3 | 1.6 | 2.0 |
+| blando | vacío 0 | 0 | 117 | 144 | 40.1 | 1.3 | 1.5 |
+| blando | campaña 1000 | 43 | 80.0 | 132 | 3.0 | 1.5 | 1.7 |
+| blando | campaña 10000 | 43 | 80.3 | 137 | 3.2 | 1.5 | 1.6 |
+| blando | repartido 10000 | 43 | 79.5 | 83.6 | 2.5 | 1.6 | 1.7 |
+
+### 5b. Sin los índices por Negocio (solo el índice FIFO de #13): 10.000 pendientes de A y 100 de B y de C
+-- plan de rr sin los índices por Negocio
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=522
+  CTE elegido
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=315
+          ->  Sort (actual rows=1.00 loops=1)
+                Sort Key: c.ultimo_servido NULLS FIRST
+                Sort Method: top-N heapsort  Memory: 25kB
+                Buffers: shared hit=315
+                ->  Hash Join (actual rows=3.00 loops=1)
+                      Hash Cond: (c.negocio_id = p.negocio_id)
+                      Buffers: shared hit=315
+                      ->  Seq Scan on cola_negocios c (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Hash (actual rows=3.00 loops=1)
+                            Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                            Buffers: shared hit=314
+                            ->  HashAggregate (actual rows=3.00 loops=1)
+                                  Group Key: p.negocio_id
+                                  Batches: 1  Memory Usage: 32kB
+                                  Buffers: shared hit=314
+                                  ->  Seq Scan on trabajos p (actual rows=10199.00 loops=1)
+                                        Filter: ((estado = 'pendiente'::text) AND (disponible_desde <= now()))
+                                        Rows Removed by Filter: 1
+                                        Buffers: shared hit=314
+  CTE job
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=503
+          InitPlan 2
+            ->  CTE Scan on elegido (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+                  Buffers: shared hit=315
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=503
+                ->  Index Scan using trabajos_cola on trabajos t (actual rows=1.00 loops=1)
+                      Index Cond: (disponible_desde <= now())
+                      Filter: ((negocio_id = (InitPlan 2).col1) AND (estado = 'pendiente'::text))
+                      Rows Removed by Filter: 10100
+                      Index Searches: 1
+                      Buffers: shared hit=501
+  CTE servido
+    ->  Update on cola_negocios (actual rows=1.00 loops=1)
+          Buffers: shared hit=4
+          InitPlan 4
+            ->  CTE Scan on job job_1 (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+          ->  Result (actual rows=1.00 loops=1)
+                One-Time Filter: (InitPlan 4).col1
+                Buffers: shared hit=1
+                ->  Hash Semi Join (actual rows=1.00 loops=1)
+                      Hash Cond: (cola_negocios.negocio_id = elegido_1.negocio_id)
+                      Buffers: shared hit=1
+                      ->  Seq Scan on cola_negocios (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Hash (actual rows=1.00 loops=1)
+                            ->  CTE Scan on elegido elegido_1 (actual rows=1.00 loops=1)
+                                  Storage: Memory  Maximum Storage: 17kB
+  ->  Nested Loop (actual rows=1.00 loops=1)
+        Buffers: shared hit=506
+        ->  HashAggregate (actual rows=1.00 loops=1)
+              Group Key: job.id
+              Batches: 1  Memory Usage: 32kB
+              Buffers: shared hit=503
+              ->  CTE Scan on job (actual rows=1.00 loops=1)
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=503
+        ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+              Index Cond: (id = job.id)
+              Index Searches: 1
+              Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=14
+Planning Time: 0.358 ms
+Execution Time: 3.376 ms
+-- plan de tope sin los índices por Negocio
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=2410
+  CTE elegido
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=2204
+          ->  Sort (actual rows=1.00 loops=1)
+                Sort Key: ((SubPlan 1)), c.ultimo_servido NULLS FIRST
+                Sort Method: top-N heapsort  Memory: 25kB
+                Buffers: shared hit=2204
+                ->  Nested Loop (actual rows=3.00 loops=1)
+                      Buffers: shared hit=2204
+                      ->  HashAggregate (actual rows=3.00 loops=1)
+                            Group Key: p.negocio_id
+                            Batches: 1  Memory Usage: 32kB
+                            Buffers: shared hit=314
+                            ->  Seq Scan on trabajos p (actual rows=10199.00 loops=1)
+                                  Filter: ((estado = 'pendiente'::text) AND (disponible_desde <= now()))
+                                  Rows Removed by Filter: 1
+                                  Buffers: shared hit=314
+                      ->  Index Scan using cola_negocios_pkey on cola_negocios c (actual rows=1.00 loops=3)
+                            Index Cond: (negocio_id = p.negocio_id)
+                            Filter: ((SubPlan 2) < 2)
+                            Index Searches: 3
+                            Buffers: shared hit=948
+                            SubPlan 2
+                              ->  Aggregate (actual rows=1.00 loops=3)
+                                    Buffers: shared hit=942
+                                    ->  Seq Scan on trabajos e_1 (actual rows=0.33 loops=3)
+                                          Filter: ((negocio_id = c.negocio_id) AND (estado = 'en_curso'::text) AND (reclamado_hasta > now()))
+                                          Rows Removed by Filter: 10200
+                                          Buffers: shared hit=942
+                      SubPlan 1
+                        ->  Aggregate (actual rows=1.00 loops=3)
+                              Buffers: shared hit=942
+                              ->  Seq Scan on trabajos e (actual rows=0.33 loops=3)
+                                    Filter: ((negocio_id = c.negocio_id) AND (estado = 'en_curso'::text) AND (reclamado_hasta > now()))
+                                    Rows Removed by Filter: 10200
+                                    Buffers: shared hit=942
+  CTE job
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=2394
+          InitPlan 4
+            ->  CTE Scan on elegido (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+                  Buffers: shared hit=2204
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=2394
+                ->  Index Scan using trabajos_cola on trabajos t (actual rows=1.00 loops=1)
+                      Index Cond: (disponible_desde <= now())
+                      Filter: ((negocio_id = (InitPlan 4).col1) AND (estado = 'pendiente'::text))
+                      Rows Removed by Filter: 10100
+                      Index Searches: 1
+                      Buffers: shared hit=2392
+  CTE servido
+    ->  Update on cola_negocios (actual rows=1.00 loops=1)
+          Buffers: shared hit=4
+          InitPlan 6
+            ->  CTE Scan on job job_1 (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+          ->  Result (actual rows=1.00 loops=1)
+                One-Time Filter: (InitPlan 6).col1
+                Buffers: shared hit=1
+                ->  Hash Semi Join (actual rows=1.00 loops=1)
+                      Hash Cond: (cola_negocios.negocio_id = elegido_1.negocio_id)
+                      Buffers: shared hit=1
+                      ->  Seq Scan on cola_negocios (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Hash (actual rows=1.00 loops=1)
+                            ->  CTE Scan on elegido elegido_1 (actual rows=1.00 loops=1)
+                                  Storage: Memory  Maximum Storage: 17kB
+  ->  Nested Loop (actual rows=1.00 loops=1)
+        Buffers: shared hit=2397
+        ->  HashAggregate (actual rows=1.00 loops=1)
+              Group Key: job.id
+              Batches: 1  Memory Usage: 32kB
+              Buffers: shared hit=2394
+              ->  CTE Scan on job (actual rows=1.00 loops=1)
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=2394
+        ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+              Index Cond: (id = job.id)
+              Index Searches: 1
+              Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=14
+Planning Time: 0.434 ms
+Execution Time: 6.673 ms
+| reclamo | HTTP p50 (ms) | HTTP p95 | servidor p50 (ms) | servidor p95 |
+| --- | --- | --- | --- | --- |
+| rr | 83.4 | 127 | 4.4 | 6.1 |
+| tope | 85.9 | 141 | 7.8 | 8.5 |
+
+### 5c. EXPLAIN (ANALYZE, BUFFERS) del reclamo con 10.000 pendientes de A (y B y C con uno), con los índices
+-- fifo
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=21
+  InitPlan 1
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=5
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=5
+                ->  Index Scan using trabajos_cola on trabajos trabajos_1 (actual rows=1.00 loops=1)
+                      Index Cond: (disponible_desde <= now())
+                      Filter: ((estado = 'pendiente'::text) OR ((estado = 'en_curso'::text) AND (reclamado_hasta < now())))
+                      Rows Removed by Filter: 1
+                      Index Searches: 1
+                      Buffers: shared hit=4
+  ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+        Index Cond: (id = (InitPlan 1).col1)
+        Index Searches: 1
+        Buffers: shared hit=8
+Planning:
+  Buffers: shared hit=1
+Planning Time: 0.174 ms
+Execution Time: 0.152 ms
+-- fifo+tope
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=23
+  InitPlan 2
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=7
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=7
+                ->  Index Scan using trabajos_cola on trabajos t (actual rows=1.00 loops=1)
+                      Index Cond: (disponible_desde <= now())
+                      Filter: ((estado = 'pendiente'::text) AND ((SubPlan 1) < 2))
+                      Rows Removed by Filter: 1
+                      Index Searches: 1
+                      Buffers: shared hit=6
+                      SubPlan 1
+                        ->  Aggregate (actual rows=1.00 loops=1)
+                              Buffers: shared hit=2
+                              ->  Index Scan using trabajos_negocio_en_curso on trabajos e (actual rows=1.00 loops=1)
+                                    Index Cond: (negocio_id = t.negocio_id)
+                                    Filter: (reclamado_hasta > now())
+                                    Index Searches: 1
+                                    Buffers: shared hit=2
+  ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+        Index Cond: (id = (InitPlan 2).col1)
+        Index Searches: 1
+        Buffers: shared hit=10
+Planning Time: 0.164 ms
+Execution Time: 0.151 ms
+-- rr
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=56 dirtied=1
+  CTE elegido
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=34
+          ->  Sort (actual rows=1.00 loops=1)
+                Sort Key: c.ultimo_servido NULLS FIRST
+                Sort Method: top-N heapsort  Memory: 25kB
+                Buffers: shared hit=34
+                ->  Nested Loop Semi Join (actual rows=3.00 loops=1)
+                      Buffers: shared hit=34
+                      ->  Seq Scan on cola_negocios c (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Index Only Scan using trabajos_negocio_pendiente on trabajos p (actual rows=0.30 loops=10)
+                            Index Cond: ((negocio_id = c.negocio_id) AND (disponible_desde <= now()))
+                            Heap Fetches: 2
+                            Index Searches: 10
+                            Buffers: shared hit=33
+  CTE job
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=39
+          InitPlan 2
+            ->  CTE Scan on elegido (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+                  Buffers: shared hit=34
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=39
+                ->  Index Scan using trabajos_negocio_pendiente on trabajos t (actual rows=1.00 loops=1)
+                      Index Cond: ((negocio_id = (InitPlan 2).col1) AND (disponible_desde <= now()))
+                      Filter: (estado = 'pendiente'::text)
+                      Index Searches: 1
+                      Buffers: shared hit=37
+  CTE servido
+    ->  Update on cola_negocios (actual rows=1.00 loops=1)
+          Buffers: shared hit=4
+          InitPlan 4
+            ->  CTE Scan on job job_1 (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+          ->  Result (actual rows=1.00 loops=1)
+                One-Time Filter: (InitPlan 4).col1
+                Buffers: shared hit=1
+                ->  Hash Semi Join (actual rows=1.00 loops=1)
+                      Hash Cond: (cola_negocios.negocio_id = elegido_1.negocio_id)
+                      Buffers: shared hit=1
+                      ->  Seq Scan on cola_negocios (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Hash (actual rows=1.00 loops=1)
+                            ->  CTE Scan on elegido elegido_1 (actual rows=1.00 loops=1)
+                                  Storage: Memory  Maximum Storage: 17kB
+  ->  Nested Loop (actual rows=1.00 loops=1)
+        Buffers: shared hit=42
+        ->  HashAggregate (actual rows=1.00 loops=1)
+              Group Key: job.id
+              Batches: 1  Memory Usage: 32kB
+              Buffers: shared hit=39
+              ->  CTE Scan on job (actual rows=1.00 loops=1)
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=39
+        ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+              Index Cond: (id = job.id)
+              Index Searches: 1
+              Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=14
+Planning Time: 0.395 ms
+Execution Time: 0.256 ms
+-- tope
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=70
+  CTE elegido
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=49
+          ->  Sort (actual rows=1.00 loops=1)
+                Sort Key: ((SubPlan 1)), c.ultimo_servido NULLS FIRST
+                Sort Method: top-N heapsort  Memory: 25kB
+                Buffers: shared hit=49
+                ->  Nested Loop Semi Join (actual rows=3.00 loops=1)
+                      Buffers: shared hit=49
+                      ->  Seq Scan on cola_negocios c (actual rows=10.00 loops=1)
+                            Filter: ((SubPlan 2) < 2)
+                            Buffers: shared hit=12
+                            SubPlan 2
+                              ->  Aggregate (actual rows=1.00 loops=10)
+                                    Buffers: shared hit=11
+                                    ->  Index Scan using trabajos_negocio_en_curso on trabajos e_1 (actual rows=0.10 loops=10)
+                                          Index Cond: (negocio_id = c.negocio_id)
+                                          Filter: (reclamado_hasta > now())
+                                          Index Searches: 10
+                                          Buffers: shared hit=11
+                      ->  Index Only Scan using trabajos_negocio_pendiente on trabajos p (actual rows=0.30 loops=10)
+                            Index Cond: ((negocio_id = c.negocio_id) AND (disponible_desde <= now()))
+                            Heap Fetches: 2
+                            Index Searches: 10
+                            Buffers: shared hit=33
+                      SubPlan 1
+                        ->  Aggregate (actual rows=1.00 loops=3)
+                              Buffers: shared hit=4
+                              ->  Index Scan using trabajos_negocio_en_curso on trabajos e (actual rows=0.33 loops=3)
+                                    Index Cond: (negocio_id = c.negocio_id)
+                                    Filter: (reclamado_hasta > now())
+                                    Index Searches: 3
+                                    Buffers: shared hit=4
+  CTE job
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=54
+          InitPlan 4
+            ->  CTE Scan on elegido (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+                  Buffers: shared hit=49
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=54
+                ->  Index Scan using trabajos_negocio_pendiente on trabajos t (actual rows=1.00 loops=1)
+                      Index Cond: ((negocio_id = (InitPlan 4).col1) AND (disponible_desde <= now()))
+                      Filter: (estado = 'pendiente'::text)
+                      Index Searches: 1
+                      Buffers: shared hit=52
+  CTE servido
+    ->  Update on cola_negocios (actual rows=1.00 loops=1)
+          Buffers: shared hit=4
+          InitPlan 6
+            ->  CTE Scan on job job_1 (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+          ->  Result (actual rows=1.00 loops=1)
+                One-Time Filter: (InitPlan 6).col1
+                Buffers: shared hit=1
+                ->  Hash Semi Join (actual rows=1.00 loops=1)
+                      Hash Cond: (cola_negocios.negocio_id = elegido_1.negocio_id)
+                      Buffers: shared hit=1
+                      ->  Seq Scan on cola_negocios (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Hash (actual rows=1.00 loops=1)
+                            ->  CTE Scan on elegido elegido_1 (actual rows=1.00 loops=1)
+                                  Storage: Memory  Maximum Storage: 17kB
+  ->  Nested Loop (actual rows=1.00 loops=1)
+        Buffers: shared hit=57
+        ->  HashAggregate (actual rows=1.00 loops=1)
+              Group Key: job.id
+              Batches: 1  Memory Usage: 32kB
+              Buffers: shared hit=54
+              ->  CTE Scan on job (actual rows=1.00 loops=1)
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=54
+        ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+              Index Cond: (id = job.id)
+              Index Searches: 1
+              Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=14
+Planning Time: 0.453 ms
+Execution Time: 0.275 ms
+-- blando
+Update on trabajos (actual rows=1.00 loops=1)
+  Buffers: shared hit=60
+  CTE con_trabajo
+    ->  Nested Loop Semi Join (actual rows=3.00 loops=1)
+          Buffers: shared hit=38
+          ->  Seq Scan on cola_negocios c (actual rows=10.00 loops=1)
+                Buffers: shared hit=1
+          ->  Index Only Scan using trabajos_negocio_pendiente on trabajos p (actual rows=0.30 loops=10)
+                Index Cond: ((negocio_id = c.negocio_id) AND (disponible_desde <= now()))
+                Heap Fetches: 2
+                Index Searches: 10
+                Buffers: shared hit=33
+          SubPlan 1
+            ->  Aggregate (actual rows=1.00 loops=3)
+                  Buffers: shared hit=4
+                  ->  Index Scan using trabajos_negocio_en_curso on trabajos e (actual rows=0.33 loops=3)
+                        Index Cond: (negocio_id = c.negocio_id)
+                        Filter: (reclamado_hasta > now())
+                        Index Searches: 3
+                        Buffers: shared hit=4
+  CTE elegido
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=38
+          InitPlan 3
+            ->  Aggregate (never executed)
+                  ->  CTE Scan on con_trabajo (never executed)
+                        Storage: Memory  Maximum Storage: 17kB
+          ->  Sort (actual rows=1.00 loops=1)
+                Sort Key: con_trabajo_1.en_curso, con_trabajo_1.ultimo_servido NULLS FIRST
+                Sort Method: top-N heapsort  Memory: 25kB
+                Buffers: shared hit=38
+                ->  CTE Scan on con_trabajo con_trabajo_1 (actual rows=3.00 loops=1)
+                      Filter: ((en_curso < 2) OR ((InitPlan 3).col1 = 1))
+                      Storage: Memory  Maximum Storage: 17kB
+                      Buffers: shared hit=38
+  CTE job
+    ->  Limit (actual rows=1.00 loops=1)
+          Buffers: shared hit=43
+          InitPlan 5
+            ->  CTE Scan on elegido (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+                  Buffers: shared hit=38
+          ->  LockRows (actual rows=1.00 loops=1)
+                Buffers: shared hit=43
+                ->  Index Scan using trabajos_negocio_pendiente on trabajos t (actual rows=1.00 loops=1)
+                      Index Cond: ((negocio_id = (InitPlan 5).col1) AND (disponible_desde <= now()))
+                      Filter: (estado = 'pendiente'::text)
+                      Index Searches: 1
+                      Buffers: shared hit=41
+  CTE servido
+    ->  Update on cola_negocios (actual rows=1.00 loops=1)
+          Buffers: shared hit=4
+          InitPlan 7
+            ->  CTE Scan on job job_1 (actual rows=1.00 loops=1)
+                  Storage: Memory  Maximum Storage: 17kB
+          ->  Result (actual rows=1.00 loops=1)
+                One-Time Filter: (InitPlan 7).col1
+                Buffers: shared hit=1
+                ->  Hash Semi Join (actual rows=1.00 loops=1)
+                      Hash Cond: (cola_negocios.negocio_id = elegido_1.negocio_id)
+                      Buffers: shared hit=1
+                      ->  Seq Scan on cola_negocios (actual rows=10.00 loops=1)
+                            Buffers: shared hit=1
+                      ->  Hash (actual rows=1.00 loops=1)
+                            ->  CTE Scan on elegido elegido_1 (actual rows=1.00 loops=1)
+                                  Storage: Memory  Maximum Storage: 17kB
+  ->  Nested Loop (actual rows=1.00 loops=1)
+        Buffers: shared hit=46
+        ->  HashAggregate (actual rows=1.00 loops=1)
+              Group Key: job.id
+              Batches: 1  Memory Usage: 32kB
+              Buffers: shared hit=43
+              ->  CTE Scan on job (actual rows=1.00 loops=1)
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=43
+        ->  Index Scan using trabajos_pkey on trabajos (actual rows=1.00 loops=1)
+              Index Cond: (id = job.id)
+              Index Searches: 1
+              Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=14
+Planning Time: 0.442 ms
+Execution Time: 0.264 ms
+
+Peticiones HTTP a Neon en este proceso: 16275
+
+45 casos, 0 fallaron.
+exit 0

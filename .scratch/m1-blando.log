@@ -1,0 +1,56 @@
+Medición del aislamiento · rama desechable de Neon · ENVIO_SIMULADO=1 · fase m1
+Sin modelo y sin Kapso: el único destino de red permitido es Neon.
+### Red (al empezar): select 1 por el driver HTTP de Neon, 30 repeticiones tras una de calentamiento
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| select 1 por el driver HTTP | 30 | 78.2 | 127 | 137 | 76.4 | 143 |
+
+## M1. Cola justa por Negocio
+
+-- round-robin por Negocio (el que lleva más tiempo sin turno), SKIP LOCKED, cerrojo · 2 drenadores · turno de 200 ms
+   listo en 12.5 s: B esperó 0 reclamos y 375 ms; C 1 y 534 ms; máximo de A en curso 2
+-- tope duro de en_curso por Negocio + el que tiene menos en curso, SKIP LOCKED, cerrojo · 2 drenadores · turno de 200 ms
+   listo en 12.4 s: B esperó 0 reclamos y 44.9 ms; C 1 y 54.6 ms; máximo de A en curso 1
+-- tope blando: el tope solo vale mientras otro Negocio tiene trabajo; si no, usa todo (SKIP LOCKED, cerrojo) · 4 drenadores · turno de 200 ms
+   listo en 12.4 s: B esperó 0 reclamos y 5.1 ms; C 1 y 215 ms; máximo de A en curso 4
+
+### 1. A encola 1.000 trabajos de golpe; 2 s después B y C encolan uno cada uno
+| reclamo | drenadores | tope | B: reclamos que esperó | B: ms hasta el reclamo | B: ms hasta hecho | C: reclamos | C: ms hasta el reclamo | C: ms hasta hecho | A hechos | máx. de A en curso | dobles | duración (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| rr | 2 | - | 0 | 375 | 731 | 1 | 534 | 890 | 60 | 2 | 0 | 12.5 |
+| tope | 2 | 1 | 0 | 44.9 | 326 | 1 | 54.6 | 334 | 30 | 1 | 0 | 12.4 |
+| blando | 4 | 2 (blando) | 0 | 5.1 | 288 | 1 | 215 | 499 | 111 | 4 | 0 | 12.4 |
+  ✓ M1 [rr, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [rr, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [rr, 2 drenadores]: B y C se atienden de inmediato (a lo sumo 4 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [tope, 2 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [tope, 2 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [tope, 2 drenadores]: B y C se atienden de inmediato (a lo sumo 4 reclamos y menos de 1,5 s hasta el reclamo)
+  ✓ M1 [tope, 2 drenadores]: el tope se respeta bajo concurrencia (A nunca más de 1 en curso; máximo visto 1)
+  ✓ M1 [blando, 4 drenadores]: ningún trabajo reclamado dos veces (intentos > 1: 0, repetidos en la bitácora: 0)
+  ✓ M1 [blando, 4 drenadores]: nada quedó en curso ni se perdió un `terminar`
+  ✓ M1 [blando, 4 drenadores]: B y C se atienden de inmediato (a lo sumo 6 reclamos y menos de 1,5 s hasta el reclamo)
+
+### 2. Dobles reclamos con mucha concurrencia: 8 drenadores sin espera, 200 trabajos de tres Negocios
+  ✓ M1 dobles [fifo]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [fifo]: los 200 terminaron `hecho`
+  ✓ M1 dobles [fifo+tope]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [fifo+tope]: los 200 terminaron `hecho`
+  ✓ M1 dobles [rr]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [rr]: los 200 terminaron `hecho`
+  ✓ M1 dobles [tope]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [tope]: los 200 terminaron `hecho`
+  ✓ M1 dobles [blando]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [blando]: los 200 terminaron `hecho`
+| reclamo | reclamos | trabajos reclamados dos veces | intentos > 1 | máx. de A en curso (tope 2) |
+| --- | --- | --- | --- | --- |
+| fifo | 200 | 0 | 0 | - |
+| fifo+tope | 200 | 0 | 0 | - |
+| rr | 200 | 0 | 0 | - |
+| tope | 200 | 0 | 0 | 2 |
+| blando | 200 | 0 | 0 | - |
+  ✓ M1 dobles [tope]: con 8 drenadores A nunca pasa de 2 en curso
+
+Peticiones HTTP a Neon en este proceso: 3291
+
+21 casos, 0 fallaron.

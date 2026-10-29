@@ -1,0 +1,244 @@
+Medición del aislamiento · rama desechable de Neon · ENVIO_SIMULADO=1 · SABOTAJE politica-true · fase m3
+Sin modelo y sin Kapso: el único destino de red permitido es Neon.
+### Red (al empezar): select 1 por el driver HTTP de Neon, 30 repeticiones tras una de calentamiento
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| select 1 por el driver HTTP | 30 | 83.3 | 108 | 109 | 80.5 | 114 |
+
+## M3. RLS + CTE bajo carga
+
+Sembrando 10 Negocios inventados (pedidos, Clientes y mensajes sintéticos)…
+| Negocio | pedidos | ventas (confirmado, enviado, entregado, novedad) | suma de ventas (COP inventados) |
+| --- | --- | --- | --- |
+| AISL01 | 9000 | 6000 | 704442500 |
+| AISL02 | 9250 | 6168 | 717089162 |
+| AISL03 | 9500 | 6334 | 732714003 |
+| AISL04 | 9750 | 6500 | 751294375 |
+| AISL05 | 10000 | 6668 | 773265037 |
+| AISL06 | 10250 | 6834 | 798130628 |
+| AISL07 | 10500 | 7000 | 825896250 |
+| AISL08 | 10750 | 7168 | 857190912 |
+| AISL09 | 11000 | 7334 | 871057253 |
+| AISL10 | 11250 | 7500 | 881528125 |
+SABOTAJE politica-true: las políticas RLS de pedidos y clientes pasan a `true`.
+
+### 1. El lote aplica rol, variable y tope juntos
+{
+  usuario: 'amanece_consultas',
+  negocio: '3ff7d273-6a38-48fc-859a-f1e6c5505684',
+  tope: '2s',
+  bypassrls: false,
+  visibles: 101250
+}
+  ✗ M3 ligado: el lote corre como amanece_consultas, sin BYPASSRLS, con el Negocio de la sesión, tope de 2 s y solo ve los pedidos de A
+      {
+        usuario: 'amanece_consultas',
+        negocio: '3ff7d273-6a38-48fc-859a-f1e6c5505684',
+        tope: '2s',
+        bypassrls: false,
+        visibles: 101250
+      }
+
+### 2. Un lote sin `set_config` falla cerrado
+  ✗ M3 falla cerrado: sin `set_config`, con cadena vacía y con un valor inválido nunca devuelve filas (error o 0 filas)
+      [ '0 errores, 101250 filas visibles', '0 errores, 101250 filas visibles', '0 errores, 101250 filas visibles' ]
+  ✓ M3 falla cerrado: con la política tolerante, sin `set_config` devuelve 0 filas (no error)
+  ✗ M3 falla cerrado: 100 lotes sin `set_config` mezclados con 100 con él (conexiones reutilizadas) nunca ven filas
+      [
+        {
+          ok: true,
+          res: [ [], [], [ { n: 101250 } ] ],
+          ms: 963.0085829999989
+        },
+        {
+          ok: true,
+          res: [ [], [], [ { n: 101250 } ] ],
+          ms: 963.2581250000003
+        }
+      ]
+  ✗ M3 falla cerrado: los lotes con `set_config` de A ven exactamente los pedidos de A
+      []
+| caso | resultado |
+| --- | --- |
+| política estricta (como #8): sin `set_config` | 0 errores, 101250 filas visibles |
+| política estricta: `set_config` con cadena vacía | 0 errores, 101250 filas visibles |
+| política estricta: `set_config` con un valor que no es uuid | 0 errores, 101250 filas visibles |
+| política tolerante (`current_setting(…, true)`): sin `set_config` | 0 errores, 0 filas visibles |
+| 100 lotes con `set_config` de A y luego 100 sin él, mezclados a la vez (conexiones reutilizadas) | los 100 sin él: 0 cerraron; los 100 con él: 0 vieron exactamente los 9000 pedidos de A |
+
+### 3. Qué frena la base sola, si el validador se saltara (el rol, ya con el Negocio A puesto)
+  ✓ M3 ataque: leer una tabla sin permiso (`negocios`) → lo frena la base
+  ✓ M3 ataque: leer una columna no concedida (texto de los mensajes) → lo frena la base
+  ✓ M3 ataque: leer una columna no concedida (dirección del pedido) → lo frena la base
+  ✓ M3 ataque: escribir (`update`) → lo frena la base
+  ✓ M3 ataque: borrar (`delete`) → lo frena la base
+  ✓ M3 ataque: insertar → lo frena la base
+  ✓ M3 ataque: leer `pg_authid` (hashes de contraseña) → lo frena la base
+  ✓ M3 ataque: leer `pg_shadow` → lo frena la base
+  ✓ M3 ataque: leer un archivo del servidor (`pg_read_file`) → lo frena la base
+  ✓ M3 ataque: ver las consultas de otras sesiones (`pg_stat_activity.query`) → lo frena la base
+  ✗ M3 ataque: pedir las filas de B con el Negocio A puesto → lo frena la base
+      'no dio error y devolvió lo que no debía; 92.9 ms'
+  ✗ M3 ataque: pedir los Clientes de B con el Negocio A puesto → lo frena la base
+      'no dio error y devolvió lo que no debía; 87.9 ms'
+  ✓ M3 ataque: `pg_sleep(5)` con el tope de 2 s → lo frena la base
+  ✓ M3 ataque: producto cartesiano de pedidos (tope de 2 s) → lo frena la base
+  ✓ M3 ataque (límite conocido, el validador es el anillo): listar los nombres de las tablas (`pg_class`, metadatos públicos) → la base no lo frena
+  ✓ M3 ataque (límite conocido, el validador es el anillo): listar los nombres de los roles (`pg_roles`) → la base no lo frena
+  ✓ M3 ataque (límite conocido, el validador es el anillo): `SET ROLE neondb_owner` (volver al dueño de la sesión) → la base no lo frena
+  ✓ M3 ataque (límite conocido, el validador es el anillo): `SET ROLE amanece_nucleo` (otro rol de la app) → la base no lo frena
+  ✓ M3 ataque: `SET ROLE neon_superuser` → lo frena la base
+  ✓ M3 ataque: `SET ROLE cloud_admin` → lo frena la base
+| intento desde dentro del rol | resultado | detalle |
+| --- | --- | --- |
+| leer una tabla sin permiso (`negocios`) | frenado | permission denied for table negocios (87.7 ms) |
+| leer una columna no concedida (texto de los mensajes) | frenado | permission denied for table mensajes_cliente (87.4 ms) |
+| leer una columna no concedida (dirección del pedido) | frenado | permission denied for table pedidos (87.9 ms) |
+| escribir (`update`) | frenado | permission denied for table pedidos (139 ms) |
+| borrar (`delete`) | frenado | permission denied for table pedidos (87.5 ms) |
+| insertar | frenado | permission denied for table clientes (88.2 ms) |
+| leer `pg_authid` (hashes de contraseña) | frenado | permission denied for table pg_authid (89.4 ms) |
+| leer `pg_shadow` | frenado | permission denied for view pg_shadow (86.1 ms) |
+| leer un archivo del servidor (`pg_read_file`) | frenado | permission denied for function pg_read_file (172 ms) |
+| ver las consultas de otras sesiones (`pg_stat_activity.query`) | frenado | no dio error y no devolvió filas ajenas; 90.4 ms |
+| pedir las filas de B con el Negocio A puesto | NO frenado | no dio error y devolvió lo que no debía; 92.9 ms |
+| pedir los Clientes de B con el Negocio A puesto | NO frenado | no dio error y devolvió lo que no debía; 87.9 ms |
+| `pg_sleep(5)` con el tope de 2 s | frenado | canceling statement due to statement timeout (2087 ms) |
+| producto cartesiano de pedidos (tope de 2 s) | frenado | canceling statement due to statement timeout (2090 ms) |
+| listar los nombres de las tablas (`pg_class`, metadatos públicos) | no se frena (límite) | no dio error y no devolvió filas ajenas; 92.5 ms |
+| listar los nombres de los roles (`pg_roles`) | no se frena (límite) | no dio error y no devolvió filas ajenas; 88.2 ms |
+| `SET ROLE neondb_owner` (volver al dueño de la sesión) | no se frena (límite) | no dio error; 174 ms |
+| `SET ROLE amanece_nucleo` (otro rol de la app) | no se frena (límite) | no dio error; 89.0 ms |
+| `SET ROLE neon_superuser` | frenado | It is not allowed to change role to neon_superuser (86.7 ms) |
+| `SET ROLE cloud_admin` | frenado | permission denied to set role "cloud_admin" (87.8 ms) |
+set_config dentro del SELECT (sesión de A, pide B): {"n":101250,"negocios":10,"negocio":"080c2f8f-a5f1-47e4-9dec-4ef3b0e7309f"}
+  ✗ M3 límite conocido de #8: un `set_config` dentro del SELECT no cambia de Negocio en esta corrida (otra cosa); se registra para que el validador lo prohíba
+      { n: 101250, negocios: 10, negocio: '080c2f8f-a5f1-47e4-9dec-4ef3b0e7309f' }
+
+### 3b. ¿Sobrevive el estado de sesión entre peticiones HTTP? (una consulta que fija la variable o el rol sin `LOCAL`)
+| qué se hizo | resultado |
+| --- | --- |
+| 120 peticiones sueltas fijan `app.negocio_id` = B con `is_local = false`; luego 120 lotes con `SET LOCAL ROLE` y sin `set_config` | 120 de 120 lotes vieron filas (B tiene 9250 pedidos) |
+| lo mismo, pero con `RESET ALL` y `RESET ROLE` como primeras sentencias del lote | 120 de 120 lotes vieron filas |
+| 360 peticiones sueltas dejan la variable en cadena vacía; se repiten los 120 lotes sin reinicio | 120 de 120 lotes vieron filas |
+| 360 peticiones sueltas hacen `SET ROLE amanece_nucleo` sin LOCAL; luego 120 `select current_user` | 91 de 120 corrieron con un rol distinto de neondb_owner |
+| lo mismo, pero el `select current_user` va después de `RESET ALL` y `RESET ROLE` en un lote | 0 de 120 con un rol distinto de neondb_owner |
+| 720 peticiones sueltas hacen `RESET ROLE`; se repiten los 120 `select current_user` | 0 de 120 con un rol distinto de neondb_owner |
+  ✓ M3 estado de sesión (límite conocido): lo que una petición fija sin `LOCAL` SOBREVIVE en otras (variable: 120 de 120 lotes sin `set_config` vieron filas de B; rol: 91 de 120); el validador tiene que prohibir `SET` y `set_config`
+  ✗ M3 estado de sesión: con `RESET ALL` y `RESET ROLE` al abrir el lote, el estado heredado no llega (0 filas de B, 0 roles pegados)
+      { variableConReinicio: 120, rolConReinicio: 0 }
+  ✗ M3 estado de sesión: después de la limpieza no queda ninguna conexión con la variable ni con el rol puestos
+      { trasLimpiar: 120, trasResetRol: 0 }
+
+### 4. ¿La política usa el índice? EXPLAIN (ANALYZE, BUFFERS) dentro del lote, con el rol y el Negocio puestos
+-- solo la política, sin WHERE: `select count(*) from pedidos`
+Aggregate (actual time=13.204..13.205 rows=1.00 loops=1)
+  Buffers: shared hit=546
+  ->  Index Only Scan using pedidos_pkey on pedidos (actual time=0.060..8.128 rows=101250.00 loops=1)
+        Heap Fetches: 0
+        Index Searches: 1
+        Buffers: shared hit=546
+Planning Time: 0.049 ms
+Execution Time: 13.229 ms
+-- la consulta del Indicador con la CTE `WHERE negocio_id = $1` (política y CTE a la vez)
+Limit (actual time=4.913..4.928 rows=8.00 loops=1)
+  Buffers: shared hit=378
+  ->  WindowAgg (actual time=4.912..4.925 rows=8.00 loops=1)
+        Window: w1 AS ()
+        Storage: Memory  Maximum Storage: 17kB
+        Buffers: shared hit=378
+        ->  Subquery Scan on q (actual time=3.802..4.895 rows=8.00 loops=1)
+              Buffers: shared hit=378
+              ->  GroupAggregate (actual time=3.794..4.886 rows=8.00 loops=1)
+                    Group Key: p.ciudad
+                    Buffers: shared hit=378
+                    ->  Sort (actual time=3.627..3.890 rows=6000.00 loops=1)
+                          Sort Key: p.ciudad
+                          Sort Method: quicksort  Memory: 480kB
+                          Buffers: shared hit=378
+                          ->  Hash Join (actual time=0.416..2.672 rows=6000.00 loops=1)
+                                Hash Cond: (p.cliente_id = c.id)
+                                Buffers: shared hit=378
+                                ->  Bitmap Heap Scan on pedidos p (actual time=0.306..1.696 rows=6000.00 loops=1)
+                                      Recheck Cond: (negocio_id = '3ff7d273-6a38-48fc-859a-f1e6c5505684'::uuid)
+                                      Filter: (estado = ANY ('{confirmado,enviado,entregado,novedad}'::text[]))
+                                      Rows Removed by Filter: 3000
+                                      Heap Blocks: exact=311
+                                      Buffers: shared hit=367
+                                      ->  Bitmap Index Scan on pedidos_negocio (actual time=0.280..0.280 rows=9000.00 loops=1)
+                                            Index Cond: (negocio_id = '3ff7d273-6a38-48fc-859a-f1e6c5505684'::uuid)
+                                            Index Searches: 1
+                                            Buffers: shared hit=56
+                                ->  Hash (actual time=0.107..0.108 rows=420.00 loops=1)
+                                      Buckets: 1024  Batches: 1  Memory Usage: 28kB
+                                      Buffers: shared hit=11
+                                      ->  Bitmap Heap Scan on clientes c (actual time=0.031..0.068 rows=420.00 loops=1)
+                                            Recheck Cond: (negocio_id = '3ff7d273-6a38-48fc-859a-f1e6c5505684'::uuid)
+                                            Heap Blocks: exact=6
+                                            Buffers: shared hit=11
+                                            ->  Bitmap Index Scan on clientes_negocio_telefono (actual time=0.020..0.020 rows=420.00 loops=1)
+                                                  Index Cond: (negocio_id = '3ff7d273-6a38-48fc-859a-f1e6c5505684'::uuid)
+                                                  Index Searches: 1
+                                                  Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=50
+Planning Time: 0.271 ms
+Execution Time: 5.001 ms
+-- últimos 20 mensajes de un Cliente, solo con la política (sin `negocio_id` en el WHERE)
+Limit (actual time=0.069..0.072 rows=20.00 loops=1)
+  Buffers: shared hit=33
+  ->  Sort (actual time=0.068..0.070 rows=20.00 loops=1)
+        Sort Key: creado DESC
+        Sort Method: quicksort  Memory: 27kB
+        Buffers: shared hit=33
+        ->  Bitmap Heap Scan on mensajes_cliente (actual time=0.020..0.061 rows=30.00 loops=1)
+              Recheck Cond: (cliente_id = '004afc67-1890-4d52-82f5-76a96b2958cd'::uuid)
+              Filter: (negocio_id = (current_setting('app.negocio_id'::text))::uuid)
+              Heap Blocks: exact=30
+              Buffers: shared hit=33
+              ->  Bitmap Index Scan on mensajes_cliente_cliente (actual time=0.009..0.009 rows=30.00 loops=1)
+                    Index Cond: (cliente_id = '004afc67-1890-4d52-82f5-76a96b2958cd'::uuid)
+                    Index Searches: 1
+                    Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=20
+Planning Time: 0.130 ms
+Execution Time: 0.086 ms
+  ✓ M3 EXPLAIN: la política sobre `pedidos` se resuelve con un índice por `negocio_id` (sin recorrido secuencial)
+  ✓ M3 EXPLAIN: la consulta del Indicador no recorre `pedidos` ni `clientes` en secuencial
+  ✓ M3 EXPLAIN: la lectura de mensajes con solo la política usa un índice (sin recorrido secuencial)
+
+### 5. 500 lotes concurrentes (50 por Negocio, en 10 ráfagas de 50 en paralelo, Negocios mezclados)
+| configuración | lotes | errores | filas de otro Negocio (fugas) | totales ≠ verdad | p50 (ms) | p90 | p95 | mín | máx | mediana de las medianas por ráfaga |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| con RLS + CTE (producción) | 500 | 0 | 0 | 0 | 686 | 848 | 886 | 108 | 964 | 689 |
+| sin RLS, solo CTE | 500 | 0 | 0 | 0 | 641 | 1210 | 1707 | 105 | 2050 | 685 |
+| CTE sin WHERE + RLS (un error de la CTE) | 500 | 5 | 13210 | 495 | 2057 | 2389 | 2433 | 762 | 2540 | 2123 |
+| CTE sin WHERE + política en `true` (mutación de control) | 500 | 24 | 13058 | 476 | 1818 | 2093 | 2097 | 707 | 2309 | 1870 |
+p50 de cada ronda de 500 lotes (ms), con RLS contra sin RLS:
+| ronda | primero corrió | con RLS p50 | sin RLS p50 | diferencia | con RLS p95 | sin RLS p95 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | con RLS | 686 | 641 | 45.1 | 886 | 1707 |
+Diferencia de p50, con RLS menos sin RLS: 45.1 ms (7.0 %). Diferencia de p95: -821 ms. Un select 1 cuesta 83.3 ms (p50).
+  ✓ M3 carga: 500 lotes con RLS + CTE sin un solo error
+  ✓ M3 carga: con RLS + CTE ninguna fila es de otro Negocio (fugas = 0)
+  ✓ M3 carga: con RLS + CTE todos los totales y las listas coinciden con la verdad
+  ✓ M3 carga: sin RLS (solo la CTE) tampoco hay fugas ni diferencias, así que la CTE sola ya liga bien
+  ✗ M3 anillo: con una CTE sin `WHERE` (el error), RLS deja a cada Negocio solo con lo suyo: fugas = 0 y totales correctos
+      { errores: 5, fugas: 13210, discrepancias: 495 }
+  ✓ M3 mutación de control: con la política en `true` y la CTE sin `WHERE`, la prueba de fugas SÍ detecta fugas (la afirmación puede fallar)
+
+Peticiones HTTP a Neon en este proceso: 5246
+
+38 casos, 10 fallaron.
+  ✗ M3 ligado: el lote corre como amanece_consultas, sin BYPASSRLS, con el Negocio de la sesión, tope de 2 s y solo ve los pedidos de A
+  ✗ M3 falla cerrado: sin `set_config`, con cadena vacía y con un valor inválido nunca devuelve filas (error o 0 filas)
+  ✗ M3 falla cerrado: 100 lotes sin `set_config` mezclados con 100 con él (conexiones reutilizadas) nunca ven filas
+  ✗ M3 falla cerrado: los lotes con `set_config` de A ven exactamente los pedidos de A
+  ✗ M3 ataque: pedir las filas de B con el Negocio A puesto → lo frena la base
+  ✗ M3 ataque: pedir los Clientes de B con el Negocio A puesto → lo frena la base
+  ✗ M3 límite conocido de #8: un `set_config` dentro del SELECT no cambia de Negocio en esta corrida (otra cosa); se registra para que el validador lo prohíba
+  ✗ M3 estado de sesión: con `RESET ALL` y `RESET ROLE` al abrir el lote, el estado heredado no llega (0 filas de B, 0 roles pegados)
+  ✗ M3 estado de sesión: después de la limpieza no queda ninguna conexión con la variable ni con el rol puestos
+  ✗ M3 anillo: con una CTE sin `WHERE` (el error), RLS deja a cada Negocio solo con lo suyo: fugas = 0 y totales correctos
+exit 1

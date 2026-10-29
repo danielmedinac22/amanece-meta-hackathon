@@ -1,0 +1,35 @@
+Medición del aislamiento · rama desechable de Neon · ENVIO_SIMULADO=1 · SABOTAJE reclamo-en-dos-pasos · fase m1
+Sin modelo y sin Kapso: el único destino de red permitido es Neon.
+### Red (al empezar): select 1 por el driver HTTP de Neon, 30 repeticiones tras una de calentamiento
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| select 1 por el driver HTTP | 30 | 76.1 | 143 | 146 | 74.2 | 147 |
+
+## M1. Cola justa por Negocio
+
+
+### 2. Dobles reclamos con mucha concurrencia: 8 drenadores sin espera, 200 trabajos de tres Negocios
+  ✗ M1 dobles [fifo]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 1175 reclamos)
+      { repetidos: 975, dobles: 189, reclamos: 1175 }
+  ✓ M1 dobles [fifo]: los 200 terminaron `hecho`
+  ✓ M1 dobles [tope]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 200 reclamos)
+  ✓ M1 dobles [tope]: los 200 terminaron `hecho`
+| reclamo | reclamos | trabajos reclamados dos veces | intentos > 1 | máx. de A en curso (tope 2) |
+| --- | --- | --- | --- | --- |
+| fifo | 1175 | 975 | 189 | - |
+| tope | 200 | 0 | 0 | 2 |
+  ✓ M1 dobles [tope]: con 8 drenadores A nunca pasa de 2 en curso
+
+### 3. El tope bajo una carrera: 24 reclamos a la vez sobre A (100 pendientes, tope 2), cinco rondas
+| reclamo | trabajos de A en curso tras cada ronda | máximo |
+| --- | --- | --- |
+| fifo+tope | 8, 20, 19, 20, 16 | 20 |
+| tope | 2, 2, 2, 2, 2 | 2 |
+  ✓ M1 carrera [tope]: con 24 reclamos a la vez A queda en exactamente 2 en curso en cada ronda
+  ✓ M1 carrera: control: el tope ingenuo (sin cerrojo) SÍ se pasa de 2 al menos en una ronda
+
+Peticiones HTTP a Neon en este proceso: 4699
+
+7 casos, 1 fallaron.
+  ✗ M1 dobles [fifo]: 200 trabajos, 8 drenadores, ningún trabajo reclamado dos veces (bitácora 1175 reclamos)
+exit 1

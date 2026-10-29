@@ -1,0 +1,75 @@
+Medición del aislamiento · rama desechable de Neon · ENVIO_SIMULADO=1 · SABOTAJE cupo-ingenuo · fase m2
+Sin modelo y sin Kapso: el único destino de red permitido es Neon.
+### Red (al empezar): select 1 por el driver HTTP de Neon, 30 repeticiones tras una de calentamiento
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| select 1 por el driver HTTP | 30 | 81.8 | 115 | 117 | 80.5 | 119 |
+
+## M2. Cupo atómico por Negocio
+
+
+### 1. 500 reservas a la vez por el driver HTTP: 266 del Negocio caliente y 234 de los otros nueve (26 cada uno), tope de 3000 tokens por Negocio
+| reserva | Negocios por encima del tope | tokens por encima | saldo ≠ suma de lo concedido (tokens) | concedidas | denegadas | denegadas con sitio | p50 (ms) | p95 (ms) | las 500 en (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| atómica: UPDATE … WHERE usado + n <= tope | 1 | 15426 | 0 | 500 | 0 | 0 | 1117 | 1200 | 1203 |
+| ingenua: leer, decidir y sumar | 1 | 11689 | 0 | 444 | 56 | 0 | 956 | 1036 | 1112 |
+| ingenua: leer y escribir lo leído más n | 0 | 0 | 32836 | 500 | 0 | 0 | 761 | 1120 | 1191 |
+  ✗ M2 atómica: ningún Negocio termina por encima del tope (0 veces se pasa)
+      { sobrepasos: 1, sobrante: 15426 }
+  ✓ M2 atómica: cada `usado` que devolvió una reserva concedida es menor o igual al tope
+  ✓ M2 atómica: el saldo final es exactamente la suma de lo concedido, en cada Negocio
+  ✓ M2 atómica: no se niega nada que cupiera (toda negación habría pasado el tope con el saldo final)
+  ✓ M2 atómica: el caliente no le quita nada a los otros nueve (todo lo que pidieron se concedió, su demanda cabía)
+  ✓ M2 atómica: el caliente termina lleno (pidió mucho más que su tope)
+  ✓ M2 control: leer, decidir y sumar SÍ se pasa del tope con 500 reservas a la vez
+  ✓ M2 control: leer y escribir lo leído deja un saldo que no cuadra con lo concedido
+
+### 2. ¿El Negocio caliente frena a los demás? Latencia de los otros nueve (234 reservas) en tres condiciones, 3 rondas cada una
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| otros nueve sin el caliente (234 reservas) | 702 | 600 | 616 | 681 | 524 | 683 |
+| otros nueve con el caliente repartido en 266 filas (500 reservas, sin punto caliente) | 702 | 685 | 944 | 1349 | 283 | 1644 |
+| otros nueve con el caliente en una sola fila (500 reservas) | 702 | 793 | 963 | 1028 | 450 | 1148 |
+| el caliente, en una sola fila | 798 | 789 | 956 | 958 | 450 | 1033 |
+  ✓ M2: el caliente no frena a los demás: con la misma carga HTTP, la fila caliente no sube el p50 de los otros más de 25 % (685 contra 793 ms)
+
+### 3. Una reserva sola, 40 repeticiones (sin concurrencia), para restar la red
+| medida (ms) | n | p50 | p90 | p95 | mín | máx |
+| --- | --- | --- | --- | --- | --- | --- |
+| UPDATE … WHERE (atómica) | 40 | 197 | 200 | 201 | 189 | 468 |
+| INSERT … ON CONFLICT DO UPDATE … WHERE (crea la ventana) | 40 | 82.1 | 85.0 | 85.4 | 80.6 | 86.3 |
+| UPDATE con libro de reservas (CTE) | 40 | 81.8 | 84.1 | 85.9 | 80.8 | 166 |
+| leer y después escribir (2 peticiones) | 40 | 163 | 166 | 167 | 161 | 172 |
+RTT de select 1 (p50 de la fase de red): 81.8 ms.
+
+### 4. Las 500 reservas con la sentencia INSERT … ON CONFLICT (la ventana no existe antes)
+| reserva | Negocios por encima del tope | saldo ≠ suma de lo concedido | concedidas | denegadas | p50 (ms) | p95 (ms) |
+| --- | --- | --- | --- | --- | --- | --- |
+| INSERT … ON CONFLICT DO UPDATE … WHERE | 0 | 0 | 274 | 226 | 546 | 1110 |
+  ✓ M2 upsert: sin pasarse del tope, con el saldo cuadrado, aun creando la ventana en el primer uso
+  ✓ M2 upsert: una primera reserva más grande que el tope se niega
+
+### 5. Reservar 1.000 tokens por turno y devolver lo que sobró (tope 100.000 en un Negocio; 150 turnos a la vez)
+  ✓ M2 devolución: de 150 reservas de 1.000 con tope 100.000 caben exactamente 100
+  ✓ M2 devolución: ninguna reserva vio un saldo por encima del tope
+  ✓ M2 devolución: tras liquidar las 100, el saldo es exactamente lo consumido (49762 de 100.000 reservados)
+  ✓ M2 devolución: liquidar otra vez la misma reserva no devuelve nada (idempotente, 100 reintentos a la vez)
+  ✓ M2 devolución: si el consumo real supera lo reservado no se devuelve nada
+  ✓ M2 devolución: lo devuelto se puede reservar de nuevo (cabían 49 y se concedieron 49)
+  ✓ M2 devolución: el saldo final es lo consumido, más la reserva cuyo consumo superó lo reservado, más lo que sigue reservado sin liquidar, y no pasa del tope
+  ✓ M2 devolución: el saldo de `cupos` coincide con el libro de reservas (lo consumido hasta lo reservado, o lo reservado si sigue abierta)
+| paso | valor |
+| --- | --- |
+| reservas de 1.000 concedidas de 150 (tope 100.000) | 100 |
+| saldo tras la primera ola | 100000 |
+| tokens consumidos de verdad (suma de las 100) | 49762 |
+| saldo tras liquidar | 49762 |
+| liquidaciones repetidas que devolvieron algo | 0 |
+| reservas concedidas en la segunda ola | 49 |
+| saldo final | 99762 |
+
+Peticiones HTTP a Neon en este proceso: 12540
+
+19 casos, 1 fallaron.
+  ✗ M2 atómica: ningún Negocio termina por encima del tope (0 veces se pasa)
+exit 1
