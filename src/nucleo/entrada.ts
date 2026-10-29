@@ -25,13 +25,29 @@ export type MensajeEntrante = {
   readonly boton: string | null
 }
 
+type CuerpoDeKapso = {
+  readonly data?: CuerpoDeKapso
+  readonly phone_number_id?: unknown
+  readonly conversation?: { readonly contact_name?: unknown; readonly kapso?: { readonly contact_name?: unknown } }
+  readonly message?: {
+    readonly id?: unknown
+    readonly from?: unknown
+    readonly type?: unknown
+    readonly timestamp?: unknown
+    readonly text?: { readonly body?: unknown }
+    readonly button?: { readonly text?: unknown; readonly payload?: unknown }
+    readonly interactive?: {
+      readonly button_reply?: { readonly id?: unknown; readonly title?: unknown }
+      readonly list_reply?: { readonly id?: unknown; readonly title?: unknown }
+    }
+    readonly kapso?: { readonly status?: unknown; readonly transcript?: { readonly text?: unknown }; readonly content?: unknown }
+  }
+}
+
 /** `null` si el cuerpo no es un mensaje de texto al número de Amanece: un recibo de entrega, otro número, media sin texto. */
 export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date()): MensajeEntrante | null {
-  // El cuerpo viene de afuera y cambia de forma; se lee campo por campo con cuidado.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const crudo = cuerpo as Record<string, any> | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raiz = (crudo?.data && !crudo.message ? crudo.data : crudo) as Record<string, any> | null
+  const crudo = cuerpo as CuerpoDeKapso | null
+  const raiz = crudo?.data && !crudo.message ? crudo.data : crudo
   const mensaje = raiz?.message
   if (!raiz || !mensaje?.id || !mensaje.from) return null
   if (raiz.phone_number_id && raiz.phone_number_id !== NUMERO_DE_AMANECE.id) return null
@@ -48,11 +64,12 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
   if (!texto || typeof texto !== 'string') return null
 
   const boton = mensaje.interactive?.button_reply?.id ?? mensaje.interactive?.list_reply?.id ?? mensaje.button?.payload ?? null
+  const nombre = raiz.conversation?.contact_name ?? raiz.conversation?.kapso?.contact_name
   const segundos = Number(mensaje.timestamp)
   return {
     wamid: marcar.wamid(String(mensaje.id)),
     telefono: String(mensaje.from).replace(/\D/g, ''),
-    nombre: raiz.conversation?.contact_name ?? raiz.conversation?.kapso?.contact_name ?? '',
+    nombre: typeof nombre === 'string' ? nombre : '',
     texto: texto.trim(),
     enviadoEn: marcar.instante(Number.isFinite(segundos) && segundos > 0 ? new Date(segundos * 1000) : recibidoEn),
     boton: typeof boton === 'string' ? boton : null,
@@ -62,7 +79,6 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
 /** La ficha del link `wa.me`: `(CODIGO)` al inicio del texto. Nada más del texto enruta. */
 export const FICHA_DE_ENRUTAMIENTO = /^\(([A-Z0-9]{3,12})\)/
 
-/** Escribe la ficha que lee `FICHA_DE_ENRUTAMIENTO`; `probar-entrada` prueba la ida y la vuelta. */
 export function linkDeWhatsapp(nombre: string, codigo: string): string {
   return `https://wa.me/${NUMERO_DE_AMANECE.telefono}?text=${encodeURIComponent(`(${codigo}) Hola ${nombre}`)}`
 }
@@ -93,7 +109,6 @@ export function elegirReparto(h: HechosDelReparto, boton: string | null): { read
   return { reparto: { tipo: 'preguntar', por: 'sin_negocio' }, sesion: null }
 }
 
-/** El único que escribe `sesiones_whatsapp`. No llama al modelo. */
 export async function repartir(m: MensajeEntrante): Promise<Reparto> {
   const codigo = FICHA_DE_ENRUTAMIENTO.exec(m.texto)?.[1] ?? null
   const negocio = { id: esquema.negocios.id, nombre: esquema.negocios.nombre }

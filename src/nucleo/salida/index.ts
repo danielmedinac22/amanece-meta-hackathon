@@ -137,7 +137,7 @@ type Destino = { readonly veredicto: Veredicto } & (
   | { readonly sale: false; readonly motivo: MotivoDeSilencio }
 )
 
-/** Pura. Sin teléfono no hay a quién mandar; con teléfono, al observar todo sale. */
+/** Pura. Sin teléfono no hay a quién mandar, en ningún modo. */
 function destinoDe(v: Veredicto, telefono: string | null): Destino {
   if (telefono === null) {
     const motivo = v.tipo === 'no_sale' ? v.motivo : 'destinatario_de_otro_negocio'

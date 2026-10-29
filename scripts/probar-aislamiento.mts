@@ -26,8 +26,7 @@ const entrante = (n: string, texto: string) => leerMensajeEntrante(eventoDeKapso
 let duenoId: string | undefined
 let trigoId: string | undefined
 
-/** Lo que TRIGO tiene de todos menos de P. */
-async function huellaDe(negocio: string): Promise<string> {
+async function huellaDeLosDemas(negocio: string): Promise<string> {
   const { rows } = await db.execute(sql`select
     (select count(*) from clientes where negocio_id = ${negocio} and telefono <> ${P}) as clientes,
     (select count(*) from mensajes_cliente m join clientes c on c.id = m.cliente_id where m.negocio_id = ${negocio} and c.telefono <> ${P}) as mensajes,
@@ -72,7 +71,7 @@ try {
   const sesionDeP = async () => (await db.select().from(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, P)))[0]?.negocioId ?? null
   const enviosAP = (desde: number) => envios.slice(desde).filter((e) => e.telefono === P)
   const textoDe = (m: unknown) => ((m as UIMessage).parts ?? []).map((p) => (p.type === 'text' ? p.text : '')).join('')
-  const antesDeTrigo = await huellaDe(trigo.id)
+  const antesDeTrigo = await huellaDeLosDemas(trigo.id)
 
   console.log('\n=== 1. P con la ficha de TRIGO es Cliente de TRIGO ===')
   let desde = envios.length
@@ -113,7 +112,7 @@ try {
   afirmar('4 repetido del Dueño: queda una sola fila en mensajes_entrantes con ese wamid', (await db.$count(esquema.mensajesEntrantes, eq(esquema.mensajesEntrantes.wamid, m2.wamid))) === 1)
 
   console.log('\n=== 5. TRIGO, menos lo de P, no se movió ===')
-  const despuesDeTrigo = await huellaDe(trigo.id)
+  const despuesDeTrigo = await huellaDeLosDemas(trigo.id)
   afirmar('5 TRIGO intacto: clientes, mensajes, pedidos, Casos, salidas, sesiones e Hilos de los demás', despuesDeTrigo === antesDeTrigo, { antesDeTrigo, despuesDeTrigo })
 } catch (e) {
   afirmar('probar-aislamiento terminó sin error inesperado', false, e)
