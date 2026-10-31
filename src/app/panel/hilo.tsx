@@ -3,8 +3,11 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
-import { VistaPrevia } from './vista-previa'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { SalidaDeProponer } from '@/agentes/dueno'
+import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { Tarjeta } from './tarjeta'
 
 /** Lo que el Dueño ve mientras su Agente del dueño usa una herramienta. */
 const ETIQUETAS: Record<string, string> = {
@@ -12,15 +15,10 @@ const ETIQUETAS: Record<string, string> = {
   guardar_productos: 'Actualizó tu catálogo',
   abrir_negocio: 'Dejó listo a tu agente de clientes',
   ver_negocio: 'Revisó tu negocio',
-  proponer_regla: 'Preparó una regla',
-  proponer_conocimiento: 'Preparó un cambio en lo que sabe',
-  proponer_seccion: 'Preparó una sección',
-  proponer_indicador: 'Preparó un indicador',
-  aplicar_cambio: 'Aplicó el cambio',
-  revertir_cambio: 'Revirtió el cambio',
-  listar_cambios: 'Revisó tus cambios',
+  proponer: 'Preparó lo que pediste',
+  descartar_propuesta: 'Descartó una propuesta',
+  listar_propuestas: 'Revisó lo que se ha pedido',
   listar_casos: 'Revisó tus casos',
-  resolver_caso: 'Le respondió al cliente',
   registrar_capacidad_faltante: 'Anotó algo que todavía no sabe hacer',
 }
 
@@ -31,9 +29,12 @@ const SUGERENCIAS_LISTO = [
   'Muéstrame los pedidos con novedad',
 ]
 
-export function Hilo({ inicial, estado }: { inicial: UIMessage[]; estado: 'armando' | 'listo' | null }) {
+type HiloLeido = { mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }
+
+export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; estado: 'armando' | 'listo' | null }) {
   const router = useRouter()
   const [texto, setTexto] = useState('')
+  const [estados, setEstados] = useState(tarjetas)
   const final = useRef<HTMLDivElement>(null)
   const { messages, sendMessage, setMessages, status, error } = useChat({
     messages: inicial,
@@ -42,21 +43,30 @@ export function Hilo({ inicial, estado }: { inicial: UIMessage[]; estado: 'arman
   })
   const ocupado = status === 'submitted' || status === 'streaming'
 
-  // Los Casos llegan solos al Hilo: se revisa cada tanto si el Agente del dueño escribió algo nuevo.
+  // Los Casos y las líneas de lo que se aprobó llegan solos: se revisa cada tanto el Hilo y el estado de sus tarjetas.
+  const releer = useCallback(async () => {
+    const respuesta = await fetch('/api/dueno/chat').catch(() => null)
+    if (!respuesta?.ok) return
+    const servidor = (await respuesta.json()) as HiloLeido
+    setEstados(servidor.tarjetas)
+    // Mientras llega una respuesta, useChat es dueño de los mensajes: el siguiente intervalo los trae.
+    if (!ocupado && servidor.mensajes.length > messages.length) {
+      setMessages(servidor.mensajes)
+      router.refresh()
+    }
+  }, [ocupado, messages.length, setMessages, router])
+
   useEffect(() => {
     if (ocupado) return
-    const intervalo = setInterval(async () => {
-      const respuesta = await fetch('/api/dueno/chat').catch(() => null)
-      if (!respuesta?.ok) return
-      const servidor = (await respuesta.json()) as UIMessage[] | { mensajes: UIMessage[] }
-      const lista = Array.isArray(servidor) ? servidor : servidor.mensajes
-      if (lista.length > messages.length) {
-        setMessages(lista)
-        router.refresh()
-      }
-    }, 8000)
+    const intervalo = setInterval(releer, 8000)
     return () => clearInterval(intervalo)
-  }, [ocupado, messages.length, setMessages, router])
+  }, [ocupado, releer])
+
+  /** Después de un clic: la línea del desenlace y el Panel, que pudo cambiar. */
+  const alCambiar = useCallback(() => {
+    releer()
+    router.refresh()
+  }, [releer, router])
 
   useEffect(() => final.current?.scrollIntoView({ behavior: 'smooth' }), [messages])
 
@@ -82,6 +92,10 @@ export function Hilo({ inicial, estado }: { inicial: UIMessage[]; estado: 'arman
             <div className={m.role === 'user' ? 'max-w-[85%] rounded-2xl bg-sol px-4 py-2.5 text-white' : 'max-w-full'}>
               {m.parts.map((parte, i) => {
                 if (parte.type === 'text') return <p key={i} className="whitespace-pre-wrap leading-relaxed">{parte.text}</p>
+                if (parte.type === 'data-tarjeta') {
+                  const t = parte.data as TarjetaDeAprobacion
+                  return <Tarjeta key={i} tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} />
+                }
                 if (parte.type.startsWith('tool-')) {
                   const herramienta = parte.type.slice(5)
                   const p = parte as { state: string; output?: unknown; errorText?: string }
@@ -91,7 +105,9 @@ export function Hilo({ inicial, estado }: { inicial: UIMessage[]; estado: 'arman
                         <span className={p.state === 'output-available' ? 'text-verde' : p.state === 'output-error' ? 'text-red-700' : 'animate-pulse text-sol'}>●</span>
                         {ETIQUETAS[herramienta] ?? herramienta}
                       </span>
-                      {p.state === 'output-available' && <VistaPrevia salida={p.output} />}
+                      {herramienta === 'proponer' && p.state === 'output-available' && (p.output as SalidaDeProponer).tarjeta && (
+                        <Tarjeta tarjeta={(p.output as SalidaDeProponer).tarjeta!} estado={estados[(p.output as SalidaDeProponer).tarjeta!.propuesta]} alCambiar={alCambiar} />
+                      )}
                     </div>
                   )
                 }

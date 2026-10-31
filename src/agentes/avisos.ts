@@ -1,15 +1,16 @@
-import { generateText, Output } from 'ai'
+import { generateText, Output, type UIMessage } from 'ai'
 import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
+import { proponerRespuestaAlCaso, type ResultadoDeProponer } from '@/nucleo/cambios'
 import { modeloEstructurado } from '@/negocio/dueno-modelo'
 import { registrarTurno } from '@/negocio/medir'
 
 /**
- * Cuando se abre un Caso, el Agente del dueño lo trae al Hilo de cada Dueño del Negocio con una propuesta:
- * qué responderle al Cliente y qué hacer. El Dueño la aprueba en el chat y ahí el agente llama
- * `resolver_caso`; este módulo no le escribe nada al Cliente.
+ * Cuando se abre un Caso, el Agente del dueño lo trae al Hilo de cada Dueño del Negocio con la respuesta lista
+ * en una tarjeta: una sola propuesta, sin `pedido_por`, con el mismo botón para todos. Lo que sale al Cliente es
+ * el texto de la tarjeta, y solo cuando un Dueño toca Enviar; este módulo no le escribe nada al Cliente.
  */
 const propuestaDelCaso = z.object({
   resumen: z.string().describe('Qué pasó, en una o dos frases, para el Dueño'),
@@ -82,21 +83,36 @@ ${contexto}`,
     .returning({ id: esquema.casos.id })
   if (!reclamado) return
 
+  const respuesta = propuesta
+    ? await proponerRespuestaAlCaso(casoId, propuesta.respuestaAlCliente).catch((e) => {
+        console.error('[avisos] no pude dejar la respuesta en una tarjeta', casoId, e)
+        return null
+      })
+    : null
   const texto = propuesta
     ? [
         `Nuevo Caso: ${caso.titulo}`,
         propuesta.resumen,
         `Te propongo responderle a ${nombreDelCliente}:\n«${propuesta.respuestaAlCliente}»`,
         propuesta.queHacer ? `Y por tu lado: ${propuesta.queHacer}` : '',
-        '¿Le respondo así?',
+        respuesta?.tarjeta ? 'Si te sirve, toca Enviar. Si prefieres otra respuesta, dímela.' : sinTarjeta(respuesta),
       ]
         .filter(Boolean)
         .join('\n\n')
     : [`Nuevo Caso: ${caso.titulo}`, caso.detalle, 'No alcancé a armar una propuesta. ¿Cómo quieres que le responda?'].filter(Boolean).join('\n\n')
 
-  // El id del Caso viaja en una parte de datos: el Dueño no la ve y el agente sí, para llamar `resolver_caso`.
+  // El id del Caso viaja en una parte de datos: el Dueño no la ve y el agente sí, por si el Dueño dicta otra respuesta.
+  const partes: UIMessage['parts'] = [{ type: 'data-caso', data: { casoId } }, ...(respuesta?.tarjeta ? [{ type: 'data-tarjeta' as const, data: respuesta.tarjeta }] : [])]
   const duenos = await db.select({ id: esquema.duenos.id }).from(esquema.duenos).where(eq(esquema.duenos.negocioId, negocioId)).orderBy(asc(esquema.duenos.creado))
   for (const dueno of duenos) {
-    await guardarEnElHilo(negocioId, dueno.id, 'agente', mensajeDelAgente(texto, [{ type: 'data-caso', data: { casoId } }]))
+    await guardarEnElHilo(negocioId, dueno.id, 'agente', mensajeDelAgente(texto, partes))
   }
+}
+
+/** Por qué el aviso llega sin botón: lo dice el código, no el modelo. */
+function sinTarjeta(r: ResultadoDeProponer | null): string {
+  if (r?.desenlace === 'corregir' && r.problemas.some((p) => p.tipo === 'fuera_de_ventana')) {
+    return 'No te dejo el botón: pasaron más de 24 horas desde su último mensaje y WhatsApp no deja escribirle hasta que vuelva a escribir.'
+  }
+  return 'No pude dejar esta respuesta lista para enviar. ¿Cómo quieres que le responda?'
 }

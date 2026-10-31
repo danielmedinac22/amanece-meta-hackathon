@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import type { Vista } from '@/db/esquema'
@@ -434,10 +434,6 @@ async function revertirVersiones(tabla: 'reglas' | 'piezas', cambio: Cambio) {
 }
 
 // --- Lectura ----------------------------------------------------------------------------------------
-
-export async function listarCambios(negocioId: string, limite = 15) {
-  return db.select().from(esquema.cambios).where(eq(esquema.cambios.negocioId, negocioId)).orderBy(desc(esquema.cambios.creado)).limit(limite)
-}
 
 export async function obtenerCambio(negocioId: string, cambioId: string) {
   return leerCambio(negocioId, cambioId)

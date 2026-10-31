@@ -10,11 +10,12 @@
  * Sin argumentos corre todo.
  */
 import { config } from 'dotenv'
-import { and, eq, gte, inArray, like } from 'drizzle-orm'
+import { convertToModelMessages } from 'ai'
+import { and, eq, gte, inArray, like, sql } from 'drizzle-orm'
 import { afirmar, capturarEnvios, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
-// Por si algo llegara a llamar a `enviarAlCliente`: con esto solo escribe en el log.
+// La respuesta a un Caso sale por `despachar`: con esto solo escribe en el log.
 process.env.ENVIO_SIMULADO = '1'
 const envios = capturarEnvios()
 
@@ -24,11 +25,15 @@ const cambios = await import('../src/negocio/cambios')
 const { altaDeDueno } = await import('../src/negocio/alta')
 const { datosDelNegocio } = await import('../src/negocio/datos')
 const { leerHilo } = await import('../src/negocio/dueno-hilo')
-const { mensajeDelDueno, responderEnElHilo } = await import('../src/negocio/dueno-chat')
-const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
+const { mensajeDelDueno, responderEnElHilo, tarjetasDe } = await import('../src/negocio/dueno-chat')
+const { crearAgenteDelDueno, parteDeDatosParaElModelo } = await import('../src/agentes/dueno')
+const { aprobar } = await import('../src/nucleo/cambios')
+const { marcar } = await import('../src/nucleo/identidad')
 const { traerCasoAlDueno } = await import('../src/agentes/avisos')
 
 const inicioDeLaPrueba = new Date()
+/** El `ContextoDelDueno` que acuña la sesión, para un Dueño de prueba. */
+const ctxDe = (negocio: string, dueno: string) => ({ negocio: marcar.negocio(negocio), dueno: marcar.dueno(dueno), medio: 'web' as const })
 const seccionesPedidas = process.argv.slice(2)
 const quiero = (nombre: string) => seccionesPedidas.length === 0 || seccionesPedidas.includes(nombre)
 
@@ -111,6 +116,17 @@ async function limpiar() {
     }
     if (productosCreados.length && !sinRevertir.length) await db.delete(esquema.productos).where(inArray(esquema.productos.id, productosCreados))
   }
+  // Las propuestas de esta corrida, también las de la respuesta a un Caso, que no tienen Cambio, y las líneas que
+  // dejó su aprobación en el Hilo de cada Dueño del Negocio.
+  if (negocioDeLaPrueba) {
+    const propuestas = await db
+      .delete(esquema.propuestas)
+      .where(and(eq(esquema.propuestas.negocioId, negocioDeLaPrueba), gte(esquema.propuestas.creado, inicioDeLaPrueba)))
+      .returning({ id: esquema.propuestas.id })
+    const hilo = propuestas.length ? await db.select({ id: esquema.mensajesDueno.id, mensaje: esquema.mensajesDueno.mensaje }).from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.negocioId, negocioDeLaPrueba)) : []
+    const lineas = hilo.filter((m) => propuestas.some((p) => JSON.stringify(m.mensaje).includes(p.id))).map((m) => m.id)
+    if (lineas.length) await db.delete(esquema.mensajesDueno).where(inArray(esquema.mensajesDueno.id, lineas))
+  }
   if (negocioDeLaPrueba) await db.delete(esquema.capacidadesFaltantes).where(and(eq(esquema.capacidadesFaltantes.negocioId, negocioDeLaPrueba), gte(esquema.capacidadesFaltantes.creado, inicioDeLaPrueba)))
   if (creadosCasos.length && negocioDeLaPrueba) {
     // El aviso de un Caso llega al Hilo de cada Dueño del Negocio, no solo al de la prueba.
@@ -151,7 +167,7 @@ async function turno(negocioId: string, duenoId: string, texto: string) {
   const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, duenoId))
   const mensaje = mensajeDelDueno({ parts: [{ type: 'text', text: texto }] })!
   const inicio = Date.now()
-  const respuesta = await responderEnElHilo({ negocio, dueno, mensaje })
+  const respuesta = await responderEnElHilo({ ctx: ctxDe(negocioId, duenoId), negocio, dueno, mensaje })
   await respuesta.text() // lee el stream hasta el final: ahí se guarda la respuesta
   await new Promise((r) => setTimeout(r, 400))
   const hilo = await leerHilo(duenoId)
@@ -349,7 +365,7 @@ try {
   }
 
   if (quiero('casos')) {
-    titulo('7. Aviso de un Caso al Hilo del Dueño y resolver_caso (envío simulado)')
+    titulo('7. Aviso de un Caso al Hilo del Dueño: la respuesta espera el botón (envío simulado)')
     const [cliente] = await db
       .insert(esquema.clientes)
       .values({ negocioId: negocio.id, telefono: '570000000099', nombre: 'Cliente de Prueba', ultimoMensajeEntrante: new Date() })
@@ -369,49 +385,65 @@ try {
     await traerCasoAlDueno(caso.id)
     console.log(`traerCasoAlDueno: ${Date.now() - inicio} ms`)
     const [conPropuesta] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, caso.id))
-    console.log(`Caso: estado=${conPropuesta.estado}\npropuesta guardada:\n${conPropuesta.propuesta}`)
     afirmar('7 Caso: tras traerlo al Dueño espera su respuesta con una propuesta', conPropuesta.estado === 'esperando_dueno' && conPropuesta.propuesta.trim().length > 0, conPropuesta)
+    const delCaso = await db
+      .select()
+      .from(esquema.propuestas)
+      .where(and(eq(esquema.propuestas.negocioId, negocio.id), sql`${esquema.propuestas.actos} @> ${JSON.stringify([{ caso: caso.id }])}::jsonb`))
+    afirmar('7 Caso: una sola propuesta para el Caso, del núcleo y en espera', delCaso.length === 1 && delCaso[0].pedidoPor === null && delCaso[0].estado === 'espera_al_dueno', delCaso)
     const hilo = await leerHilo(dueno.id)
     const aviso = hilo.at(-1)!
+    const tarjeta = (aviso.parts.find((p) => p.type === 'data-tarjeta') as { data: { propuesta: string; huella: string } } | undefined)?.data
     console.log(`\nMensaje en el Hilo del Dueño (${hilo.length} en total):\n${textoDe(aviso as never)}\npartes: ${aviso.parts.map((p) => p.type).join(', ')}`)
-    afirmar('7 Caso: el Hilo recibió un solo mensaje, con el id del Caso', hilo.length === hiloAntes + 1 && aviso.parts.some((p) => p.type === 'data-caso' && (p as { data?: { casoId?: string } }).data?.casoId === caso.id), { antes: hiloAntes, ahora: hilo.length, partes: aviso.parts.map((p) => p.type) })
+    afirmar('7 Caso: el Hilo recibió un solo mensaje, con el id del Caso y la tarjeta de esa propuesta', hilo.length === hiloAntes + 1 && aviso.parts.some((p) => p.type === 'data-caso' && (p as { data?: { casoId?: string } }).data?.casoId === caso.id) && tarjeta?.propuesta === delCaso[0]?.id, { antes: hiloAntes, ahora: hilo.length, partes: aviso.parts.map((p) => p.type) })
+    const texto = delCaso[0]?.actos[0]?.texto ?? ''
+    afirmar('7 Caso: el aviso muestra el mismo texto que saldría', texto.length > 0 && textoDe(aviso as never).includes(texto), texto)
+    afirmar('7 Caso: traerlo al Dueño no le escribe al Cliente', envios.every((e) => e.telefono !== cliente.telefono), envios)
 
-    const { tools } = crearAgenteDelDueno({ negocio, dueno })
-    const resolver = tools.resolver_caso as { execute: (i: unknown, o: unknown) => Promise<unknown> }
-    const respuestaAlCliente = 'Hola, te confirmo que el envío a Cali sale mañana y llega en 3 días hábiles.'
-    // Una tool de otro Negocio no encuentra el Caso: se prueba con el Caso todavía abierto, que es cuando podría resolverlo.
     const ajeno = await negocioAjeno(negocio.codigo)
-    afirmar('7 Caso: hay otro Negocio sembrado desde el cual intentar resolverlo', ajeno !== null, 'Falta sembrar TRIGO y LADERA: pnpm tsx scripts/sembrar.mts')
-    if (ajeno) {
-      const duenoAjeno = { ...dueno, negocioId: ajeno.id }
-      const resolverAjeno = crearAgenteDelDueno({ negocio: ajeno, dueno: duenoAjeno }).tools.resolver_caso as { execute: (i: unknown, o: unknown) => Promise<unknown> }
-      const rechazado = await resolverAjeno.execute({ casoId: caso.id, respuestaAlCliente: 'x', resolucion: 'x', elDuenoAprobo: true }, { toolCallId: 'x', messages: [] })
-      console.log('resolver_caso desde otro Negocio:', JSON.stringify(rechazado))
+    afirmar('7 Caso: hay otro Negocio sembrado desde el cual intentar aprobarlo', ajeno !== null, 'Falta sembrar TRIGO y LADERA: pnpm tsx scripts/sembrar.mts')
+    if (ajeno && tarjeta) {
+      const desdeOtro = await aprobar(ctxDe(ajeno.id, dueno.id), tarjeta.propuesta, tarjeta.huella)
       const [intacto] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, caso.id))
-      afirmar('7 Caso: resolver_caso desde otro Negocio responde ok:false', (rechazado as { ok?: boolean }).ok === false, rechazado)
-      afirmar('7 Caso: resolver_caso desde otro Negocio no cambia el Caso ni manda nada', intacto.estado === 'esperando_dueno' && intacto.resolucion === '' && envios.every((e) => e.telefono !== cliente.telefono), { caso: intacto, envios })
+      afirmar('7 Caso: aprobar desde otro Negocio no existe, no cambia el Caso ni manda nada', desdeOtro.tipo === 'no_existe' && intacto.estado === 'esperando_dueno' && envios.every((e) => e.telefono !== cliente.telefono), { desdeOtro, caso: intacto })
     }
-    const r = await resolver.execute({ casoId: caso.id, respuestaAlCliente, resolucion: 'Se confirmó la fecha', elDuenoAprobo: true }, { toolCallId: 'x', messages: [] })
-    console.log('\nresolver_caso (con ENVIO_SIMULADO=1, no sale nada):', JSON.stringify(r))
-    const [resuelto] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, caso.id))
-    console.log(`Caso tras resolver: estado=${resuelto.estado}`)
-    const salidos = envios.filter((e) => e.telefono === cliente.telefono)
-    afirmar('7 Caso: resolver_caso queda ok y el Caso resuelto', (r as { ok?: boolean }).ok === true && resuelto.estado === 'resuelto', { r, estado: resuelto.estado })
-    afirmar('7 Caso: resolver_caso mandó un solo envío simulado, con la respuesta aprobada', salidos.length === 1 && salidos[0].texto === respuestaAlCliente, salidos)
+    if (tarjeta) {
+      const r = await aprobar(ctxDe(negocio.id, dueno.id), tarjeta.propuesta, tarjeta.huella)
+      const [resuelto] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, caso.id))
+      const salidos = envios.filter((e) => e.telefono === cliente.telefono)
+      afirmar('7 Caso: aprobar por la ruta deja el Caso resuelto', r.tipo === 'aplicado' && resuelto.estado === 'resuelto', { r, estado: resuelto.estado })
+      afirmar('7 Caso: un solo envío simulado, con el texto de la tarjeta', salidos.length === 1 && salidos[0].texto === texto, salidos)
+    }
   }
 
   if (quiero('agente')) {
-    titulo('8. Agente del dueño, Negocio abierto: de la petición a aplicar')
-    await turno(negocio.id, dueno.id, 'Quiero ver cuántos pedidos tengo con novedad, en una lista.')
-    const propuestos = await db.select().from(esquema.cambios).where(and(eq(esquema.cambios.negocioId, negocio.id), eq(esquema.cambios.duenoId, dueno.id), eq(esquema.cambios.estado, 'propuesto')))
-    const deEsteTurno = propuestos.filter((c) => !creadosCambios.includes(c.id))
-    afirmar('8 agente: tras pedir algo para el Panel hay un Cambio propuesto de este Dueño', deEsteTurno.length > 0, propuestos)
-    creadosCambios.push(...deEsteTurno.map((c) => c.id))
-    await turno(negocio.id, dueno.id, 'Sí, aplícalo.')
-    const aplicados = await db.select().from(esquema.cambios).where(and(eq(esquema.cambios.negocioId, negocio.id), eq(esquema.cambios.duenoId, dueno.id)))
-    creadosCambios.push(...aplicados.map((c) => c.id).filter((id) => !creadosCambios.includes(id)))
-    console.log(`\nCambios de esta conversación: ${aplicados.map((c) => `${c.tipo}/${c.estado}`).join(', ')}`)
-    afirmar('8 agente: tras decir que sí, el Cambio propuesto queda aplicado', aplicados.some((c) => c.estado === 'aplicado' && deEsteTurno.some((p) => p.id === c.id)), aplicados.map((c) => ({ id: c.id, tipo: c.tipo, estado: c.estado })))
+    titulo('8. Agente del dueño, Negocio abierto: proponer y el botón')
+    const ctx = ctxDe(negocio.id, dueno.id)
+    const propuestasDelDueno = () => db.select().from(esquema.propuestas).where(and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id)))
+
+    const antesDeContar = (await propuestasDelDueno()).length
+    const cuenta = await turno(negocio.id, dueno.id, 'Hoy vendimos 40 bolsas en la feria y la gente preguntó mucho por envíos a Cali.')
+    afirmar('8 solo cuenta: no sale ninguna tarjeta ni propuesta', (await propuestasDelDueno()).length === antesDeContar && !herramientasDe(cuenta).includes('proponer'), herramientasDe(cuenta))
+
+    const panel = await turno(negocio.id, dueno.id, 'Quiero ver cuántos pedidos tengo con novedad, en una lista.')
+    const aplicadas = (await propuestasDelDueno()).filter((p) => p.estado === 'aplicada' && p.aprobadoPor === null)
+    afirmar('8 Panel: lo que solo ve el Dueño queda aplicado sin botón', aplicadas.length > 0 && tarjetasDe([panel]).length === 0, { aplicadas, herramientas: herramientasDe(panel) })
+
+    const reglasAntes = (await cambios.reglasActivas(negocio.id)).length
+    const pedida = await turno(negocio.id, dueno.id, 'Si preguntan por envíos fuera de Manizales, no prometas fecha de entrega y pásamelo a mí.')
+    const [tarjeta] = tarjetasDe([pedida])
+    afirmar('8 regla: queda en una tarjeta que espera el botón', tarjeta !== undefined && (await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, tarjeta.propuesta)))[0]?.estado === 'espera_al_dueno', herramientasDe(pedida))
+    if (tarjeta) {
+      const { tools } = crearAgenteDelDueno(ctx, { negocio, dueno })
+      const loQueVeElModelo = JSON.stringify(await convertToModelMessages(await leerHilo(dueno.id), { tools, convertDataPart: parteDeDatosParaElModelo, ignoreIncompleteToolCalls: true }))
+      afirmar('8 regla: al modelo no le llega la huella', !loQueVeElModelo.includes(tarjeta.huella))
+      await turno(negocio.id, dueno.id, 'Sí, aplícala.')
+      const [sigue] = await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, tarjeta.propuesta))
+      afirmar('8 regla: decir "sí" por escrito no la aplica', sigue.estado === 'espera_al_dueno' && (await cambios.reglasActivas(negocio.id)).length === reglasAntes, sigue.estado)
+      const r = await aprobar(ctx, tarjeta.propuesta, tarjeta.huella)
+      afirmar('8 regla: el botón la aplica y queda entre las reglas activas', r.tipo === 'aplicado' && (await cambios.reglasActivas(negocio.id)).length === reglasAntes + 1, r)
+    }
+
     const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
     await turno(negocio.id, dueno.id, '¿Me puedes mandar una factura electrónica a cada cliente?')
     const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
@@ -436,10 +468,16 @@ try {
       if (actual.estado === 'listo') break
     }
     // Ya abierto, el mismo Hilo sigue con las herramientas del modo `listo` (y los mensajes del modo `armando` en su historia).
-    await turno(nuevo.id, duenoNuevo.id, 'Sube el precio del arequipe de 500 g a 19000.')
-    await turno(nuevo.id, duenoNuevo.id, 'Sí, aplícalo.')
-    const arequipes = await db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, nuevo.id), like(esquema.productos.nombre, '%requipe%')))
-    console.log(`Precio del arequipe tras el Cambio: ${arequipes[0]?.precio}`)
+    const precio = await turno(nuevo.id, duenoNuevo.id, 'Sube el precio del arequipe de 500 g a 19000.')
+    const si = await turno(nuevo.id, duenoNuevo.id, 'Sí, aplícalo.')
+    const arequipesDe = () => db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, nuevo.id), like(esquema.productos.nombre, '%requipe%')))
+    const antesDelBoton = (await arequipesDe()).filter((p) => p.activo)
+    afirmar('9 precio: decir "sí" por escrito no cambia el precio', antesDelBoton.length > 0 && antesDelBoton.every((p) => p.precio === 18000), antesDelBoton)
+    // El modelo puede preguntar antes de proponer: la tarjeta sale de cualquiera de los dos turnos.
+    const tarjetaDelPrecio = tarjetasDe([precio, si]).at(-1)
+    const r = tarjetaDelPrecio ? await aprobar(ctxDe(nuevo.id, duenoNuevo.id), tarjetaDelPrecio.propuesta, tarjetaDelPrecio.huella) : null
+    const arequipes = await arequipesDe()
+    console.log(`Precio del arequipe tras el botón: ${arequipes[0]?.precio}`)
     const [final] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, nuevo.id))
     const productos = await db.select().from(esquema.productos).where(eq(esquema.productos.negocioId, nuevo.id))
     console.log(`\nNegocio tras la entrevista: "${final.nombre}", estado ${final.estado}, rubro "${final.rubro}", ciudad "${final.conocimiento.ciudad}", ${productos.length} productos`)
@@ -447,7 +485,7 @@ try {
     afirmar('9 alta: guardó al menos 2 productos', productos.length >= 2, productos.map((p) => p.nombre))
     afirmar('9 alta: guardó la ciudad Popayán', final.conocimiento.ciudad.toLowerCase().includes('popay'), final.conocimiento.ciudad)
     const arequipesActivos = arequipes.filter((p) => p.activo)
-    afirmar('9 alta: el arequipe cuesta 19000 tras el Cambio', arequipesActivos.length > 0 && arequipesActivos.every((p) => p.precio === 19000), arequipes)
+    afirmar('9 precio: con el botón de la tarjeta el arequipe cuesta 19000', r?.tipo === 'aplicado' && arequipesActivos.length > 0 && arequipesActivos.every((p) => p.precio === 19000), { r, arequipes })
   }
 
   const turnos = await db.select().from(esquema.turnos).where(eq(esquema.turnos.negocioId, negocio.id))

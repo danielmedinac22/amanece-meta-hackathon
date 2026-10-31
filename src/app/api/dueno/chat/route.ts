@@ -1,7 +1,6 @@
 import { altaDeDueno } from '@/negocio/alta'
-import { mensajeDelDueno, responderEnElHilo } from '@/negocio/dueno-chat'
-import { leerHilo } from '@/negocio/dueno-hilo'
-import { duenoActual } from '@/negocio/sesion'
+import { leerHiloConTarjetas, mensajeDelDueno, responderEnElHilo } from '@/negocio/dueno-chat'
+import { contextoDe, duenoActual } from '@/negocio/sesion'
 
 // Un turno puede generar y probar código varias veces.
 export const maxDuration = 300
@@ -10,15 +9,15 @@ export const maxDuration = 300
 async function sesionDelDueno() {
   const sesion = await duenoActual()
   if (!sesion) return null
-  if (sesion.dueno && sesion.negocio) return { dueno: sesion.dueno, negocio: sesion.negocio }
-  return altaDeDueno(sesion.usuario)
+  const { dueno, negocio } = sesion.dueno && sesion.negocio ? { dueno: sesion.dueno, negocio: sesion.negocio } : await altaDeDueno(sesion.usuario)
+  return { dueno, negocio, ctx: contextoDe(dueno) }
 }
 
-/** El Hilo de este Dueño, del más viejo al más nuevo, como `UIMessage[]`. */
+/** El Hilo de este Dueño, del más viejo al más nuevo, y el estado vivo de sus tarjetas: `{ mensajes, tarjetas }`. */
 export async function GET() {
   const sesion = await sesionDelDueno()
   if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
-  return Response.json(await leerHilo(sesion.dueno.id))
+  return Response.json(await leerHiloConTarjetas(sesion.ctx))
 }
 
 /**
