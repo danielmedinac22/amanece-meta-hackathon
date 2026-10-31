@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, integer, jsonb, pgTable, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
+import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
 
@@ -45,6 +45,13 @@ export const negocios = pgTable(
     conocimiento: jsonb('conocimiento').$type<Conocimiento>().notNull().default(CONOCIMIENTO_VACIO),
     /** `armando` mientras el Dueño lo arma; `listo` cuando el Agente de clientes ya atiende. */
     estado: text('estado', { enum: ['armando', 'listo'] }).notNull().default('armando'),
+    /** `armando` o `atendiendo`, derivado de `estado` hasta que exista `en_sombra`. */
+    modo: text('modo', { enum: ['armando', 'atendiendo'] }).generatedAlwaysAs(sql`case when estado = 'listo' then 'atendiendo' else 'armando' end`),
+    /** Sube en uno con cada escritura de Elementos o filas, en la misma transacción. */
+    version: integer('version').notNull().default(0),
+    pais: text('pais', { enum: ['CO'] }).notNull().default('CO'),
+    moneda: text('moneda', { enum: ['COP'] }).notNull().default('COP'),
+    zonaHoraria: text('zona_horaria').notNull().default('America/Bogota'),
     creado: creado(),
   },
   (t) => [uniqueIndex('negocios_codigo').on(t.codigo)],
@@ -234,6 +241,44 @@ export const propuestas = pgTable(
     uniqueIndex('propuestas_una_reversion').on(t.revierte).where(sql`${t.estado} = 'aplicada'`),
     check('propuestas_aprobada', sql`${t.aprobadoPor} is null or ${t.estado} = 'aplicada'`),
   ],
+)
+
+const ORIGENES_DE_ESCRITURA = ['propuesta', 'tablas_viejas', 'entrevista'] as const
+
+/**
+ * Lo que un Cambio deja en un Negocio, solo de agregar: por clave vale la versión más alta, y `contenido` null quiere
+ * decir que se quitó. Solo escribe `src/nucleo/estado/escribir.ts`; solo lee `src/nucleo/estado/index.ts`.
+ */
+export const elementos = pgTable(
+  'elementos',
+  {
+    negocioId: negocioId(),
+    clave: text('clave').notNull(),
+    version: integer('version').notNull(),
+    tipo: text('tipo').notNull(),
+    contrato: integer('contrato').notNull().default(1),
+    contenido: jsonb('contenido').$type<unknown>(),
+    origen: text('origen', { enum: ORIGENES_DE_ESCRITURA }).notNull(),
+    propuestaId: uuid('propuesta_id').references(() => propuestas.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.negocioId, t.clave, t.version] }), index('elementos_propuesta').on(t.propuestaId)],
+)
+
+/** Las filas de las tablas propias de un Negocio, con el mismo contador de versiones. Nadie las escribe todavía. */
+export const filasDeTabla = pgTable(
+  'filas_de_tabla',
+  {
+    negocioId: negocioId(),
+    tabla: text('tabla').notNull(),
+    fila: text('fila').notNull(),
+    version: integer('version').notNull(),
+    valores: jsonb('valores').$type<Record<string, string | number | boolean | null>>(),
+    origen: text('origen', { enum: ORIGENES_DE_ESCRITURA }).notNull(),
+    propuestaId: uuid('propuesta_id').references(() => propuestas.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.negocioId, t.tabla, t.fila, t.version] })],
 )
 
 /** Una regla del Negocio. Cada versión es una fila; solo una versión por regla está activa. */

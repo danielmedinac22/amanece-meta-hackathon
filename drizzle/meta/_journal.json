@@ -22,6 +22,13 @@
       "when": 1793467399079,
       "tag": "0002_propuestas",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793481877015,
+      "tag": "0003_elementos",
+      "breakpoints": true
     }
   ]
 }
