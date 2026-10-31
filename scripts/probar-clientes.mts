@@ -23,7 +23,6 @@ const errores = capturarErrores()
 const { db, esquema } = await import('../src/db')
 const { responderComoAgenteDeClientes } = await import('../src/agentes/clientes')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
-const { enviarAlCliente, ErrorDeEnvio } = await import('../src/negocio/whatsapp')
 const { MODELO_ID } = await import('../src/lib/modelo')
 
 const inicio = new Date()
@@ -170,21 +169,6 @@ try {
 
   console.log('\nÚltimos mensajes guardados de Camila:')
   for (const m of (await mensajesDeCamila()).slice(-6)) console.log(`  [${m.rol}] ${m.texto.slice(0, 90).replace(/\n/g, ' ')}`)
-
-  console.log('\n-- enviarAlCliente fuera de la ventana de 24 horas')
-  const [vencido] = await db
-    .insert(esquema.clientes)
-    .values({ negocioId: ladera.id, telefono: telefonoVencido, nombre: 'Cliente fuera de ventana (prueba)', ultimoMensajeEntrante: new Date(Date.now() - 25 * 3600_000) })
-    .returning()
-  desde = envios.length
-  const rechazo = await enviarAlCliente(vencido.id, 'Hola, esto no debe salir').then(
-    () => undefined,
-    (error: unknown) => error,
-  )
-  console.log(rechazo instanceof ErrorDeEnvio ? `Rechazado (${rechazo.codigo}): ${rechazo.message}` : (rechazo ?? 'ERROR: se envió fuera de la ventana'))
-  afirmar('fuera de la ventana: enviarAlCliente lanza ErrorDeEnvio fuera_de_ventana', rechazo instanceof ErrorDeEnvio && rechazo.codigo === 'fuera_de_ventana', rechazo)
-  afirmar('fuera de la ventana: no sale ningún envío', enviosA(telefonoVencido, desde).length === 0, enviosA(telefonoVencido, desde))
-  afirmar('fuera de la ventana: no se guarda ningún mensaje', (await db.$count(esquema.mensajesCliente, eq(esquema.mensajesCliente.clienteId, vencido.id))) === 0)
 
   if (process.argv.includes('--pedido')) {
     console.log('\n=== 3. Pedido y Caso reales en la base (envío simulado) ===')

@@ -23,7 +23,6 @@ const { db, esquema } = await import('../src/db')
 const { decidir, seCumple, ORDEN_DE_LA_COMPUERTA, MODO_DE_LA_COMPUERTA } = await import('../src/nucleo/salida/compuerta')
 const { despachar, emergenciaDe, intencion } = await import('../src/nucleo/salida')
 const { marcar } = await import('../src/nucleo/identidad')
-const { enviarAlCliente, ErrorDeEnvio } = await import('../src/negocio/whatsapp')
 
 const marca = String(Date.now()).slice(-8)
 const prefijo = `wamid.SALIDA.${marca}.`
@@ -57,9 +56,9 @@ try {
   afirmar('importaciones: api.kapso.ai aparece solo en salida/kapso.ts', solo(/api\.kapso\.ai/, ['src/nucleo/salida/kapso.ts']), conTexto(/api\.kapso\.ai/))
   afirmar('importaciones: src/lib/kapso.ts ya no existe y nadie lo importa', !fuentes.some((f) => f.ruta === 'src/lib/kapso.ts') && conTexto(/@\/lib\/kapso/).length === 0, conTexto(/@\/lib\/kapso/))
   afirmar('importaciones: la línea del envío simulado solo la imprime salida/kapso.ts', solo(/envío simulado a/, ['src/nucleo/salida/kapso.ts']), conTexto(/envío simulado a/))
-  const PUEDEN_ARMAR_INTENCIONES = ['src/negocio/whatsapp.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/entrada.ts']
+  const PUEDEN_ARMAR_INTENCIONES = ['src/nucleo/cambios/index.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/entrada.ts']
   const arman = conTexto(/\bintencion\b[^\n]*from '(@\/nucleo\/salida|\.\/salida|\.\.\/salida)'/)
-  afirmar('importaciones: solo entrada, atender y enviarAlCliente arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
+  afirmar('importaciones: solo entrada, atender y aprobar arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
 
   console.log('\n=== 2. decidir ===')
   const A = marcar.negocio('00000000-0000-4000-8000-00000000000a')
@@ -315,28 +314,6 @@ try {
     (observa ? r11.tipo === 'por_enviar' && r11.error === fila10?.error : r11.tipo === 'no_salio') && enviosA(telEnVentana, desde).length === 0,
     { r11, envios: enviosA(telEnVentana, desde) },
   )
-
-  console.log('\n=== 6. enviarAlCliente sobre despachar ===')
-  desde = envios.length
-  const agentesAntesDelCaso = (await agentesDe(enVentana.id)).length
-  const salio = await enviarAlCliente(enVentana.id, 'Respuesta del Dueño a un Caso')
-  const resoluciones = await db
-    .select()
-    .from(esquema.mensajesSalientes)
-    .where(and(eq(esquema.mensajesSalientes.clienteId, enVentana.id), eq(esquema.mensajesSalientes.negocioId, ladera.id), eq(esquema.mensajesSalientes.clase, 'resolucion_de_caso')))
-  afirmar('enviarAlCliente: en ventana sale una vez y deja su fila agente', salio.wamid === null && enviosA(telEnVentana, desde).length === 1 && (await agentesDe(enVentana.id)).length === agentesAntesDelCaso + 1, salio)
-  afirmar('enviarAlCliente: queda como resolucion_de_caso sin Caso, con veredicto sale', resoluciones.length === 1 && resoluciones[0].veredicto === 'sale' && resoluciones[0].casoId === null, resoluciones)
-  desde = envios.length
-  const rechazo = await enviarAlCliente(vencido.id, 'Esto no debe salir').then(
-    () => undefined,
-    (e: unknown) => e,
-  )
-  afirmar('enviarAlCliente: fuera de la ventana lanza ErrorDeEnvio fuera_de_ventana y no sale nada', rechazo instanceof ErrorDeEnvio && rechazo.codigo === 'fuera_de_ventana' && enviosA(telVencido, desde).length === 0, rechazo)
-  const sinCliente = await enviarAlCliente(randomUUID(), 'A nadie').then(
-    () => undefined,
-    (e: unknown) => e,
-  )
-  afirmar('enviarAlCliente: un Cliente que no existe lanza ErrorDeEnvio sin_cliente', sinCliente instanceof ErrorDeEnvio && sinCliente.codigo === 'sin_cliente', sinCliente)
 } catch (e) {
   afirmar('probar-salida terminó sin error inesperado', false, e)
 } finally {
