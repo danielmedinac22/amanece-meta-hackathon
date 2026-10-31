@@ -7,6 +7,8 @@ export type HechosDeRevision = {
   /** Productos, pedidos del Cliente, lo que devolvieron las herramientas del turno y, hasta que exista `precio`, las cifras de los `dato`. */
   readonly montosConRespaldo: ReadonlySet<number>
   readonly telefonoDelCliente: string | null
+  /** Los teléfonos que el Negocio puso en sus datos y preguntas: el Agente de clientes los puede repetir. */
+  readonly telefonosDelNegocio: readonly string[]
   readonly nombresInternos: readonly string[]
   readonly otrosNegocios: readonly string[]
   readonly emojisMaximos: 0 | 1 | 2 | 3
@@ -50,20 +52,37 @@ export function montosEn(texto: string): number[] {
   return montos
 }
 
+/** Con respaldo, o la suma de dos montos con respaldo: un total más el domicilio fijo de un dato. */
+function conRespaldo(monto: number, respaldo: ReadonlySet<number>): boolean {
+  if (respaldo.has(monto)) return true
+  for (const a of respaldo) if (a < monto && respaldo.has(monto - a)) return true
+  return false
+}
+
 const EMOJI = /\p{Extended_Pictographic}/gu
 
 const TELEFONO = /(?<!\d)(?:\+?57[\s-]?)?(3\d{2}[\s-]?\d{3}[\s-]?\d{4}|60\d[\s-]?\d{3}[\s-]?\d{4})(?!\d)/g
 
 const soloDigitos = (s: string) => s.replace(/\D/g, '')
 
-/** Una frase que niega lo que sigue ("nunca te pido la clave", "no cura"): no es una afirmación ni un pedido. */
-function negada(frase: string): boolean {
-  return /\b(no|nunca|jamas|ni)\b/.test(frase)
+/** Los teléfonos de un texto, solo los dígitos sin el indicativo. */
+export function telefonosEn(texto: string): string[] {
+  return [...texto.matchAll(TELEFONO)].map((m) => soloDigitos(m[1]))
+}
+
+const AFIRMAR = ['puedo', 'podemos', 'podria', 'podriamos', 'puede', 'vamos', 'voy', 'prometo', 'prometemos', 'prometer', 'aseguro', 'aseguramos', 'asegurar', 'garantizo', 'garantizamos', 'garantizar', 'sabemos', 'sabria', 'se cuando', 'se si', 'se exactamente', 'confirmo', 'confirmamos', 'confirmar']
+
+/**
+ * La negación pegada al verbo de lo que se afirma ("no te puedo prometer", "nunca te vamos a pedir", "no cura"):
+ * un "no" en otra parte de la frase ("no te preocupes", "no pagas envío") no la anula.
+ */
+function niega(frase: string, verbos: readonly string[] = []): boolean {
+  return new RegExp(`\\b(?:no|nunca|jamas|tampoco)(?: (?:te|le|les|lo|la|los|las|se|nos|me))* (?:${[...AFIRMAR, ...verbos].join('|')})\\b`).test(frase)
 }
 
 function frases(texto: string): string[] {
   return plano(texto)
-    .split(/[.!?¿¡\n]+/)
+    .split(/[.!?¿¡;\n]+|,? pero /)
     .map((f) => f.trim())
     .filter(Boolean)
 }
@@ -71,11 +90,17 @@ function frases(texto: string): string[] {
 const DATO_DE_PAGO = /\b(numero de (la |tu )?tarjeta|cvv|cvc|codigo de seguridad|clave|contrasena|codigo de verificacion|codigo que te llego|otp|pin)\b/
 const PEDIR = /\b(envia|enviame|mandame|manda|dime|dame|comparte|comparteme|compartenos|compartime|escribe|escribeme|pasame|necesito|necesitamos|regalame|indicame|confirma|confirmame)\b/
 
+const PEDIR_DE_VERDAD = ['pedimos', 'pido', 'pedir', 'pediremos', 'pediria', 'solicitamos']
+
+const ENFERMEDAD = '(?:enferm\\w*|diabetes|gastritis|cancer|presion|tension|colesterol|ansiedad|depresion|artritis|migrana|insomnio|covid|gripa|gripe|resfriado|infeccion\\w*|inflamacion|dolor\\w*)'
+const AFIRMAR_SALUD = ['cura', 'curan', 'previene', 'previenen', 'sirve', 'ayuda', 'adelgaza', 'controla', 'baja', 'quema', 'es']
+
 const SALUD = [
   /\bcura(r|n)?\b/,
   /\bprevien(e|en)\b/,
-  /\bprevenir\b/,
-  /\b(sirve|ayuda|es bueno|es buena) (para|contra) (la |el )?(diabetes|gastritis|cancer|presion|tension|colesterol|ansiedad|depresion|artritis|migrana|insomnio|covid|gripa)\b/,
+  /\bprevenir\b(?! que\b)/,
+  new RegExp(`\\bprevenir que\\b.*\\b${ENFERMEDAD}\\b`),
+  new RegExp(`\\b(sirve|ayuda|es bueno|es buena) (para|contra) (la |el )?${ENFERMEDAD}\\b`),
   /\badelgaza\b/,
   /\b(baja|bajar) de peso\b/,
   /\bquema (la )?grasa\b/,
@@ -88,10 +113,18 @@ const SER_PERSONA = [/\bno soy (un |una )?(bot|robot|asistente virtual|maquina|i
 export const DETECTORES = {
   cifra_sin_respaldo: {
     alcance: 'respuesta',
-    detecta: (t, h) => montosEn(t).some((m) => !h.montosConRespaldo.has(m)),
+    detecta: (t, h) => montosEn(t).some((m) => !conRespaldo(m, h.montosConRespaldo)),
     pruebas: {
       dispara: ['Te queda en $50.000 con envío', 'Son 45 mil pesos', 'El total es 120.000'],
-      noDispara: ['La bolsa de Castillo vale $38.000', 'Las dos te quedan en $76.000', 'Llega en 2 a 4 días', 'Tu pedido #12 ya salió', 'Son 500 g de café', 'Pesa 1.500 gramos'],
+      noDispara: [
+        'La bolsa de Castillo vale $38.000',
+        'Las dos te quedan en $76.000',
+        'Llega en 2 a 4 días',
+        'Tu pedido #12 ya salió',
+        'Son 500 g de café',
+        'Pesa 1.500 gramos',
+        'Tu pedido queda en $38.000 más $6.000 del domicilio, $44.000 en total.',
+      ],
     },
   },
   nombre_interno: {
@@ -112,12 +145,13 @@ export const DETECTORES = {
     detecta: (t) => t.length > LARGO_MAXIMO_DE_UNA_RESPUESTA,
     pruebas: { dispara: ['a'.repeat(LARGO_MAXIMO_DE_UNA_RESPUESTA + 1)], noDispara: ['Hola, ¿en qué te ayudo?'] },
   },
+  /** Solo en la respuesta: el Dueño sí puede poner el Nequi o el fijo del Negocio en sus datos. */
   telefono_ajeno: {
-    alcance: 'todo_texto',
-    detecta: (t, h) => [...t.matchAll(TELEFONO)].some((m) => !h.telefonoDelCliente || !soloDigitos(h.telefonoDelCliente).endsWith(soloDigitos(m[1]))),
+    alcance: 'respuesta',
+    detecta: (t, h) => telefonosEn(t).some((n) => !h.telefonosDelNegocio.includes(n) && !(h.telefonoDelCliente && soloDigitos(h.telefonoDelCliente).endsWith(n))),
     pruebas: {
       dispara: ['Escríbele a Juan al 311 555 1234', 'Llama al +57 300-123-4567'],
-      noDispara: ['Te escribimos a este mismo número', 'Tu pedido es el 3001'],
+      noDispara: ['Te escribimos a este mismo número', 'Tu pedido es el 3001', 'Puedes pagar por Nequi al 310 555 1234 cuando te llegue.', 'Escríbenos al 601 555 1234 si necesitas algo.'],
     },
   },
   dice_ser_persona: {
@@ -130,18 +164,18 @@ export const DETECTORES = {
   },
   pide_datos_de_pago: {
     alcance: 'todo_texto',
-    detecta: (t) => frases(t).some((f) => DATO_DE_PAGO.test(f) && PEDIR.test(f) && !negada(f)),
+    detecta: (t) => frases(t).some((f) => DATO_DE_PAGO.test(f) && PEDIR.test(f) && !niega(f, PEDIR_DE_VERDAD)),
     pruebas: {
-      dispara: ['Envíame el número de la tarjeta para cobrarte', 'Dime el código que te llegó por mensaje', 'Compárteme la clave del Nequi'],
+      dispara: ['Envíame el número de la tarjeta para cobrarte', 'Dime el código que te llegó por mensaje', 'Compárteme la clave del Nequi', 'No te preocupes, dime el código que te llegó'],
       noDispara: ['Nunca te vamos a pedir la clave ni el código de la tarjeta', 'Pagas en efectivo cuando te llegue', 'No compartas tu clave con nadie'],
     },
   },
   afirmacion_de_salud: {
     alcance: 'todo_texto',
-    detecta: (t) => frases(t).some((f) => SALUD.some((p) => p.test(f)) && !negada(f)),
+    detecta: (t) => frases(t).some((f) => SALUD.some((p) => p.test(f)) && !niega(f, AFIRMAR_SALUD)),
     pruebas: {
-      dispara: ['Este té cura la gastritis', 'El café verde adelgaza', 'Sirve para la diabetes'],
-      noDispara: ['No podemos decir que cure nada: consulta a tu médico', 'Es un café suave, de tueste medio'],
+      dispara: ['Este té cura la gastritis', 'El café verde adelgaza', 'Sirve para la diabetes', 'Ayuda a prevenir que te dé gripa', 'No te preocupes: este té cura la gastritis'],
+      noDispara: ['No podemos decir que cure nada: consulta a tu médico', 'Es un café suave, de tueste medio', 'Para prevenir que pierda aroma, guárdalo en un frasco cerrado.', 'Este té no cura nada'],
     },
   },
   habla_de_otro_negocio: {
@@ -159,8 +193,9 @@ const MOTIVOS = Object.keys(DETECTORES) as MotivoDeRevision[]
 
 /** Los hechos con que corren las tablas de pruebas: un Café con dos precios y un vecino de número. */
 export const HECHOS_DE_PRUEBA: HechosDeRevision = {
-  montosConRespaldo: new Set([38000, 76000]),
+  montosConRespaldo: new Set([38000, 76000, 6000]),
   telefonoDelCliente: '573001112233',
+  telefonosDelNegocio: ['3105551234', '6015551234'],
   nombresInternos: ['crear_pedido', 'buscar_productos'],
   otrosNegocios: ['Panadería Trigo'],
   emojisMaximos: 1,
@@ -174,36 +209,62 @@ export function revisar(texto: string, hechos: HechosDeRevision): Revision {
 
 /** Pura. Solo los de `todo_texto`, sobre un texto del Dueño que puede llegar a un Cliente. */
 export function revisarTextoDelDueno(texto: string, otrosNegocios: readonly string[]): readonly MotivoDeRevision[] {
-  const hechos: HechosDeRevision = { montosConRespaldo: new Set(), telefonoDelCliente: null, nombresInternos: [], otrosNegocios, emojisMaximos: 3 }
+  const hechos: HechosDeRevision = { montosConRespaldo: new Set(), telefonoDelCliente: null, telefonosDelNegocio: [], nombresInternos: [], otrosNegocios, emojisMaximos: 3 }
   return MOTIVOS.filter((m) => DETECTORES[m].alcance === 'todo_texto' && DETECTORES[m].detecta(texto, hechos))
 }
 
 /** Lo que el Dueño puede pedir que no se prometa (`no_prometer`). Cada uno con su tabla de pruebas. */
+const NUMERO = '(?:\\d+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte|treinta)'
+
+/** "en 2 días", "de 4 a 8 días hábiles", "dos a cuatro días", "48 horas"; no "hace 2 días" ni "7 días a la semana". */
+const CANTIDAD_DE_TIEMPO = new RegExp(`(?<!\\bhace )(?<!\\blas )\\b${NUMERO}(?: (?:a|o|y) ${NUMERO})? (?:dias?|horas?|semanas?)\\b(?! (?:a la|al|por) (?:semana|dia)\\b)`)
+
+const LLEGA_UN_DIA =
+  /\b(llega|llegan|llegaria|llegara|entregamos|entregariamos|entregaremos|recibes|recibirias|recibiras|despachamos|despacharemos|sale|saldria|saldra|estara|estaria|tendras)\b.*\b(manana|hoy|esta semana|la proxima semana|(el|este|el proximo) (lunes|martes|miercoles|jueves|viernes|sabado|domingo))\b/
+
+/** Lo que el Dueño puede pedir que no se prometa (`no_prometer`). Cada uno con su tabla de pruebas. */
 export const PROMESAS = {
   plazo: {
-    detecta: (t: string) =>
-      frases(t).some(
-        (f) =>
-          !negada(f) &&
-          (/\b(te )?(llega|llegaria|llegan|entregamos|entregariamos|recibes|recibirias|despachamos)\b.*\b(\d+ (a \d+ )?(dias|horas|semanas)|manana|hoy|esta semana|el (lunes|martes|miercoles|jueves|viernes|sabado))\b/.test(f) ||
-            /\b(se demora|tarda|demora)\b.*\b\d+ (a \d+ )?(dias|horas|semanas)\b/.test(f)),
-      ),
+    detecta: (t: string) => frases(t).some((f) => !niega(f) && (CANTIDAD_DE_TIEMPO.test(f) || LLEGA_UN_DIA.test(f))),
     pruebas: {
-      dispara: ['Te llega en 3 días hábiles', 'A Cali se demora de 2 a 4 días', 'Lo recibes mañana'],
-      noDispara: ['No te puedo prometer una fecha; le pregunto a Ana', 'Despachamos de lunes a viernes'],
+      dispara: [
+        'Te llega en 3 días hábiles',
+        'A Cali se demora de 2 a 4 días',
+        'Lo recibes mañana',
+        'El envío a Pasto toma de 4 a 8 días hábiles.',
+        'Son de 2 a 4 días hábiles.',
+        'El tiempo de entrega es de 4 a 8 días hábiles.',
+        'Te llega en 3 días hábiles y no pagas envío.',
+        'Te llega en 3 días, no te preocupes.',
+        'Llega de dos a cuatro días.',
+        'Lo tienes en casa en 2 días.',
+        'A Pasto llega en unos 5 días, no es mucho.',
+        'Lo tienes en 48 horas.',
+        'Estará allá entre el lunes y el miércoles.',
+        'No te puedo dar el número de guía, pero te llega en 3 días.',
+      ],
+      noDispara: [
+        'No te puedo prometer una fecha; le pregunto a Ana',
+        'No sé cuándo llega: lo confirmo con el equipo.',
+        'No podemos asegurarte que llegue en 3 días.',
+        'Despachamos de lunes a viernes',
+        'Tu pedido salió hace 2 días.',
+        'Atendemos 7 días a la semana.',
+      ],
     },
   },
   descuento: {
-    detecta: (t: string) => frases(t).some((f) => !negada(f) && /\b(\d+ ?%|descuento|rebaja|promocion|te lo dejo en|precio especial)\b/.test(f)),
+    detecta: (t: string) => frases(t).some((f) => !niega(f, ['manejamos', 'hay', 'tenemos', 'hacemos', 'damos', 'ofrecemos']) && /\b(\d+ ?%|descuento|rebaja|promocion|te lo dejo en|precio especial)\b/.test(f)),
     pruebas: {
-      dispara: ['Te hago un 10% de descuento', 'Te lo dejo en 30 mil', 'Tenemos una promoción para ti'],
+      dispara: ['Te hago un 10% de descuento', 'Te lo dejo en 30 mil', 'Tenemos una promoción para ti', 'No te preocupes, te hago un 10% de descuento'],
       noDispara: ['No manejamos descuentos por ahora', 'La bolsa vale $38.000'],
     },
   },
   disponibilidad: {
-    detecta: (t: string) => frases(t).some((f) => !negada(f) && /\b(hay|tenemos|queda|quedan)\b.*\b(disponible|disponibles|stock|existencias|unidades)\b|\besta disponible\b|\bsi hay\b/.test(f)),
+    detecta: (t: string) =>
+      frases(t).some((f) => !niega(f, ['hay', 'tenemos', 'queda', 'quedan']) && /\b(hay|tenemos|queda|quedan)\b.*\b(disponible|disponibles|stock|existencias|unidades)\b|\besta disponible\b|\bsi hay\b/.test(f)),
     pruebas: {
-      dispara: ['Sí hay, tenemos 5 unidades disponibles', 'Está disponible para envío hoy'],
+      dispara: ['Sí hay, tenemos 5 unidades disponibles', 'Está disponible para envío hoy', 'No te preocupes, tenemos 5 unidades disponibles'],
       noDispara: ['Déjame confirmar si queda', 'No tenemos stock de ese'],
     },
   },

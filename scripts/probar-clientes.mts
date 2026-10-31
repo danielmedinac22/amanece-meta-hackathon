@@ -23,10 +23,9 @@ const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
 const { turno, entornoDeEnsayo } = await import('../src/nucleo/clientes/turno')
-const { leerEstado } = await import('../src/nucleo/estado')
+const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { proponer, aprobar } = await import('../src/nucleo/cambios')
-const { PROMESAS } = await import('../src/nucleo/salida/revisar')
 const { marcar } = await import('../src/nucleo/identidad')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
 const { MODELO_ID } = await import('../src/lib/modelo')
@@ -256,7 +255,10 @@ try {
   await recibirMensaje(entrante({ wamid: `${base}.plazo`, telefono, nombre: 'Camila Rojas', texto: '¿Envían a Pasto? ¿En cuántos días me llega?' }))
   const conRegla = enviosA(telefono, desde)
   console.log(`Agente: ${conRegla[0]?.texto}`)
-  afirmar('regla: sale una respuesta y no promete plazos', conRegla.length === 1 && !PROMESAS.plazo.detecta(conRegla[0].texto), conRegla)
+  // El oráculo no es el detector que se prueba: los rangos de días del dato de envíos sembrado, y cualquier "N días".
+  const rangos = [...valorDelDato(await leerEstado(marcar.negocio(ladera.id)), 'envios').matchAll(/(\d+) a (\d+) días/g)].map((m) => [m[1], m[2]])
+  const prometePlazo = (texto: string) => rangos.some(([a, b]) => new RegExp(`\\b${a}\\b\\D{1,12}\\b${b}\\b`).test(texto)) || /\b\d+\s*(d[ií]as|horas)\b/i.test(texto)
+  afirmar('regla: sale una respuesta y no cita los plazos del dato de envíos', rangos.length >= 2 && conRegla.length === 1 && !prometePlazo(conRegla[0].texto), { rangos, conRegla })
 
   afirmar('recibirMensaje no registró errores (una disculpa técnica también cuenta)', errores.length === 0, errores)
 } catch (e) {

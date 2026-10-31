@@ -145,6 +145,10 @@ try {
     const g = guion('Te lo dejo en $50.000 con envío.', 'El café de tueste medio vale $38.000.')
     const { t } = await correr(estadoCon(), '¿Cuánto vale?', g.motores)
     afirmar('revisar: una cifra sin respaldo pide una corrección', t.corregido === 'si' && g.llamadas.motivos.some((m) => m.includes('cifra')), { t, motivos: g.llamadas.motivos })
+    const conDomicilio = estadoCon(['dato:pagos', { tipo: 'dato', campo: 'pagos', valor: 'Nequi al 310 555 1234 o efectivo. El domicilio cuesta $6.000.' }])
+    const legitima = guion('Son $38.000 más $6.000 del domicilio, $44.000 en total. Puedes pagar por Nequi al 310 555 1234.')
+    const r2 = await correr(conDomicilio, '¿Cuánto es con domicilio y cómo pago?', legitima.motores)
+    afirmar('revisar: el total más el domicilio de un dato y el Nequi del Negocio pasan sin corrección', r2.t.corregido === 'no' && r2.t.revision.tipo === 'pasa' && legitima.llamadas.reescribir === 0, r2.t.revision)
   }
 } catch (e) {
   afirmar('probar-reglas terminó sin error inesperado', false, e)

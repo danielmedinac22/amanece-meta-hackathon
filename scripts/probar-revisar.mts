@@ -15,6 +15,7 @@ try {
   afirmar('revisar deja pasar una respuesta limpia', revisar('La bolsa vale $38.000. ¿Te la envío?', HECHOS_DE_PRUEBA).tipo === 'pasa')
   afirmar('un texto del Dueño con datos de pago y salud no entra', JSON.stringify(revisarTextoDelDueno('Mándame la clave del Nequi; el café cura la gastritis', [])) === JSON.stringify(['pide_datos_de_pago', 'afirmacion_de_salud']))
   afirmar('al Dueño no se le revisan cifras ni emojis', revisarTextoDelDueno('Envío $12.000 ☕☕☕', []).length === 0)
+  afirmar('el Dueño puede poner el Nequi y el fijo del Negocio', revisarTextoDelDueno('Pagas por Nequi al 3105551234; recoge en la Calle 63 # 9-20, tel 601 555 1234', []).length === 0)
   afirmar('no_decir compara sin tildes ni mayúsculas', diceAlguna('Es el MEJOR café de Colombia', ['mejor cafe']) === 'mejor cafe' && diceAlguna('Un café suave', ['mejor cafe']) === null)
 } catch (e) {
   afirmar('probar-revisar terminó sin error inesperado', false, e)

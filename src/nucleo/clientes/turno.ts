@@ -10,7 +10,7 @@ import type { EstadoDelNegocio, EstadoVigente } from '../estado'
 import { comoClave, pesos, type Clave, type Monto, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
-import { montosEn, revisar, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
+import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
 import { envolver, puertoDeLaBase, puertoEnMemoria, type AccionHecha, type PuertoDeAcciones, type PuertoParaElModelo } from './acciones'
 import { compilarReglas, type ViolacionDeRegla } from './reglas'
 
@@ -178,7 +178,7 @@ export async function turno<M extends Modo>(
   }
 }
 
-/** Montos con respaldo: precios del catálogo y sus múltiplos chicos, lo que cotizó el turno, los pedidos del Cliente y las cifras del conocimiento. */
+/** Montos con respaldo: precios del catálogo y sus múltiplos chicos, lo que cotizó el turno, los pedidos del Cliente y las cifras del conocimiento. Teléfonos: los que el Negocio publica. */
 export function hechosDeRevision(estado: EstadoDelNegocio, cliente: ClienteDelTurno, cotizaciones: readonly Cotizacion[], otrosNegocios: readonly string[]): HechosDeRevision {
   const montos = new Set<number>()
   for (const v of estado.vigentes('producto')) for (let k = 1; k <= 5; k++) montos.add(v.elemento.precio * k)
@@ -192,6 +192,7 @@ export function hechosDeRevision(estado: EstadoDelNegocio, cliente: ClienteDelTu
   return {
     montosConRespaldo: montos,
     telefonoDelCliente: cliente.telefono,
+    telefonosDelNegocio: textos.flatMap(telefonosEn),
     nombresInternos: Object.keys(HERRAMIENTAS_EN_PALABRAS),
     otrosNegocios: otrosNegocios.filter((n) => n !== estado.identidad.nombre),
     emojisMaximos: estado.vigentes('voz')[0]?.elemento.emojisPorMensaje ?? 1,
