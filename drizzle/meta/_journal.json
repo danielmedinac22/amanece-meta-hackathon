@@ -15,6 +15,13 @@
       "when": 1793248260172,
       "tag": "0001_salida_y_entrada",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793467399079,
+      "tag": "0002_propuestas",
+      "breakpoints": true
     }
   ]
 }

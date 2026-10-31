@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, integer, jsonb, pgTable, real, text, timestamp, uuid, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { boolean, check, integer, jsonb, pgTable, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
+import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
 
 const id = () => uuid('id').primaryKey().defaultRandom()
@@ -187,8 +188,52 @@ export const cambios = pgTable(
     msHastaAplicado: integer('ms_hasta_aplicado'),
     creado: creado(),
     aplicado: timestamp('aplicado', { withTimezone: true }),
+    /**
+     * Puente hasta el corte del 31-oct: la propuesta que aplica este Cambio. Una reversión no tiene Cambio propio:
+     * lo encuentra por la propuesta que revierte. Solo lo escribe y lo lee `src/nucleo/cambios/puente.ts`.
+     */
+    propuestaId: uuid('propuesta_id').references((): AnyPgColumn => propuestas.id, { onDelete: 'set null' }),
   },
-  (t) => [index('cambios_negocio').on(t.negocioId, t.creado)],
+  (t) => [index('cambios_negocio').on(t.negocioId, t.creado), uniqueIndex('cambios_propuesta').on(t.propuestaId).where(sql`${t.propuestaId} is not null`)],
+)
+
+/** Vacía hasta que existan los Elementos (30-oct): la columna ya tiene su forma para no migrar filas ese día. */
+export type EscrituraDeHoy = { readonly elementos: readonly never[]; readonly filas: readonly never[] }
+
+export const ESTADOS_DE_PROPUESTA = ['espera_al_dueno', 'aplicada', 'descartada', 'capacidad_faltante'] as const
+
+/**
+ * Lo que espera el botón del Dueño: un Cambio, su reversión o la respuesta a un Caso. "vencida" y "revertida" no
+ * se guardan: se derivan (`vence` en espera; otra aplicada con `revierte = id`). Solo escribe `src/nucleo/cambios`.
+ */
+export const propuestas = pgTable(
+  'propuestas',
+  {
+    id: id(),
+    negocioId: negocioId(),
+    palabrasDelDueno: text('palabras_del_dueno').notNull(),
+    /** `null`: la propuso el núcleo, como la respuesta que trae el aviso de un Caso. */
+    pedidoPor: uuid('pedido_por').references(() => duenos.id, { onDelete: 'set null' }),
+    origen: text('origen', { enum: ['hilo', 'panel'] }).notNull().default('hilo'),
+    escritura: jsonb('escritura').$type<EscrituraDeHoy>().notNull().default({ elementos: [], filas: [] }),
+    actos: jsonb('actos').$type<readonly Acto[]>().notNull().default([]),
+    huella: text('huella').notNull(),
+    estado: text('estado', { enum: ESTADOS_DE_PROPUESTA }).notNull().default('espera_al_dueno'),
+    vence: timestamp('vence', { withTimezone: true }).notNull(),
+    vistaPrevia: jsonb('vista_previa').$type<VistaPreviaGuardada>().notNull(),
+    /** En una aplicada, `null` quiere decir que la aplicó la política, sin botón. */
+    aprobadoPor: uuid('aprobado_por').references(() => duenos.id, { onDelete: 'set null' }),
+    version: integer('version'),
+    revierte: uuid('revierte').references((): AnyPgColumn => propuestas.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [
+    index('propuestas_negocio').on(t.negocioId, t.creado),
+    index('propuestas_pendientes').on(t.negocioId, t.vence).where(sql`${t.estado} = 'espera_al_dueno'`),
+    /** Con una sola reversión aplicada por propuesta, "revertida" se deriva sin ambigüedad. */
+    uniqueIndex('propuestas_una_reversion').on(t.revierte).where(sql`${t.estado} = 'aplicada'`),
+    check('propuestas_aprobada', sql`${t.aprobadoPor} is null or ${t.estado} = 'aplicada'`),
+  ],
 )
 
 /** Una regla del Negocio. Cada versión es una fila; solo una versión por regla está activa. */

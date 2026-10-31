@@ -9,6 +9,9 @@ export type NegocioId = Marca<string, 'NegocioId'>
 export type DuenoId = Marca<string, 'DuenoId'>
 export type ClienteId = Marca<string, 'ClienteId'>
 export type CasoId = Marca<string, 'CasoId'>
+/** Lo que espera el botón del Dueño: un Cambio, su reversión o la respuesta a un Caso. */
+export type PropuestaId = Marca<string, 'PropuestaId'>
+export type CapacidadFaltanteId = Marca<string, 'CapacidadFaltanteId'>
 export type Wamid = Marca<string, 'Wamid'>
 /** UTC, ISO 8601. */
 export type Instante = Marca<string, 'Instante'>
@@ -21,6 +24,8 @@ export const marcar = {
   caso: (id: string) => id as CasoId,
   wamid: (id: string) => id as Wamid,
   instante: (d: Date) => d.toISOString() as Instante,
+  propuesta: (id: string) => id as PropuestaId,
+  capacidadFaltante: (id: string) => id as CapacidadFaltanteId,
 } as const
 
 /** `en_sombra` no tiene productor a propósito: mientras la compuerta observa, un Negocio en sombra le hablaría a sus Clientes. */
