@@ -6,7 +6,7 @@ import { costoUsd, MODELO_ID } from '@/lib/modelo'
 export async function registrarTurno(
   agente: 'clientes' | 'dueno' | 'generador',
   negocioId: string | null,
-  uso: LanguageModelUsage,
+  uso: Pick<LanguageModelUsage, 'inputTokens' | 'outputTokens'>,
   ms: number,
 ) {
   const entrada = uso.inputTokens ?? 0

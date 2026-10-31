@@ -13,6 +13,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 config({ path: '.env.local', quiet: true })
 
 const { db, esquema } = await import('../src/db')
+const viejo = await import('../src/db/viejo')
 const { conTransaccion } = await import('../src/db/pool')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
@@ -24,7 +25,7 @@ type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type Clave = import('../src/nucleo/estado/elementos').Clave
 type NegocioId = import('../src/nucleo/identidad').NegocioId
 type CambioDeElemento = import('../src/nucleo/estado').CambioDeElemento
-export type Conocimiento = import('../src/db/esquema').Conocimiento
+export type Conocimiento = import('../src/db/viejo').Conocimiento
 export type ProductoViejo = { readonly id: string; readonly nombre: string; readonly descripcion: string; readonly precio: number; readonly activo: boolean }
 export type Deseado = { readonly clave: Clave; readonly elemento: Elemento }
 
@@ -115,13 +116,14 @@ export async function migrarReglasViejas(negocio: NegocioId, textos: readonly st
 }
 
 async function migrar(enSeco: boolean) {
-  const negocios = await db.select({ id: esquema.negocios.id, codigo: esquema.negocios.codigo, conocimiento: esquema.negocios.conocimiento }).from(esquema.negocios)
+  const negocios = await db.select({ id: esquema.negocios.id, codigo: esquema.negocios.codigo, conocimiento: esquema.negocios.conocimientoSinLector }).from(esquema.negocios)
   console.log(`${enSeco ? '[en seco] ' : ''}${negocios.length} Negocios`)
   for (const n of negocios) {
     const negocio = marcar.negocio(n.id)
-    const productos = await db.select().from(esquema.productos).where(eq(esquema.productos.negocioId, n.id))
-    const reglas = await db.select({ texto: esquema.reglas.texto }).from(esquema.reglas).where(and(eq(esquema.reglas.negocioId, n.id), eq(esquema.reglas.activa, true)))
-    const p = await pasarAElementos(negocio, elementosDeLasTablasViejas(n.conocimiento, productos), { enSeco })
+    const productos = await db.select().from(viejo.productos).where(eq(viejo.productos.negocioId, n.id))
+    const reglas = await db.select({ texto: viejo.reglas.texto }).from(viejo.reglas).where(and(eq(viejo.reglas.negocioId, n.id), eq(viejo.reglas.activa, true)))
+    const conocimiento = { ...viejo.CONOCIMIENTO_VACIO, ...(n.conocimiento as Partial<Conocimiento>) }
+    const p = await pasarAElementos(negocio, elementosDeLasTablasViejas(conocimiento, productos), { enSeco })
     const r = await migrarReglasViejas(negocio, reglas.map((x) => x.texto), { enSeco })
     console.log(`${n.codigo}: ${p.escritas.length} claves ${enSeco ? 'por escribir' : 'escritas'}, ${p.respetadas.length} respetadas, versión ${p.version}; reglas viejas: ${r.anotadas} anotadas, ${r.saltadas} ya estaban`)
     for (const c of p.escritas) console.log(`  + ${c}`)

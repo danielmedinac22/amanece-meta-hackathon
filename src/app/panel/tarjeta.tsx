@@ -71,6 +71,8 @@ function textoDelEstado(verbo: 'Aplicar' | 'Enviar', estado: EstadoDeTarjeta | u
         : r.problemas.some((p) => p.tipo === 'caso_resuelto')
           ? 'Ese Caso ya tiene respuesta.'
           : 'Esto ya no se puede aplicar.'
+    case 'conflicto':
+      return 'Otro Dueño cambió esto mientras tanto. Pídelo de nuevo para ver cómo quedó.'
     case 'vencido':
       return 'Venció sin aplicarse. Pídela de nuevo si todavía la quieres.'
     case 'no_existe':

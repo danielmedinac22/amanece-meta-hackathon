@@ -1,9 +1,10 @@
 /**
  * Prueba del Agente de clientes contra Café Ladera, sin mandar nada por WhatsApp:
- *  1. el agente en modo simulación, con tres mensajes seguidos;
+ *  1. el turno en modo ensayo, con el puerto en memoria y tres mensajes seguidos;
  *  2. `recibirMensaje` de punta a punta con el envío simulado (ENVIO_SIMULADO=1, que se pone aquí), entrando por
  *     `leerMensajeEntrante` con un evento de Kapso como el del webhook;
- *  3. con `--pedido`, también un pedido y un Caso de verdad en la base.
+ *  3. con `--pedido`, también un pedido y un Caso de verdad en la base;
+ *  4. con una regla de siempre `no_prometer: plazo` aprobada con el botón, lo que sale no promete plazos.
  *
  * Cada caso se afirma contra lo que quedó en la base o lo que se habría enviado, nunca contra el texto del
  * modelo, y el script sale con 1 si alguno falla. Lo que la corrida creó se borra al final, también si falla.
@@ -11,7 +12,7 @@
  *   pnpm tsx scripts/probar-clientes.mts [--pedido]
  */
 import { config } from 'dotenv'
-import { and, asc, desc, eq, gte, inArray, like, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, gte, inArray, like, ne, sql } from 'drizzle-orm'
 import { afirmar, capturarEnvios, capturarErrores, eventoDeKapso, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -21,7 +22,12 @@ const envios = capturarEnvios()
 const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
-const { responderComoAgenteDeClientes } = await import('../src/agentes/clientes')
+const { turno, entornoDeEnsayo } = await import('../src/nucleo/clientes/turno')
+const { leerEstado } = await import('../src/nucleo/estado')
+const el = await import('../src/nucleo/estado/elementos')
+const { proponer, aprobar } = await import('../src/nucleo/cambios')
+const { PROMESAS } = await import('../src/nucleo/salida/revisar')
+const { marcar } = await import('../src/nucleo/identidad')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
 const { MODELO_ID } = await import('../src/lib/modelo')
 
@@ -36,6 +42,8 @@ let camilaId: string | undefined
 let ultimoMensajeDeCamila: Date | null = null
 let sesionPrevia: typeof esquema.sesionesWhatsapp.$inferSelect | undefined
 let sesionLeida = false
+let versionDeLadera: number | null = null
+let duenoDePrueba: string | null = null
 
 const filasDeLadera = async (negocioId: string) => ({
   clientes: await db.$count(esquema.clientes, eq(esquema.clientes.negocioId, negocioId)),
@@ -48,6 +56,14 @@ const filasDeLadera = async (negocioId: string) => ({
 /** Borra lo que creó esta corrida. Camila es dato sembrado: se queda. Su sesión vuelve a como estaba. */
 async function limpiar() {
   if (!laderaId || !camilaId) return
+  const propuestas = await db.delete(esquema.propuestas).where(and(eq(esquema.propuestas.negocioId, laderaId), gte(esquema.propuestas.creado, inicio))).returning({ id: esquema.propuestas.id })
+  const lineas = propuestas.length ? (await db.select({ id: esquema.mensajesDueno.id, mensaje: esquema.mensajesDueno.mensaje }).from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.negocioId, laderaId))).filter((m) => propuestas.some((p) => JSON.stringify(m.mensaje).includes(p.id))) : []
+  if (lineas.length) await db.delete(esquema.mensajesDueno).where(inArray(esquema.mensajesDueno.id, lineas.map((m) => m.id)))
+  if (versionDeLadera !== null) {
+    await db.delete(esquema.elementos).where(and(eq(esquema.elementos.negocioId, laderaId), gt(esquema.elementos.version, versionDeLadera)))
+    await db.update(esquema.negocios).set({ version: versionDeLadera }).where(eq(esquema.negocios.id, laderaId))
+  }
+  if (duenoDePrueba) await db.delete(esquema.duenos).where(eq(esquema.duenos.id, duenoDePrueba))
   const casos = await db
     .select({ id: esquema.casos.id })
     .from(esquema.casos)
@@ -82,6 +98,7 @@ try {
   const [ladera] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.codigo, 'LADERA'))
   if (!ladera) throw new Error('Falta sembrar: pnpm tsx scripts/sembrar.mts')
   laderaId = ladera.id
+  versionDeLadera = ladera.version
   const [camila] = await db.select().from(esquema.clientes).where(and(eq(esquema.clientes.negocioId, ladera.id), eq(esquema.clientes.telefono, telefono)))
   if (!camila) throw new Error('Falta sembrar a Camila Rojas: pnpm tsx scripts/sembrar.mts')
   camilaId = camila.id
@@ -89,8 +106,11 @@ try {
   sesionPrevia = (await db.select().from(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, telefono)))[0]
   sesionLeida = true
 
-  console.log(`\n=== 1. Agente de clientes en simulación (${MODELO_ID}) ===`)
+  console.log(`\n=== 1. Agente de clientes en ensayo (${MODELO_ID}) ===`)
   const antes = await filasDeLadera(ladera.id)
+  const estado = await leerEstado(marcar.negocio(ladera.id))
+  const deEnsayo = { id: marcar.cliente(camila.id), nombre: 'Camila', telefono: null, pedidos: [] }
+  const ensayo = entornoDeEnsayo(estado, deEnsayo)
   const historial: { rol: 'cliente' | 'agente'; texto: string }[] = []
   const mensajes = [
     '¿Qué café tienen y cuánto cuesta?',
@@ -98,15 +118,15 @@ try {
     '¿Envían a Pasto y cuándo llega?',
   ]
   for (const [i, texto] of mensajes.entries()) {
-    const r = await responderComoAgenteDeClientes({ negocioId: ladera.id, clienteId: null, historial: [...historial], texto, modo: 'simulacion' })
+    const r = await turno(estado, { cliente: deEnsayo, historial: [...historial], mensaje: { texto, wamid: marcar.wamid(`${base}.ensayo.${i}`), enviadoEn: marcar.instante(new Date()) } }, ensayo)
     console.log(`\nCliente: ${texto}`)
     console.log(`Agente:  ${r.texto}`)
-    console.log(`  herramientas: [${r.herramientas.join(', ')}] · ${r.ms} ms · tokens ${r.uso.inputTokens}/${r.uso.outputTokens}`)
-    afirmar(`simulación: el mensaje ${i + 1} tiene respuesta`, r.texto.trim().length > 0, r.texto)
+    console.log(`  acciones: [${r.acciones.map((a) => a.nombre).join(', ')}] · corregido ${r.corregido} · ${r.gasto.ms} ms · tokens ${r.gasto.entrada}/${r.gasto.salida}`)
+    afirmar(`ensayo: el mensaje ${i + 1} tiene respuesta`, r.texto.trim().length > 0, r.texto)
     historial.push({ rol: 'cliente', texto }, { rol: 'agente', texto: r.texto })
   }
   const despues = await filasDeLadera(ladera.id)
-  afirmar('simulación: no escribe clientes, pedidos, Casos, mensajes ni turnos en la base', JSON.stringify(despues) === JSON.stringify(antes), { antes, despues })
+  afirmar('ensayo: no escribe clientes, pedidos, Casos, mensajes ni turnos en la base', JSON.stringify(despues) === JSON.stringify(antes), { antes, despues })
 
   console.log('\n=== 2. recibirMensaje de punta a punta (envío simulado) ===')
   const enviosA = (tel: string, desde: number) => envios.slice(desde).filter((e) => e.telefono === tel)
@@ -199,12 +219,44 @@ try {
     const pedidosNuevos = pedidos.filter((p) => !pedidosPrevios.has(p.id))
     const delMolino = pedidosNuevos.find((p) => p.items.some((x) => /molino/i.test(x.nombre)))
     afirmar('pedido: se creó un pedido nuevo de Camila con el molino', delMolino !== undefined, pedidosNuevos)
-    const catalogo = new Map((await db.select({ id: esquema.productos.id, precio: esquema.productos.precio }).from(esquema.productos).where(eq(esquema.productos.negocioId, ladera.id))).map((p) => [p.id, p.precio]))
-    const totalDelCatalogo = delMolino?.items.reduce((suma, x) => suma + (catalogo.get(x.productoId) ?? NaN) * x.cantidad, 0)
-    afirmar('pedido: los precios y el total salen del catálogo', delMolino !== undefined && delMolino.total === totalDelCatalogo, { delMolino, totalDelCatalogo })
+    const precioDe = (productoId: string) => {
+      const v = estado.vigente(el.claveDeProducto.deId(productoId))
+      return v?.elemento.tipo === 'producto' ? v.elemento.precio : NaN
+    }
+    const totalDelCatalogo = delMolino?.items.reduce((suma, x) => suma + precioDe(x.productoId) * x.cantidad, 0)
+    afirmar('pedido: los precios y el total salen de los productos Elemento', delMolino !== undefined && delMolino.total === totalDelCatalogo, { delMolino, totalDelCatalogo })
     const casosNuevos = casos.filter((c) => !casosPrevios.has(c.id))
     afirmar('Caso: pedir hablar con una persona deja un Caso sin resolver de Camila', casosNuevos.length > 0, casos)
   }
+
+  console.log('\n=== 4. Con la regla de no prometer plazos, lo que sale no promete plazos ===')
+  const [dueno] = await db.insert(esquema.duenos).values({ negocioId: ladera.id, usuarioId: `prueba-clientes-${Date.now()}`, nombre: 'Dueño de prueba' }).returning()
+  duenoDePrueba = dueno.id
+  const ctx = { negocio: marcar.negocio(ladera.id), dueno: marcar.dueno(dueno.id), medio: 'web' as const }
+  const regla = await proponer(ctx, {
+    palabrasDelDueno: 'Nunca prometas fechas de entrega',
+    origen: 'hilo',
+    quiere: [
+      {
+        tipo: 'poner',
+        reemplaza: null,
+        elemento: {
+          tipo: 'regla',
+          nombre: 'Sin fechas de entrega',
+          cuando: { tipo: 'siempre' },
+          efectos: [{ tipo: 'no_prometer', que: 'plazo' }],
+          escenarios: { activan: [{ mensajeDelCliente: '¿Me llega el viernes a Cali?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] },
+        },
+      },
+    ],
+  })
+  const aplicada = regla.tarjeta ? await aprobar(ctx, regla.tarjeta.propuesta, regla.tarjeta.huella) : null
+  afirmar('regla: espera el botón y el botón la aplica', regla.desenlace === 'espera_al_dueno' && aplicada?.tipo === 'aplicado', { regla, aplicada })
+  desde = envios.length
+  await recibirMensaje(entrante({ wamid: `${base}.plazo`, telefono, nombre: 'Camila Rojas', texto: '¿Envían a Pasto? ¿En cuántos días me llega?' }))
+  const conRegla = enviosA(telefono, desde)
+  console.log(`Agente: ${conRegla[0]?.texto}`)
+  afirmar('regla: sale una respuesta y no promete plazos', conRegla.length === 1 && !PROMESAS.plazo.detecta(conRegla[0].texto), conRegla)
 
   afirmar('recibirMensaje no registró errores (una disculpa técnica también cuenta)', errores.length === 0, errores)
 } catch (e) {

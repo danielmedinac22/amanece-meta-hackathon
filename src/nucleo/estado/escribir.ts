@@ -91,3 +91,6 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   return { tipo: 'escrito', version: comoVersion(version) }
 }
 
+
+type Es<A extends true> = A
+export type _EscribirPideTransaccion = Es<Parameters<typeof escribir>[0] extends Transaccion ? true : false>

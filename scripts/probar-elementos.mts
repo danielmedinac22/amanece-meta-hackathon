@@ -173,6 +173,12 @@ try {
   afirmar('E8: esquema.elementos solo aparece en src/nucleo/estado/', leenElementos.length > 0 && leenElementos.every((r) => r.startsWith('src/nucleo/estado/')), leenElementos)
   const escriben = con(/from ['"][^'"]*estado\/escribir['"]|import\(['"][^'"]*estado\/escribir['"]\)/)
   afirmar('E8: estado/escribir solo lo importan src/nucleo/cambios/ y scripts/', escriben.every((r) => r.startsWith('src/nucleo/cambios/') || r.startsWith('scripts/')), escriben)
+  const leenViejo = con(/db\/viejo['"]/)
+  afirmar('E8: las tablas viejas solo las importa scripts/a-elementos.mts', JSON.stringify(leenViejo) === JSON.stringify(['scripts/a-elementos.mts']), leenViejo)
+  const conocimiento = con(/\.conocimientoSinLector\b|\bconocimientoSinLector: jsonb/).filter((r) => r !== 'scripts/probar-elementos.mts')
+  afirmar('E8: negocios.conocimiento solo lo nombran esquema.ts y a-elementos', JSON.stringify(conocimiento.sort()) === JSON.stringify(['scripts/a-elementos.mts', 'src/db/esquema.ts']), conocimiento)
+  const borrados = ['src/agentes/clientes.ts', 'src/agentes/contratos.ts', 'src/negocio/dueno-catalogo.ts']
+  afirmar('E8: agentes/clientes, agentes/contratos y negocio/dueno-catalogo ya no existen', borrados.every((b) => !fuentes.some((f) => f.ruta === b)))
 } catch (e) {
   afirmar('probar-elementos terminó sin error inesperado', false, e)
 } finally {

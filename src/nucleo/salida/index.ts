@@ -1,6 +1,6 @@
 import { and, count, eq, max, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { marcar, modoDelNegocio, type CasoId, type Wamid } from '../identidad'
+import { marcar, type CasoId, type Wamid } from '../identidad'
 import {
   decidir,
   MODO_DE_LA_COMPUERTA,
@@ -103,7 +103,7 @@ async function leerHechos(i: IntencionDeEnvio, ahora: Date): Promise<{ readonly 
   const enRespuestaA = i.clase === 'resolucion_de_caso' ? null : i.enRespuestaA
 
   const [negocios, clientes, entrantes, respuestas] = await db.batch([
-    db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(negocio ? eq(esquema.negocios.id, negocio) : sql`false`),
+    db.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(negocio ? eq(esquema.negocios.id, negocio) : sql`false`),
     db
       .select({ negocio: esquema.clientes.negocioId, telefono: esquema.clientes.telefono, ultimo: esquema.clientes.ultimoMensajeEntrante })
       .from(esquema.clientes)
@@ -126,7 +126,7 @@ async function leerHechos(i: IntencionDeEnvio, ahora: Date): Promise<{ readonly 
       ahora: marcar.instante(ahora),
       emergenciaGlobal: emergencia.global,
       numeroPermitido: numeroListo(),
-      negocio: n ? { modo: modoDelNegocio(n.estado), emergencia: emergencia.delNegocio } : null,
+      negocio: n ? { modo: n.modo ?? 'armando', emergencia: emergencia.delNegocio } : null,
       cliente: c ? { negocio: marcar.negocio(c.negocio) } : null,
       ultimoEntrante: ultimo ? marcar.instante(ultimo) : null,
       respuestasAlMismoMensaje: respuestas[0]?.n ?? 0,

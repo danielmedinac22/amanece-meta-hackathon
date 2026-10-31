@@ -1,5 +1,8 @@
 import { desc, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
+import { leerEstado, valorDelDato } from '@/nucleo/estado'
+import { claveDeProducto } from '@/nucleo/estado/elementos'
+import type { NegocioId } from '@/nucleo/identidad'
 
 /**
  * Los datos de un solo Negocio que ve el código generado (Secciones e Indicadores). Se arman en el
@@ -7,10 +10,9 @@ import { db, esquema } from '@/db'
  */
 export type DatosDelNegocio = Awaited<ReturnType<typeof datosDelNegocio>>
 
-export async function datosDelNegocio(negocioId: string) {
-  const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocioId))
-  const [productos, clientes, pedidos, casos, mensajes] = await Promise.all([
-    db.select().from(esquema.productos).where(eq(esquema.productos.negocioId, negocioId)),
+export async function datosDelNegocio(negocioId: NegocioId) {
+  const [estado, clientes, pedidos, casos, mensajes] = await Promise.all([
+    leerEstado(negocioId),
     db.select().from(esquema.clientes).where(eq(esquema.clientes.negocioId, negocioId)),
     db.select().from(esquema.pedidos).where(eq(esquema.pedidos.negocioId, negocioId)).orderBy(desc(esquema.pedidos.creado)).limit(2000),
     db.select().from(esquema.casos).where(eq(esquema.casos.negocioId, negocioId)).orderBy(desc(esquema.casos.creado)).limit(500),
@@ -24,9 +26,9 @@ export async function datosDelNegocio(negocioId: string) {
   const iso = (d: Date | null) => (d ? d.toISOString() : null)
   return {
     hoy: new Date().toISOString(),
-    zonaHoraria: 'America/Bogota',
-    negocio: { nombre: negocio?.nombre ?? '', rubro: negocio?.rubro ?? '', ciudad: negocio?.conocimiento.ciudad ?? '' },
-    productos: productos.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, activo: p.activo })),
+    zonaHoraria: estado.identidad.zonaHoraria,
+    negocio: { nombre: estado.identidad.nombre, rubro: estado.identidad.rubro, ciudad: valorDelDato(estado, 'ciudad') },
+    productos: estado.vigentes('producto').map((v) => ({ id: claveDeProducto.aId(v.clave), nombre: v.elemento.nombre, precio: v.elemento.precio as number, activo: v.elemento.activo })),
     clientes: clientes.map((c) => ({ id: c.id, nombre: c.nombre, telefono: `***${c.telefono.slice(-4)}`, creado: iso(c.creado) })),
     pedidos: pedidos.map((p) => ({ id: p.id, numero: p.numero, clienteId: p.clienteId, items: p.items, total: p.total, ciudad: p.ciudad, estado: p.estado, creado: iso(p.creado) })),
     casos: casos.map((c) => ({ id: c.id, titulo: c.titulo, estado: c.estado, clienteId: c.clienteId, pedidoId: c.pedidoId, creado: iso(c.creado), resuelto: iso(c.resuelto) })),

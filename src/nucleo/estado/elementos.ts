@@ -152,7 +152,6 @@ export type DefinicionDeElemento<T extends TipoDeElemento> = {
   describir(antes: ElementoDe<T> | null, despues: ElementoDe<T> | null): string
 }
 
-/** Sin tildes, minúsculas, espacios simples. */
 export function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 }
@@ -216,6 +215,18 @@ const escenario = z.object({
   }),
 })
 
+/**
+ * Lo que escribe el Agente del dueño: Muse Spark no acepta un JSON Schema de más de 10 niveles, así que el escenario
+ * llega plano y sin `momento` ni `pedido`, que solo sirven a condiciones que hoy no tienen cumplidor.
+ */
+const escenarioDeEntrada = z
+  .object({
+    mensajeDelCliente: texto('Un mensaje realista de un Cliente'),
+    hace: z.array(z.enum(ACCIONES_DE_ESCENARIO)).describe('Lo que el agente de clientes debe hacer en ese caso, por ejemplo abrir_caso'),
+    noHace: z.array(z.enum(ACCIONES_DE_ESCENARIO)).describe('Lo que no debe hacer, por ejemplo crear_pedido'),
+  })
+  .transform(({ mensajeDelCliente, hace, noHace }): z.output<typeof escenario> => ({ mensajeDelCliente, momento: null, pedido: null, esperado: { hace, noHace } }))
+
 const franja = z.object({ desde: hora, hasta: hora }).nullable()
 
 const cuando = z.discriminatedUnion('tipo', [
@@ -249,13 +260,16 @@ const efecto = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('no_decir'), frases: noVacia(z.string()) }).describe('No decir estas frases'),
 ])
 
-const ENTRADAS = {
-  regla: z.object({
+const regla = (e: typeof escenario | typeof escenarioDeEntrada) =>
+  z.object({
     nombre: texto('Un nombre corto para la regla'),
     cuando,
     efectos: noVacia(efecto),
-    escenarios: z.object({ activan: noVacia(escenario), noActivan: z.array(escenario) }),
-  }),
+    escenarios: z.object({ activan: noVacia(e).describe('Al menos un mensaje en el que la regla aplica'), noActivan: z.array(e) }),
+  })
+
+const ENTRADAS = {
+  regla: regla(escenarioDeEntrada),
   voz: z.object({
     nombreDelAgente: z
       .string()
@@ -283,7 +297,7 @@ const ENTRADAS = {
 
 /** Un Elemento completo: lo usan `escribir` antes de guardar y `leerEstado` al leer el jsonb. */
 export const ESQUEMA_DE_ELEMENTO = z.discriminatedUnion('tipo', [
-  ENTRADAS.regla.extend({ tipo: z.literal('regla') }),
+  regla(escenario).extend({ tipo: z.literal('regla') }),
   ENTRADAS.voz.extend({ tipo: z.literal('voz') }),
   ENTRADAS.dato.extend({ tipo: z.literal('dato') }),
   ENTRADAS.pregunta.extend({ tipo: z.literal('pregunta') }),
@@ -340,6 +354,9 @@ function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => str
 }
 
 const ordenDelPunto = (p: PuntoDeCumplimiento) => ORDEN_DEL_PUNTO[p]
+
+/** El esquema con que el Agente del dueño pone un Elemento de un tipo: los campos del tipo y `reemplaza`. */
+export const ENTRADA_PARA_PONER = ENTRADAS
 
 export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElemento<T> } = {
   regla: {

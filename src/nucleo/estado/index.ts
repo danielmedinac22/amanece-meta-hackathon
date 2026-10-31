@@ -10,6 +10,7 @@ import {
   DEFINICIONES,
   definicionDe,
   ESQUEMA_DE_ELEMENTO,
+  type CampoDeConocimiento,
   type Clave,
   type Elemento,
   type ElementoDe,
@@ -154,6 +155,10 @@ export async function leerEstado(negocio: NegocioId): Promise<EstadoVigente> {
     .map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
   const identidad: IdentidadDelNegocio = { id: negocio, nombre: n.nombre, rubro: n.rubro, codigo: n.codigo, pais: n.pais, moneda: n.moneda, zonaHoraria: n.zonaHoraria, modo: n.modo ?? 'armando' }
   return armarEstado(identidad, comoVersion(n.version), vigentes) as EstadoVigente
+}
+
+export function valorDelDato(estado: EstadoDelNegocio, campo: CampoDeConocimiento): string {
+  return estado.vigentes('dato').find((v) => v.elemento.campo === campo)?.elemento.valor ?? ''
 }
 
 /** Pura. El mismo estado con lo propuesto encima. */

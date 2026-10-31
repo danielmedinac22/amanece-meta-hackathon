@@ -4,6 +4,9 @@ import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { proponerRespuestaAlCaso, type ResultadoDeProponer } from '@/nucleo/cambios'
+import { leerEstado, valorDelDato } from '@/nucleo/estado'
+import { reglaEnPalabras } from '@/nucleo/estado/elementos'
+import type { NegocioId } from '@/nucleo/identidad'
 import { modeloEstructurado } from '@/negocio/dueno-modelo'
 import { registrarTurno } from '@/negocio/medir'
 
@@ -18,15 +21,15 @@ const propuestaDelCaso = z.object({
   queHacer: z.string().describe('Lo que el Dueño o el Negocio tiene que hacer por su lado; vacío si no hay nada'),
 })
 
-export async function traerCasoAlDueno(casoId: string): Promise<void> {
-  const [caso] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, casoId))
+export async function traerCasoAlDueno(negocio: NegocioId, casoId: string): Promise<void> {
+  const [caso] = await db.select().from(esquema.casos).where(and(eq(esquema.casos.id, casoId), eq(esquema.casos.negocioId, negocio)))
   if (!caso || caso.estado !== 'abierto') return
   const negocioId = caso.negocioId
 
-  const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocioId))
+  const estado = await leerEstado(negocio)
   const [cliente] = caso.clienteId ? await db.select().from(esquema.clientes).where(and(eq(esquema.clientes.id, caso.clienteId), eq(esquema.clientes.negocioId, negocioId))) : []
   const [pedido] = caso.pedidoId ? await db.select().from(esquema.pedidos).where(and(eq(esquema.pedidos.id, caso.pedidoId), eq(esquema.pedidos.negocioId, negocioId))) : []
-  const reglas = await db.select({ texto: esquema.reglas.texto }).from(esquema.reglas).where(and(eq(esquema.reglas.negocioId, negocioId), eq(esquema.reglas.activa, true)))
+  const reglas = estado.vigentes('regla').map((v) => reglaEnPalabras(v.elemento))
   const ultimos = caso.clienteId
     ? (
         await db
@@ -40,9 +43,9 @@ export async function traerCasoAlDueno(casoId: string): Promise<void> {
 
   const nombreDelCliente = cliente?.nombre || 'el Cliente'
   const contexto = [
-    `Negocio: ${negocio?.nombre} (${negocio?.rubro || 'sin rubro'}). Ciudad: ${negocio?.conocimiento.ciudad || 'sin dato'}. Tono: ${negocio?.conocimiento.tono || 'cercano y respetuoso'}.`,
-    negocio?.conocimiento.envios ? `Envíos: ${negocio.conocimiento.envios}` : '',
-    reglas.length ? `Reglas del Dueño:\n${reglas.map((r) => `- ${r.texto}`).join('\n')}` : '',
+    `Negocio: ${estado.identidad.nombre} (${estado.identidad.rubro || 'sin rubro'}). Ciudad: ${valorDelDato(estado, 'ciudad') || 'sin dato'}. Tono: ${estado.vigentes('voz')[0]?.elemento.estilo || 'cercano y respetuoso'}.`,
+    valorDelDato(estado, 'envios') ? `Envíos: ${valorDelDato(estado, 'envios')}` : '',
+    reglas.length ? `Reglas del Dueño:\n${reglas.map((r) => `- ${r}`).join('\n')}` : '',
     `Caso: ${caso.titulo}\nDetalle: ${caso.detalle || '(sin detalle)'}`,
     pedido
       ? `Pedido #${pedido.numero} (${pedido.estado}): ${pedido.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}. Total $${pedido.total.toLocaleString('es-CO')}. Ciudad: ${pedido.ciudad || 'sin dato'}. Dirección: ${pedido.direccion || 'sin dato'}.`

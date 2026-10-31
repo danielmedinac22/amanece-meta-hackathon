@@ -44,7 +44,6 @@ const regla = (nombre: string, efectos: Regla['efectos']): [string, Elemento] =>
 const cliente: ClienteDelTurno = { id: marcar.cliente('00000000-0000-4000-8000-0000000000aa'), nombre: 'Camila', telefono: '573001112233', pedidos: [] }
 const conversacion = (texto: string) => ({ cliente, historial: [], mensaje: { texto, wamid: marcar.wamid(`wamid.ENSAYO.${texto.length}`), enviadoEn: marcar.instante(new Date()) } })
 
-/** Un guion: lo que "responde" el modelo y lo que "reescribe". Cuenta cuántas veces se llamó cada uno. */
 function guion(responder: Motores['responder'] | string, reescribir: string | null = null) {
   const llamadas = { responder: 0, reescribir: 0, motivos: [] as string[] }
   const motores: Motores = {

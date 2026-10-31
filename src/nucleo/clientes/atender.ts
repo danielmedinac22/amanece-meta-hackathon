@@ -1,20 +1,29 @@
 import { and, desc, eq, ne, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { esperarTrabajosEnSegundoPlano, responderComoAgenteDeClientes } from '@/agentes/clientes'
+import { traerCasoAlDueno } from '@/agentes/avisos'
+import { NOMBRE_TEMPORAL } from '@/negocio/alta'
+import { registrarTurno } from '@/negocio/medir'
 import type { MensajeEntrante } from '../entrada'
-import { marcar, modoDelNegocio, type NegocioId } from '../identidad'
+import { leerEstado, NegocioInexistente, type EstadoVigente } from '../estado'
+import { comoMonto } from '../estado/elementos'
+import { marcar, type CasoId, type NegocioId } from '../identidad'
 import { despachar, intencion, type AlCliente } from '../salida'
+import { entornoReal, turno, type ClienteDelTurno } from './turno'
 
 const HISTORIAL = 20
 
-/** El turno de un Cliente, ya repartido. Nunca lanza por el turno: el Cliente recibe el aviso `falla_tecnica`. */
+/** El único que junta `turno` y `despachar`. Nunca lanza por el turno: el Cliente recibe el aviso `falla_tecnica`. */
 export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Promise<void> {
-  const [fila] = await db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio))
-  if (!fila) {
-    console.error('[atender] el Negocio ya no está', negocio, m.wamid)
+  let estado: EstadoVigente
+  try {
+    estado = await leerEstado(negocio)
+  } catch (e) {
+    if (e instanceof NegocioInexistente) return void console.error('[atender] el Negocio ya no está', negocio, m.wamid)
+    console.error('[atender] no pude leer el Negocio', negocio, e)
+    await despachar(intencion.aviso({ destinatario: { tipo: 'telefono', telefono: m.telefono, negocio }, aviso: { cual: 'falla_tecnica' }, enRespuestaA: m.wamid }))
     return
   }
-  switch (modoDelNegocio(fila.estado)) {
+  switch (estado.identidad.modo) {
     case 'en_sombra':
       return
     case 'armando':
@@ -36,7 +45,7 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
         nombre: sql`case when ${esquema.clientes.nombre} = '' then ${m.nombre} else ${esquema.clientes.nombre} end`,
       },
     })
-    .returning({ id: esquema.clientes.id })
+    .returning({ id: esquema.clientes.id, nombre: esquema.clientes.nombre, telefono: esquema.clientes.telefono })
 
   // Cubre un wamid que ya se atendió antes de que existiera el reclamo en `mensajes_entrantes`.
   const [guardado] = await db
@@ -47,22 +56,43 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
   if (!guardado) return
 
   const destinatario: AlCliente = { tipo: 'cliente', negocio, cliente: marcar.cliente(cliente.id) }
+  let casos: readonly CasoId[] = []
   try {
-    const anteriores = await db
-      .select({ rol: esquema.mensajesCliente.rol, texto: esquema.mensajesCliente.texto })
-      .from(esquema.mensajesCliente)
-      .where(and(eq(esquema.mensajesCliente.clienteId, cliente.id), ne(esquema.mensajesCliente.id, guardado.id)))
-      .orderBy(desc(esquema.mensajesCliente.creado))
-      .limit(HISTORIAL)
-    const respuesta = await responderComoAgenteDeClientes({ negocioId: negocio, clienteId: cliente.id, historial: anteriores.reverse(), texto: m.texto, modo: 'real' })
-    const salida = await despachar(intencion.respuesta({ destinatario, texto: respuesta.texto, enRespuestaA: m.wamid }))
+    const [anteriores, pedidos, otros] = await db.batch([
+      db
+        .select({ rol: esquema.mensajesCliente.rol, texto: esquema.mensajesCliente.texto })
+        .from(esquema.mensajesCliente)
+        .where(and(eq(esquema.mensajesCliente.clienteId, cliente.id), ne(esquema.mensajesCliente.id, guardado.id)))
+        .orderBy(desc(esquema.mensajesCliente.creado))
+        .limit(HISTORIAL),
+      db
+        .select()
+        .from(esquema.pedidos)
+        .where(and(eq(esquema.pedidos.negocioId, negocio), eq(esquema.pedidos.clienteId, cliente.id)))
+        .orderBy(desc(esquema.pedidos.creado))
+        .limit(5),
+      db
+        .select({ nombre: esquema.negocios.nombre })
+        .from(esquema.negocios)
+        .where(and(ne(esquema.negocios.id, negocio), eq(esquema.negocios.estado, 'listo'), ne(esquema.negocios.nombre, NOMBRE_TEMPORAL))),
+    ])
+    const delTurno: ClienteDelTurno = {
+      id: destinatario.cliente,
+      nombre: cliente.nombre,
+      telefono: cliente.telefono,
+      pedidos: pedidos.map((p) => ({ numero: p.numero, total: comoMonto(p.total), estado: p.estado, resumen: `${p.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}; ${p.ciudad}, ${p.direccion}` })),
+    }
+    const conversacion = { cliente: delTurno, historial: anteriores.reverse(), mensaje: { texto: m.texto, wamid: m.wamid, enviadoEn: marcar.instante(enviadoEn) } }
+    const t = await turno(estado, conversacion, entornoReal(estado, delTurno.id, otros.map((o) => o.nombre)))
+    casos = t.casosAbiertos
+    const salida = await despachar(t.intencion)
     if (salida.tipo === 'por_enviar') throw new Error(`Kapso no tomó la respuesta: ${salida.error}`)
     if (salida.tipo === 'no_salio') console.error('[atender] la respuesta no salió', m.wamid, salida.motivo)
+    await registrarTurno('clientes', negocio, { inputTokens: t.gasto.entrada, outputTokens: t.gasto.salida }, t.gasto.ms).catch((e) => console.error('[atender] no se pudo registrar el turno', e))
   } catch (error) {
     console.error('[atender] no se pudo responder', error)
     await despachar(intencion.aviso({ destinatario, aviso: { cual: 'falla_tecnica' }, enRespuestaA: m.wamid })).catch((e) => console.error('[atender] tampoco el aviso', e))
-  } finally {
-    // Lo que dejó el turno (traer un Caso al Dueño) termina después de responderle al Cliente.
-    await esperarTrabajosEnSegundoPlano()
   }
+  // Después de responderle al Cliente: lo que el Agente del dueño tarda en armar no frena la respuesta.
+  for (const caso of casos) await traerCasoAlDueno(negocio, caso).catch((e) => console.error('[atender] no pude traer el Caso al Dueño', caso, e))
 }

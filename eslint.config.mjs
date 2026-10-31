@@ -18,11 +18,15 @@ const INTENCION = {
   importNames: ["intencion"],
   message: "Fuera de src/nucleo nadie arma intenciones. La respuesta a un Caso sale por aprobar.",
 };
-/** Hasta el corte del 31-oct, el Cambio viejo solo se propone y se escribe por el puente. */
+/** Hasta el 2-nov, una pieza del Panel solo se propone y se escribe por el puente. */
 const CAMBIOS_VIEJOS = {
   regex: String.raw`^(.*/)?negocio/cambios` + EXTENSION,
-  importNames: ["aplicarCambio", "revertirCambio", "obtenerCambio", "proponerRegla", "proponerConocimiento", "proponerPieza"],
+  importNames: ["aplicarCambio", "revertirCambio", "proponerPieza"],
   message: "Un Cambio se propone con proponer y se aplica con aprobar (@/nucleo/cambios). Solo src/nucleo/cambios/puente.ts usa lo viejo.",
+};
+const VIEJO = {
+  regex: String.raw`(^|/)db/viejo` + EXTENSION,
+  message: "Las tablas viejas no tienen lector: el estado de un Negocio se lee con leerEstado (@/nucleo/estado).",
 };
 /** Atrapa `@/nucleo/cambios/puente` y `../cambios/puente`, pero no el `./puente` de adentro de la carpeta. */
 const INTERNOS_DE_CAMBIOS = {
@@ -44,17 +48,18 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/nucleo/**", "src/negocio/sesion.ts"],
-    rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR),
+    rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO),
   },
-  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR) },
+  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO) },
   {
     files: ["src/nucleo/**/*.ts"],
     ignores: ["src/nucleo/cambios/**", "src/nucleo/salida/index.ts", "src/nucleo/estado/escribir.ts"],
-    rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR),
+    rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO),
   },
   // `escribir` recibe la transacción de quien reclama: importa el tipo, nunca la abre.
-  { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS) },
-  { files: ["src/nucleo/cambios/**/*.ts"], ignores: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS) },
+  { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, VIEJO) },
+  { files: ["src/nucleo/cambios/**/*.ts"], ignores: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, VIEJO) },
+  { files: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, VIEJO) },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

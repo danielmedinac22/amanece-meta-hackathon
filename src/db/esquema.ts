@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
+import type { Escritura } from '../nucleo/estado'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
 
 const id = () => uuid('id').primaryKey().defaultRandom()
@@ -10,30 +11,6 @@ const negocioId = () =>
     .notNull()
     .references(() => negocios.id, { onDelete: 'cascade' })
 
-/** Una pregunta frecuente con su respuesta, parte del conocimiento del Negocio. */
-export type PreguntaFrecuente = { pregunta: string; respuesta: string }
-
-/** Lo que el Agente de clientes sabe del Negocio, aparte del catálogo. */
-export type Conocimiento = {
-  descripcion: string
-  ciudad: string
-  horario: string
-  envios: string
-  pagos: string
-  tono: string
-  preguntas: PreguntaFrecuente[]
-}
-
-export const CONOCIMIENTO_VACIO: Conocimiento = {
-  descripcion: '',
-  ciudad: '',
-  horario: '',
-  envios: '',
-  pagos: '',
-  tono: '',
-  preguntas: [],
-}
-
 export const negocios = pgTable(
   'negocios',
   {
@@ -42,7 +19,8 @@ export const negocios = pgTable(
     rubro: text('rubro').notNull().default(''),
     /** Código corto del link `wa.me` que lleva a un Cliente a este Negocio. */
     codigo: text('codigo').notNull(),
-    conocimiento: jsonb('conocimiento').$type<Conocimiento>().notNull().default(CONOCIMIENTO_VACIO),
+    /** Sin lector hasta el 4-nov: solo `scripts/a-elementos.mts` la lee, como `Conocimiento` de `db/viejo.ts`. */
+    conocimientoSinLector: jsonb('conocimiento').$type<unknown>().notNull().default({ descripcion: '', ciudad: '', horario: '', envios: '', pagos: '', tono: '', preguntas: [] }),
     /** `armando` mientras el Dueño lo arma; `listo` cuando el Agente de clientes ya atiende. */
     estado: text('estado', { enum: ['armando', 'listo'] }).notNull().default('armando'),
     /** `armando` o `atendiendo`, derivado de `estado` hasta que exista `en_sombra`. */
@@ -71,21 +49,6 @@ export const duenos = pgTable(
     creado: creado(),
   },
   (t) => [uniqueIndex('duenos_usuario').on(t.usuarioId), uniqueIndex('duenos_telefono').on(t.telefono).where(sql`${t.telefono} is not null`)],
-)
-
-export const productos = pgTable(
-  'productos',
-  {
-    id: id(),
-    negocioId: negocioId(),
-    nombre: text('nombre').notNull(),
-    descripcion: text('descripcion').notNull().default(''),
-    /** En pesos colombianos, sin decimales. */
-    precio: integer('precio').notNull(),
-    activo: boolean('activo').notNull().default(true),
-    creado: creado(),
-  },
-  (t) => [index('productos_negocio').on(t.negocioId)],
 )
 
 export const clientes = pgTable(
@@ -204,9 +167,6 @@ export const cambios = pgTable(
   (t) => [index('cambios_negocio').on(t.negocioId, t.creado), uniqueIndex('cambios_propuesta').on(t.propuestaId).where(sql`${t.propuestaId} is not null`)],
 )
 
-/** Vacía hasta que existan los Elementos (30-oct): la columna ya tiene su forma para no migrar filas ese día. */
-export type EscrituraDeHoy = { readonly elementos: readonly never[]; readonly filas: readonly never[] }
-
 export const ESTADOS_DE_PROPUESTA = ['espera_al_dueno', 'aplicada', 'descartada', 'capacidad_faltante'] as const
 
 /**
@@ -222,7 +182,7 @@ export const propuestas = pgTable(
     /** `null`: la propuso el núcleo, como la respuesta que trae el aviso de un Caso. */
     pedidoPor: uuid('pedido_por').references(() => duenos.id, { onDelete: 'set null' }),
     origen: text('origen', { enum: ['hilo', 'panel'] }).notNull().default('hilo'),
-    escritura: jsonb('escritura').$type<EscrituraDeHoy>().notNull().default({ elementos: [], filas: [] }),
+    escritura: jsonb('escritura').$type<Escritura>().notNull().default({ elementos: [], filas: [] }),
     actos: jsonb('actos').$type<readonly Acto[]>().notNull().default([]),
     huella: text('huella').notNull(),
     estado: text('estado', { enum: ESTADOS_DE_PROPUESTA }).notNull().default('espera_al_dueno'),
@@ -279,23 +239,6 @@ export const filasDeTabla = pgTable(
     creado: creado(),
   },
   (t) => [primaryKey({ columns: [t.negocioId, t.tabla, t.fila, t.version] })],
-)
-
-/** Una regla del Negocio. Cada versión es una fila; solo una versión por regla está activa. */
-export const reglas = pgTable(
-  'reglas',
-  {
-    id: id(),
-    negocioId: negocioId(),
-    /** Todas las versiones de una misma regla comparten `clave`. */
-    clave: uuid('clave').notNull(),
-    version: integer('version').notNull().default(1),
-    texto: text('texto').notNull(),
-    activa: boolean('activa').notNull().default(true),
-    cambioId: uuid('cambio_id').references(() => cambios.id, { onDelete: 'set null' }),
-    creado: creado(),
-  },
-  (t) => [index('reglas_negocio').on(t.negocioId, t.activa)],
 )
 
 /** Cómo se pinta una Sección: tabla o tarjetas, con sus columnas. */
