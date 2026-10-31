@@ -11,7 +11,7 @@
  *   pnpm tsx scripts/probar-clientes.mts [--pedido]
  */
 import { config } from 'dotenv'
-import { and, asc, desc, eq, gte, inArray, like, ne } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, like, ne, sql } from 'drizzle-orm'
 import { afirmar, capturarEnvios, capturarErrores, eventoDeKapso, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -60,6 +60,10 @@ async function limpiar() {
     .where(and(eq(esquema.mensajesDueno.negocioId, laderaId), gte(esquema.mensajesDueno.creado, inicio)))
   const avisos = hilo.filter((m) => idsDeCasos.some((id) => JSON.stringify(m.mensaje).includes(id))).map((m) => m.id)
   if (avisos.length) await db.delete(esquema.mensajesDueno).where(inArray(esquema.mensajesDueno.id, avisos))
+  // El aviso también deja la respuesta del Caso en una propuesta, que no se va con el Caso.
+  for (const id of idsDeCasos) {
+    await db.delete(esquema.propuestas).where(and(eq(esquema.propuestas.negocioId, laderaId), sql`${esquema.propuestas.actos} @> ${JSON.stringify([{ caso: id }])}::jsonb`))
+  }
   if (idsDeCasos.length) await db.delete(esquema.casos).where(inArray(esquema.casos.id, idsDeCasos))
   await db.delete(esquema.pedidos).where(and(eq(esquema.pedidos.clienteId, camilaId), gte(esquema.pedidos.creado, inicio)))
   await db.delete(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.clienteId, camilaId), gte(esquema.mensajesCliente.creado, inicio)))
