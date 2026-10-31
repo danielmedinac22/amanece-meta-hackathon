@@ -10,12 +10,13 @@ import {
   type Destinatario,
   type HechosDeEnvio,
   type IntencionDeEnvio,
+  type IntencionEnsayada,
   type MotivoDeSilencio,
   type Veredicto,
 } from './compuerta'
 import { enviarPorKapso, numeroListo, type EnvioPorKapso } from './kapso'
 
-export type { AlCliente, Destinatario, IntencionDeEnvio, MotivoDeSilencio } from './compuerta'
+export type { AlCliente, Destinatario, IntencionDeEnvio, IntencionEnsayada, MotivoDeSilencio } from './compuerta'
 
 /** Un aviso no lleva texto libre: ni el modelo ni el Dueño escriben uno. */
 export type AvisoDelNucleo =
@@ -56,6 +57,12 @@ export const intencion = {
       texto: textoDelAviso(a.aviso),
       clave: `aviso:${a.aviso.cual}:${a.enRespuestaA}`,
     }),
+} as const
+
+/** Misma forma que `intencion.respuesta`, otra marca: la usa el turno en modo ensayo y `despachar` no la acepta. */
+export const ensayo = {
+  respuesta: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly enRespuestaA: Wamid }) =>
+    ({ clase: 'respuesta', ...a, clave: `ensayo:${a.enRespuestaA}` }) as DatosDeIntencion as IntencionEnsayada,
 } as const
 
 export type ResultadoDeEnvio =
