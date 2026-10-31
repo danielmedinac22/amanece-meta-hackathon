@@ -49,11 +49,12 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
     if (!respuesta?.ok) return
     const servidor = (await respuesta.json()) as HiloLeido
     setEstados(servidor.tarjetas)
-    if (servidor.mensajes.length > messages.length) {
+    // Mientras llega una respuesta, useChat es dueño de los mensajes: el siguiente intervalo los trae.
+    if (!ocupado && servidor.mensajes.length > messages.length) {
       setMessages(servidor.mensajes)
       router.refresh()
     }
-  }, [messages.length, setMessages, router])
+  }, [ocupado, messages.length, setMessages, router])
 
   useEffect(() => {
     if (ocupado) return

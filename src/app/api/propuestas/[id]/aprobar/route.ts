@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     return Response.json(await aprobar(ctx, id, typeof cuerpo?.huella === 'string' ? cuerpo.huella : ''))
   } catch (e) {
-    // El puente lanzó dentro del reclamo: hubo ROLLBACK y la tarjeta sigue sirviendo.
+    // Lo que falla después del COMMIT no llega aquí: esto es el reclamo, con ROLLBACK, y la tarjeta sigue sirviendo.
     console.error('[aprobar]', id, e)
     return Response.json({ error: 'No pude aplicarlo. Vuelve a tocar el botón en un momento.' }, { status: 500 })
   }

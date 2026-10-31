@@ -1,7 +1,7 @@
 /**
  * El ciclo de vida de una propuesta: lo que espera el botón del Dueño, sea un Cambio, su reversión o la respuesta a
- * un Caso. El Agente del dueño propone; solo el Dueño aprueba. Nadie fuera de esta carpeta abre una transacción ni
- * escribe `propuestas` (eslint).
+ * un Caso. El Agente del dueño propone; solo el Dueño aprueba. Nadie fuera de esta carpeta abre una transacción
+ * (eslint) ni escribe `propuestas` (por convención: el lint no ve escrituras por `@/db`).
  *
  * Una propuesta solo sale de `espera_al_dueno`: a `aplicada` por el reclamo de `aplicarConReclamo`, o a `descartada`
  * por `descartar` o porque otra la reemplaza. `vencida` y `revertida` no se guardan; las deriva `estadoDe`.
@@ -29,7 +29,7 @@ import {
   type NegocioId,
   type PropuestaId,
 } from '../identidad'
-import { despachar, intencion, type MotivoDeSilencio, type ResultadoDeEnvio } from '../salida'
+import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDeEnvio } from '../salida'
 import { fueraDeVentana } from '../salida/compuerta'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import { ESQUEMAS_DEL_PUENTE, escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular } from './puente'
@@ -375,9 +375,13 @@ export async function aprobar(ctx: ContextoDelDueno, propuesta: string, huella: 
   if (!UUID.test(propuesta) || !HUELLA.test(huella)) return { tipo: 'no_existe' }
   const r = await aplicarConReclamo({ negocio: ctx.negocio, propuesta: marcar.propuesta(propuesta), huella, aprobadoPor: ctx.dueno })
   if (r.tipo !== 'aplicado') return r
-  const desenlace = await desenlaceEnPalabras(ctx.negocio, r.fila, r.envio)
-  if (r.avisar) await avisarEnLosHilos(ctx.negocio, r.fila, desenlace)
-  return { tipo: 'aplicado', resumen: desenlace.texto, envio: r.envio }
+  // Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño.
+  const desenlace = await desenlaceEnPalabras(ctx.negocio, r.fila, r.envio).catch((e) => {
+    console.error('[aprobar] no pude armar el desenlace', propuesta, e)
+    return null
+  })
+  if (desenlace && r.avisar) await avisarEnLosHilos(ctx.negocio, r.fila, desenlace).catch((e) => console.error('[aprobar] no pude avisar en los Hilos', propuesta, e))
+  return { tipo: 'aplicado', resumen: desenlace?.texto ?? 'Aplicado.', envio: r.envio }
 }
 
 /** Lo que se le responde a un Cliente, ya revalidado dentro del reclamo. */
@@ -433,7 +437,7 @@ async function aplicarConReclamo(a: {
       return reclamo
     case 'reclamada':
       // Fuera de la transacción: `despachar` no corre dentro de una. La clave lleva la huella, así que es idempotente.
-      return { tipo: 'aplicado', fila: reclamo.fila, envio: reclamo.respuesta ? await despachar(intencionDe(a.negocio, reclamo.respuesta, reclamo.fila.huella)) : null, avisar: true }
+      return { tipo: 'aplicado', fila: reclamo.fila, envio: reclamo.respuesta ? await despacharDespuesDelCommit(intencionDe(a.negocio, reclamo.respuesta, reclamo.fila.huella)) : null, avisar: true }
     case 'sin_reclamo':
       return releer(a)
   }
@@ -460,6 +464,21 @@ async function cerrarCaso(tx: Transaccion, negocio: NegocioId, acto: Acto): Prom
   const id = marcar.cliente(cliente.id)
   if (fueraDeVentana(instanteDe(cliente.ultimo), ahora())) return { problema: { tipo: 'fuera_de_ventana', cliente: id } }
   return { caso: acto.caso, cliente: id, texto: acto.texto }
+}
+
+/** Después del COMMIT, una excepción de `despachar` es un envío que no salió, no un `aprobar` fallido. */
+async function despacharDespuesDelCommit(i: ReturnType<typeof intencionDe>): Promise<ResultadoDeEnvio> {
+  try {
+    return await despachar(i)
+  } catch (e) {
+    console.error('[aprobar] despachar falló después del COMMIT', i.clave, e)
+    return { tipo: 'por_enviar', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** La fila que otro clic acaba de reclamar en `despachar` y todavía está enviando: va en camino, no es una falla. */
+function enCamino(envio: ResultadoDeEnvio | null): boolean {
+  return envio?.tipo === 'por_enviar' && envio.error === EN_CURSO
 }
 
 function intencionDe(negocio: NegocioId, r: Respuesta, huella: string) {
@@ -495,7 +514,7 @@ async function reintentarRespuesta(negocio: NegocioId, f: FilaDePropuesta): Prom
   const i = intencionDe(negocio, { caso: acto.caso, cliente: marcar.cliente(cliente.id), texto: acto.texto }, f.huella)
   const yaHayEnvio = (await db.$count(esquema.mensajesSalientes, eq(esquema.mensajesSalientes.clave, i.clave))) > 0
   if (!yaHayEnvio && fueraDeVentana(instanteDe(cliente.ultimo), ahora())) return { envio: { tipo: 'no_salio', motivo: 'fuera_de_ventana' }, avisar: true }
-  return { envio: await despachar(i), avisar: false }
+  return { envio: await despacharDespuesDelCommit(i), avisar: false }
 }
 
 const MOTIVO_EN_PALABRAS = {
@@ -521,6 +540,7 @@ async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio
     .innerJoin(esquema.clientes, eq(esquema.clientes.id, esquema.casos.clienteId))
     .where(and(eq(esquema.casos.id, acto.caso), eq(esquema.casos.negocioId, negocio)))
   const a = cliente?.nombre || 'el Cliente'
+  if (enCamino(envio)) return { por, texto: `${por} le respondió a ${a}: «${acto.texto}»` }
   switch (envio?.tipo) {
     case 'por_enviar':
       return { por, texto: `${por} aprobó la respuesta a ${a}, pero WhatsApp no la tomó. Escríbele tú directamente.` }

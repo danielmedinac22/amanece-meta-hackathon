@@ -27,6 +27,8 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
       const datos = (await r.json().catch(() => ({ error: 'No pude hacerlo. Intenta de nuevo.' }))) as Respuesta | { error: string }
       setRespuesta('error' in datos ? { tipo: 'error', mensaje: datos.error } : datos)
       alCambiar()
+    } catch {
+      setRespuesta({ tipo: 'error', mensaje: 'No me pude conectar. Intenta de nuevo.' })
     } finally {
       setEnCurso(false)
     }
@@ -61,9 +63,8 @@ function textoDelEstado(verbo: 'Aplicar' | 'Enviar', estado: EstadoDeTarjeta | u
   const hecha = verbo === 'Enviar' ? 'Enviada' : 'Aplicada'
   switch (r?.tipo) {
     case 'aplicado':
-      if (r.envio?.tipo === 'por_enviar') return 'Aprobada, pero WhatsApp no la tomó. Escríbele tú directamente.'
-      if (r.envio?.tipo === 'no_salio') return 'Aprobada, pero no salió. Mira la línea de abajo.'
-      return hecha
+      // Si el envío no salió como debía, el desenlace que armó el núcleo lo dice.
+      return r.envio && r.envio.tipo !== 'simulado' && r.envio.tipo !== 'enviado' ? r.resumen : hecha
     case 'ya_no_cabe':
       return r.problemas.some((p) => p.tipo === 'fuera_de_ventana')
         ? 'Pasaron más de 24 horas desde que el Cliente escribió: WhatsApp no deja escribirle hasta que vuelva a escribir.'

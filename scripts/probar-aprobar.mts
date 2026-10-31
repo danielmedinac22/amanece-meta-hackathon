@@ -89,6 +89,9 @@ async function limpiar() {
   if (viejos.length) await db.delete(cambios).where(inArray(cambios.id, viejos.map((c) => c.id)))
   if (productosCreados.length) await db.delete(productos).where(inArray(productos.id, productosCreados))
   await db.delete(productos).where(and(eq(productos.negocioId, ladera.id), like(productos.nombre, `Café de prueba ${marca}%`)))
+  // La línea del desenlace va al Hilo de cada Dueño de LADERA, no solo a los de la prueba.
+  const lineas = ids.length ? (await db.select({ id: mensajesDueno.id, mensaje: mensajesDueno.mensaje }).from(mensajesDueno).where(eq(mensajesDueno.negocioId, ladera.id))).filter((m) => ids.some((id) => JSON.stringify(m.mensaje).includes(id))) : []
+  if (lineas.length) await db.delete(mensajesDueno).where(inArray(mensajesDueno.id, lineas.map((m) => m.id)))
   if (ids.length) await db.delete(propuestas).where(inArray(propuestas.id, ids))
   if (creados.casos.length) await db.delete(casos).where(inArray(casos.id, creados.casos))
   if (creados.clientes.length) await db.delete(clientes).where(inArray(clientes.id, creados.clientes))
@@ -227,6 +230,16 @@ try {
     const mas = [await aprobar(A, rc.propuesta, rc.tarjeta.huella), ...(await Promise.all([aprobar(A, rc.propuesta, rc.tarjeta.huella), aprobar(B, rc.propuesta, rc.tarjeta.huella)]))]
     afirmar('respuesta: más clics devuelven aplicado y no sale nada más', mas.every((r) => r.tipo === 'aplicado') && enviosA(camila.telefono, desde).length === 1, mas)
   }
+
+  console.log('\n=== 10b. Dos Dueños envían la misma respuesta a la vez ===')
+  const { cliente: dobleCliente, caso: casoAlaVez } = await nuevoCaso(new Date())
+  const ra = await proponerRespuestaAlCaso(casoAlaVez.id, `Respuesta a la vez (${marca})`)
+  if (ra.desenlace !== 'espera_al_dueno') throw new Error(`la respuesta a la vez dio ${ra.desenlace}`)
+  desde = envios.length
+  const aLaVez = await Promise.all([aprobar(A, ra.propuesta, ra.tarjeta.huella), aprobar(B, ra.propuesta, ra.tarjeta.huella)])
+  const lineasDeA = (await db.select({ mensaje: mensajesDueno.mensaje }).from(mensajesDueno).where(eq(mensajesDueno.duenoId, A.dueno))).map((m) => JSON.stringify(m.mensaje)).filter((m) => m.includes(ra.propuesta))
+  afirmar('a la vez: los dos reciben aplicado y sale un solo envío', aLaVez.every((r) => r.tipo === 'aplicado') && enviosA(dobleCliente.telefono, desde).length === 1, aLaVez)
+  afirmar('a la vez: ninguna línea del Hilo dice que WhatsApp no la tomó', lineasDeA.length === 1 && !lineasDeA[0].includes('no la tomó'), lineasDeA)
 
   console.log('\n=== 11. Ventana de 24 horas ===')
   const { cliente: tardia, caso: casoTardio } = await nuevoCaso(new Date())

@@ -116,8 +116,17 @@ async function limpiar() {
     }
     if (productosCreados.length && !sinRevertir.length) await db.delete(esquema.productos).where(inArray(esquema.productos.id, productosCreados))
   }
-  // Las propuestas de esta corrida, también las de la respuesta a un Caso, que no tienen Cambio.
-  if (negocioDeLaPrueba) await db.delete(esquema.propuestas).where(and(eq(esquema.propuestas.negocioId, negocioDeLaPrueba), gte(esquema.propuestas.creado, inicioDeLaPrueba)))
+  // Las propuestas de esta corrida, también las de la respuesta a un Caso, que no tienen Cambio, y las líneas que
+  // dejó su aprobación en el Hilo de cada Dueño del Negocio.
+  if (negocioDeLaPrueba) {
+    const propuestas = await db
+      .delete(esquema.propuestas)
+      .where(and(eq(esquema.propuestas.negocioId, negocioDeLaPrueba), gte(esquema.propuestas.creado, inicioDeLaPrueba)))
+      .returning({ id: esquema.propuestas.id })
+    const hilo = propuestas.length ? await db.select({ id: esquema.mensajesDueno.id, mensaje: esquema.mensajesDueno.mensaje }).from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.negocioId, negocioDeLaPrueba)) : []
+    const lineas = hilo.filter((m) => propuestas.some((p) => JSON.stringify(m.mensaje).includes(p.id))).map((m) => m.id)
+    if (lineas.length) await db.delete(esquema.mensajesDueno).where(inArray(esquema.mensajesDueno.id, lineas))
+  }
   if (negocioDeLaPrueba) await db.delete(esquema.capacidadesFaltantes).where(and(eq(esquema.capacidadesFaltantes.negocioId, negocioDeLaPrueba), gte(esquema.capacidadesFaltantes.creado, inicioDeLaPrueba)))
   if (creadosCasos.length && negocioDeLaPrueba) {
     // El aviso de un Caso llega al Hilo de cada Dueño del Negocio, no solo al de la prueba.

@@ -152,10 +152,8 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
   const descartarPropuesta = tool({
     description: 'Descarta una propuesta que todavía espera el botón, cuando el Dueño dice que ya no la quiere. No aplica nada.',
     inputSchema: z.object({ propuesta: z.string().describe('El id: aparece como [Propuesta id] en el Hilo, o sale de listar_propuestas') }),
-    execute: async ({ propuesta }) => {
-      const r = await descartar(ctx, propuesta)
-      return r.tipo === 'descartada' ? 'Descartada.' : 'Esa propuesta ya no estaba esperando: no hice nada.'
-    },
+    execute: ({ propuesta }) =>
+      seguro(async () => ((await descartar(ctx, propuesta)).tipo === 'descartada' ? 'Descartada.' : 'Esa propuesta ya no estaba esperando: no hice nada.')),
   })
 
   const listarPropuestas = tool({
