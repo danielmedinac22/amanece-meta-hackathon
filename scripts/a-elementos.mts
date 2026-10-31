@@ -94,6 +94,7 @@ export async function pasarAElementos(negocio: NegocioId, deseados: readonly Des
     if (opciones.enSeco) return deshacer(pasada)
     const r = await escribir(tx, negocio, { tipo: 'tablas_viejas' }, { elementos: cambios, filas: [] })
     if (r.tipo === 'conflicto') throw new Error(`${negocio}: conflicto en ${r.claves.map((c) => c.clave).join(', ')}; vuelve a correrlo`)
+    if (r.tipo === 'invalida') throw new Error(`${negocio}: no cabe: ${JSON.stringify(r.problemas)}`)
     return { ...pasada, version: r.version }
   })
 }

@@ -1,8 +1,9 @@
 /**
  * El único lector del estado de un Negocio. Nadie más consulta `elementos`; `probar-elementos` lo verifica.
  */
-import { and, desc, eq, inArray, lt } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, type SQL } from 'drizzle-orm'
 import { db, esquema } from '@/db'
+import type { Transaccion } from '@/db/pool'
 import { marcar, type Marca, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import {
   comoClave,
@@ -10,10 +11,12 @@ import {
   DEFINICIONES,
   definicionDe,
   ESQUEMA_DE_ELEMENTO,
+  sinCumplidorHoy,
   type CampoDeConocimiento,
   type Clave,
   type Elemento,
   type ElementoDe,
+  type Problema,
   type TipoDeElemento,
   type VersionDelNegocio,
   type Vigentes,
@@ -118,10 +121,34 @@ export function armarEstado(identidad: IdentidadDelNegocio, version: VersionDelN
 
 const ultimas = esquema.elementos
 
-/** Una sola foto (el lote de `neon-http` corre en una transacción). Sin caché: un Cambio vale desde el siguiente mensaje. */
-export async function leerEstado(negocio: NegocioId): Promise<EstadoVigente> {
-  const [negocios, filas] = await db.batch([
-    db
+/** Quien lee: la base, o la transacción de quien escribe, que relee después de su `FOR UPDATE`. */
+export type Lector = typeof db | Transaccion
+
+/** La última fila de cada clave del Negocio, también la que la quitó (`contenido` null). La única consulta de `elementos`. */
+export function ultimasDe(x: Lector, negocio: NegocioId, filtro?: SQL) {
+  return x
+    .selectDistinctOn([ultimas.clave], {
+      clave: ultimas.clave,
+      version: ultimas.version,
+      tipo: ultimas.tipo,
+      contrato: ultimas.contrato,
+      contenido: ultimas.contenido,
+      origen: ultimas.origen,
+      propuestaId: ultimas.propuestaId,
+      creado: ultimas.creado,
+    })
+    .from(ultimas)
+    .where(and(eq(ultimas.negocioId, negocio), filtro))
+    .orderBy(ultimas.clave, desc(ultimas.version))
+}
+
+/**
+ * Sin caché: un Cambio vale desde el siguiente mensaje. Son dos lecturas en READ COMMITTED, no una sola foto: quien
+ * escribe no confía en esta, relee con `x = tx` después de tomar la fila del Negocio.
+ */
+export async function leerEstado(negocio: NegocioId, x: Lector = db): Promise<EstadoVigente> {
+  const [negocios, filas] = await Promise.all([
+    x
       .select({
         nombre: esquema.negocios.nombre,
         rubro: esquema.negocios.rubro,
@@ -134,19 +161,7 @@ export async function leerEstado(negocio: NegocioId): Promise<EstadoVigente> {
       })
       .from(esquema.negocios)
       .where(eq(esquema.negocios.id, negocio)),
-    db
-      .selectDistinctOn([ultimas.clave], {
-        clave: ultimas.clave,
-        version: ultimas.version,
-        tipo: ultimas.tipo,
-        contrato: ultimas.contrato,
-        contenido: ultimas.contenido,
-        origen: ultimas.origen,
-        propuestaId: ultimas.propuestaId,
-      })
-      .from(ultimas)
-      .where(eq(ultimas.negocioId, negocio))
-      .orderBy(ultimas.clave, desc(ultimas.version)),
+    ultimasDe(x, negocio),
   ])
   const [n] = negocios
   if (!n) throw new NegocioInexistente(`No existe el Negocio ${negocio}`)
@@ -171,21 +186,56 @@ export function conPropuesta(estado: EstadoDelNegocio, escritura: Escritura): Es
   return { ...armarEstado(estado.identidad, estado.version, [...sin, ...propuestas]), base: estado.version, propuesta: escritura } as EstadoBorrador
 }
 
+export type ResultadoDeValidar = { readonly tipo: 'valida'; readonly escritura: Escritura } | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }
+
+const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_invalido', campo, porQue })
+
+/**
+ * Pura. La única validación de una Escritura: la corre `traducir` para la tarjeta y otra vez `escribir`, dentro de la
+ * transacción, contra lo que leyó después del `FOR UPDATE`. Devuelve los Elementos parseados: eso es lo que se guarda.
+ */
+export function validarEscritura(estado: EstadoDelNegocio, escritura: Escritura): ResultadoDeValidar {
+  const problemas: Problema[] = []
+  const parseados = escritura.elementos.map((c): CambioDeElemento => {
+    if (!c.despues) return c
+    const r = ESQUEMA_DE_ELEMENTO.safeParse(c.despues)
+    if (r.success) return { ...c, despues: r.data }
+    problemas.push(invalido(c.clave, `No tiene la forma de su tipo: ${r.error.issues.map((i) => i.path.join('.')).join(', ')}`))
+    return c
+  })
+  if (problemas.length) return { tipo: 'invalida', problemas }
+  const claves = parseados.map((c) => c.clave)
+  if (new Set(claves).size !== claves.length) return { tipo: 'invalida', problemas: [invalido('quiere', 'Una escritura toca cada clave una sola vez')] }
+
+  const parseada: Escritura = { elementos: parseados, filas: escritura.filas }
+  const borrador = conPropuesta(estado, parseada)
+  for (const c of parseados) {
+    if (!c.despues) {
+      if (!estado.vigente(c.clave)) problemas.push(invalido('quitar', `${c.clave} no está vigente: no hay nada que quitar`))
+      for (const v of borrador.todos()) if (definicionDe(v.elemento.tipo).referencias(v.elemento).includes(c.clave)) problemas.push({ tipo: 'referencia_huerfana', quitada: c.clave, usadaPor: v.clave })
+      continue
+    }
+    const e = c.despues
+    const d = definicionDe(e.tipo)
+    const fija = d.claveFija(e)
+    if (fija ? c.clave !== fija : !c.clave.startsWith(`${e.tipo}:`)) problemas.push(invalido('clave', `${c.clave} no es la clave de un Elemento de tipo ${e.tipo}`))
+    for (const r of d.referencias(e)) if (!borrador.vigente(r)) problemas.push({ tipo: 'referencia_rota', clave: r })
+    if (e.tipo === 'regla') {
+      const faltan = sinCumplidorHoy(e)
+      if (faltan.length) problemas.push(invalido('regla', `Hoy nada hace cumplir ${faltan.join(', ')}`))
+    }
+    problemas.push(...d.validar(e, c.clave, borrador))
+  }
+  return problemas.length ? { tipo: 'invalida', problemas } : { tipo: 'valida', escritura: parseada }
+}
+
 export type HistoriaDeClave = { readonly ultima: VersionDelNegocio; readonly antes: Elemento | null }
 
 /** Para revertir: la última versión de cada clave (también si la quitó) y lo que valía justo antes de `version`. */
 export async function historiaParaRevertir(negocio: NegocioId, claves: readonly Clave[], version: VersionDelNegocio): Promise<ReadonlyMap<Clave, HistoriaDeClave>> {
   if (!claves.length) return new Map()
-  const deEstas = and(eq(ultimas.negocioId, negocio), inArray(ultimas.clave, [...claves]))
-  const campos = { clave: ultimas.clave, version: ultimas.version, tipo: ultimas.tipo, contrato: ultimas.contrato, contenido: ultimas.contenido }
-  const [ahora, previas] = await db.batch([
-    db.selectDistinctOn([ultimas.clave], campos).from(ultimas).where(deEstas).orderBy(ultimas.clave, desc(ultimas.version)),
-    db
-      .selectDistinctOn([ultimas.clave], campos)
-      .from(ultimas)
-      .where(and(deEstas, lt(ultimas.version, version)))
-      .orderBy(ultimas.clave, desc(ultimas.version)),
-  ])
+  const deEstas = inArray(ultimas.clave, [...claves])
+  const [ahora, previas] = await Promise.all([ultimasDe(db, negocio, deEstas), ultimasDe(db, negocio, and(deEstas, lt(ultimas.version, version)))])
   const antes = new Map(previas.map((f) => [f.clave, f.contenido === null ? null : elementoDe(f)]))
   return new Map(ahora.map((f) => [comoClave(f.clave), { ultima: comoVersion(f.version), antes: antes.get(f.clave) ?? null }]))
 }

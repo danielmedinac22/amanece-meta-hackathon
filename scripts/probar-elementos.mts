@@ -88,7 +88,7 @@ try {
   ])
   const e3 = await leerEstado(A)
   afirmar('E3: la primera escribe', primera.tipo === 'escrito', primera)
-  afirmar('E3: la segunda da conflicto en dato:horario, con quién y cuándo', segunda.tipo === 'conflicto' && segunda.claves.length === 1 && segunda.claves[0].clave === h && segunda.claves[0].tocadaPor.tipo === 'entrevista' && segunda.claves[0].resumen.includes('de Juan'), segunda)
+  afirmar('E3: la segunda da conflicto en dato:horario, con quién y cuándo', segunda.tipo === 'conflicto' && segunda.claves.length === 1 && segunda.claves[0].clave === h && segunda.claves[0].tocadaPor?.tipo === 'entrevista' && segunda.claves[0].resumen.includes('de Juan'), segunda)
   afirmar('E3: la segunda no escribe nada, ni la clave que no chocaba', (await filasDe(A)) === filasAntes && e3.vigente(clave('dato:pagos')) === null && e3.version === 6, { version: e3.version })
   const nuevaQueYaExiste = await escribirEn(A, [{ clave: h, base: 'nueva', despues: horario('otra') }])
   afirmar('E3: base nueva sobre una clave que existe es conflicto', nuevaQueYaExiste.tipo === 'conflicto', nuevaQueYaExiste)
@@ -127,25 +127,41 @@ try {
   console.log('\n=== E7. Escribir en A no toca B ===')
   afirmar('E7: leerEstado(B) quedó idéntico', (await foto(B)) === fotoDeB)
 
-  console.log('\n=== E9. escribir lanza con lo que hoy nada hace cumplir ===')
+  console.log('\n=== E9. escribir no deja entrar lo que hoy nada hace cumplir ===')
   const antesDeE9 = await filasDe(A)
   const conPedido = regla({ tipo: 'pedido', condicion: { tipo: 'total_desde', monto: monto(100000) } }, [{ tipo: 'abrir_caso', titulo: 'Pedido grande' }])
   const conNoVender = regla({ tipo: 'siempre' }, [{ tipo: 'no_vender', explicacionAlCliente: 'Hoy no vendemos' }])
   const conTema = regla({ tipo: 'tema', tema: 'envíos' }, [{ tipo: 'abrir_caso', titulo: 'Envíos' }])
   for (const [nombre, r] of [['cuando: pedido', conPedido], ['efecto no_vender', conNoVender], ['cuando: tema', conTema]] as const) {
-    const intento = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: r }]).then(
-      () => 'escribió',
-      (e: Error) => e.message,
-    )
-    afirmar(`E9: una regla con ${nombre} no se escribe`, intento !== 'escribió', intento)
+    const intento = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: r }])
+    afirmar(`E9: una regla con ${nombre} no se escribe: invalida`, intento.tipo === 'invalida', intento)
   }
-  const sinForma = await escribirEn(A, [{ clave: clave('dato:pagos'), base: 'nueva', despues: { tipo: 'dato', campo: 'pagos' } as unknown as Elemento }]).then(
-    () => 'escribió',
-    (e: Error) => e.message,
-  )
-  afirmar('E9: un Elemento sin la forma de su tipo no se escribe', sinForma !== 'escribió', sinForma)
+  const sinForma = await escribirEn(A, [{ clave: clave('dato:pagos'), base: 'nueva', despues: { tipo: 'dato', campo: 'pagos' } as unknown as Elemento }])
+  afirmar('E9: un Elemento sin la forma de su tipo no se escribe: invalida', sinForma.tipo === 'invalida', sinForma)
+  afirmar('E9: nada de lo invalido dejó filas', (await filasDe(A)) === antesDeE9)
   const permitida = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'siempre' }, [{ tipo: 'no_prometer', que: 'plazo' }]) }])
   afirmar('E9: una regla siempre con no_prometer sí se escribe', permitida.tipo === 'escrito' && (await filasDe(A)) === antesDeE9 + 1, permitida)
+
+  console.log('\n=== E10. La validación corre dentro de la transacción, después del FOR UPDATE ===')
+  const torta = (): CambioDeElemento => ({ clave: el.claveNueva('producto'), base: 'nueva', despues: { tipo: 'producto', nombre: 'Torta', descripcion: '', precio: monto(30000), activo: true } })
+  const dosTortas = await Promise.all([escribirEn(B, [torta()]), escribirEn(B, [torta()])])
+  afirmar('E10: dos Torta nuevas a la vez: una se escribe y la otra no cabe', JSON.stringify(dosTortas.map((r) => r.tipo).sort()) === JSON.stringify(['escrito', 'invalida']), dosTortas)
+  afirmar('E10: queda una sola Torta activa', (await leerEstado(B)).vigentes('producto').filter((v) => v.elemento.nombre === 'Torta').length === 1)
+
+  console.log('\n=== E11. Lo que escribir revisa de cada clave ===')
+  const antesDeE11 = await filasDe(A)
+  const sinFilas = await escribirEn(A, [{ clave: clave('dato:descripcion'), base: version(3), despues: { tipo: 'dato', campo: 'descripcion', valor: 'Café' } }])
+  afirmar('E11: una base numérica sobre una clave sin filas es conflicto', sinFilas.tipo === 'conflicto' && sinFilas.claves[0].tocadaPor === null, sinFilas)
+  const quitarMuerta = await escribirEn(A, [{ clave: clave('dato:descripcion'), base: 'nueva', despues: null }])
+  afirmar('E11: quitar lo que no está vigente es invalida', quitarMuerta.tipo === 'invalida', quitarMuerta)
+  const otraClave = await escribirEn(A, [{ clave: clave('dato:ciudad'), base: (await leerEstado(A)).vigente(clave('dato:ciudad'))!.version, despues: { tipo: 'dato', campo: 'pagos', valor: 'Nequi' } }])
+  const productoEnVoz = await escribirEn(A, [{ clave: clave('voz'), base: 'nueva', despues: { tipo: 'producto', nombre: 'Café', descripcion: '', precio: monto(1000), activo: true } }])
+  afirmar('E11: un dato bajo la clave de otro campo y un producto bajo voz son invalida', otraClave.tipo === 'invalida' && productoEnVoz.tipo === 'invalida', { otraClave, productoEnVoz })
+  afirmar('E11: nada de eso dejó filas', (await filasDe(A)) === antesDeE11)
+  const crudo = el.claveNueva('producto')
+  const conDefectos = await escribirEn(A, [{ clave: crudo, base: 'nueva', despues: { tipo: 'producto', nombre: 'Molido', precio: 20000 } as unknown as Elemento }])
+  const [fila] = await db.select({ contenido: esquema.elementos.contenido }).from(esquema.elementos).where(and(eq(esquema.elementos.negocioId, A), eq(esquema.elementos.clave, crudo)))
+  afirmar('E11: se guarda el Elemento parseado, con sus valores por defecto', conDefectos.tipo === 'escrito' && (fila?.contenido as { descripcion?: string })?.descripcion === '' && (fila?.contenido as { activo?: boolean })?.activo === true, fila)
 
   console.log('\n=== cotizar ===')
   const cafe = el.claveDeProducto.deId('00000000-0000-4000-8000-0000000000a1')

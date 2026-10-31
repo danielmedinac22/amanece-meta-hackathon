@@ -6,8 +6,8 @@ import { and, eq, ne } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { NOMBRE_TEMPORAL } from '@/negocio/alta'
 import type { MotivoDeFaltante } from '../capacidades'
-import { conPropuesta, historiaParaRevertir, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
-import { claveNueva, comoVersion, definicionDe, describirCambio, sinCumplidorHoy, type Alcance, type Clave, type Cuando, type Efecto, type Elemento, type Problema } from '../estado/elementos'
+import { historiaParaRevertir, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
+import { claveNueva, comoVersion, definicionDe, describirCambio, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
 import { revisarTextoDelDueno } from '../salida/revisar'
@@ -109,20 +109,12 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
   if (!cambios.length && !actos.length) return corregir(invalido('quiere', 'El pedido no dice qué cambiar'))
 
   const escritura: Escritura = { elementos: cambios, filas: [] }
-  const borrador = conPropuesta(estado, escritura)
-  const sinCumplidor = new Set<Cuando['tipo'] | Efecto['tipo']>()
-  const otros = cambios.some((c) => c.despues) ? await otrosNegocios(negocio) : []
-  for (const c of cambios) {
-    if (!c.despues) {
-      for (const v of borrador.todos()) if (definicionDe(v.elemento.tipo).referencias(v.elemento).includes(c.clave)) problemas.push({ tipo: 'referencia_huerfana', quitada: c.clave, usadaPor: v.clave })
-      continue
-    }
-    const d = definicionDe(c.despues.tipo)
-    if (c.despues.tipo === 'regla') for (const que of sinCumplidorHoy(c.despues)) sinCumplidor.add(que)
-    problemas.push(...d.validar(c.despues, c.clave, borrador))
-    for (const t of d.textos(c.despues)) for (const motivo of revisarTextoDelDueno(t.texto, otros)) problemas.push({ tipo: 'norma', campo: t.campo, motivo })
-  }
+  const sinCumplidor = new Set(cambios.flatMap((c) => (c.despues?.tipo === 'regla' ? sinCumplidorHoy(c.despues) : [])))
   if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] } }
+  const v = validarEscritura(estado, escritura)
+  if (v.tipo === 'invalida') problemas.push(...v.problemas)
+  const otros = cambios.some((c) => c.despues) ? await otrosNegocios(negocio) : []
+  for (const c of cambios) if (c.despues) for (const t of definicionDe(c.despues.tipo).textos(c.despues)) for (const motivo of revisarTextoDelDueno(t.texto, otros)) problemas.push({ tipo: 'norma', campo: t.campo, motivo })
   if (problemas.length) return corregir(...problemas)
 
   const alcances = cambios.flatMap((c) => {

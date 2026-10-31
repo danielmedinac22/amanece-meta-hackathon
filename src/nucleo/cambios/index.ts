@@ -16,8 +16,8 @@ import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { conPropuesta, ESCRITURA_VACIA, leerEstado, type Escritura } from '../estado'
-import { comoClave, definicionDe, ENTRADA_PARA_PONER, sinCumplidorHoy, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
+import { ESCRITURA_VACIA, leerEstado, type Escritura } from '../estado'
+import { comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto } from '../estado/escribir'
 import {
   marcar,
@@ -168,7 +168,7 @@ export type ResultadoDeAprobar =
   /** Otro Dueño cambió alguna de esas claves después de que se propuso: ROLLBACK, y la propuesta sigue esperando. */
   | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
   | { readonly tipo: 'vencido' }
-  /** La revalidación falló: ROLLBACK, y la propuesta sigue esperando. */
+  /** Ya no cabe en el estado de ahora (`escribir` revalida dentro del reclamo): ROLLBACK, y la propuesta sigue esperando. */
   | { readonly tipo: 'ya_no_cabe'; readonly problemas: readonly Problema[] }
   /** Otro Negocio, otra huella, id mal formado, descartada o inexistente. */
   | { readonly tipo: 'no_existe' }
@@ -449,8 +449,6 @@ async function aplicarConReclamo(a: {
   readonly huella: string
   readonly aprobadoPor: DuenoId | null
 }): Promise<Aplicada | Exclude<ResultadoDeAprobar, { tipo: 'aplicado' }>> {
-  const noCabe = await revalidar(a)
-  if (noCabe.length) return { tipo: 'ya_no_cabe', problemas: noCabe }
   const reclamo = await conTransaccion<Reclamo>(async (tx, deshacer) => {
     // Un primer clic colgado no deja esperando al segundo para siempre.
     await tx.execute(sql`set local lock_timeout = '10s'`)
@@ -476,6 +474,7 @@ async function aplicarConReclamo(a: {
     if (fila.escritura.elementos.length) {
       const r = await escribir(tx, a.negocio, { tipo: 'propuesta', propuesta: a.propuesta }, fila.escritura)
       if (r.tipo === 'conflicto') return deshacer(r)
+      if (r.tipo === 'invalida') return deshacer({ tipo: 'ya_no_cabe', problemas: r.problemas })
       const [conVersion] = await tx.update(esquema.propuestas).set({ version: r.version }).where(eq(esquema.propuestas.id, a.propuesta)).returning()
       return { tipo: 'reclamada', fila: conVersion, respuesta: null }
     }
@@ -492,25 +491,6 @@ async function aplicarConReclamo(a: {
     case 'sin_reclamo':
       return releer(a)
   }
-}
-
-/**
- * Lo que la propuesta deja, otra vez contra el estado de ahora y sin modelo. Solo si todavía espera: un doble clic
- * no se revalida contra lo que él mismo escribió.
- */
-async function revalidar(a: { readonly negocio: NegocioId; readonly propuesta: PropuestaId }): Promise<readonly Problema[]> {
-  const [p] = await db
-    .select({ estado: esquema.propuestas.estado, escritura: esquema.propuestas.escritura })
-    .from(esquema.propuestas)
-    .where(and(eq(esquema.propuestas.id, a.propuesta), eq(esquema.propuestas.negocioId, a.negocio)))
-  if (!p || p.estado !== 'espera_al_dueno' || !p.escritura.elementos.length) return []
-  const borrador = conPropuesta(await leerEstado(a.negocio), p.escritura)
-  return p.escritura.elementos.flatMap((c): Problema[] => {
-    if (!c.despues) return []
-    const faltan = c.despues.tipo === 'regla' ? sinCumplidorHoy(c.despues) : []
-    if (faltan.length) return [{ tipo: 'valor_invalido', campo: 'regla', porQue: `Hoy nada hace cumplir ${faltan.join(', ')}` }]
-    return [...definicionDe(c.despues.tipo).validar(c.despues, c.clave, borrador)]
-  })
 }
 
 /**

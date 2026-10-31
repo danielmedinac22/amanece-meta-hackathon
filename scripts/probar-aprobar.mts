@@ -156,9 +156,9 @@ try {
   afirmar('descartar desde otro Negocio: no_existe', descartarDesdeTrigo.tipo === 'no_existe', descartarDesdeTrigo)
   afirmar('nada de eso tocó la propuesta ni el catálogo', (await filaDe(p1.propuesta)).estado === 'espera_al_dueno' && (await productosLlamados(nombre1)).length === 0)
 
-  console.log('\n=== 4. Si escribir falla dentro del reclamo, nada queda aplicado ===')
+  console.log('\n=== 4. Si escribir no la deja entrar dentro del reclamo, nada queda aplicado ===')
   const original = f1.escritura
-  // `validar` no mira `activo` y `escribir` sí lo parsea: la falla llega adentro del reclamo.
+  // Una escritura guardada que ya no parsea: solo `escribir`, dentro del reclamo, la ve.
   await db.update(propuestas).set({ escritura: sql`jsonb_set(${propuestas.escritura}, '{elementos,0,despues,activo}', '"si"')` }).where(eq(propuestas.id, p1.propuesta))
   const erroresAntes = errores.length
   const fallo = await aprobar(A, p1.propuesta, p1.tarjeta.huella).then(
@@ -168,7 +168,7 @@ try {
   const dobleFallo = await Promise.allSettled([aprobar(A, p1.propuesta, p1.tarjeta.huella), aprobar(B, p1.propuesta, p1.tarjeta.huella)])
   errores.splice(erroresAntes)
   const tras = await filaDe(p1.propuesta)
-  afirmar('falla al escribir: aprobar lanza', fallo instanceof Error, fallo)
+  afirmar('falla al escribir: aprobar da ya_no_cabe, sin excepción', !(fallo instanceof Error) && (fallo as { tipo?: string }).tipo === 'ya_no_cabe', fallo)
   afirmar('falla al escribir: con doble clic, ningún clic recibe aplicado', dobleFallo.every((d) => d.status === 'rejected' || d.value.tipo !== 'aplicado'), dobleFallo)
   afirmar('falla al escribir: la propuesta sigue esperando, sin aprobador ni versión', tras.estado === 'espera_al_dueno' && tras.aprobadoPor === null && tras.version === null, tras)
   afirmar('falla al escribir: no quedó producto ni línea en los Hilos', (await productosLlamados(nombre1)).length === 0 && (await aprobacionesEn(A.dueno, p1.propuesta)) + (await aprobacionesEn(B.dueno, p1.propuesta)) === 0)
@@ -332,6 +332,14 @@ try {
     const regla = (await leerEstado(LADERA)).vigentes('regla').find((v) => v.elemento.nombre === `Sin fechas (${marca})`)
     afirmar('Manizales: el botón la deja vigente, escrita por esa propuesta', r15.tipo === 'aplicado' && regla?.origen.tipo === 'propuesta' && regla.origen.propuesta === manizales.tarjeta.propuesta, { r15, regla })
   }
+
+  console.log('\n=== 16. Dos propuestas con el mismo producto nuevo: la segunda ya no cabe al aprobarla ===')
+  const tortaA = await proponerProducto(A, `Torta doble (${marca})`)
+  const tortaB = await proponerProducto(B, `Torta doble (${marca})`)
+  const r16a = await aprobar(A, tortaA.tarjeta.propuesta, tortaA.tarjeta.huella)
+  const r16b = await aprobar(B, tortaB.tarjeta.propuesta, tortaB.tarjeta.huella)
+  afirmar('mismo producto: la primera se aplica y la segunda da ya_no_cabe por el nombre', r16a.tipo === 'aplicado' && r16b.tipo === 'ya_no_cabe' && r16b.problemas.some((p) => p.tipo === 'valor_invalido' && p.campo === 'nombre'), { r16a, r16b })
+  afirmar('mismo producto: queda uno solo vigente', (await productosLlamados(`Torta doble (${marca})`)).length === 1)
 } catch (e) {
   afirmar('probar-aprobar terminó sin error inesperado', false, e)
 } finally {

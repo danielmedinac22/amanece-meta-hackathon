@@ -23,7 +23,7 @@ export async function guardarEnElAlta(
   const t = pedido.quiere.length ? await traducir(estado, pedido.quiere) : null
   if (t && 'tipo' in t) return { problemas: t.tipo === 'corregir' ? t.problemas : [{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Eso todavía no lo sé hacer cumplir' }] }
   const identidad = { ...(pedido.nombre ? { nombre: pedido.nombre } : {}), ...(pedido.rubro ? { rubro: pedido.rubro } : {}) }
-  const r = await conTransaccion<'escrito' | 'conflicto' | 'abierto'>(async (tx, deshacer) => {
+  const r = await conTransaccion<'escrito' | 'conflicto' | 'abierto' | { readonly problemas: readonly Problema[] }>(async (tx, deshacer) => {
     if (Object.keys(identidad).length) {
       const [sigue] = await tx
         .update(esquema.negocios)
@@ -34,8 +34,10 @@ export async function guardarEnElAlta(
     }
     if (!t) return 'escrito'
     const w = await escribir(tx, ctx.negocio, { tipo: 'entrevista' }, t.escritura)
+    if (w.tipo === 'invalida') return deshacer({ problemas: w.problemas })
     return w.tipo === 'conflicto' ? deshacer('conflicto') : 'escrito'
   })
+  if (typeof r === 'object') return r
   if (r === 'abierto') return { problemas: [SOLO_MIENTRAS_SE_ARMA] }
   if (r === 'conflicto') return { problemas: [{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Otro cambio llegó primero: vuelve a intentarlo' }] }
   return {

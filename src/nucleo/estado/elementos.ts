@@ -344,6 +344,8 @@ export function reglaEnPalabras(r: ElementoDe<'regla'>): string {
   return `${r.nombre}: ${cuandoEnPalabras(r.cuando)}, tu agente de clientes ${r.efectos.map(efectoEnPalabras).join(' y ')}`
 }
 
+const vozEnPalabras = (v: ElementoDe<'voz'>) => `${v.estilo} (trata de ${v.trato}, hasta ${v.emojisPorMensaje} emoji por mensaje)`
+
 const ETIQUETA_DEL_DATO = { descripcion: 'Descripción', ciudad: 'Ciudad', horario: 'Horario', envios: 'Envíos', pagos: 'Pagos' } as const satisfies Record<CampoDeConocimiento, string>
 
 function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => string, etiqueta: string): string {
@@ -396,7 +398,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
     referencias: () => [],
     textos: (v) => [{ campo: 'estilo', texto: v.estilo }, ...(v.nombreDelAgente ? [{ campo: 'nombreDelAgente', texto: v.nombreDelAgente }] : [])],
     validar: (v) => (v.estilo.length > LARGO_DEL_ESTILO ? [invalido('estilo', `El estilo no puede pasar de ${LARGO_DEL_ESTILO} caracteres`)] : []),
-    describir: (antes, despues) => cambio(antes, despues, (v) => `${v.estilo} (trata de ${v.trato}, hasta ${v.emojisPorMensaje} emoji por mensaje)`, 'Cómo habla tu agente'),
+    describir: (antes, despues) => cambio(antes, despues, vozEnPalabras, 'Cómo habla tu agente'),
   },
   dato: {
     contrato: 1,
@@ -460,6 +462,22 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
 /** Una fila de `DEFINICIONES` vista sobre la unión: para quien recorre Elementos de cualquier tipo. */
 export function definicionDe(tipo: TipoDeElemento): DefinicionDeElemento<TipoDeElemento> {
   return DEFINICIONES[tipo]
+}
+
+/** Lo que vale ahora, sin "nuevo": para contarle al Dueño qué dejó otro. */
+export function describirVigente(e: Elemento): string {
+  switch (e.tipo) {
+    case 'regla':
+      return `Regla ${reglaEnPalabras(e)}`
+    case 'voz':
+      return `Cómo habla tu agente: «${vozEnPalabras(e)}»`
+    case 'dato':
+      return `${ETIQUETA_DEL_DATO[e.campo]}: «${e.valor}»`
+    case 'pregunta':
+      return `Pregunta frecuente: «${e.pregunta} ${e.respuesta}»`
+    case 'producto':
+      return `Producto ${e.nombre}, ${pesos(e.precio)}${e.activo ? '' : ', que no se vende'}`
+  }
 }
 
 export function describirCambio(antes: Elemento | null, despues: Elemento | null): string {
