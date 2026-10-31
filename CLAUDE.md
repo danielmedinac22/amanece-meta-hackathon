@@ -50,3 +50,8 @@ Esto espera el OK de Daniel en la sesión, aunque poteto-mode diga otra cosa:
 - Borrar datos que tu sesión no creó.
 
 Cada unidad de trabajo va en su propia rama con su PR.
+
+## Commits y congelamiento
+
+- Todo commit sale con el autor `Daniel Medina <danielmedina2205@gmail.com>`, nunca con el correo de Simetrik. Ponlo en la config local del worktree (`git config user.email danielmedina2205@gmail.com`), no en la global.
+- Del 4 al 16 de noviembre de 2026, `main` y producción quedan congelados en lo entregado a la hackatón. Solo entran arreglos, cada uno con el OK de Daniel en la sesión. Lo demás va en ramas y previews y se fusiona después del 16.
