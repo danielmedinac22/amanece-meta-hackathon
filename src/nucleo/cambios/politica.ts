@@ -2,6 +2,7 @@ import type { Alcance } from '../estado/elementos'
 import { NOMBRE_TEMPORAL } from '@/negocio/alta'
 import { conPropuesta, valorDelDato, type EstadoDelNegocio, type Escritura } from '../estado'
 import type { ModoDelNegocio } from '../identidad'
+import type { OrigenDelPedido } from './fila'
 
 export type { Alcance }
 
@@ -9,14 +10,15 @@ export type Politica = 'se_aplica' | 'espera_al_dueno'
 
 /**
  * La tabla de `tipos.ts`, en orden:
+ *   origen lectura      → espera_al_dueno (un precio leído cuenta solo si el Dueño lo confirma, también mientras se arma)
  *   con actos           → espera_al_dueno (responderle a un Cliente pide el botón)
  *   armando o en_sombra → se_aplica (no hay Clientes reales)
  *   origen panel        → se_aplica (el clic del Dueño es la aprobación)
  *   alcance panel       → se_aplica (Sección e Indicador: solo los ve el Dueño)
  *   alcance clientes    → espera_al_dueno (regla, conocimiento)
  */
-export function politicaDeAprobacion(modo: ModoDelNegocio, alcance: Alcance, origen: 'hilo' | 'panel', conActos: boolean): Politica {
-  if (conActos) return 'espera_al_dueno'
+export function politicaDeAprobacion(modo: ModoDelNegocio, alcance: Alcance, origen: OrigenDelPedido, conActos: boolean): Politica {
+  if (origen === 'lectura' || conActos) return 'espera_al_dueno'
   if (modo === 'armando' || modo === 'en_sombra') return 'se_aplica'
   if (origen === 'panel') return 'se_aplica'
   return alcance === 'panel' ? 'se_aplica' : 'espera_al_dueno'

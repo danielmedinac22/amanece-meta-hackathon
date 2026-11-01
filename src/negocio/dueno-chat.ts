@@ -76,7 +76,7 @@ export async function responderEnElHilo({
 /** Lo que pinta una tarjeta guardada en el Hilo. Lo arma el servidor; la tarjeta no consulta nada por su cuenta. */
 export type EstadoDeTarjeta = {
   readonly estado: EstadoDePropuesta
-  readonly accion: 'aplicar' | 'enviar'
+  readonly accion: TarjetaDeAprobacion['accion']
   /** El nombre del Dueño que tocó el botón; null si la aplicó la política o no se aplicó. */
   readonly aprobadaPor: string | null
 }

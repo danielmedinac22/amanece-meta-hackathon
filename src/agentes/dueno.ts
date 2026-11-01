@@ -75,7 +75,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
   const preguntaFrecuente = z.object({ pregunta: z.string(), respuesta: z.string() })
 
   const enPalabras = (r: Awaited<ReturnType<typeof guardarEnElAlta>>) =>
-    'guardado' in r ? { ok: true as const, guardado: r.guardado } : { ok: false as const, error: r.problemas.map(problemaEnPalabras).join(' ') }
+    'guardado' in r ? { ok: true as const, guardado: r.guardado, porConfirmar: r.porConfirmar, sinFuente: r.sinFuente } : { ok: false as const, error: r.problemas.map(problemaEnPalabras).join(' ') }
 
   const guardarConocimiento = tool({
     description:
