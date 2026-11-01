@@ -365,7 +365,7 @@ export async function validarConsulta(sqlDelRedactor: string, salida: TipoDeSali
       const [columna] = por?.node && 'ColumnRef' in por.node && (por.node.ColumnRef.fields?.length ?? 0) === 1 ? columnasDe(por.node) : []
       return columna && columnas.includes(columna) ? { columna, descendente: por?.sortby_dir === 'SORTBY_DESC' } : null
     })
-    return { sql, usa: [...usa].sort(), columnas, orden: orden.every((o) => o !== null) ? orden : [] } as unknown as ConsultaValidada
+    return { sql, fuentes: usadas.sort(), usa: [...usa].sort(), columnas, orden: orden.every((o) => o !== null) ? orden : [] } as unknown as ConsultaValidada
   } catch (e) {
     if (e instanceof Rechazo) return e.error
     throw e

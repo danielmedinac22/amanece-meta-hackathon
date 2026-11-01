@@ -13,6 +13,9 @@ config({ path: '.env.local', quiet: true })
 const { TIPOS_DE_MOTIVO } = await import('../src/db/esquema')
 const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = await import('../src/nucleo/consultas/catalogo')
 const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
+const { ejecutar } = await import('../src/nucleo/consultas/ejecutar')
+const { leerEstado } = await import('../src/nucleo/estado')
+const { marcar } = await import('../src/nucleo/identidad')
 const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await import('./consultas-de-prueba.mjs')
 type TipoDeSalida = import('../src/nucleo/consultas/tipos').TipoDeSalida
 type ErrorDeConsulta = import('../src/nucleo/consultas/tipos').ErrorDeConsulta
@@ -152,6 +155,28 @@ try {
   afirmar('4 el error de una función dice cuáles sí se permiten', esErrorDeConsulta(sinPermitidas) && sinPermitidas.tipo === 'no_permitido' && sinPermitidas.permitidas.includes('count') && explicar(sinPermitidas).includes('hoy.ahora'), sinPermitidas)
   const ordenAdentro = await valida('select ciudad as etiqueta, count(*) as valor from pedidos group by ciudad order by count(*) desc', 'serie')
   afirmar('4 un ORDER BY que no nombra una salida pasa y no se repite afuera', !esErrorDeConsulta(ordenAdentro) && ordenAdentro.orden.length === 0, ordenAdentro)
+
+  console.log('\n=== 5. Lo que vuelve de Postgres, saneado ===')
+  const [ladera] = (await q.query(`select id from negocios where codigo = 'LADERA'`)) as { id: string }[]
+  const estado = await leerEstado(marcar.negocio(ladera.id))
+  const nombres = ((await q.query(`select nombre from clientes where negocio_id = $1 and nombre <> '' limit 50`, [ladera.id])) as { nombre: string }[]).map((c) => c.nombre)
+  const correr = async (sql: string, salida: TipoDeSalida) => {
+    const v = await valida(sql, salida)
+    if (esErrorDeConsulta(v)) throw new Error(`no valida: ${explicar(v)}`)
+    return ejecutar(estado, v)
+  }
+  const conNombre = await correr('select min(nombre::int) as valor from clientes', 'numero')
+  afirmar(
+    '5 un 22P02 vuelve con su SQLSTATE y sin el valor de la fila (el nombre de un Cliente)',
+    conNombre.tipo === 'error' && conNombre.error.tipo === 'postgres' && conNombre.error.codigo === '22P02' && !nombres.some((n) => JSON.stringify(conNombre).includes(n)),
+    conNombre,
+  )
+  const columna = await correr('select nombre from pedidos', 'filas')
+  afirmar('5 un 42703 vuelve como dato_inexistente con los campos de la fuente', columna.tipo === 'error' && columna.error.tipo === 'dato_inexistente' && columna.error.campo === 'nombre' && columna.error.hay.includes('total'), columna)
+  const lenta = await correr('select count(*) as valor from pedidos, generate_series(1, 100000000) as g(n)', 'numero')
+  afirmar('5 el tope de 2 s corta una consulta pesada y vuelve como 57014', lenta.tipo === 'error' && lenta.error.tipo === 'postgres' && lenta.error.codigo === '57014' && lenta.ms < 4000, lenta)
+  const contada = await correr('select count(*) as valor from pedidos', 'numero')
+  afirmar('5 un count(*) sin columnas cuenta igual las filas de su fuente', contada.tipo === 'filas' && (contada.filasPorFuente.pedidos ?? 0) > 0, contada)
 } catch (e) {
   afirmar('probar-consultas terminó sin error inesperado', false, e)
 } finally {

@@ -1,11 +1,14 @@
 /**
  * Aislamiento, prueba permanente de `pnpm probar`. Un mismo teléfono P es Dueño de Café Ladera y Cliente de
  * Panadería Trigo y Leña, y cada mensaje cae solo donde debe. Llama al modelo una vez, en el turno de P como
- * Cliente de TRIGO. Lo que la corrida crea se borra al final.
+ * Cliente de TRIGO. Y las consultas del Panel: dos Negocios desechables, A y B, y ninguna consulta de A ve a B,
+ * ni con el ataque de #8, ni con lo que otra petición fijó sin LOCAL, ni con un anillo quitado. Lo que la corrida
+ * crea se borra al final.
  *
  *   pnpm tsx scripts/probar-aislamiento.mts
  */
 import { config } from 'dotenv'
+import { neon, Pool } from '@neondatabase/serverless'
 import { and, eq, gte, inArray, like, sql } from 'drizzle-orm'
 import type { UIMessage } from 'ai'
 import { afirmar, capturarEnvios, capturarErrores, eventoDeKapso, terminar } from './afirmar.mjs'
@@ -18,6 +21,13 @@ const errores = capturarErrores()
 const { db, esquema } = await import('../src/db')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
 const { mensajeDelDueno } = await import('../src/negocio/dueno-chat')
+const { leerEstado } = await import('../src/nucleo/estado')
+const { marcar } = await import('../src/nucleo/identidad')
+const { esErrorDeConsulta, validarConsulta } = await import('../src/nucleo/consultas/validar')
+const { armarLote, ejecutar, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
+const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await import('./consultas-de-prueba.mjs')
+type ConsultaValidada = import('../src/nucleo/consultas/tipos').ConsultaValidada
+type Sentencia = import('../src/nucleo/consultas/ejecutar').Sentencia
 
 const inicio = new Date()
 const marca = String(Date.now()).slice(-8)
@@ -26,6 +36,7 @@ const prefijo = `wamid.AISLAMIENTO.${marca}.`
 const entrante = (n: string, texto: string) => leerMensajeEntrante(eventoDeKapso({ wamid: `${prefijo}${n}`, telefono: P, texto, nombre: 'Dueña de Ladera' }))!
 let duenoId: string | undefined
 let trigoId: string | undefined
+const negociosDeConsultas: string[] = []
 
 async function huellaDeLosDemas(negocio: string): Promise<string> {
   const { rows } = await db.execute(sql`select
@@ -57,6 +68,58 @@ async function limpiar() {
   await db.delete(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, P))
   await db.delete(esquema.mensajesSalientes).where(and(eq(esquema.mensajesSalientes.telefono, P), gte(esquema.mensajesSalientes.creado, inicio)))
   await db.delete(esquema.mensajesEntrantes).where(like(esquema.mensajesEntrantes.wamid, `${prefijo}%`))
+  if (negociosDeConsultas.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, negociosDeConsultas))
+}
+
+/** Un Negocio desechable con Clientes, pedidos, Casos y mensajes. Sus ids, para buscarlos en lo que ve el otro. */
+async function sembrarNegocio(letra: string, cuantos: number) {
+  const [n] = await db.insert(esquema.negocios).values({ nombre: `Consultas ${letra} ${marca}`, codigo: `CONS${letra}${marca}` }).returning()
+  negociosDeConsultas.push(n.id)
+  const clientes = await db
+    .insert(esquema.clientes)
+    .values(Array.from({ length: cuantos }, (_, i) => ({ negocioId: n.id, telefono: `57${letra === 'A' ? 1 : 2}${marca}${i}`, nombre: `Cliente ${letra}${i}` })))
+    .returning()
+  const ahora = Date.now()
+  const pedidos = await db
+    .insert(esquema.pedidos)
+    .values(
+      Array.from({ length: cuantos + 2 }, (_, i) => ({
+        negocioId: n.id,
+        clienteId: clientes[i % cuantos].id,
+        numero: i + 1,
+        items: [{ productoId: `${letra}-prod-${i % 2}`, nombre: `Producto ${letra}${i % 2}`, cantidad: 1 + (i % 3), precio: 10000 }],
+        total: 10000 * (1 + (i % 3)),
+        ciudad: letra === 'A' ? 'Manizales' : 'Pasto',
+        estado: (['confirmado', 'entregado', 'novedad', 'pendiente'] as const)[i % 4],
+        creado: new Date(ahora - i * 3600_000),
+      })),
+    )
+    .returning()
+  const casos = await db
+    .insert(esquema.casos)
+    .values(clientes.slice(0, 2).map((c, i) => ({ negocioId: n.id, clienteId: c.id, pedidoId: pedidos[i].id, titulo: `Caso ${letra}${i}` })))
+    .returning()
+  await db.insert(esquema.mensajesCliente).values(
+    clientes.flatMap((c, i) => [
+      { negocioId: n.id, clienteId: c.id, rol: 'cliente' as const, texto: `hola ${letra}${i}`, creado: new Date(ahora - 120_000) },
+      { negocioId: n.id, clienteId: c.id, rol: 'agente' as const, texto: `respuesta ${letra}${i}`, creado: new Date(ahora - 60_000) },
+    ]),
+  )
+  return { id: n.id, ids: [n.id, ...clientes.map((c) => c.id), ...pedidos.map((p) => p.id), ...casos.map((k) => k.id)], pedidos: pedidos.length, clientes: clientes.length, casos: casos.length }
+}
+
+/** Una consulta que no pasó por el validador: para correr crudo dentro del lote lo que el validador frena. */
+const cruda = (texto: string) => ({ sql: texto, fuentes: ['pedidos'], usa: ['pedidos.id'], columnas: [], orden: [] }) as unknown as ConsultaValidada
+
+const http = neon(process.env.DATABASE_URL!)
+/** El lote tal cual lo arma `armarLote`, o mutado, en una petición HTTP de solo lectura. */
+async function correrLote(lote: readonly Sentencia[]): Promise<{ readonly ok: true; readonly filas: Record<string, unknown>[] } | { readonly ok: false; readonly error: string }> {
+  try {
+    const r = (await http.transaction((t) => lote.map((x) => t.query(x.texto, [...x.parametros])), { readOnly: true })) as unknown as Record<string, unknown>[][]
+    return { ok: true, filas: r[lote.length - 1] ?? [] }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message.slice(0, 120) : String(e) }
+  }
 }
 
 try {
@@ -126,6 +189,112 @@ try {
   console.log('\n=== 6. TRIGO, menos lo de P, no se movió ===')
   const despuesDeTrigo = await huellaDeLosDemas(trigo.id)
   afirmar('6 TRIGO intacto: clientes, mensajes, pedidos, Casos, salidas, sesiones e Hilos de los demás', despuesDeTrigo === antesDeTrigo, { antesDeTrigo, despuesDeTrigo })
+
+  console.log('\n=== 7. Consultas del Panel: A nunca ve a B ===')
+  const A = await sembrarNegocio('A', 3)
+  const B = await sembrarNegocio('B', 4)
+  const estadoA = await leerEstado(marcar.negocio(A.id))
+  const estadoB = await leerEstado(marcar.negocio(B.id))
+  const ve = (filas: unknown, ids: readonly string[]) => ids.filter((id) => JSON.stringify(filas).includes(id))
+  const LISTADOS: [string, string, number, number][] = [
+    ['pedidos', 'select id, cliente_id, numero from pedidos', A.pedidos, B.pedidos],
+    ['clientes', 'select id, nombre from clientes', A.clientes, B.clientes],
+    ['casos', 'select id, cliente_id, pedido_id from casos', A.casos, B.casos],
+    ['lineas_de_pedido', 'select pedido_id, cliente_id, producto_id from lineas_de_pedido', A.pedidos, B.pedidos],
+    ['conversaciones', 'select cliente_id, dia_local, mensajes_cliente from conversaciones', A.clientes, B.clientes],
+  ]
+  for (const [nombre, texto, deA, deB] of LISTADOS) {
+    const v = await validarConsulta(texto, 'filas')
+    if (esErrorDeConsulta(v)) {
+      afirmar(`7 ${nombre}: el listado valida`, false, v)
+      continue
+    }
+    const [ra, rb] = await Promise.all([ejecutar(estadoA, v), ejecutar(estadoB, v)])
+    afirmar(`7 ${nombre}: A ve exactamente sus ${deA} filas y ningún id de B`, ra.tipo === 'filas' && ra.total === deA && ve(ra.filas, B.ids).length === 0, ra)
+    afirmar(`7 ${nombre}: B ve exactamente sus ${deB} filas y ningún id de A`, rb.tipo === 'filas' && rb.total === deB && ve(rb.filas, A.ids).length === 0, rb)
+  }
+  let validasDeA = 0
+  const vieronAB: string[] = []
+  for (const [id, salida, texto] of BUENAS_DE_M2) {
+    const v = await validarConsulta(texto, salida)
+    if (esErrorDeConsulta(v)) continue
+    validasDeA++
+    const r = await ejecutar(estadoA, v)
+    if (r.tipo !== 'filas' || ve(r.filas, B.ids).length) vieronAB.push(`${id}: ${r.tipo === 'filas' ? ve(r.filas, B.ids).join(',') : JSON.stringify(r.error)}`)
+  }
+  afirmar(`7 las ${BUENAS_DE_M2.length} consultas de M2 corren desde A y ninguna trae un id de B`, validasDeA === BUENAS_DE_M2.length && vieronAB.length === 0, vieronAB)
+
+  console.log('\n=== 8. El ataque de #8 y los escapes ===')
+  const listado = (await validarConsulta('select id from pedidos', 'filas')) as ConsultaValidada
+  for (const [nombre, texto] of [['el ataque de #8', ataqueDe8(B.id)], ...variantesDelAtaque(B.id)] as const) {
+    const v = await validarConsulta(texto, 'numero')
+    afirmar(`8 el validador rechaza ${nombre}`, esErrorDeConsulta(v), v)
+  }
+  for (const [nombre, sentencias] of ESCAPES_DE_12) afirmar(`8 el validador rechaza el escape de #12 ${nombre}`, esErrorDeConsulta(await validarConsulta(sentencias.join('; '), 'filas')))
+  const hastaLaConsulta = (l: readonly Sentencia[]) => l.slice(0, PREAMBULO + 1)
+  const atacaLasCte = await correrLote(hastaLaConsulta(armarLote(estadoA, cruda(`select p.id from pedidos p, (select set_config('app.negocio_id', '${B.id}', true)) s`))))
+  afirmar('8 el ataque de #8 crudo sobre las CTE no trae ninguna fila de B', !atacaLasCte.ok || ve(atacaLasCte.filas, B.ids).length === 0, atacaLasCte)
+  const atacaLaTabla = await correrLote(hastaLaConsulta(armarLote(estadoA, cruda(`select p.id from public.pedidos p, (select set_config('app.negocio_id', '${B.id}', true)) s`))))
+  console.log(`  control: el ataque crudo sobre public.pedidos ${atacaLaTabla.ok ? `trae ${ve(atacaLaTabla.filas, B.ids).length} ids de B y ${ve(atacaLaTabla.filas, A.ids).length} de A` : `falla: ${atacaLaTabla.error}`}`)
+  const preambulo = armarLote(estadoA, listado).slice(0, PREAMBULO)
+  const sondaDeEscape = { texto: `SELECT current_user AS usuario, current_setting('app.negocio_id', true) AS negocio, (SELECT count(*) FROM public.pedidos WHERE negocio_id = '${B.id}')::int AS de_b`, parametros: [] }
+  for (const [nombre, sentencias] of ESCAPES_DE_12) {
+    const r = await correrLote([...preambulo, ...sentencias.map((texto) => ({ texto, parametros: [] })), sondaDeEscape])
+    console.log(`  control: ${nombre} crudo en el lote: ${r.ok ? JSON.stringify(r.filas[0]) : `falla: ${r.error}`}`)
+  }
+
+  console.log('\n=== 9. Un anillo quitado ===')
+  const lote = hastaLaConsulta(armarLote(estadoA, listado))
+  const sinWhere = lote.map((x) => ({ ...x, texto: x.texto.replace(/\w+\.negocio_id = \$1::uuid/g, '($1::uuid IS NOT NULL)') }))
+  const rls = await correrLote(sinWhere)
+  afirmar('9 sin el WHERE de la CTE, la RLS frena: A ve sus pedidos y ninguno de B', rls.ok && ve(rls.filas, A.ids).length === A.pedidos && ve(rls.filas, B.ids).length === 0, rls)
+  const sinPolitica = async (l: readonly Sentencia[]) => {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+    const cliente = await pool.connect()
+    try {
+      await cliente.query('BEGIN')
+      for (const t of ['pedidos', 'clientes', 'casos', 'mensajes_cliente']) await cliente.query(`ALTER POLICY consultas_del_negocio ON public.${t} USING (true)`)
+      let ultima: Record<string, unknown>[] = []
+      for (const x of l) ultima = (await cliente.query(x.texto, [...x.parametros])).rows
+      return ultima
+    } finally {
+      await cliente.query('ROLLBACK').catch(() => undefined)
+      cliente.release()
+      await pool.end()
+    }
+  }
+  const cte = await sinPolitica(lote)
+  afirmar('9 sin la política (ALTER POLICY dentro de una transacción con ROLLBACK), la CTE frena', ve(cte, A.ids).length === A.pedidos && ve(cte, B.ids).length === 0, cte)
+  const fuga = await sinPolitica(sinWhere)
+  afirmar('9 control: sin WHERE y sin política sí aparecen los pedidos de B, así que la prueba ve una fuga', ve(fuga, B.ids).length === B.pedidos, ve(fuga, B.ids).length)
+  const [politica] = (await db.execute(sql`select qual from pg_policies where tablename = 'pedidos' and policyname = 'consultas_del_negocio'`)).rows as { qual: string }[]
+  afirmar('9 el ROLLBACK dejó la política como estaba', politica?.qual.includes("current_setting('app.negocio_id'"), politica)
+
+  console.log('\n=== 10. Lo que se fijó sin LOCAL antes del lote ===')
+  const sinSetConfig = lote.slice(0, PREAMBULO).filter((x) => !x.texto.includes('set_config'))
+  const sonda = { texto: "SELECT current_setting('app.negocio_id', true) AS negocio, current_user AS usuario", parametros: [] }
+  const contagio = [
+    { texto: "SELECT set_config('app.negocio_id', $1, false)", parametros: [B.id] },
+    { texto: 'SET ROLE neondb_owner', parametros: [] },
+  ]
+  const contagiada = await correrLote([...contagio, ...sinSetConfig, sonda])
+  afirmar(
+    '10 en la misma conexión, el Negocio y el rol fijados sin LOCAL antes del lote no llegan después de los RESET',
+    contagiada.ok && !contagiada.filas[0]?.negocio && contagiada.filas[0]?.usuario === 'amanece_consultas',
+    contagiada,
+  )
+  const cruzada = await correrLote([...contagio, ...sinSetConfig, { texto: 'SELECT p.id FROM public.pedidos p', parametros: [] }])
+  afirmar('10 un lote sin set_config después del contagio falla cerrado: no trae filas de nadie', !cruzada.ok || cruzada.filas.length === 0, cruzada.ok ? ve(cruzada.filas, B.ids).length : cruzada.error)
+
+  const VECES = 60
+  for (let i = 0; i < VECES; i++) await http.query(`select set_config('app.negocio_id', $1, false)`, [B.id])
+  const vistas = await Promise.all(Array.from({ length: VECES }, () => correrLote([...sinSetConfig, sonda])))
+  afirmar(`10 con RESET ALL, ninguna de ${VECES} sondas ve el Negocio que fijó sin LOCAL otra petición`, vistas.every((r) => r.ok && !r.filas[0]?.negocio), vistas.find((r) => !r.ok || r.filas[0]?.negocio))
+  const sinReset = await Promise.all(Array.from({ length: VECES }, () => correrLote([...sinSetConfig.filter((x) => x.texto !== 'RESET ALL'), sonda])))
+  console.log(`  control: sin RESET ALL, ${sinReset.filter((r) => r.ok && r.filas[0]?.negocio === B.id).length} de ${VECES} sondas ven el Negocio que fijó otra petición (80 de 120 en #28)`)
+  const reales = await Promise.all(Array.from({ length: 20 }, () => ejecutar(estadoA, listado)))
+  afirmar('10 ejecutar después de esas peticiones: 20 de 20 traen solo los pedidos de A', reales.every((r) => r.tipo === 'filas' && r.total === A.pedidos && ve(r.filas, B.ids).length === 0), reales.find((r) => r.tipo !== 'filas' || r.total !== A.pedidos))
+  for (let i = 0; i < VECES; i++) await http.query('RESET ALL')
 } catch (e) {
   afirmar('probar-aislamiento terminó sin error inesperado', false, e)
 } finally {

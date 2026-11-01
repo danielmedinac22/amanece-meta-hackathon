@@ -57,6 +57,8 @@ export type ErrorDeConsulta =
 export type ConsultaValidada = Marca<
   {
     readonly sql: string
+    /** Las fuentes del catálogo que nombra, aunque no use ninguna columna (`count(*)`). */
+    readonly fuentes: readonly NombreDeFuente[]
     readonly usa: readonly Usa[]
     readonly columnas: readonly string[]
     /** El `ORDER BY` de arriba cuando nombra columnas de salida: el envoltorio lo repite afuera. */

@@ -38,6 +38,11 @@ const ESCRIBIR = {
   message: "Solo src/nucleo/cambios y scripts/ escriben Elementos: pide el Cambio con proponer.",
 };
 const LIBPG = { regex: String.raw`^libpg-query$`, message: "Solo src/nucleo/consultas/validar.ts parsea SQL: usa validarConsulta." };
+const NEON = {
+  regex: String.raw`^@neondatabase/serverless$`,
+  importNames: ["neon"],
+  message: "Solo src/db/index.ts y src/nucleo/consultas/ejecutar.ts abren el driver HTTP: una consulta del Panel corre con ejecutar.",
+};
 const POOL = { regex: String.raw`^(.*/)?db/pool` + EXTENSION, message: "Solo src/nucleo/cambios abre transacciones." };
 const prohibir = (...patterns) => ({ "no-restricted-imports": ["error", { patterns }] });
 
@@ -49,20 +54,22 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/nucleo/**", "src/negocio/sesion.ts"],
-    rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG),
+    rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON),
   },
-  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG) },
+  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON) },
   {
     files: ["src/nucleo/**/*.ts"],
     ignores: ["src/nucleo/cambios/**", "src/nucleo/salida/index.ts", "src/nucleo/estado/escribir.ts", "src/nucleo/estado/index.ts"],
-    rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG),
+    rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON),
   },
   // `escribir` y `leerEstado` reciben la transacción de quien reclama: importan el tipo, nunca la abren.
-  { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, VIEJO, LIBPG) },
-  { files: ["src/nucleo/estado/index.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, ESCRIBIR, VIEJO, LIBPG) },
-  { files: ["src/nucleo/cambios/**/*.ts"], ignores: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, VIEJO, LIBPG) },
-  { files: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, VIEJO, LIBPG) },
-  { files: ["src/nucleo/consultas/validar.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO) },
+  { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, VIEJO, LIBPG, NEON) },
+  { files: ["src/nucleo/estado/index.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, ESCRIBIR, VIEJO, LIBPG, NEON) },
+  { files: ["src/nucleo/cambios/**/*.ts"], ignores: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, VIEJO, LIBPG, NEON) },
+  { files: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, VIEJO, LIBPG, NEON) },
+  { files: ["src/nucleo/consultas/validar.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, NEON) },
+  { files: ["src/db/index.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG) },
+  { files: ["src/nucleo/consultas/ejecutar.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG) },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
