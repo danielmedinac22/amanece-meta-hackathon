@@ -3,6 +3,7 @@ import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timest
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { Escritura } from '../nucleo/estado'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
+import type { MotivoDeFaltante } from '../nucleo/capacidades'
 
 const id = () => uuid('id').primaryKey().defaultRandom()
 const creado = () => timestamp('creado', { withTimezone: true }).notNull().defaultNow()
@@ -282,14 +283,31 @@ export const mensajesDueno = pgTable(
   (t) => [index('mensajes_dueno_dueno').on(t.duenoId, t.creado)],
 )
 
+/** El `CHECK` de `capacidades_faltantes.tipo`. `anterior`: una fila de antes de 0004 que no se pudo leer. */
+export const TIPOS_DE_MOTIVO = ['no_hay', 'sin_cumplidor', 'no_se_puede', 'sin_converger', 'fuera_de_la_lista', 'regla_vieja', 'anterior'] as const
+
 /** Algo que un Dueño pidió y Amanece todavía no sabe hacer. */
-export const capacidadesFaltantes = pgTable('capacidades_faltantes', {
-  id: id(),
-  negocioId: negocioId(),
-  pedido: text('pedido').notNull(),
-  motivo: text('motivo').notNull().default(''),
-  creado: creado(),
-})
+export const capacidadesFaltantes = pgTable(
+  'capacidades_faltantes',
+  {
+    id: id(),
+    negocioId: negocioId(),
+    /** Las palabras del Dueño. Solo las lee `scripts/faltantes.mts`: `/medicion` agrupa sin ellas. */
+    pedido: text('pedido').notNull(),
+    /** El texto de antes de 0004 (`motivoEnTexto`). Se sigue escribiendo para quien todavía lo lea. */
+    motivo: text('motivo').notNull().default(''),
+    tipo: text('tipo', { enum: TIPOS_DE_MOTIVO }).notNull().default('anterior'),
+    claveDeAgrupacion: text('clave_de_agrupacion').notNull().default('anterior'),
+    detalle: jsonb('detalle').$type<MotivoDeFaltante>(),
+    propuestaId: uuid('propuesta_id').references(() => propuestas.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [
+    index('capacidades_faltantes_clave').on(t.claveDeAgrupacion, t.creado),
+    check('capacidades_faltantes_tipo', sql`${t.tipo} in (${sql.raw(TIPOS_DE_MOTIVO.map((m) => `'${m}'`).join(', '))})`),
+    check('capacidades_faltantes_detalle', sql`${t.detalle} is null or ${t.detalle}->>'tipo' = ${t.tipo}`),
+  ],
+)
 
 /** Un turno de un agente, para medir tokens, costo y latencia. */
 export const turnos = pgTable(

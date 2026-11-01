@@ -12,6 +12,7 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-aislado'],
   ['probar-modelo'],
   ['probar-revisar'],
+  ['probar-consultas'],
   ['probar-leer-enlace'],
   ['probar-elementos'],
   ['probar-migracion'],
