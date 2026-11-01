@@ -4,13 +4,13 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SalidaDeProponer } from '@/agentes/dueno'
-import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { Tarjeta } from './tarjeta'
 
 /** Lo que el Dueño ve mientras su Agente del dueño usa una herramienta. */
 const ETIQUETAS: Record<string, string> = {
+  leer_enlace: 'Leyó lo que publicaste',
   guardar_conocimiento: 'Guardó lo que sabe de tu negocio',
   guardar_productos: 'Actualizó tu catálogo',
   abrir_negocio: 'Dejó listo a tu agente de clientes',
@@ -22,7 +22,7 @@ const ETIQUETAS: Record<string, string> = {
   registrar_capacidad_faltante: 'Anotó algo que todavía no sabe hacer',
 }
 
-const SUGERENCIAS_ARMANDO = ['Vendo café de especialidad en Manizales', 'Tengo una panadería en Bogotá']
+const SUGERENCIAS_ARMANDO = ['No tengo página: vendo café de especialidad en Manizales', 'Tengo una panadería en Bogotá']
 const SUGERENCIAS_LISTO = [
   'Cuando un pedido sea para fuera de mi ciudad, ábreme un Caso y no prometas fecha',
   'Quiero ver los pedidos confirmados por día',
@@ -92,26 +92,21 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
             <div className={m.role === 'user' ? 'max-w-[85%] rounded-2xl bg-sol px-4 py-2.5 text-white' : 'max-w-full'}>
               {m.parts.map((parte, i) => {
                 if (parte.type === 'text') return <p key={i} className="whitespace-pre-wrap leading-relaxed">{parte.text}</p>
-                if (parte.type === 'data-tarjeta') {
-                  const t = parte.data as TarjetaDeAprobacion
-                  return <Tarjeta key={i} tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} />
-                }
+                const t = tarjetaDeLaParte(parte)
                 if (parte.type.startsWith('tool-')) {
                   const herramienta = parte.type.slice(5)
-                  const p = parte as { state: string; output?: unknown; errorText?: string }
+                  const p = parte as { state: string }
                   return (
                     <div key={i} className="my-2">
                       <span className="inline-flex items-center gap-2 rounded-full border border-borde bg-tarjeta px-3 py-1 text-xs text-suave">
                         <span className={p.state === 'output-available' ? 'text-verde' : p.state === 'output-error' ? 'text-red-700' : 'animate-pulse text-sol'}>●</span>
                         {ETIQUETAS[herramienta] ?? herramienta}
                       </span>
-                      {herramienta === 'proponer' && p.state === 'output-available' && (p.output as SalidaDeProponer).tarjeta && (
-                        <Tarjeta tarjeta={(p.output as SalidaDeProponer).tarjeta!} estado={estados[(p.output as SalidaDeProponer).tarjeta!.propuesta]} alCambiar={alCambiar} />
-                      )}
+                      {t && <Tarjeta tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} />}
                     </div>
                   )
                 }
-                return null
+                return t ? <Tarjeta key={i} tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} /> : null
               })}
             </div>
           </div>

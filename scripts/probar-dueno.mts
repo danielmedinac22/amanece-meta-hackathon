@@ -478,10 +478,10 @@ try {
     afirmar('9b: sin nombre ni producto no abre, y dice qué falta', !sinNada.abierto && sinNada.falta.length === 2, sinNada)
     const { tools: deRosa } = crearAgenteDelDueno(ctxOtro, { negocio: otro, dueno: duenoOtro })
     const guardarConocimiento = (entrada: Record<string, string>) =>
-      (deRosa.guardar_conocimiento as unknown as { execute: (e: unknown, o: unknown) => Promise<{ ok: boolean; nota?: string }> }).execute(entrada, { toolCallId: 'prueba', messages: [] })
+      (deRosa.guardar_conocimiento as unknown as { execute: (e: unknown, o: unknown) => Promise<{ resumen: string }> }).execute(entrada, { toolCallId: 'prueba', messages: [] })
     const conMalTono = await guardarConocimiento({ ciudad: 'Medellín', tono: 'Decimos que la arepa cura la gastritis' })
     const trasMalTono = await leerEstado(marcar.negocio(otro.id))
-    afirmar('9b tono: uno que no puede llegar a un Cliente se omite y se dice, y la ciudad se guarda', conMalTono.ok && (conMalTono.nota ?? '').includes('tono') && valorDelDato(trasMalTono, 'ciudad') === 'Medellín' && trasMalTono.vigentes('voz').length === 0, conMalTono)
+    afirmar('9b tono: uno que no puede llegar a un Cliente se omite y se dice, y la ciudad se guarda', conMalTono.resumen.includes('tono') && valorDelDato(trasMalTono, 'ciudad') === 'Medellín' && trasMalTono.vigentes('voz').length === 0, conMalTono)
     await guardarConocimiento({ tono: `Cercanos, nunca de usted. ${'Hablamos sencillo. '.repeat(30)}` })
     const [vozDeRosa] = (await leerEstado(marcar.negocio(otro.id))).vigentes('voz')
     afirmar('9b tono: uno largo se corta al largo del estilo y "nunca de usted" tutea', vozDeRosa?.elemento.estilo.length === el.LARGO_DEL_ESTILO && vozDeRosa.elemento.trato === 'tu', vozDeRosa)

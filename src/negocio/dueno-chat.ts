@@ -1,12 +1,13 @@
 import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from 'ai'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { crearAgenteDelDueno, parteDeDatosParaElModelo, type SalidaDeProponer } from '@/agentes/dueno'
+import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
 import { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
 import { historial, type EstadoDePropuesta, type TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { ContextoDelDueno } from '@/nucleo/identidad'
 import { registrarTurno } from '@/negocio/medir'
+import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 
 /** Cuántos mensajes del Hilo ve el modelo en cada turno. */
 const MENSAJES_QUE_VE_EL_MODELO = 40
@@ -33,13 +34,16 @@ export async function responderEnElHilo({
   negocio,
   dueno,
   mensaje,
+  puertos,
 }: {
   ctx: ContextoDelDueno
   negocio: typeof esquema.negocios.$inferSelect
   dueno: typeof esquema.duenos.$inferSelect
   mensaje: UIMessage
+  /** Solo los `probar` los cambian: la página de guion con el modelo real. */
+  puertos?: PuertosDelDueno
 }) {
-  const { system, tools } = crearAgenteDelDueno(ctx, { negocio, dueno })
+  const { system, tools } = crearAgenteDelDueno(ctx, { negocio, dueno }, puertos)
   await guardarEnElHilo(negocio.id, dueno.id, 'dueno', mensaje)
   const historial = await leerHilo(dueno.id, MENSAJES_QUE_VE_EL_MODELO)
 
@@ -96,13 +100,7 @@ export async function leerHiloConTarjetas(ctx: ContextoDelDueno): Promise<{ mens
   return { mensajes, tarjetas }
 }
 
-/** Las dos partes que traen una tarjeta, las mismas que pinta `hilo.tsx`: la salida de `tool-proponer` y `data-tarjeta` (el aviso de un Caso). */
+/** Las tarjetas de un Hilo, las mismas que pinta `hilo.tsx`. */
 export function tarjetasDe(mensajes: readonly UIMessage[]): TarjetaDeAprobacion[] {
-  return mensajes.flatMap((m) =>
-    m.parts.flatMap((p) => {
-      if (p.type === 'data-tarjeta') return [p.data as TarjetaDeAprobacion]
-      const t = p.type === 'tool-proponer' && p.state === 'output-available' ? (p.output as SalidaDeProponer).tarjeta : null
-      return t ? [t] : []
-    }),
-  )
+  return mensajes.flatMap((m) => m.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []))
 }

@@ -4,7 +4,28 @@ import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { LO_QUE_NO_HAY, registrarFaltante, type LoQueNoHay } from '@/nucleo/capacidades'
-import { abrirEnElAlta, descartar, ESQUEMA_DEL_PEDIDO, guardarEnElAlta, historial, problemaEnPalabras, proponer, type Falta, type QuierePoner, type TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { LECTOR_DE_INTERNET, type Lector, type NoSeLeyo } from '@/lib/leer-enlace'
+import { registrarTurno } from '@/negocio/medir'
+import type { SalidaConTarjeta } from '@/negocio/partes-del-hilo'
+import {
+  abrirEnElAlta,
+  armarLectura,
+  descartar,
+  ESQUEMA_DEL_PEDIDO,
+  EXTRACTOR,
+  guardarEnElAlta,
+  historial,
+  lecturaPendiente,
+  problemaEnPalabras,
+  proponer,
+  proponerLectura,
+  queFaltaParaAbrir,
+  type Extractor,
+  type Falta,
+  type QuierePoner,
+  type ResultadoDelAlta,
+  type TarjetaDeAprobacion,
+} from '@/nucleo/cambios'
 import { leerEstado } from '@/nucleo/estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, LARGO_DEL_ESTILO, normalizar, reglaEnPalabras, tratoDelTono } from '@/nucleo/estado/elementos'
 import { revisarTextoDelDueno } from '@/nucleo/salida/revisar'
@@ -13,15 +34,42 @@ import type { ContextoDelDueno } from '@/nucleo/identidad'
 type Negocio = typeof esquema.negocios.$inferSelect
 type Dueno = typeof esquema.duenos.$inferSelect
 
-/** Lo que guarda el Hilo de `proponer`: la tarjeta la pinta la web y al modelo solo le llega `resumen`. */
-export type SalidaDeProponer = { readonly resumen: string; readonly tarjeta: TarjetaDeAprobacion | null }
+/** Lo que el Agente del dueño usa para leer un enlace. Producción, por defecto; `probar-primera` cambia la página por un guion. */
+export type PuertosDelDueno = { readonly lector: Lector; readonly extractor: Extractor }
+const PUERTOS_DE_PRODUCCION: PuertosDelDueno = { lector: LECTOR_DE_INTERNET, extractor: EXTRACTOR }
+
+const NO_SE_LEYO_EN_PALABRAS = {
+  no_permitida: 'Ese enlace no se puede leer desde aquí.',
+  tiempo: 'La página tardó demasiado en responder.',
+  muy_grande: 'La página es demasiado grande para leerla.',
+  no_es_una_pagina: 'Ese enlace no es una página.',
+  respuesta: 'La página no respondió bien.',
+  pide_sesion: 'Esa red pide iniciar sesión para verla.',
+  no_conecta: 'No pude conectarme a esa página.',
+} as const satisfies Record<NoSeLeyo['tipo'], string>
+
+const lista = (cosas: readonly string[]) => cosas.join('; ')
+
+/** Lo que falta para abrir, como lo lee el modelo: lo que bloquea, lo que está en la tarjeta y lo que conviene preguntar. */
+function faltaEnElResumen({ bloquea, avisa }: { readonly bloquea: readonly Falta[]; readonly avisa: readonly Falta[] }): string {
+  const enLaTarjeta = [...bloquea, ...avisa].filter((f) => f.enLaTarjeta).map((f) => f.enPalabras)
+  const falta = bloquea.filter((f) => !f.enLaTarjeta).map((f) => f.enPalabras)
+  const conviene = avisa.filter((f) => !f.enLaTarjeta).map((f) => f.enPalabras)
+  return [
+    falta.length ? `Para abrir falta: ${lista(falta)}.` : '',
+    enLaTarjeta.length ? `Ya está en la tarjeta (que el Dueño la revise y toque el botón): ${lista(enLaTarjeta)}.` : '',
+    conviene.length ? `Conviene preguntar, sin insistir: ${lista(conviene)}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
 
 /**
  * El Agente del dueño de un Negocio: `{ system, tools }` para `streamText`. Cada herramienta se cierra
  * sobre el `ctx` de la sesión; ninguna recibe un Negocio del modelo, así que no hay cómo tocar otro. Lee y
  * propone: aplicar, revertir y responder un Caso son el botón del Dueño.
  */
-export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: { negocio: Negocio; dueno: Dueno }) {
+export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: { negocio: Negocio; dueno: Dueno }, puertos: PuertosDelDueno = PUERTOS_DE_PRODUCCION) {
   const negocioId = ctx.negocio
 
   /** Un error de una herramienta le llega al modelo como resultado, para que se lo explique al Dueño. */
@@ -74,8 +122,54 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
 
   const preguntaFrecuente = z.object({ pregunta: z.string(), respuesta: z.string() })
 
-  const enPalabras = (r: Awaited<ReturnType<typeof guardarEnElAlta>>) =>
-    'guardado' in r ? { ok: true as const, guardado: r.guardado, porConfirmar: r.porConfirmar, sinFuente: r.sinFuente } : { ok: false as const, error: r.problemas.map(problemaEnPalabras).join(' ') }
+  /** Lo que falta ahora, con la tarjeta de lectura pendiente. */
+  const faltaAhora = async () => faltaEnElResumen(queFaltaParaAbrir(await leerEstado(negocioId), (await lecturaPendiente(negocioId))?.escritura ?? null))
+
+  /** El resumen lo escribe el código: qué se guardó, qué espera la tarjeta, qué hay que preguntar y qué falta. */
+  async function enPalabras(r: ResultadoDelAlta, nota: string | null = null): Promise<SalidaConTarjeta> {
+    if ('problemas' in r) return { resumen: `No se guardó. ${r.problemas.map(problemaEnPalabras).join(' ')}`, tarjeta: null }
+    const partes = [
+      r.guardado.length ? `Guardé: ${lista(r.guardado)}.` : 'No guardé nada nuevo.',
+      r.porConfirmar.length ? `No guardé ${lista(r.porConfirmar)}: eso lo leí y está en la tarjeta; el Dueño lo confirma con el botón.` : '',
+      r.sinFuente.length ? `No guardé ${lista(r.sinFuente)}: el Dueño no escribió esa cifra. Pregúntasela.` : '',
+      r.tarjeta ? 'La tarjeta de lo leído se rearmó sin lo que el Dueño acaba de escribir.' : '',
+      nota ?? '',
+      await faltaAhora(),
+    ]
+    return { resumen: partes.filter(Boolean).join(' '), tarjeta: r.tarjeta }
+  }
+
+  /** Un error de una herramienta con tarjeta le llega al modelo como resumen, para que se lo explique al Dueño. */
+  async function conTarjeta(trabajo: () => Promise<SalidaConTarjeta>): Promise<SalidaConTarjeta> {
+    try {
+      return await trabajo()
+    } catch (e) {
+      console.error('[dueno] una herramienta falló', e)
+      return { resumen: `No pude hacerlo: ${e instanceof Error ? e.message : String(e)}. Díselo al Dueño con palabras sencillas.`, tarjeta: null }
+    }
+  }
+
+  const leerEnlace = tool({
+    description:
+      'Lee la página o el Instagram que el Dueño ya publicó, con el enlace que él te dio. Tú no ves la página: lo leído queda en una tarjeta que el Dueño confirma con un botón, y te vuelve un resumen de qué quedó y qué falta.',
+    inputSchema: z.object({ url: z.string().describe('El enlace tal como lo escribió el Dueño') }),
+    execute: ({ url }) =>
+      conTarjeta(async () => {
+        const limpio = url.trim()
+        const pagina = await puertos.lector(/^[a-z][a-z0-9+.-]*:/i.test(limpio) ? limpio : `https://${limpio}`)
+        if (pagina.tipo !== 'leida') return { resumen: `${NO_SE_LEYO_EN_PALABRAS[pagina.tipo]} Sigue con la entrevista. ${await faltaAhora()}`, tarjeta: null }
+        const inicio = Date.now()
+        const { extraido, uso } = await puertos.extractor(pagina)
+        await registrarTurno('dueno', negocioId, { inputTokens: uso.entrada, outputTokens: uso.salida }, Date.now() - inicio).catch((e) => console.warn('[dueno] no pude registrar el extractor', e))
+        const r = await proponerLectura(ctx, armarLectura(await leerEstado(negocioId), pagina, extraido))
+        const leido = r.tarjeta
+          ? `Leí ${r.leidos} cosas de ${pagina.fuente} y quedaron en una tarjeta que el Dueño confirma con el botón «Están bien y no falta ninguno». No las guardes tú.`
+          : `De ${pagina.fuente} no saqué nada nuevo que se pueda usar.`
+        const descartes = r.descartados ? ` Dejé por fuera ${r.descartados} que no pude confirmar en la página o que ya estaban.` : ''
+        return { resumen: `${leido}${descartes} ${await faltaAhora()}`, tarjeta: r.tarjeta }
+      }),
+    toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
+  })
 
   const guardarConocimiento = tool({
     description:
@@ -92,7 +186,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       preguntasNuevas: z.array(preguntaFrecuente).optional().describe('Preguntas frecuentes con su respuesta'),
     }),
     execute: (parche) =>
-      seguro(async () => {
+      conTarjeta(async () => {
         const estado = await leerEstado(negocioId)
         const quiere: QuierePoner[] = CAMPOS_DE_CONOCIMIENTO.flatMap((campo): QuierePoner[] => {
           const valor = parche[campo]?.trim()
@@ -112,17 +206,14 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         }
         const nombre = parche.nombre?.trim() || null
         const rubro = parche.rubro?.trim() || null
-        if (!quiere.length && !nombre && !rubro) {
-          if (sinVoz) return { ok: false as const, error: sinVoz }
-          throw new Error('No mandaste nada para guardar')
-        }
-        const r = enPalabras(await guardarEnElAlta(ctx, { nombre, rubro, quiere }))
-        return r.ok && sinVoz ? { ...r, nota: sinVoz } : r
+        if (!quiere.length && !nombre && !rubro) return { resumen: sinVoz ?? 'No mandaste nada para guardar.', tarjeta: null }
+        return enPalabras(await guardarEnElAlta(ctx, { nombre, rubro, quiere }), sinVoz)
       }),
+    toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
   })
 
   const guardarProductosTool = tool({
-    description: 'Guarda productos del catálogo. Si ya hay uno con ese nombre, le actualiza el precio y la descripción.',
+    description: 'Guarda productos del catálogo con el precio que escribió el Dueño. Si ya hay uno con ese nombre, le actualiza el precio y la descripción. Un precio que el Dueño no escribió no se guarda.',
     inputSchema: z.object({
       productos: z
         .array(
@@ -135,7 +226,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         .min(1),
     }),
     execute: ({ productos }) =>
-      seguro(async () => {
+      conTarjeta(async () => {
         const estado = await leerEstado(negocioId)
         const quiere = productos.map((p): QuierePoner => {
           const mismo = estado.vigentes('producto').find((v) => normalizar(v.elemento.nombre) === normalizar(p.nombre))
@@ -143,6 +234,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         })
         return enPalabras(await guardarEnElAlta(ctx, { nombre: null, rubro: null, quiere }))
       }),
+    toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
   })
 
   const abrirNegocio = tool({
@@ -164,7 +256,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     description:
       'Prepara lo que el Dueño te pidió: una regla, datos o productos, una Sección o un Indicador del Panel, deshacer algo que ya se aplicó, o la respuesta a un Caso que él te dictó. Úsala solo cuando el Dueño lo pida; nunca por tu cuenta. Tú no aplicas nada: lo que llega a los clientes queda en una tarjeta que el Dueño aprueba con un botón; lo del Panel queda de una.',
     inputSchema: ESQUEMA_DEL_PEDIDO,
-    execute: async (pedido): Promise<SalidaDeProponer> => {
+    execute: async (pedido): Promise<SalidaConTarjeta> => {
       try {
         const r = await proponer(ctx, { ...pedido, origen: 'hilo' })
         return { resumen: r.resumen, tarjeta: r.tarjeta }
@@ -229,6 +321,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     negocio.modo === 'armando'
       ? {
           ver_negocio: verNegocio,
+          leer_enlace: leerEnlace,
           guardar_conocimiento: guardarConocimiento,
           guardar_productos: guardarProductosTool,
           abrir_negocio: abrirNegocio,
@@ -281,14 +374,17 @@ Cómo trabajas:
   if (negocio.modo === 'armando') {
     return `${comunes}
 
-Ahora: es la primera conversación y el Negocio todavía se está armando. Entrevista al Dueño con una o dos preguntas por mensaje, nunca más, sobre: cómo se llama el Negocio y qué vende, los productos con sus precios en pesos colombianos, la ciudad, los envíos (a dónde, cuánto cuestan, cuánto demoran), las formas de pago, el horario y el tono con el que le gusta hablarles a sus clientes.
+Ahora: es la primera conversación y el Negocio todavía se está armando.
+- Primero pregúntale si ya tiene su negocio publicado en algún lado, como su página o su Instagram, y pídele el enlace. Si te lo da, léelo con leer_enlace.
+- Lo que leas queda en una tarjeta que el Dueño confirma con el botón «Están bien y no falta ninguno». No lo guardes tú ni le digas precios que él no escribió: pídele que revise la tarjeta y toque el botón si está bien.
+- Si el Dueño corrige algo de la tarjeta (un precio, un producto, un dato), guárdalo con guardar_productos o guardar_conocimiento: la tarjeta se rearma sola.
+- Si no tiene nada publicado o no se pudo leer, entrevístalo con una o dos preguntas por mensaje, nunca más: cómo se llama el Negocio y qué vende, los productos con sus precios en pesos colombianos, la ciudad, los envíos (a dónde, cuánto cuestan, cuánto demoran), las formas de pago, el horario y el tono con el que le gusta hablarles a sus clientes.
 - Cada vez que el Dueño te dé información, guárdala en ese momento con guardar_conocimiento (nombre, rubro, descripción, ciudad, horario, envíos, pagos, tono, preguntas frecuentes) y guardar_productos (nombre, frase corta, precio entero en pesos). No esperes a tener todo.
-- Si un precio o un dato queda dudoso, pregúntalo antes de guardarlo.
-- Cuando tengas lo esencial (nombre, qué vende, al menos un producto con precio, ciudad, envíos, pagos y horario), resume en pocas líneas lo que guardaste y pregunta si falta o hay que corregir algo. Si dice que está bien, llama abrir_negocio.
-- abrir_negocio te devuelve el link de WhatsApp. Dáselo tal cual, explica que sus clientes lo abren para hablar con su agente, y cuéntale que desde ahora puede pedirte cosas como reglas ("nunca prometas fechas de entrega"), cambios de precios o ver sus pedidos.
-- Si abrir_negocio dice que falta algo, pídeselo al Dueño con naturalidad. Si abre y trae algo en convieneCompletar, menciónaselo sin insistir.`
+- Pregunta solo lo que falta: cada herramienta te dice qué falta para abrir, qué ya está en la tarjeta y qué conviene preguntar. No preguntes lo que ya está guardado o en la tarjeta. Si no sabes cómo se llama el Negocio, pregúntalo.
+- Si una herramienta dice que algo está en la tarjeta, recuérdale el botón. Si dice que el Dueño no escribió una cifra, pregúntasela.
+- Cuando el Dueño diga que abramos, llama abrir_negocio. Si dice que falta algo, pídeselo con naturalidad; si eso está en la tarjeta, pídele que toque el botón. Si abre y trae algo en convieneCompletar, menciónaselo sin insistir.
+- abrir_negocio te devuelve el link de WhatsApp. Dáselo tal cual, explica que sus clientes lo abren para hablar con su agente, y cuéntale que desde ahora puede pedirte cosas como reglas ("cuando un pedido sea para fuera de mi ciudad, ábreme un Caso"), cambios de precios o ver sus pedidos.`
   }
-
 
   return `${comunes}
 
