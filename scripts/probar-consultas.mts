@@ -12,6 +12,10 @@ config({ path: '.env.local', quiet: true })
 
 const { TIPOS_DE_MOTIVO } = await import('../src/db/esquema')
 const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = await import('../src/nucleo/consultas/catalogo')
+const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
+const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await import('./consultas-de-prueba.mjs')
+type TipoDeSalida = import('../src/nucleo/consultas/tipos').TipoDeSalida
+type ErrorDeConsulta = import('../src/nucleo/consultas/tipos').ErrorDeConsulta
 
 const q = neon(process.env.DATABASE_URL!)
 const igual = (a: Iterable<string>, b: Iterable<string>) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort())
@@ -71,6 +75,83 @@ try {
   const [chequeo] = (await q.query(`select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'capacidades_faltantes_tipo'`)) as { def: string }[]
   const enElCheck = [...(chequeo?.def ?? '').matchAll(/'([a-z_]+)'::text/g)].map((m) => m[1])
   afirmar('3 CHECK: capacidades_faltantes.tipo acepta exactamente TIPOS_DE_MOTIVO', igual(enElCheck, TIPOS_DE_MOTIVO), { enElCheck, TIPOS_DE_MOTIVO })
+
+  console.log('\n=== 4. El validador ===')
+  const valida = async (sql: string, salida: TipoDeSalida) => validarConsulta(sql, salida)
+  for (const [id, salida, sql] of BUENAS_DE_M2) {
+    const r = await valida(sql, salida)
+    afirmar(`4 buena de M2: ${id} pasa como ${salida}`, !esErrorDeConsulta(r), esErrorDeConsulta(r) ? explicar(r) : undefined)
+  }
+  const ultimas24 = await valida("select count(*) as valor from clientes c, hoy where c.ultimo_mensaje > hoy.ahora - interval '24 hours'", 'numero')
+  afirmar('4 buena: "las últimas 24 horas" con hoy.ahora menos un intervalo pasa', !esErrorDeConsulta(ultimas24), esErrorDeConsulta(ultimas24) ? explicar(ultimas24) : undefined)
+  const masVendido = await valida('select producto as etiqueta, sum(cantidad) as valor from lineas_de_pedido where cuenta_como_venta group by producto order by valor desc limit 1', 'serie')
+  afirmar(
+    '4 buena: "el producto más vendido" sobre lineas_de_pedido pasa, usa sus campos y repite el orden afuera',
+    !esErrorDeConsulta(masVendido) && masVendido.usa.includes('lineas_de_pedido.cantidad') && JSON.stringify(masVendido.orden) === JSON.stringify([{ columna: 'valor', descendente: true }]),
+    masVendido,
+  )
+
+  const B = '00000000-0000-4000-8000-00000000000b'
+  const rechazos: [string, string, TipoDeSalida, ErrorDeConsulta['tipo']][] = [
+    ['el ataque de #8', ataqueDe8(B), 'numero', 'no_permitido'],
+    ...variantesDelAtaque(B).map(([nombre, sql]): [string, string, TipoDeSalida, ErrorDeConsulta['tipo']] => [`variante del ataque ${nombre}`, sql, 'numero', 'no_permitido']),
+    ['SET', "SET app.negocio_id = 'x'", 'numero', 'no_permitido'],
+    ['RESET', 'RESET ALL', 'numero', 'no_permitido'],
+    ['SET LOCAL ROLE', 'SET LOCAL ROLE neondb_owner', 'numero', 'no_permitido'],
+    ['public.pedidos', 'select count(*) as valor from public.pedidos', 'numero', 'no_permitido'],
+    ['pg_catalog.pg_roles', 'select rolname from pg_catalog.pg_roles', 'filas', 'no_permitido'],
+    ['pg_class sin esquema', 'select relname from pg_class', 'filas', 'dato_inexistente'],
+    ['information_schema', 'select table_name from information_schema.tables', 'filas', 'no_permitido'],
+    ['pg_sleep', 'select pg_sleep(5) as valor from pedidos', 'numero', 'no_permitido'],
+    ['pg_read_file', "select pg_read_file('/etc/passwd') as valor from pedidos", 'numero', 'no_permitido'],
+    ['now()', "select count(*) as valor from pedidos where creado > now() - interval '1 day'", 'numero', 'no_permitido'],
+    ['current_date', 'select count(*) as valor from pedidos where dia_local = current_date', 'numero', 'no_permitido'],
+    ['INSERT', "insert into pedidos (id) values ('x')", 'numero', 'no_permitido'],
+    ['UPDATE', 'update pedidos set total = 0', 'numero', 'no_permitido'],
+    ['DELETE', 'delete from pedidos', 'numero', 'no_permitido'],
+    ['DELETE dentro de una CTE', 'with x as (delete from pedidos returning id) select count(*) as valor from x', 'numero', 'no_permitido'],
+    ['FOR UPDATE', 'select id from pedidos for update', 'filas', 'no_permitido'],
+    ['SELECT INTO', 'select id into nueva from pedidos', 'filas', 'no_permitido'],
+    ['WITH RECURSIVE', 'with recursive r as (select 1 as n from hoy union all select n + 1 from r where n < 5) select n from r', 'filas', 'no_permitido'],
+    ['dos sentencias', 'select count(*) as valor from pedidos; select count(*) as valor from pedidos', 'numero', 'no_permitido'],
+    ['EXPLAIN', 'explain select id from pedidos', 'filas', 'no_permitido'],
+    ['COPY', "copy pedidos to '/tmp/x'", 'filas', 'no_permitido'],
+    ['cast a regclass', "select 'pedidos'::regclass as valor from pedidos", 'numero', 'no_permitido'],
+    ['operador jsonb', 'select items -> 0 as x from pedidos', 'filas', 'no_permitido'],
+    ['una CTE con el nombre de una fuente', 'with pedidos as (select 1 as x from hoy) select x from pedidos', 'filas', 'no_permitido'],
+    ['un parámetro', 'select id from pedidos where id = $1', 'filas', 'no_permitido'],
+    ['TABLESAMPLE', 'select id from pedidos tablesample system (10)', 'filas', 'no_permitido'],
+    ['VALUES como consulta', 'values (1), (2)', 'filas', 'no_permitido'],
+    ['VALUES con una función prohibida', 'select x from (values (pg_sleep(1))) as v(x)', 'filas', 'no_permitido'],
+    ['AT TIME ZONE', "select (creado at time zone 'America/Bogota')::date as d from pedidos", 'filas', 'definicion_del_nucleo'],
+    ["el literal 'America/Bogota'", "select count(*) as valor from pedidos where ciudad <> 'America/Bogota'", 'numero', 'definicion_del_nucleo'],
+    ["creado + interval '5 hours'", "select count(*) as valor from pedidos where creado + interval '5 hours' > hoy_local", 'numero', 'definicion_del_nucleo'],
+    ["date_trunc sobre creado menos interval '5 hours'", "select date_trunc('day', creado) - interval '5 hours' as d from pedidos", 'filas', 'definicion_del_nucleo'],
+    ['clientes.telefono', 'select telefono from clientes', 'filas', 'dato_inexistente'],
+    ['p.direccion calificada', 'select p.direccion from pedidos p', 'filas', 'dato_inexistente'],
+    ['texto de conversaciones', 'select texto from conversaciones', 'filas', 'dato_inexistente'],
+    ['una fuente que no existe', 'select id from usuarios', 'filas', 'dato_inexistente'],
+    ['select 0 as valor', 'select 0 as valor from hoy', 'numero', 'sin_datos'],
+    ['avg(0)', 'select avg(0) as valor from hoy', 'numero', 'sin_datos'],
+    ['numero con dos columnas', 'select count(*) as valor, count(*) as otro from pedidos', 'numero', 'forma'],
+    ['serie sin etiqueta', 'select ciudad, count(*) as valor from pedidos group by 1', 'serie', 'forma'],
+    ['filas con *', 'select * from pedidos', 'filas', 'forma'],
+    ['sintaxis', 'select from where', 'filas', 'sintaxis'],
+    ...ESCAPES_DE_12.map(([nombre, sentencias]): [string, string, TipoDeSalida, ErrorDeConsulta['tipo']] => [
+      `escape de #12: ${nombre}`,
+      sentencias.join('; '),
+      'filas',
+      nombre === 'leer pg_authid' ? 'dato_inexistente' : 'no_permitido',
+    ]),
+  ]
+  for (const [nombre, sql, salida, tipo] of rechazos) {
+    const r = await valida(sql, salida)
+    afirmar(`4 rechaza ${nombre} como ${tipo}`, esErrorDeConsulta(r) && r.tipo === tipo, esErrorDeConsulta(r) ? r : 'pasó')
+  }
+  const sinPermitidas = await valida('select now() as valor from pedidos', 'numero')
+  afirmar('4 el error de una función dice cuáles sí se permiten', esErrorDeConsulta(sinPermitidas) && sinPermitidas.tipo === 'no_permitido' && sinPermitidas.permitidas.includes('count') && explicar(sinPermitidas).includes('hoy.ahora'), sinPermitidas)
+  const ordenAdentro = await valida('select ciudad as etiqueta, count(*) as valor from pedidos group by ciudad order by count(*) desc', 'serie')
+  afirmar('4 un ORDER BY que no nombra una salida pasa y no se repite afuera', !esErrorDeConsulta(ordenAdentro) && ordenAdentro.orden.length === 0, ordenAdentro)
 } catch (e) {
   afirmar('probar-consultas terminó sin error inesperado', false, e)
 } finally {
