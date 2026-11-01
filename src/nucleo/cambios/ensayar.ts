@@ -17,7 +17,7 @@ import type { Revision } from '../salida/revisar'
 
 export type MensajeDeClienteId = Marca<string, 'MensajeDeClienteId'>
 
-const ORDEN = { describir: 0, conversaciones: 1 } as const satisfies Record<ProfundidadDeVistaPrevia, number>
+const ORDEN = { describir: 0, panel: 1, conversaciones: 2 } as const satisfies Record<ProfundidadDeVistaPrevia, number>
 
 /** Pura. La más honda de los tipos que toca la escritura, también de lo que quita. */
 export function profundidadDe(hoy: EstadoDelNegocio, escritura: Escritura): ProfundidadDeVistaPrevia {
@@ -223,7 +223,7 @@ export async function vistaPreviaDe(
   motores: Motores = MOTORES,
   relojTotalMs: number = MUESTRAS.relojTotalMs,
 ): Promise<{ readonly guardada: VistaPreviaGuardada; readonly gasto: GastoDelEnsayo }> {
-  if (profundidadDe(vigente, escritura) === 'describir') return { guardada: { lineas, advertencias: [], conversaciones: null }, gasto: { llamadas: 0, usd: 0, ms: 0 } }
+  if (profundidadDe(vigente, escritura) !== 'conversaciones') return { guardada: { lineas, advertencias: [], conversaciones: null }, gasto: { llamadas: 0, usd: 0, ms: 0 } }
   try {
     return await ensayarConversaciones(vigente, escritura, lineas, motores, Date.now() + relojTotalMs)
   } catch (e) {

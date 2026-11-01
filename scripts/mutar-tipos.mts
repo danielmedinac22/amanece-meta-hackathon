@@ -83,6 +83,18 @@ const MUTACIONES: readonly Mutacion[] = [
     despues: "  readonly corregido: 'no' | 'si' | 'respaldo'\n  readonly texto: string\n}",
   },
   {
+    nombre: 'la consulta de una Sección en lo que escribe el Agente del dueño',
+    archivo: ELEMENTOS,
+    antes: "type SoloDelRedactor = 'consulta'",
+    despues: 'type SoloDelRedactor = never',
+  },
+  {
+    nombre: 'seccion con describir en VISTA_PREVIA',
+    archivo: ELEMENTOS,
+    antes: "  seccion: 'panel',\n  indicador: 'panel',",
+    despues: "  seccion: 'describir',\n  indicador: 'panel',",
+  },
+  {
     nombre: 'un estado de pedido sin decir si está abierto',
     archivo: 'src/nucleo/clientes/turno.ts',
     antes: 'enviado: true, novedad: true, entregado: false,',

@@ -4,6 +4,8 @@
  */
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { COLUMNAS, esFuente, VERSION_DEL_CATALOGO } from '../consultas/catalogo'
+import type { ConsultaGuardada } from '../consultas/tipos'
 import type { CasoId, ClienteId, Marca } from '../identidad'
 import { PROMESAS, type MotivoDeRevision } from '../salida/revisar'
 
@@ -113,18 +115,24 @@ export type Elemento =
   | { readonly tipo: 'pregunta'; readonly pregunta: string; readonly respuesta: string }
   /** Clave `producto:<id>`: el id es el `productoId` de `pedidos.items`. */
   | { readonly tipo: 'producto'; readonly nombre: string; readonly descripcion: string; readonly precio: Monto; readonly activo: boolean }
+  /** Una lista en el Panel. Solo la ve el Dueño. */
+  | { readonly tipo: 'seccion'; readonly nombre: string; readonly queQuiereVer: string; readonly consulta: ConsultaGuardada<'filas'> }
+  /** Un número o una serie en el Panel. Solo lo ve el Dueño. */
+  | { readonly tipo: 'indicador'; readonly nombre: string; readonly queQuiereVer: string; readonly consulta: ConsultaGuardada<'numero' | 'serie'> }
 
 export type TipoDeElemento = Elemento['tipo']
 export type ElementoDe<T extends TipoDeElemento> = Extract<Elemento, { tipo: T }>
-export type EntradaDe<T extends TipoDeElemento> = Omit<ElementoDe<T>, 'tipo'>
+/** Lo que solo produce `redactarConsulta`: el Agente del dueño no escribe SQL. */
+type SoloDelRedactor = 'consulta'
+export type EntradaDe<T extends TipoDeElemento> = Omit<ElementoDe<T>, 'tipo' | SoloDelRedactor>
 
 export type Alcance = 'clientes' | 'panel'
 /**
- * `cotizar` y `panel` salen hasta que un tipo los use: `precio` (semanas 3-4) vuelve con `cotizar` sobre los últimos
- * pedidos, y Sección e Indicador con `panel` el 2-nov. Un `producto` que cambia de precio se describe: no recalcula
- * pedidos guardados.
+ * `cotizar` sale hasta que un tipo lo use: `precio` (semanas 3-4) vuelve con `cotizar` sobre los últimos pedidos. Un
+ * `producto` que cambia de precio se describe: no recalcula pedidos guardados. `panel` corre la consulta sobre los
+ * datos reales en solo lectura.
  */
-export type ProfundidadDeVistaPrevia = 'describir' | 'conversaciones'
+export type ProfundidadDeVistaPrevia = 'describir' | 'panel' | 'conversaciones'
 
 export const VISTA_PREVIA = {
   regla: 'conversaciones',
@@ -132,6 +140,8 @@ export const VISTA_PREVIA = {
   dato: 'describir',
   pregunta: 'describir',
   producto: 'describir',
+  seccion: 'panel',
+  indicador: 'panel',
 } as const satisfies Record<TipoDeElemento, ProfundidadDeVistaPrevia>
 
 export type Problema =
@@ -282,7 +292,39 @@ const regla = (e: typeof escenario | typeof escenarioDeEntrada) =>
     escenarios: z.object({ activan: noVacia(e).describe('Al menos un mensaje en el que la regla aplica'), noActivan: z.array(e) }),
   })
 
+const unidad = z.discriminatedUnion('tipo', [z.object({ tipo: z.literal('cantidad'), nombre: z.string() }), z.object({ tipo: z.literal('dinero') }), z.object({ tipo: z.literal('porcentaje') })])
+
+/** Lo guardado de una consulta. No lo ve ningún modelo: lo lee `leerEstado` del jsonb y lo revisa `escribir`. */
+function consultaGuardada<S extends 'filas' | 'numero' | 'serie'>(salida: z.ZodType<ConsultaGuardada<S>['salida']>) {
+  return z
+    .object({ sql: z.string(), enPalabras: z.string(), supuestos: z.array(z.string()), catalogo: z.number().int(), usa: z.array(z.string()), salida })
+    .transform((c) => c as unknown as ConsultaGuardada<S>)
+}
+
+const ENTRADAS_DEL_PANEL = {
+  seccion: z.object({
+    nombre: texto('Un nombre corto para el Panel, por ejemplo "Pedidos con novedad"'),
+    queQuiereVer: texto('Lo que quiere ver el Dueño, en sus palabras'),
+  }),
+  indicador: z.object({
+    nombre: texto('Un nombre corto para el Panel, por ejemplo "Confirmados por día"'),
+    queQuiereVer: texto('Lo que quiere medir el Dueño, en sus palabras'),
+  }),
+} as const
+
+const ESQUEMAS_GUARDADOS_DEL_PANEL = [
+  ENTRADAS_DEL_PANEL.seccion.extend({
+    tipo: z.literal('seccion'),
+    consulta: consultaGuardada<'filas'>(z.object({ tipo: z.literal('filas'), columnas: z.array(z.object({ columna: z.string(), titulo: z.string() })) })),
+  }),
+  ENTRADAS_DEL_PANEL.indicador.extend({
+    tipo: z.literal('indicador'),
+    consulta: consultaGuardada<'numero' | 'serie'>(z.discriminatedUnion('tipo', [z.object({ tipo: z.literal('numero'), unidad }), z.object({ tipo: z.literal('serie'), unidad })])),
+  }),
+] as const
+
 const ENTRADAS = {
+  ...ENTRADAS_DEL_PANEL,
   regla: regla(escenarioDeEntrada),
   voz: z.object({
     nombreDelAgente: z
@@ -316,6 +358,7 @@ export const ESQUEMA_DE_ELEMENTO = z.discriminatedUnion('tipo', [
   ENTRADAS.dato.extend({ tipo: z.literal('dato') }),
   ENTRADAS.pregunta.extend({ tipo: z.literal('pregunta') }),
   ENTRADAS.producto.extend({ tipo: z.literal('producto') }),
+  ...ESQUEMAS_GUARDADOS_DEL_PANEL,
 ])
 
 // ══ Definiciones ═══════════════════════════════════════════════════════════════════════════════
@@ -412,6 +455,28 @@ const ordenDelPunto = (p: PuntoDeCumplimiento) => ORDEN_DEL_PUNTO[p]
 
 /** El esquema con que el Agente del dueño pone un Elemento de un tipo: los campos del tipo y `reemplaza`. */
 export const ENTRADA_PARA_PONER = ENTRADAS
+
+type DelPanel = ElementoDe<'seccion' | 'indicador'>
+
+/**
+ * Determinista y sin base, como toda `validar`: no reparsea el SQL (eso lo hace el Panel al pintarlo). Revisa el
+ * nombre, la versión del catálogo y que cada campo que usa siga en el catálogo.
+ */
+function validarDelPanel(e: DelPanel, clave: Clave, estado: Vigentes): readonly Problema[] {
+  const problemas: Problema[] = []
+  if (!e.nombre.trim()) problemas.push(invalido('nombre', 'Necesita un nombre para el Panel'))
+  const otros: readonly { readonly clave: Clave; readonly elemento: DelPanel }[] = [...estado.vigentes('seccion'), ...estado.vigentes('indicador')]
+  if (otros.some((v) => v.clave !== clave && normalizar(v.elemento.nombre) === normalizar(e.nombre))) problemas.push(invalido('nombre', 'Ya hay algo en el Panel con ese nombre: para cambiarlo, usa reemplaza con su clave'))
+  if (e.consulta.catalogo !== VERSION_DEL_CATALOGO) problemas.push(invalido('consulta', 'La consulta es de otro catálogo: pídela de nuevo'))
+  for (const u of e.consulta.usa) {
+    const [fuente, campo] = u.split('.')
+    if (!esFuente(fuente) || !COLUMNAS[fuente].includes(campo)) problemas.push({ tipo: 'referencia_rota', clave: u })
+  }
+  return problemas
+}
+
+const delPanel = (etiqueta: string) => (antes: DelPanel | null, despues: DelPanel | null) =>
+  despues ? `${etiqueta} ${antes ? '' : 'nueva '}«${despues.nombre}»: ${despues.consulta.enPalabras}` : `Quitar ${etiqueta.toLowerCase()} «${antes?.nombre ?? ''}»`
 
 export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElemento<T> } = {
   regla: {
@@ -521,6 +586,27 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
       return `Quitar el producto ${nombre}`
     },
   },
+  seccion: {
+    contrato: 1,
+    entrada: ENTRADAS.seccion,
+    alcance: 'panel',
+    claveFija: () => null,
+    referencias: () => [],
+    /** Nada de una Sección llega a un Cliente: no pasa por `revisarTextoDelDueno` ni por `nombresAjenos`. */
+    textos: () => [],
+    validar: validarDelPanel,
+    describir: delPanel('Sección'),
+  },
+  indicador: {
+    contrato: 1,
+    entrada: ENTRADAS.indicador,
+    alcance: 'panel',
+    claveFija: () => null,
+    referencias: () => [],
+    textos: () => [],
+    validar: validarDelPanel,
+    describir: delPanel('Indicador'),
+  },
 }
 
 /** Una fila de `DEFINICIONES` vista sobre la unión: para quien recorre Elementos de cualquier tipo. */
@@ -541,6 +627,10 @@ export function describirVigente(e: Elemento, estado: Vigentes): string {
       return `Pregunta frecuente: «${e.pregunta} ${e.respuesta}»`
     case 'producto':
       return `Producto ${e.nombre}, ${pesos(e.precio)}${e.activo ? '' : ', que no se vende'}`
+    case 'seccion':
+      return `Sección «${e.nombre}»: ${e.consulta.enPalabras}`
+    case 'indicador':
+      return `Indicador «${e.nombre}»: ${e.consulta.enPalabras}`
   }
 }
 
@@ -558,6 +648,12 @@ type VaAlModelo = { [K in keyof typeof CUANDO]: (typeof CUANDO)[K]['evalua'] ext
 type _SoloTemaVaAlModelo = Es<[VaAlModelo] extends ['tema'] ? (['tema'] extends [VaAlModelo] ? true : false) : false>
 type _DatoSoloSeDescribe = Es<(typeof VISTA_PREVIA)['dato'] extends 'describir' ? true : false>
 type _EsquemaDaElementos = Es<[z.output<typeof ESQUEMA_DE_ELEMENTO>] extends [Elemento] ? true : false>
+/** El Agente del dueño no escribe SQL: lo que pone de una Sección o un Indicador no trae la consulta. */
+type _PanelSinConsultaEnLaEntrada = Es<'consulta' extends keyof EntradaDe<'seccion'> | keyof EntradaDe<'indicador'> ? false : true>
+/** Una consulta guardada no se arma a mano: es una marca. */
+type _ConsultaConMarca = Es<{ sql: string } extends ElementoDe<'indicador'>['consulta'] ? false : true>
+/** Lo del Panel solo lo ve el Dueño. */
+type _PanelConAlcancePanel = Es<(typeof VISTA_PREVIA)['seccion' | 'indicador'] extends 'panel' ? true : false>
 type Apagados<T> = { [K in keyof T]: T[K] extends 'no' ? K : never }[keyof T]
 type Atrasados = Apagados<(typeof SE_CUMPLE_HOY)['cuando']> | Apagados<(typeof SE_CUMPLE_HOY)['efecto']>
 type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedir_dato' | 'no_vender'
@@ -572,4 +668,7 @@ export type ComprobacionesDeElementos = [
   _DatoSoloSeDescribe,
   _EsquemaDaElementos,
   _AtrasadosSonLosDelPlanB,
+  _PanelSinConsultaEnLaEntrada,
+  _ConsultaConMarca,
+  _PanelConAlcancePanel,
 ]
