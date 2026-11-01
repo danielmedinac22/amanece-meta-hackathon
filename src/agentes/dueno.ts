@@ -10,6 +10,7 @@ import type { SalidaConTarjeta } from '@/negocio/partes-del-hilo'
 import {
   abrirEnElAlta,
   armarLectura,
+  buscarProducto,
   descartar,
   ESQUEMA_DEL_PEDIDO,
   EXTRACTOR,
@@ -49,6 +50,7 @@ const NO_SE_LEYO_EN_PALABRAS = {
 } as const satisfies Record<NoSeLeyo['tipo'], string>
 
 const lista = (cosas: readonly string[]) => cosas.join('; ')
+const cosas = (n: number) => (n === 1 ? '1 cosa' : `${n} cosas`)
 
 /** Lo que falta para abrir, como lo lee el modelo: lo que bloquea, lo que está en la tarjeta y lo que conviene preguntar. */
 function faltaEnElResumen({ bloquea, avisa }: { readonly bloquea: readonly Falta[]; readonly avisa: readonly Falta[] }): string {
@@ -162,9 +164,11 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         await registrarTurno('dueno', negocioId, { inputTokens: uso.entrada, outputTokens: uso.salida }, Date.now() - inicio).catch((e) => console.warn('[dueno] no pude registrar el extractor', e))
         const r = await proponerLectura(ctx, armarLectura(await leerEstado(negocioId), pagina, extraido))
         const leido = r.tarjeta
-          ? `Leí ${r.leidos} cosas de ${pagina.fuente} y quedaron en una tarjeta que el Dueño confirma con el botón «Están bien y no falta ninguno». No las guardes tú.`
-          : `De ${pagina.fuente} no saqué nada nuevo que se pueda usar.`
-        const descartes = r.descartados ? ` Dejé por fuera ${r.descartados} que no pude confirmar en la página o que ya estaban.` : ''
+          ? `Leí ${cosas(r.leidos)} de ${pagina.fuente} y quedaron en una tarjeta que el Dueño confirma con el botón «Están bien y no falta ninguno». No las guardes tú.`
+          : r.noSeArmo
+            ? `Leí ${cosas(r.leidos)} de ${pagina.fuente}, pero no pude armar la tarjeta: ${r.noSeArmo}`
+            : `De ${pagina.fuente} no saqué nada nuevo que se pueda usar.`
+        const descartes = r.descartados ? ` Dejé por fuera ${cosas(r.descartados)} que no pude confirmar en la página, que ya estaban o que no cabían.` : ''
         return { resumen: `${leido}${descartes} ${await faltaAhora()}`, tarjeta: r.tarjeta }
       }),
     toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
@@ -228,7 +232,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       conTarjeta(async () => {
         const estado = await leerEstado(negocioId)
         const quiere = productos.map((p): QuierePoner => {
-          const mismo = estado.vigentes('producto').find((v) => normalizar(v.elemento.nombre) === normalizar(p.nombre))
+          const mismo = buscarProducto(estado, p.nombre)
           return { tipo: 'poner', elemento: { tipo: 'producto', nombre: p.nombre, descripcion: p.descripcion ?? mismo?.elemento.descripcion ?? '', precio: comoMonto(Math.round(p.precio)), activo: true }, reemplaza: mismo?.clave ?? null }
         })
         return enPalabras(await guardarEnElAlta(ctx, { nombre: null, rubro: null, quiere }))

@@ -47,7 +47,7 @@ export { abrirEnElAlta, guardarEnElAlta, type ResultadoDelAlta } from './alta'
 export { queFaltaParaAbrir, type Falta } from './politica'
 export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 export type { Ensayo, LoQuePaso, Muestra, VistaPreviaDeConversaciones, VistaPreviaGuardada } from './ensayar'
-export { armarLectura, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
+export { armarLectura, buscarProducto, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
 
@@ -220,17 +220,21 @@ export async function proponerRespuestaAlCaso(caso: string, texto: string): Prom
 /**
  * La tarjeta de lo leído de un enlace: espera el botón aunque el Negocio se esté armando. Pasa por `traducir` ítem por
  * ítem (lo que no cabe o no pasa `revisarTextoDelDueno` se cae y se cuenta) y lo que queda va en una sola propuesta,
- * que descarta la lectura pendiente anterior.
+ * que descarta la lectura pendiente anterior. Si esa propuesta no se arma, `noSeArmo` dice por qué: lo leído no se
+ * vuelve «nada nuevo».
  */
-export async function proponerLectura(ctx: ContextoDelDueno, lectura: Lectura): Promise<{ readonly tarjeta: TarjetaDeAprobacion | null; readonly leidos: number; readonly descartados: number }> {
+export async function proponerLectura(
+  ctx: ContextoDelDueno,
+  lectura: Lectura,
+): Promise<{ readonly tarjeta: TarjetaDeAprobacion | null; readonly leidos: number; readonly descartados: number; readonly noSeArmo: string | null }> {
   const estado = await leerEstado(ctx.negocio)
   const quedan: QuierePoner[] = []
   for (const q of lectura.quiere) if (!('tipo' in (await traducir(estado, [q])))) quedan.push(q)
   const descartados = lectura.descartados + lectura.quiere.length - quedan.length
   const [primero, ...resto] = quedan
-  if (!primero) return { tarjeta: null, leidos: 0, descartados }
+  if (!primero) return { tarjeta: null, leidos: 0, descartados, noSeArmo: null }
   const r = await proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, { origen: 'lectura', fuente: lectura.fuente, quiere: [primero, ...resto] })
-  return { tarjeta: r.tarjeta, leidos: r.tarjeta ? quedan.length : 0, descartados }
+  return { tarjeta: r.tarjeta, leidos: quedan.length, descartados, noSeArmo: r.tarjeta ? null : r.resumen }
 }
 
 type Quien = { readonly negocio: NegocioId; readonly pedidoPor: DuenoId | null }
@@ -257,7 +261,7 @@ type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capa
 const esDelPuente = (q: Quiere): q is QuiereDelPuente => q.tipo === 'seccion' || q.tipo === 'indicador'
 
 async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
-  if (pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
+  if (pedido.origen !== 'lectura' && pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
   if (pedido.quiere.some(esDelPuente) && pedido.quiere.length > 1) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Una Sección o un Indicador van solos, en su propia propuesta' }])
   const traducida = await traducirPedido(quien, pedido)
   if ('desenlace' in traducida) return traducida

@@ -15,7 +15,8 @@ const { db, esquema } = await import('../src/db')
 const { lectorDeGuion } = await import('../src/lib/leer-enlace')
 const { guardarEnElHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
 const { aprobar, guardarEnElAlta, proponerLectura, queFaltaParaAbrir, lecturaPendiente } = await import('../src/nucleo/cambios')
-const { armarLectura } = await import('../src/nucleo/cambios/lectura')
+const { armarLectura, buscarProducto, MAXIMO_DE_PRODUCTOS_LEIDOS } = await import('../src/nucleo/cambios/lectura')
+const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
 const { armarEstado, leerEstado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
@@ -34,10 +35,10 @@ const PAGINA = `<html><title>Café Trigo</title><body>
 </body></html>`
 const EXTRAIDO: LoExtraido = {
   productos: [
-    { nombre: 'Capuchino', precio: 8500, descripcion: 'Con leche espumada' },
-    { nombre: 'Latte', precio: 8000, descripcion: '' },
-    { nombre: 'Molido 500 g', precio: 32000, descripcion: 'Combo 2 × $50.000' },
-    { nombre: 'Tinto doble', precio: 4500, descripcion: '' },
+    { nombre: 'Capuchino', precio: 8500 },
+    { nombre: 'Latte', precio: 8000 },
+    { nombre: 'Molido 500 g', precio: 32000 },
+    { nombre: 'Tinto doble', precio: 4500 },
   ],
   datos: { ciudad: 'Pereira', envios: 'A todo el país: el envío cuesta $10.000 y llega de 2 a 4 días hábiles.' },
 }
@@ -71,9 +72,36 @@ try {
     const nombres = l.quiere.flatMap((q) => (q.elemento.tipo === 'producto' ? [q.elemento.nombre] : []))
     afirmar('armarLectura: un precio que no está en la página se cae (Tinto doble a 4.500)', !nombres.includes('Tinto doble'), nombres)
     afirmar('armarLectura: un producto que es el mismo que uno vigente se cae (Capuchino)', !nombres.includes('Capuchino') && nombres.includes('Latte'), nombres)
-    const molido = l.quiere.find((q) => q.elemento.tipo === 'producto' && q.elemento.nombre === 'Molido 500 g')?.elemento
-    afirmar('armarLectura: una descripción con cifras queda vacía', molido?.tipo === 'producto' && molido.descripcion === '', molido)
+    afirmar('armarLectura: la descripción de todo lo leído queda vacía', l.quiere.every((q) => q.elemento.tipo !== 'producto' || q.elemento.descripcion === ''), l.quiere)
     afirmar('armarLectura: cuenta lo que descartó', l.descartados === 2, l.descartados)
+
+    const vigente = (nombre: string) => ({ clave: el.comoClave('producto:1'), version: el.comoVersion(1), origen: { tipo: 'entrevista' }, elemento: { tipo: 'producto', nombre, descripcion: '', precio: el.comoMonto(9000), activo: true } }) as never
+    const conCafe = armarEstado(identidad, el.comoVersion(1), [vigente('Café')])
+    const cafe500: LoExtraido = { productos: [{ nombre: 'Café 500 g', precio: 32000 }], datos: {} }
+    afirmar('identidad: «Café» vigente no se come «Café 500 g»', armarLectura(conCafe, pagina, cafe500).quiere.length === 1 && buscarProducto(conCafe, 'Café 500 g') === null)
+    const conMolino = armarEstado(identidad, el.comoVersion(1), [vigente('Molino manual de café')])
+    afirmar('identidad: «Molino manual» es el mismo que «Molino manual de café»', buscarProducto(conMolino, 'Molino manual')?.elemento.nombre === 'Molino manual de café')
+
+    const muchos: LoExtraido = { productos: Array.from({ length: MAXIMO_DE_PRODUCTOS_LEIDOS + 5 }, (_, i) => ({ nombre: `Bebida ${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, precio: 8000 })), datos: {} }
+    const tope = armarLectura(armarEstado(identidad, el.comoVersion(1), []), pagina, muchos)
+    afirmar(`armarLectura: pasa de ${MAXIMO_DE_PRODUCTOS_LEIDOS} productos y lo que sobra cuenta en descartados`, tope.quiere.length === MAXIMO_DE_PRODUCTOS_LEIDOS && tope.descartados === 5, { quiere: tope.quiere.length, descartados: tope.descartados })
+  }
+
+  console.log('\n=== Doce productos y cinco datos dejan una tarjeta con los diecisiete ===')
+  {
+    const ctx12 = await negocioArmando('D')
+    const url = 'https://cafedoce.co'
+    const doce = Array.from({ length: 12 }, (_, i) => ({ nombre: `Origen ${['Huila', 'Nariño', 'Cauca', 'Tolima', 'Quindío', 'Caldas', 'Antioquia', 'Santander', 'Boyacá', 'Cesar', 'Risaralda', 'Valle'][i]}`, precio: 20000 + i * 1000 }))
+    const html = `<html><title>Café Doce</title><body>${doce.map((p) => `<p>${p.nombre} · $${p.precio.toLocaleString('es-CO')}</p>`).join('')}
+<p>Café de doce regiones. Estamos en Pereira. Abrimos de lunes a sábado. Enviamos a todo el país. Pagos con Nequi.</p></body></html>`
+    const extraido: LoExtraido = { productos: doce, datos: { descripcion: 'Café de doce regiones', ciudad: 'Pereira', horario: 'De lunes a sábado', envios: 'A todo el país', pagos: 'Nequi' } }
+    const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, ctx12.negocio))
+    const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, ctx12.dueno))
+    const agente = crearAgenteDelDueno(ctx12, { negocio, dueno }, { lector: lectorDeGuion({ [url]: html }), extractor: async () => ({ extraido, uso: { entrada: 0, salida: 0 } }) })
+    const salida = (await agente.tools.leer_enlace.execute!({ url }, { toolCallId: 'prueba', messages: [], context: {} })) as { resumen: string; tarjeta: { propuesta: string } | null }
+    const [fila12] = await propuestasDe(ctx12)
+    afirmar('doce y cinco: la tarjeta espera el botón con los 17', salida.tarjeta !== null && fila12?.estado === 'espera_al_dueno' && fila12.escritura.elementos.length === 17, { tarjeta: salida.tarjeta, elementos: fila12?.escritura.elementos.length })
+    afirmar('doce y cinco: el resumen cuenta los 17 y no dice que no sacó nada', salida.resumen.includes('Leí 17 cosas') && !salida.resumen.includes('no saqué'), salida.resumen)
   }
 
   console.log('\n=== Lo leído espera el botón aunque el Negocio se esté armando ===')
@@ -118,6 +146,17 @@ try {
   afirmar('el Latte sigue a 9.000, nunca a 8.000', tras.filter((v) => v.elemento.nombre === 'Latte').every((v) => v.elemento.precio === 9000))
   const falta = queFaltaParaAbrir(await leerEstado(ctx.negocio), null)
   afirmar('queFaltaParaAbrir ya no bloquea por producto_con_precio', !falta.bloquea.some((f) => f.que === 'producto_con_precio'), falta)
+
+  console.log('\n=== guardar_productos encuentra el producto con la misma identidad que la lectura ===')
+  {
+    await dice(ctx, 'El capuchino grande vale 9.500')
+    const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, ctx.negocio))
+    const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, ctx.dueno))
+    const agente = crearAgenteDelDueno(ctx, { negocio, dueno })
+    await agente.tools.guardar_productos.execute!({ productos: [{ nombre: 'Capuchino grande', precio: 9500 }] }, { toolCallId: 'prueba', messages: [], context: {} })
+    const capuchinos = (await productosDe(ctx)).filter((v) => /capuchino/i.test(v.elemento.nombre))
+    afirmar('«Capuchino grande» reemplaza al Capuchino leído: queda uno, a 9.500', capuchinos.length === 1 && capuchinos[0].elemento.precio === 9500, capuchinos.map((v) => [v.elemento.nombre, v.elemento.precio]))
+  }
 
   console.log('\n=== Una segunda lectura descarta la primera ===')
   const otro = await negocioArmando('B')

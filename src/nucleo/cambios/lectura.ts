@@ -11,7 +11,7 @@ import { db, esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import type { PaginaLeida } from '@/lib/leer-enlace'
 import { modelo } from '@/lib/modelo'
-import { valorDelDato, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
+import { valorDelDato, type ElementoVigente, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, definicionDe, ETIQUETA_DEL_DATO, pesos, type CampoDeConocimiento, type Elemento } from '../estado/elementos'
 import { marcar, type DuenoId, type NegocioId, type PropuestaId } from '../identidad'
 import { montosEn } from '../salida/revisar'
@@ -54,15 +54,24 @@ const palabrasDe = (nombre: string) =>
   )
 
 /**
- * Pura. ¿Es el mismo producto? Sí cuando las palabras de uno están todas en el otro («Molino manual» y «Molino manual
- * de café»). «Café 500 g» y «Café 250 g» no lo son. Del prototipo de #29: el modelo no decide la identidad de un producto.
+ * Pura. ¿Es el mismo producto? Sí cuando las palabras de uno están todas en el otro y lo que sobra es como mucho una
+ * palabra sin números («Molino manual» y «Molino manual de café»). «Café» y «Café 500 g» no lo son, ni «Café 500 g» y
+ * «Café 250 g». Del prototipo de #29: el modelo no decide la identidad de un producto.
  */
 export function mismoProducto(a: string, b: string): boolean {
   const x = palabrasDe(a)
   const y = palabrasDe(b)
   if (!x.size || !y.size) return plano(a) === plano(b)
-  const comunes = [...x].filter((w) => y.has(w)).length
-  return comunes >= 1 && (comunes === x.size || comunes === y.size)
+  const [corto, largo] = x.size <= y.size ? [x, y] : [y, x]
+  if (![...corto].every((w) => largo.has(w))) return false
+  const sobra = [...largo].filter((w) => !corto.has(w))
+  return sobra.length <= 1 && !sobra.some((w) => /\d/.test(w))
+}
+
+/** Pura. El producto vigente que es el mismo que `nombre`, primero el de nombre igual. La entrevista, la lectura y la reconciliación lo buscan solo aquí. */
+export function buscarProducto(estado: EstadoDelNegocio, nombre: string): ElementoVigente<'producto'> | null {
+  const vigentes = estado.vigentes('producto')
+  return vigentes.find((v) => plano(v.elemento.nombre) === plano(nombre)) ?? vigentes.find((v) => mismoProducto(v.elemento.nombre, nombre)) ?? null
 }
 
 // ══ Quién decidió un precio ═════════════════════════════════════════════════════════════════════
@@ -106,7 +115,7 @@ export async function numerosDelDueno(dueno: DuenoId): Promise<ReadonlySet<numbe
 
 /** Lo único que vuelve del extractor. No se cree: `armarLectura` lo filtra contra la página. */
 export type LoExtraido = {
-  readonly productos: readonly { readonly nombre: string; readonly precio: number; readonly descripcion: string }[]
+  readonly productos: readonly { readonly nombre: string; readonly precio: number }[]
   readonly datos: Readonly<Partial<Record<CampoDeConocimiento, string>>>
 }
 
@@ -117,7 +126,7 @@ export type Extractor = (pagina: PaginaLeida) => Promise<Extraccion>
 
 const ESQUEMA_DE_LO_EXTRAIDO = z.object({
   productos: z
-    .array(z.object({ nombre: z.string(), precio: z.number().describe('En pesos colombianos, entero, tal como sale en la página'), descripcion: z.string().describe('Una frase corta, sin precios') }))
+    .array(z.object({ nombre: z.string(), precio: z.number().describe('En pesos colombianos, entero, tal como sale en la página') }))
     .describe('Los productos con su precio; sin precio no van'),
   datos: z.object(Object.fromEntries(CAMPOS_DE_CONOCIMIENTO.map((c) => [c, z.string().describe(`${ETIQUETA_DEL_DATO[c]}; vacío si la página no lo dice`)])) as Record<CampoDeConocimiento, z.ZodString>),
 })
@@ -141,28 +150,32 @@ ${pagina.texto}
 
 export type Lectura = { readonly fuente: string; readonly quiere: readonly QuierePoner[]; readonly descartados: number }
 
+/** Lo que cabe en una tarjeta de lectura. Lo armó el código, así que no pasa por el tope de `proponer`, que es del modelo. */
+export const MAXIMO_DE_PRODUCTOS_LEIDOS = 40
+
 /**
  * Pura. De lo extraído, lo que puede ir a la tarjeta contra el estado de ahora:
  *  - un precio que no aparece en la página se cae: el extractor lo inventó;
  *  - un producto que ya está vigente se cae: lo escribió el Dueño y manda lo suyo;
  *  - dos leídos que son el mismo producto quedan en uno;
- *  - una descripción con cifras queda vacía: una cifra que el Dueño no vio no puede respaldar a `revisar`;
+ *  - la descripción queda vacía: la tarjeta no la muestra y el Dueño no confirma lo que no vio;
+ *  - lo que pasa de `MAXIMO_DE_PRODUCTOS_LEIDOS` se cae;
  *  - un dato cuyo campo ya está vigente se cae, y uno con un monto que no está en la página también.
+ * Todo lo que se cae cuenta en `descartados`.
  */
 export function armarLectura(estado: EstadoDelNegocio, pagina: PaginaLeida, extraido: LoExtraido): Lectura {
   const enLaPagina = numerosEn(pagina.texto)
-  const vigentes = estado.vigentes('producto').filter((v) => v.elemento.activo)
   const productos: Extract<Elemento, { tipo: 'producto' }>[] = []
   let descartados = 0
   for (const p of extraido.productos) {
     const nombre = p.nombre.trim()
     const precio = Math.round(p.precio)
-    const repetido = vigentes.some((v) => mismoProducto(v.elemento.nombre, nombre)) || productos.some((q) => mismoProducto(q.nombre, nombre))
-    if (!nombre || precio <= 0 || !enLaPagina.has(precio) || repetido) {
+    const sirve = nombre && precio > 0 && enLaPagina.has(precio) && !buscarProducto(estado, nombre) && !productos.some((q) => mismoProducto(q.nombre, nombre))
+    if (!sirve || productos.length >= MAXIMO_DE_PRODUCTOS_LEIDOS) {
       descartados++
       continue
     }
-    productos.push({ tipo: 'producto', nombre, descripcion: /\d/.test(p.descripcion) ? '' : p.descripcion.trim(), precio: comoMonto(precio), activo: true })
+    productos.push({ tipo: 'producto', nombre, descripcion: '', precio: comoMonto(precio), activo: true })
   }
   const datos = CAMPOS_DE_CONOCIMIENTO.flatMap((campo): Extract<Elemento, { tipo: 'dato' }>[] => {
     const valor = extraido.datos[campo]?.trim()
@@ -178,13 +191,12 @@ export function armarLectura(estado: EstadoDelNegocio, pagina: PaginaLeida, extr
 
 /** Pura. Lo que de una tarjeta de lectura ya no corresponde: el dato cuyo campo el Dueño escribió y el producto que ya está vigente. */
 export function sinLoYaEscrito(estado: EstadoDelNegocio, escritura: Escritura): Escritura {
-  const vigentes = estado.vigentes('producto').filter((v) => v.elemento.activo)
   return {
     ...escritura,
     elementos: escritura.elementos.filter((c) => {
       const e = c.despues
       if (e?.tipo === 'dato') return !valorDelDato(estado, e.campo)
-      if (e?.tipo === 'producto') return !vigentes.some((v) => mismoProducto(v.elemento.nombre, e.nombre))
+      if (e?.tipo === 'producto') return !buscarProducto(estado, e.nombre)
       return true
     }),
   }
