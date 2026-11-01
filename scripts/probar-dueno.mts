@@ -9,6 +9,7 @@
  *
  * Sin argumentos corre todo.
  */
+import { randomBytes } from 'node:crypto'
 import { config } from 'dotenv'
 import { convertToModelMessages } from 'ai'
 import { and, eq, gt, gte, inArray, sql } from 'drizzle-orm'
@@ -20,10 +21,7 @@ process.env.ENVIO_SIMULADO = '1'
 const envios = capturarEnvios()
 
 const { db, esquema } = await import('../src/db')
-const { correrAislado } = await import('../src/lib/aislado')
-const cambios = await import('../src/negocio/cambios')
 const { altaDeDueno } = await import('../src/negocio/alta')
-const { datosDelNegocio } = await import('../src/negocio/datos')
 const { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
 const { mensajeDelDueno, responderEnElHilo, tarjetasDe } = await import('../src/negocio/dueno-chat')
 const { crearAgenteDelDueno, parteDeDatosParaElModelo } = await import('../src/agentes/dueno')
@@ -50,7 +48,6 @@ const quiero = (nombre: string) => seccionesPedidas.length === 0 || seccionesPed
 const titulo = (t: string) => console.log(`\n${'='.repeat(78)}\n${t}\n${'='.repeat(78)}`)
 // --- Preparación ------------------------------------------------------------------------------------
 
-const creadosCambios: string[] = []
 const creadosNegocios: string[] = []
 const creadosDuenos: string[] = []
 const creadosCasos: string[] = []
@@ -82,27 +79,6 @@ const poner = (elemento: Elemento) => ({ tipo: 'poner' as const, elemento, reemp
 
 async function limpiar() {
   titulo('Limpieza')
-  // Lo que el Agente del dueño propuso o aplicó en las conversaciones también se deshace.
-  if (creadosDuenos.length) {
-    const delAgente = await db.select().from(esquema.cambios).where(inArray(esquema.cambios.duenoId, creadosDuenos))
-    for (const c of delAgente) if (!creadosCambios.includes(c.id)) creadosCambios.push(c.id)
-  }
-  // Un Cambio que no se pudo revertir se queda: su `anterior` es la única copia de lo que había antes.
-  const sinRevertir: string[] = []
-  if (creadosCambios.length) {
-    for (const c of await db.select().from(esquema.cambios).where(inArray(esquema.cambios.id, creadosCambios))) {
-      if (c.estado !== 'aplicado') continue
-      await cambios.revertirCambio(marcar.negocio(c.negocioId), c.id).catch((e) => {
-        sinRevertir.push(c.id)
-        afirmar(`limpieza: revirtió el Cambio ${c.id} (${c.tipo})`, false, e)
-      })
-    }
-    const borrables = creadosCambios.filter((id) => !sinRevertir.includes(id))
-    if (borrables.length) {
-      await db.delete(esquema.piezas).where(inArray(esquema.piezas.cambioId, borrables))
-      await db.delete(esquema.cambios).where(inArray(esquema.cambios.id, borrables))
-    }
-  }
   if (negocioDeLaPrueba && versionAlEmpezar !== undefined) {
     await db.delete(esquema.elementos).where(and(eq(esquema.elementos.negocioId, negocioDeLaPrueba), gt(esquema.elementos.version, versionAlEmpezar)))
     await db.update(esquema.negocios).set({ version: versionAlEmpezar }).where(eq(esquema.negocios.id, negocioDeLaPrueba))
@@ -328,48 +304,8 @@ try {
 
   if (quiero('aislamiento')) {
     titulo('6. Aislamiento')
-    const datos = await datosDelNegocio(N)
     const otroNegocio = await negocioAjeno(negocio.codigo)
-    afirmar('6 aislamiento: hay otro Negocio sembrado con Clientes para compararlo', otroNegocio !== null, 'Falta sembrar TRIGO y LADERA: pnpm tsx scripts/sembrar.mts')
-    const marcas = otroNegocio ? (await db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(eq(esquema.clientes.negocioId, otroNegocio.id))).map((c) => c.id) : []
-    afirmar('6 aislamiento: el otro Negocio tiene Clientes que buscar', marcas.length > 0, otroNegocio?.codigo)
-    const intentos: [string, string][] = [
-      ['leer datos.otros', 'function consultar(datos){ return [{ otros: String(datos.otros), negocios: String(datos.negocios), keys: Object.keys(datos).join(",") }] }'],
-      ['fetch', 'function consultar(datos){ return [{ fetch: typeof fetch, xhr: typeof XMLHttpRequest, websocket: typeof WebSocket }] }'],
-      ['process / require / import', 'function consultar(datos){ return [{ process: typeof process, require: typeof require, importa: typeof globalThis.import }] }'],
-      ['llamar a fetch', 'function consultar(datos){ return fetch("https://example.com").then ? [] : [] }'],
-      ['volcar todos los datos', 'function consultar(datos){ return [{ todo: JSON.stringify(datos) }] }'],
-      ['bucle infinito', 'function consultar(datos){ while(true){} }'],
-    ]
-    const corridas = new Map<string, Awaited<ReturnType<typeof correrAislado>>>()
-    for (const [nombre, codigo] of intentos) {
-      const r = await correrAislado(codigo, 'consultar', datos)
-      corridas.set(nombre, r)
-      let salida = r.ok ? JSON.stringify(r.valor).slice(0, 220) : `ERROR: ${r.error}`
-      if (nombre === 'volcar todos los datos' && r.ok) {
-        const volcado = JSON.stringify(r.valor)
-        const filtradas = marcas.filter((m) => volcado.includes(m))
-        salida = `volcado de ${volcado.length} caracteres; clientes de ${otroNegocio?.nombre ?? 'otro Negocio'} dentro: ${filtradas.length} de ${marcas.length}; teléfonos completos: ${/\b57\d{10}\b/.test(volcado) ? 'SÍ (mal)' : 'no, enmascarados'}`
-      }
-      console.log(`- ${nombre}: ${salida}`)
-    }
-    const fila = (nombre: string) => {
-      const r = corridas.get(nombre)
-      return r?.ok ? (r.valor as Record<string, string>[])[0] : undefined
-    }
-    const visto = fila('leer datos.otros')
-    afirmar('6 aislamiento: datos no trae otros ni negocios', visto?.otros === 'undefined' && visto?.negocios === 'undefined' && !visto.keys.split(',').some((k) => k === 'otros' || k === 'negocios'), corridas.get('leer datos.otros'))
-    const red = fila('fetch')
-    afirmar('6 aislamiento: fetch, XMLHttpRequest y WebSocket no existen', red?.fetch === 'undefined' && red?.xhr === 'undefined' && red?.websocket === 'undefined', corridas.get('fetch'))
-    const proceso = fila('process / require / import')
-    afirmar('6 aislamiento: process y require no existen', proceso?.process === 'undefined' && proceso?.require === 'undefined', corridas.get('process / require / import'))
-    afirmar('6 aislamiento: llamar a fetch falla', corridas.get('llamar a fetch')?.ok === false, corridas.get('llamar a fetch'))
-    const volcadoCorrido = corridas.get('volcar todos los datos')
-    const volcado = volcadoCorrido?.ok ? JSON.stringify(volcadoCorrido.valor) : undefined
-    afirmar('6 aislamiento: el volcado no trae ningún Cliente del otro Negocio', volcado !== undefined && !marcas.some((m) => volcado.includes(m)), volcadoCorrido)
-    afirmar('6 aislamiento: el volcado no trae ningún teléfono completo', volcado !== undefined && !/\b57\d{10}\b/.test(volcado), volcadoCorrido)
-    const bucle = corridas.get('bucle infinito')
-    afirmar('6 aislamiento: un bucle infinito se interrumpe con ok:false y en pocos segundos', bucle?.ok === false && bucle.ms < 3000, bucle)
+    afirmar('6 aislamiento: hay otro Negocio sembrado para compararlo', otroNegocio !== null, 'Falta sembrar TRIGO y LADERA: pnpm tsx scripts/sembrar.mts')
     if (otroNegocio) {
       const propuesta = await proponer(ctxDe(negocio.id, dueno.id), { palabrasDelDueno: 'prueba de aislamiento', origen: 'hilo', quiere: [poner({ tipo: 'dato', campo: 'pagos', valor: 'prueba de aislamiento' })] })
       const intento = propuesta.tarjeta ? await aprobar(ctxDe(otroNegocio.id, dueno.id), propuesta.tarjeta.propuesta, propuesta.tarjeta.huella) : null
@@ -378,6 +314,18 @@ try {
       afirmar('6 aislamiento: otro Negocio no puede aprobar la propuesta', intento?.tipo === 'no_existe', intento)
       afirmar('6 aislamiento: la propuesta sigue esperando', sigue?.estado === 'espera_al_dueno', sigue)
     }
+  }
+
+  if (quiero('cambios')) {
+    titulo('6b. Una pieza del puente que quedó esperando el botón ya no cabe')
+    const huella = randomBytes(32).toString('hex')
+    const [vieja] = await db
+      .insert(esquema.propuestas)
+      .values({ negocioId: negocio.id, palabrasDelDueno: 'una pieza de antes del 2-nov', pedidoPor: dueno.id, huella, vence: new Date(Date.now() + 3600_000), vistaPrevia: { lineas: ['Indicador «Viejo»: 3'] } })
+      .returning()
+    const r = await aprobar(ctxDe(negocio.id, dueno.id), vieja.id, huella)
+    const [sigue] = await db.select({ estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.id, vieja.id))
+    afirmar('6b: aprobarla da ya_no_cabe, pídelo de nuevo, y no se aplica', r.tipo === 'ya_no_cabe' && r.resumen.includes('pídelo de nuevo') && sigue?.estado === 'espera_al_dueno', { r, sigue })
   }
 
   if (quiero('casos')) {

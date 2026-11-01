@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url'
 
 const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-humo'],
-  ['probar-aislado'],
   ['probar-modelo'],
   ['probar-revisar'],
   ['probar-consultas'],

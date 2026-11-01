@@ -2,7 +2,8 @@
  * Pasa las tablas viejas (`negocios.conocimiento`, `productos`, `reglas`) a Elementos con origen `tablas_viejas`.
  * Idempotente: corrida dos veces, la segunda escribe 0 y no sube `negocios.version`. Nunca pisa una clave que ya
  * escribió una propuesta o la entrevista. Reconcilia: lo que ya no está en las tablas viejas se quita. Las reglas
- * viejas no se traducen: quedan como Capacidad faltante y con una línea en el Hilo de cada Dueño.
+ * viejas no se traducen: quedan como Capacidad faltante y con una línea en el Hilo de cada Dueño. Si queda una pieza
+ * activa (una Sección o un Indicador en JS de antes del 2-nov), no corre: el Panel de hoy ya no la lee.
  *
  *   pnpm tsx scripts/a-elementos.mts [--en-seco]
  */
@@ -140,8 +141,24 @@ export async function migrarReglasViejas(negocio: NegocioId, textos: readonly st
   return { anotadas: nuevas.length, saltadas, avisados: duenos.length }
 }
 
+/** Las piezas activas que el despliegue del 2-nov dejaría sin leer, con el código de su Negocio. */
+export async function piezasActivas(): Promise<readonly { readonly codigo: string; readonly nombre: string }[]> {
+  return db
+    .select({ codigo: esquema.negocios.codigo, nombre: viejo.piezas.nombre })
+    .from(viejo.piezas)
+    .innerJoin(esquema.negocios, eq(esquema.negocios.id, viejo.piezas.negocioId))
+    .where(eq(viejo.piezas.activa, true))
+}
+
 /** Un Negocio que falla no corta la corrida: queda en el resumen del final. */
 async function migrar(enSeco: boolean) {
+  const activas = await piezasActivas()
+  console.log(`${activas.length} piezas activas`)
+  if (activas.length) {
+    for (const p of activas) console.error(`  pieza activa: ${p.codigo} «${p.nombre}»`)
+    console.error('Hay piezas activas: pídelas de nuevo como Sección o Indicador antes de desplegar. No corrí nada.')
+    return activas.length
+  }
   const negocios = await db.select({ id: esquema.negocios.id, codigo: esquema.negocios.codigo, conocimiento: esquema.negocios.conocimientoSinLector }).from(esquema.negocios).orderBy(asc(esquema.negocios.codigo))
   console.log(`${enSeco ? '[en seco] ' : ''}${negocios.length} Negocios`)
   const fallaron: string[] = []

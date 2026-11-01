@@ -5,6 +5,7 @@
  *
  *   pnpm tsx scripts/probar-migracion.mts
  */
+import { spawnSync } from 'node:child_process'
 import { config } from 'dotenv'
 import { and, eq, inArray } from 'drizzle-orm'
 import { afirmar, capturarEnvios, capturarErrores, eventoDeKapso, terminar } from './afirmar.mjs'
@@ -22,7 +23,7 @@ const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
 const { leerMensajeEntrante } = await import('../src/nucleo/entrada')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
-const { elementosDeLasTablasViejas, pasarAElementos, migrarReglasViejas } = await import('./a-elementos.mjs')
+const { elementosDeLasTablasViejas, pasarAElementos, migrarReglasViejas, piezasActivas } = await import('./a-elementos.mjs')
 
 type Conocimiento = import('./a-elementos.mjs').Conocimiento
 type NegocioId = import('../src/nucleo/identidad').NegocioId
@@ -121,6 +122,15 @@ try {
   afirmar('versión 0: el error nombra el Negocio, sin texto del Cliente', delError.some((e) => e.includes(V) && e.includes('a-elementos')) && !delError.some((e) => e.includes('qué venden')), delError)
   afirmar('versión 0: no guardó Cliente ni mensaje', (await db.$count(esquema.clientes, eq(esquema.clientes.negocioId, V))) === 0)
   errores.splice(erroresAntes)
+
+  console.log('\n=== Una pieza activa detiene a-elementos ===')
+  const conPieza = await negocioDesechable('P')
+  const viejo = await import('../src/db/viejo')
+  await db.insert(viejo.piezas).values({ negocioId: conPieza, tipo: 'indicador', clave: '00000000-0000-4000-8000-0000000000f9', nombre: `Pieza vieja ${marca}`, codigo: 'function calcular(){ return { valor: 1 } }' })
+  const activas = await piezasActivas()
+  const corrida = spawnSync('tsx', ['scripts/a-elementos.mts', '--en-seco'], { encoding: 'utf8' })
+  afirmar('pieza activa: a-elementos --en-seco la nombra y sale con 1 sin correr nada', activas.some((p) => p.nombre === `Pieza vieja ${marca}`) && corrida.status === 1 && corrida.stderr.includes(`Pieza vieja ${marca}`) && !corrida.stdout.includes('Resumen:'), { status: corrida.status, stderr: corrida.stderr.slice(0, 300) })
+  await db.delete(viejo.piezas).where(eq(viejo.piezas.negocioId, conPieza))
 } catch (e) {
   afirmar('probar-migracion terminó sin error inesperado', false, e)
 } finally {

@@ -268,7 +268,13 @@ try {
   const escriben = con(/from ['"][^'"]*estado\/escribir['"]|import\(['"][^'"]*estado\/escribir['"]\)/)
   afirmar('E8: estado/escribir solo lo importan src/nucleo/cambios/ y scripts/', escriben.every((r) => r.startsWith('src/nucleo/cambios/') || r.startsWith('scripts/')), escriben)
   const leenViejo = con(/db\/viejo['"]/)
-  afirmar('E8: las tablas viejas solo las importa scripts/a-elementos.mts', JSON.stringify(leenViejo) === JSON.stringify(['scripts/a-elementos.mts']), leenViejo)
+  afirmar('E8: las tablas viejas solo las importan a-elementos y su prueba', JSON.stringify(leenViejo.sort()) === JSON.stringify(['scripts/a-elementos.mts', 'scripts/probar-migracion.mts']), leenViejo)
+  const parsean = con(/from ['"]libpg-query['"]/)
+  afirmar('E8: libpg-query solo lo importa src/nucleo/consultas/validar.ts', JSON.stringify(parsean) === JSON.stringify(['src/nucleo/consultas/validar.ts']), parsean)
+  const quickjs = con(/quickjs-emscripten/).filter((r) => r !== 'scripts/probar-elementos.mts')
+  afirmar('E8: nadie importa quickjs-emscripten', quickjs.length === 0, quickjs)
+  const piezasViejas = ['src/nucleo/cambios/puente.ts', 'src/negocio/cambios.ts', 'src/agentes/generador.ts', 'src/negocio/datos.ts', 'src/lib/aislado.ts']
+  afirmar('E8: el puente, las piezas en JS y el intérprete aislado ya no existen', piezasViejas.every((b) => !fuentes.some((f) => f.ruta === b)))
   const conocimiento = con(/\.conocimientoSinLector\b|\bconocimientoSinLector: jsonb/).filter((r) => r !== 'scripts/probar-elementos.mts')
   afirmar('E8: negocios.conocimiento solo lo nombran esquema.ts y a-elementos', JSON.stringify(conocimiento.sort()) === JSON.stringify(['scripts/a-elementos.mts', 'src/db/esquema.ts']), conocimiento)
   const borrados = ['src/agentes/clientes.ts', 'src/agentes/contratos.ts', 'src/negocio/dueno-catalogo.ts']

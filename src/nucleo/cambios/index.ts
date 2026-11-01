@@ -7,7 +7,7 @@
  * por `descartar` o porque otra la reemplaza. `vencida` y `revertida` no se guardan; las deriva `estadoDe`.
  *
  * Una propuesta deja una `Escritura` de Elementos que `aprobar` escribe con `escribir(tx, …)` dentro del mismo
- * reclamo. Sección e Indicador siguen por `./puente.ts` hasta el 2-nov, solos en su propuesta.
+ * reclamo. Una Sección o un Indicador va solo en su propuesta.
  */
 import { and, asc, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -15,7 +15,7 @@ import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { ESCRITURA_VACIA, leerEstado, type Escritura, type EstadoVigente } from '../estado'
+import { leerEstado, type Escritura, type EstadoVigente } from '../estado'
 import { comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto } from '../estado/escribir'
 import {
@@ -37,7 +37,6 @@ import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
 import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
-import { escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
 import type { MotorDelRedactor } from './redactar-consulta'
 import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuiereDelPanel, type QuierePoner } from './traducir'
 
@@ -122,7 +121,7 @@ const esquemaDeQuitar = z
 
 const ESQUEMA_DE_QUIERE = z.union([...ESQUEMAS_DE_PONER, ...ESQUEMAS_DEL_PANEL, esquemaDeQuitar, esquemaDeRevertir, esquemaDeResponderCaso])
 
-export type Quiere = QuiereDeElementos | QuiereDelPuente
+export type Quiere = QuiereDeElementos
 type Es<A extends true> = A
 export type _ElEsquemaPideQuiere = Es<[z.output<typeof ESQUEMA_DE_QUIERE>] extends [Quiere] ? true : false>
 
@@ -259,39 +258,34 @@ type Traducida = {
   readonly lineas: readonly string[]
   readonly gasto: Gasto
   readonly escritura: Escritura
-  /** La pieza del puente que esta propuesta aplica, hasta el 2-nov. */
-  readonly cambio: string | null
   readonly revierte: PropuestaId | null
   readonly actos: readonly Acto[]
   /** La versión del Negocio que vio quien propuso: entra en la huella. */
   readonly version: VersionDelNegocio | null
-  /** Lo que leyó `traducir`; `null` en una pieza del puente. */
-  readonly estado: EstadoVigente | null
+  /** Lo que leyó `traducir`. */
+  readonly estado: EstadoVigente
   /** Las del ensayo: el código las escribe y van arriba de la tarjeta y primero en el resumen. */
   readonly advertencias: readonly string[]
 }
 
 type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capacidad_faltante' }>
 
-const esDelPuente = (q: Quiere): q is QuiereDelPuente => q.tipo === 'seccion' || q.tipo === 'indicador'
-
 async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
   if (pedido.origen !== 'lectura' && pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
-  if (pedido.quiere.some(esDelPuente) && pedido.quiere.length > 1) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Una Sección o un Indicador van solos, en su propia propuesta' }])
   const traducida = await traducirPedido(quien, pedido, redactor)
   if ('desenlace' in traducida) return traducida
 
   const ensayo =
-    traducida.estado && traducida.escritura.elementos.length && pedido.origen !== 'lectura'
+    traducida.escritura.elementos.length && pedido.origen !== 'lectura'
       ? await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
       : { guardada: { lineas: traducida.lineas, advertencias: [], conversaciones: null }, gasto: SIN_GASTO }
   const vistaPrevia: VistaPrevia = ensayo.guardada
   const t: Traducida = { ...traducida, lineas: vistaPrevia.lineas, advertencias: vistaPrevia.advertencias ?? [], gasto: sumarGasto(traducida.gasto, ensayo.gasto) }
   const palabrasDelDueno = pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno
-  const { valores, tarjeta } = filaNueva({ negocio: quien.negocio, palabrasDelDueno, pedidoPor: quien.pedidoPor, origen: pedido.origen, escritura: t.escritura, actos: t.actos, revierte: t.revierte, cambio: t.cambio, version: t.version, vistaPrevia })
+  const { valores, tarjeta } = filaNueva({ negocio: quien.negocio, palabrasDelDueno, pedidoPor: quien.pedidoPor, origen: pedido.origen, escritura: t.escritura, actos: t.actos, revierte: t.revierte, version: t.version, vistaPrevia })
   const id = tarjeta.propuesta
   const huella = tarjeta.huella
-  await db.batch([db.insert(esquema.propuestas).values(valores), ...reemplazadas(quien.negocio, id, pedido.origen, t), ...(t.cambio ? [vincular(t.cambio, id)] : [])])
+  await db.batch([db.insert(esquema.propuestas).values(valores), ...reemplazadas(quien.negocio, id, pedido.origen, t)])
 
   // Con actos nunca se aplica sin el botón; lo demás lo decide la política con el modo leído dentro del reclamo.
   if (!t.actos.length) {
@@ -326,16 +320,12 @@ function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelP
   return []
 }
 
-const SIN_PIEZA = { cambio: null, advertencias: [] } as const
 const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
 async function traducirPedido(quien: Quien, pedido: PedidoDelDueno, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
-  const [q] = pedido.quiere
-  if (esDelPuente(q) && pedido.origen !== 'lectura') return traducirPieza(quien, pedido.palabrasDelDueno, q)
-  if (q.tipo === 'revertir' && (await esDelPuenteLaPropuesta(quien.negocio, q.propuesta))) return traducirReversionVieja(quien.negocio, q.propuesta)
   const estado = await leerEstado(quien.negocio)
   const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[], redactor)
-  if (!('tipo' in t)) return { ...t, ...SIN_PIEZA, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
+  if (!('tipo' in t)) return { ...t, advertencias: [], version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
   if (t.tipo === 'corregir') return corregir(t.problemas)
   return faltante(quien.negocio, pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno, t.motivo, t.gasto)
 }
@@ -349,35 +339,6 @@ async function faltante(negocio: NegocioId, palabras: string, motivo: MotivoDeFa
         ? `Eso no está en los datos que tengo: ${motivo.falta}.`
         : 'Eso todavía no lo sé hacer cumplir.'
   return { desenlace: 'capacidad_faltante', tarjeta: null, capacidadFaltante, motivo, gasto, resumen: `${porQue} Quedó anotado para el equipo de Amanece; díselo al Dueño sin tecnicismos y sin prometer cuándo.` }
-}
-
-async function traducirPieza(quien: Quien, palabras: string, q: QuiereDelPuente): Promise<Traducida | SinPropuesta> {
-  const r = await proponerLoViejo(quien, q)
-  if (r.tipo === 'listo') return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: r.cambio, revierte: null, actos: [], version: null, estado: null, advertencias: [] }
-  return faltante(quien.negocio, palabras, { tipo: 'sin_converger', ultimoError: { tipo: 'sintaxis', mensaje: r.ultimoError.slice(0, 200) } }, r.gasto)
-}
-
-/** Una aplicada sin Elementos ni actos la escribió el puente: una pieza, o una regla o conocimiento de antes del corte. */
-async function esDelPuenteLaPropuesta(negocio: NegocioId, propuesta: PropuestaId): Promise<boolean> {
-  const [p] = await db
-    .select({ escritura: esquema.propuestas.escritura, actos: esquema.propuestas.actos })
-    .from(esquema.propuestas)
-    .where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, negocio)))
-  return p !== undefined && p.escritura.elementos.length === 0 && p.actos.length === 0
-}
-
-async function traducirReversionVieja(negocio: NegocioId, propuesta: PropuestaId): Promise<Traducida | SinPropuesta> {
-  const [p] = await db
-    .select({ estado: esquema.propuestas.estado, revierte: esquema.propuestas.revierte, vistaPrevia: esquema.propuestas.vistaPrevia, revertida: REVERTIDA })
-    .from(esquema.propuestas)
-    .where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, negocio)))
-  const invalida = (porQue: string) => corregir([{ tipo: 'valor_invalido', campo: 'propuesta', porQue }])
-  if (!p || p.estado !== 'aplicada') return invalida('Esa propuesta no está aplicada')
-  if (p.revertida) return invalida('Eso ya se deshizo')
-  if (p.revierte) return invalida('Deshacer una reversión no se puede: para volver a tenerlo, pídelo de nuevo')
-  const r = await revertirLoViejo(negocio, { propuesta, lineas: p.vistaPrevia.lineas })
-  if (r.tipo === 'corregir') return corregir(r.problemas)
-  return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: null, revierte: propuesta, actos: [], version: null, estado: null, advertencias: [] }
 }
 
 function corregir(problemas: readonly Problema[]): SinPropuesta {
@@ -454,8 +415,9 @@ const versionDe = (f: FilaDePropuesta): VersionDelNegocio | null => (f.version =
 
 /**
  * La única manera de aplicar una propuesta: la usan el botón y la política. El reclamo va en una transacción de
- * `Pool` que sostiene la fila tomada mientras escribe el puente: un segundo clic espera en el `UPDATE` y, al
- * soltarse, relee. Si el puente lanza, hay ROLLBACK y nadie recibió `aplicado` sobre algo que no quedó.
+ * `Pool` que sostiene la fila tomada mientras escribe: un segundo clic espera en el `UPDATE` y, al soltarse,
+ * relee. Si `escribir` lanza, hay ROLLBACK y nadie recibió `aplicado` sobre algo que no quedó. Una propuesta sin
+ * Elementos ni actos es una pieza del puente de antes del 2-nov: ya no cabe y se pide de nuevo.
  */
 async function aplicarConReclamo(a: {
   readonly negocio: NegocioId
@@ -482,10 +444,8 @@ async function aplicarConReclamo(a: {
       .returning()
     if (!fila) return { tipo: 'sin_reclamo' }
     if (a.sinBoton) {
-      // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón. El
-      // puente escribe por otra conexión con llave hacia el Negocio: con FOR UPDATE se quedaría esperándose a sí mismo.
-      const candado = fila.escritura.elementos.length ? 'update' : 'share'
-      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for(candado)
+      // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
+      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('update')
       if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return deshacer({ tipo: 'sigue_esperando' })
     }
     const [acto] = fila.actos
@@ -500,8 +460,7 @@ async function aplicarConReclamo(a: {
       const [conVersion] = await tx.update(esquema.propuestas).set({ version: r.version }).where(eq(esquema.propuestas.id, a.propuesta)).returning()
       return { tipo: 'reclamada', fila: conVersion, respuesta: null }
     }
-    const r = await escribirLoViejo(a.negocio, { propuesta: a.propuesta, revierte: fila.revierte ? marcar.propuesta(fila.revierte) : null })
-    return r.tipo === 'ya_no_cabe' ? deshacer(r) : { tipo: 'reclamada', fila, respuesta: null }
+    return deshacer({ tipo: 'ya_no_cabe', problemas: [{ tipo: 'valor_invalido', campo: 'propuesta', porQue: 'Eso se pidió antes del cambio de sistema: pídelo de nuevo' }] })
   })
   switch (reclamo.tipo) {
     case 'sigue_esperando':

@@ -265,7 +265,6 @@ export async function rearmarLectura(tx: Transaccion, negocio: NegocioId, estado
     escritura: quedan,
     actos: [],
     revierte: null,
-    cambio: null,
     version: estado.version,
     vistaPrevia: { lineas: lineasDeLaTarjeta(estado, quedan, fuente), advertencias: [] },
   })

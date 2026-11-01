@@ -74,8 +74,6 @@ export type CambioDeElemento = {
 /** Lo que se escribe junto o no se escribe. Nadie escribe filas hasta que exista `tabla`. */
 export type Escritura = { readonly elementos: readonly CambioDeElemento[]; readonly filas: readonly never[] }
 
-export const ESCRITURA_VACIA: Escritura = { elementos: [], filas: [] }
-
 export type EstadoBorrador = Marca<EstadoDelNegocio & { readonly base: VersionDelNegocio; readonly propuesta: Escritura }, 'EstadoBorrador'>
 
 /** Un Elemento con `contrato` mayor que el del código (un despliegue hacia atrás) o que ya no parsea: se cierra. */
