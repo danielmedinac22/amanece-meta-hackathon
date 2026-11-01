@@ -1,7 +1,9 @@
 /**
  * Lo que Amanece sabe que no tiene, y por qué un pedido del Dueño quedó como Capacidad faltante.
  */
+import { sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
+import type { DelEquipo } from '@/lib/equipo'
 import { marcar, type CapacidadFaltanteId, type NegocioId, type PropuestaId } from './identidad'
 import type { Cuando, Efecto } from './estado/elementos'
 import type { ErrorDeConsulta, NombreDeFuente } from './consultas/tipos'
@@ -84,6 +86,28 @@ export async function registrarFaltante(negocio: NegocioId, palabrasDelDueno: st
     .values({ negocioId: negocio, pedido: palabrasDelDueno, motivo: motivoEnTexto(motivo), tipo: motivo.tipo, claveDeAgrupacion: claveDeAgrupacion(motivo), detalle: motivo, propuestaId: propuesta })
     .returning({ id: esquema.capacidadesFaltantes.id })
   return marcar.capacidadFaltante(fila.id)
+}
+
+export type GrupoDeFaltantes = {
+  readonly clave: string
+  readonly tipo: MotivoGuardado['tipo']
+  readonly veces: number
+  readonly negocios: number
+  readonly ultima: Date
+}
+
+/**
+ * Para `/medicion`: cuántas veces y en cuántos Negocios se pidió cada cosa que no hay. Sin las palabras del Dueño:
+ * esas las lee el equipo con `scripts/faltantes.mts`. Pide la prueba de que quien mira es del equipo.
+ */
+export async function faltantesPorMotivo(equipo: DelEquipo): Promise<readonly GrupoDeFaltantes[]> {
+  void equipo
+  const t = esquema.capacidadesFaltantes
+  return db
+    .select({ clave: t.claveDeAgrupacion, tipo: t.tipo, veces: sql<number>`count(*)::int`, negocios: sql<number>`count(distinct ${t.negocioId})::int`, ultima: sql<Date>`max(${t.creado})`.mapWith(t.creado) })
+    .from(t)
+    .groupBy(t.claveDeAgrupacion, t.tipo)
+    .orderBy(sql`count(*) desc`, sql`max(${t.creado}) desc`)
 }
 
 type Es<A extends true> = A

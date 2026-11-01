@@ -32,6 +32,8 @@ const el = await import('../src/nucleo/estado/elementos')
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type Ctx = import('../src/nucleo/identidad').ContextoDelDueno
 const { pintarPanel } = await import('../src/nucleo/panel')
+const { delEquipo } = await import('../src/lib/equipo')
+const { faltantesPorMotivo } = await import('../src/nucleo/capacidades')
 const { VENTANA_POR_DEFECTO } = await import('../src/nucleo/consultas/catalogo')
 const { conTransaccion } = await import('../src/db/pool')
 const { escribir } = await import('../src/nucleo/estado/escribir')
@@ -252,6 +254,17 @@ try {
     const r3c = await pedirIndicador('Días hasta la entrega (prueba 3c)', g3c)
     const fila3c = r3c.desenlace === 'capacidad_faltante' ? await faltanteDe(r3c.capacidadFaltante) : undefined
     afirmar('3c: termina en una Capacidad faltante no_se_puede:pedidos, sin Elemento', r3c.desenlace === 'capacidad_faltante' && fila3c?.tipo === 'no_se_puede' && fila3c.claveDeAgrupacion === 'no_se_puede:pedidos' && (fila3c.detalle as { falta?: string })?.falta === 'la fecha de entrega' && !(await leerEstado(N)).vigentes('indicador').some((v) => v.elemento.nombre.includes('3c')), fila3c)
+
+    titulo('3c bis. /medicion: solo el equipo, y agrupado sin palabras del Dueño')
+    const prueba = { email: 'Equipo@Amanece.co', emailVerified: true }
+    afirmar('3c bis: sin EQUIPO_DE_AMANECE no entra nadie', delEquipo(prueba, undefined) === null && delEquipo(prueba, '') === null)
+    afirmar('3c bis: con la lista sin ese correo no entra', delEquipo(prueba, 'otra@amanece.co') === null)
+    afirmar('3c bis: un correo de la lista sin verificar no entra', delEquipo({ ...prueba, emailVerified: false }, 'equipo@amanece.co') === null)
+    const delEquipoDePrueba = delEquipo(prueba, ' otra@amanece.co, equipo@amanece.co ')
+    afirmar('3c bis: con su correo verificado en la lista entra', delEquipoDePrueba !== null)
+    const grupos = delEquipoDePrueba ? await faltantesPorMotivo(delEquipoDePrueba) : []
+    const grupo = grupos.find((g) => g.clave === 'no_se_puede:pedidos')
+    afirmar('3c bis: el grupo no_se_puede:pedidos sale con su cuenta, sus Negocios y sin palabras', grupo !== undefined && grupo.veces >= 1 && grupo.negocios >= 1 && grupo.ultima instanceof Date && !JSON.stringify(grupos).includes('Días hasta la entrega'), grupo)
 
     titulo('3d. Tres consultas malas: sin_converger con el tipo del último error')
     const mala = salida('select now() as etiqueta, count(*) as valor from pedidos group by 1')

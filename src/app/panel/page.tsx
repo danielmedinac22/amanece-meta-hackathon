@@ -7,6 +7,7 @@ import { leerEstado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import type { NegocioId } from '@/nucleo/identidad'
 import { pintarPanel } from '@/nucleo/panel'
+import { esDelEquipo } from '@/lib/equipo'
 import { leerHiloConTarjetas } from '@/negocio/dueno-chat'
 import { duenoActual } from '@/negocio/sesion'
 import { Hilo } from './hilo'
@@ -19,7 +20,7 @@ export default async function Panel() {
   const sesion = await duenoActual()
   if (!sesion) redirect('/entrar')
   const { negocio, ctx } = sesion
-  const hilo = ctx ? await leerHiloConTarjetas(ctx) : { mensajes: [], tarjetas: {} }
+  const [hilo, equipo] = await Promise.all([ctx ? leerHiloConTarjetas(ctx) : { mensajes: [], tarjetas: {} }, esDelEquipo()])
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-7xl flex-col px-4 py-4 sm:px-6">
@@ -29,9 +30,11 @@ export default async function Panel() {
         </Link>
         <div className="flex items-center gap-4 text-sm text-suave">
           {negocio && <span className="hidden sm:inline">{negocio.nombre}</span>}
-          <Link href="/medicion" className="hover:text-tinta">
-            Medición
-          </Link>
+          {equipo && (
+            <Link href="/medicion" className="hover:text-tinta">
+              Medición
+            </Link>
+          )}
         </div>
       </header>
 

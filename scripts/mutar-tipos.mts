@@ -107,6 +107,12 @@ const MUTACIONES: readonly Mutacion[] = [
     despues: "  | { readonly tipo: 'regla_vieja' }\n  | { readonly tipo: 'cobrar2' }\n",
   },
   {
+    nombre: '/medicion sin preguntar si quien mira es del equipo',
+    archivo: 'src/app/medicion/page.tsx',
+    antes: '  const equipo = await esDelEquipo()\n  if (!equipo) notFound()\n',
+    despues: '  const equipo = { email: process.env.EQUIPO_DE_AMANECE ?? \'\' }\n',
+  },
+  {
     nombre: 'un estado de pedido sin decir si está abierto',
     archivo: 'src/nucleo/clientes/turno.ts',
     antes: 'enviado: true, novedad: true, entregado: false,',
