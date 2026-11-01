@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
 import type { CasoId, ClienteId, Instante, Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoVigente } from '../estado'
-import { comoClave, pesos, type Clave, type Monto, type VersionDelNegocio } from '../estado/elementos'
+import { comoClave, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
 import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
@@ -211,8 +211,6 @@ function aMensajes(c: Conversacion): ModelMessage[] {
   return mensajes
 }
 
-const ETIQUETA = { descripcion: 'Qué es', ciudad: 'Ciudad', horario: 'Horario', envios: 'Envíos', pagos: 'Pagos' } as const
-
 /**
  * Capas fijas: 1. lo que el núcleo no negocia; 2. la voz; 3. datos, preguntas y catálogo; 4. las reglas del Dueño
  * como preferencias; 5. los pedidos pendientes del Cliente y la hora. Cumplir una regla no depende de este texto.
@@ -222,7 +220,7 @@ export function armarPrompt(estado: EstadoDelNegocio, cliente: ClienteDelTurno, 
   const voz = estado.vigentes('voz')[0]?.elemento
   const datos = estado
     .vigentes('dato')
-    .map((v) => `- ${ETIQUETA[v.elemento.campo]}: ${v.elemento.valor}`)
+    .map((v) => `- ${ETIQUETA_DEL_DATO[v.elemento.campo]}: ${v.elemento.valor}`)
     .join('\n')
   const preguntas = estado
     .vigentes('pregunta')

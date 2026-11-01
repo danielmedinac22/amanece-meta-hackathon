@@ -6,7 +6,8 @@ import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { LO_QUE_NO_HAY, registrarFaltante, type LoQueNoHay } from '@/nucleo/capacidades'
 import { abrirEnElAlta, descartar, ESQUEMA_DEL_PEDIDO, guardarEnElAlta, historial, problemaEnPalabras, proponer, type QuierePoner, type TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { leerEstado } from '@/nucleo/estado'
-import { CAMPOS_DE_CONOCIMIENTO, comoMonto, normalizar, reglaEnPalabras } from '@/nucleo/estado/elementos'
+import { CAMPOS_DE_CONOCIMIENTO, comoMonto, LARGO_DEL_ESTILO, normalizar, reglaEnPalabras, tratoDelTono } from '@/nucleo/estado/elementos'
+import { revisarTextoDelDueno } from '@/nucleo/salida/revisar'
 import type { ContextoDelDueno } from '@/nucleo/identidad'
 
 type Negocio = typeof esquema.negocios.$inferSelect
@@ -97,10 +98,13 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
           const valor = parche[campo]?.trim()
           return valor ? [{ tipo: 'poner', elemento: { tipo: 'dato', campo, valor }, reemplaza: null }] : []
         })
-        const tono = parche.tono?.trim()
-        if (tono) {
+        // Un tono que no puede llegar a un Cliente se omite y se dice, sin tumbar los demás campos.
+        const tono = parche.tono?.trim().slice(0, LARGO_DEL_ESTILO)
+        const motivosDelTono = tono ? revisarTextoDelDueno(tono, []) : []
+        const sinVoz = motivosDelTono.length ? `El tono no se guardó: así no puede llegar a un Cliente (${motivosDelTono.join(', ')}). Pídele al Dueño que lo diga de otra forma.` : null
+        if (tono && !sinVoz) {
           const voz = estado.vigentes('voz')[0]?.elemento
-          quiere.push({ tipo: 'poner', elemento: { tipo: 'voz', nombreDelAgente: voz?.nombreDelAgente ?? null, trato: /\busted\b/i.test(tono) ? 'usted' : 'tu', emojisPorMensaje: voz?.emojisPorMensaje ?? 1, estilo: tono }, reemplaza: null })
+          quiere.push({ tipo: 'poner', elemento: { tipo: 'voz', nombreDelAgente: voz?.nombreDelAgente ?? null, trato: tratoDelTono(tono), emojisPorMensaje: voz?.emojisPorMensaje ?? 1, estilo: tono }, reemplaza: null })
         }
         for (const p of parche.preguntasNuevas ?? []) {
           const misma = estado.vigentes('pregunta').find((v) => normalizar(v.elemento.pregunta) === normalizar(p.pregunta))
@@ -108,8 +112,12 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         }
         const nombre = parche.nombre?.trim() || null
         const rubro = parche.rubro?.trim() || null
-        if (!quiere.length && !nombre && !rubro) throw new Error('No mandaste nada para guardar')
-        return enPalabras(await guardarEnElAlta(ctx, { nombre, rubro, quiere }))
+        if (!quiere.length && !nombre && !rubro) {
+          if (sinVoz) return { ok: false as const, error: sinVoz }
+          throw new Error('No mandaste nada para guardar')
+        }
+        const r = enPalabras(await guardarEnElAlta(ctx, { nombre, rubro, quiere }))
+        return r.ok && sinVoz ? { ...r, nota: sinVoz } : r
       }),
   })
 

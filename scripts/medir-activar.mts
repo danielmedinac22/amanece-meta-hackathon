@@ -12,6 +12,7 @@ import { writeFileSync } from 'node:fs'
 
 config({ path: '.env.local', quiet: true })
 const { activar } = await import('../src/nucleo/clientes/activar')
+type Clave = import('../src/nucleo/estado/elementos').Clave
 
 type Regla = { clave: string; tema: string; alDueno: boolean }
 type Escenario = { mensaje: string; historial?: { rol: 'cliente' | 'agente'; texto: string }[]; activan: string[] }
@@ -155,7 +156,7 @@ const resultados: Resultado[] = []
 
 for (let r = 0; r < repeticiones; r++) {
   for (const banco of BANCO) {
-    const temas = banco.reglas.map((x) => ({ clave: x.clave, tema: x.tema }))
+    const temas = banco.reglas.map((x) => ({ clave: x.clave as Clave, tema: x.tema }))
     const tandas = await enTandas(
       banco.escenarios,
       aLaVez,

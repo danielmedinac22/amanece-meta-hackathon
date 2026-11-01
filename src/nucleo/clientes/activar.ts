@@ -1,10 +1,8 @@
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
-
-export type Clave = string
-
-export type TurnoDeConversacion = { readonly rol: 'cliente' | 'agente'; readonly texto: string }
+import type { Clave } from '../estado/elementos'
+import type { TurnoDeConversacion } from './turno'
 
 export type Activacion =
   | { readonly tipo: 'ok'; readonly activas: readonly Clave[]; readonly ms: number; readonly tokens: { readonly entrada: number; readonly salida: number } }
