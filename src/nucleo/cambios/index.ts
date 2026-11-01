@@ -15,7 +15,7 @@ import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { ESCRITURA_VACIA, leerEstado, type Escritura } from '../estado'
+import { ESCRITURA_VACIA, leerEstado, type Escritura, type EstadoVigente } from '../estado'
 import { comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto } from '../estado/escribir'
 import {
@@ -31,7 +31,9 @@ import {
 } from '../identidad'
 import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDeEnvio } from '../salida'
 import { fueraDeVentana } from '../salida/compuerta'
-import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion, type VistaPreviaGuardada } from './fila'
+import type { Motores } from '../clientes/turno'
+import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
+import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 import { lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import { ESQUEMAS_DEL_PUENTE, escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
@@ -43,7 +45,8 @@ export type { Acto, QuierePoner } from './traducir'
 export type { ClaveEnConflicto } from '../estado/escribir'
 export { abrirEnElAlta, guardarEnElAlta, type ResultadoDelAlta } from './alta'
 export { queFaltaParaAbrir, type Falta } from './politica'
-export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion, type VistaPreviaGuardada } from './fila'
+export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
+export type { Ensayo, LoQuePaso, Muestra, VistaPreviaDeConversaciones, VistaPreviaGuardada } from './ensayar'
 export { armarLectura, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
@@ -196,9 +199,9 @@ const instanteDe = (d: Date | null) => (d ? marcar.instante(d) : null)
 
 // ══ Proponer ════════════════════════════════════════════════════════════════════════════════════
 
-/** Un pedido del Dueño desde su Hilo. El Negocio sale de `ctx`, nunca del modelo. */
-export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno): Promise<ResultadoDeProponer> {
-  return proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, pedido)
+/** Un pedido del Dueño desde su Hilo. El Negocio sale de `ctx`, nunca del modelo. `motores` solo lo cambian los `probar`. */
+export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
+  return proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, pedido, motores)
 }
 
 /**
@@ -243,19 +246,28 @@ type Traducida = {
   readonly actos: readonly Acto[]
   /** La versión del Negocio que vio quien propuso: entra en la huella. */
   readonly version: VersionDelNegocio | null
+  /** Lo que leyó `traducir`; `null` en una pieza del puente. */
+  readonly estado: EstadoVigente | null
+  /** Las del ensayo: el código las escribe y van arriba de la tarjeta y primero en el resumen. */
+  readonly advertencias: readonly string[]
 }
 
 type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capacidad_faltante' }>
 
 const esDelPuente = (q: Quiere): q is QuiereDelPuente => q.tipo === 'seccion' || q.tipo === 'indicador'
 
-async function proponerComo(quien: Quien, pedido: PedidoDelDueno): Promise<ResultadoDeProponer> {
+async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
   if (pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
   if (pedido.quiere.some(esDelPuente) && pedido.quiere.length > 1) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Una Sección o un Indicador van solos, en su propia propuesta' }])
-  const t = await traducirPedido(quien, pedido)
-  if ('desenlace' in t) return t
+  const traducida = await traducirPedido(quien, pedido)
+  if ('desenlace' in traducida) return traducida
 
-  const vistaPrevia: VistaPrevia = { lineas: t.lineas, advertencias: [] }
+  const ensayo =
+    traducida.estado && traducida.escritura.elementos.length && pedido.origen !== 'lectura'
+      ? await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
+      : { guardada: { lineas: traducida.lineas, advertencias: [], conversaciones: null }, gasto: SIN_GASTO }
+  const vistaPrevia: VistaPrevia = ensayo.guardada
+  const t: Traducida = { ...traducida, lineas: vistaPrevia.lineas, advertencias: vistaPrevia.advertencias ?? [], gasto: sumarGasto(traducida.gasto, ensayo.gasto) }
   const palabrasDelDueno = pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno
   const { valores, tarjeta } = filaNueva({ negocio: quien.negocio, palabrasDelDueno, pedidoPor: quien.pedidoPor, origen: pedido.origen, escritura: t.escritura, actos: t.actos, revierte: t.revierte, cambio: t.cambio, version: t.version, vistaPrevia })
   const id = tarjeta.propuesta
@@ -295,7 +307,8 @@ function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelP
   return []
 }
 
-const SIN_PIEZA = { cambio: null, gasto: SIN_GASTO } as const
+const SIN_PIEZA = { cambio: null, gasto: SIN_GASTO, advertencias: [] } as const
+const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
 async function traducirPedido(quien: Quien, pedido: PedidoDelDueno): Promise<Traducida | SinPropuesta> {
   const [q] = pedido.quiere
@@ -303,7 +316,7 @@ async function traducirPedido(quien: Quien, pedido: PedidoDelDueno): Promise<Tra
   if (q.tipo === 'revertir' && (await esDelPuenteLaPropuesta(quien.negocio, q.propuesta))) return traducirReversionVieja(quien.negocio, q.propuesta)
   const estado = await leerEstado(quien.negocio)
   const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[])
-  if (!('tipo' in t)) return { ...t, ...SIN_PIEZA, version: estado.version, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
+  if (!('tipo' in t)) return { ...t, ...SIN_PIEZA, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
   if (t.tipo === 'corregir') return corregir(t.problemas)
   return faltante(quien.negocio, pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno, t.motivo, SIN_GASTO)
 }
@@ -316,7 +329,7 @@ async function faltante(negocio: NegocioId, palabras: string, motivo: MotivoDeFa
 
 async function traducirPieza(quien: Quien, palabras: string, q: QuiereDelPuente): Promise<Traducida | SinPropuesta> {
   const r = await proponerLoViejo(quien, q)
-  if (r.tipo === 'listo') return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: r.cambio, revierte: null, actos: [], version: null }
+  if (r.tipo === 'listo') return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: r.cambio, revierte: null, actos: [], version: null, estado: null, advertencias: [] }
   return faltante(quien.negocio, palabras, { tipo: 'sin_converger', ultimoError: r.ultimoError }, r.gasto)
 }
 
@@ -340,7 +353,7 @@ async function traducirReversionVieja(negocio: NegocioId, propuesta: PropuestaId
   if (p.revierte) return invalida('Deshacer una reversión no se puede: para volver a tenerlo, pídelo de nuevo')
   const r = await revertirLoViejo(negocio, { propuesta, lineas: p.vistaPrevia.lineas })
   if (r.tipo === 'corregir') return corregir(r.problemas)
-  return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: null, revierte: propuesta, actos: [], version: null }
+  return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: null, revierte: propuesta, actos: [], version: null, estado: null, advertencias: [] }
 }
 
 function corregir(problemas: readonly Problema[]): SinPropuesta {
@@ -371,7 +384,8 @@ function armarResumen(desenlace: 'espera_al_dueno' | 'aplicado', id: PropuestaId
   const lineas = t.lineas.map((l) => `- ${l}`).join('\n')
   if (desenlace === 'aplicado') return `Ya quedó aplicado, sin botón porque solo lo ve el Dueño [Propuesta ${id}]:\n${lineas}`
   const boton = t.actos.length ? 'Enviar' : 'Aplicar'
-  return `Quedó lista la tarjeta [Propuesta ${id}]:\n${lineas}\nSe ${t.actos.length ? 'envía' : 'aplica'} solo cuando el Dueño toque ${boton} en la tarjeta. No digas que ya quedó ni le pidas que te diga que sí.`
+  const avisos = t.advertencias.length ? `Advertencias del ensayo, cuéntaselas al Dueño:\n${t.advertencias.map((a) => `- ${a}`).join('\n')}\n` : ''
+  return `${avisos}Quedó lista la tarjeta [Propuesta ${id}]:\n${lineas}\nSe ${t.actos.length ? 'envía' : 'aplica'} solo cuando el Dueño toque ${boton} en la tarjeta. No digas que ya quedó ni le pidas que te diga que sí.`
 }
 
 // ══ Aprobar ═════════════════════════════════════════════════════════════════════════════════════

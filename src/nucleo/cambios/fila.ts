@@ -8,6 +8,7 @@ import { canonico } from '@/lib/canonico'
 import type { Escritura } from '../estado'
 import type { VersionDelNegocio } from '../estado/elementos'
 import { marcar, type DuenoId, type Instante, type Marca, type NegocioId, type PropuestaId } from '../identidad'
+import type { VistaPreviaGuardada } from './ensayar'
 import type { Acto } from './traducir'
 
 export type Huella = Marca<string, 'Huella'>
@@ -17,8 +18,6 @@ export const VIGENCIA_DE_UNA_PROPUESTA_HORAS = 24
 /** De dónde sale lo que se propone. `lectura`: lo que se leyó de un enlace; solo lo arma el código y espera el botón siempre. */
 export type OrigenDelPedido = 'hilo' | 'panel' | 'lectura'
 
-/** Lo que se guarda en `vista_previa`. Las filas viejas solo traen `lineas`: se leen con `advertencias` vacío. */
-export type VistaPreviaGuardada = { readonly lineas: readonly string[]; readonly advertencias?: readonly string[] }
 
 /**
  * El botón. En la web, una tarjeta; en la semana 5, el botón de WhatsApp `aprobar:<propuesta>:<huella>`. `accion` es
@@ -49,7 +48,6 @@ export function huellaDe(contenido: {
   return createHash('sha256').update(canonico(contenido)).digest('hex') as Huella
 }
 
-/** La fila nueva, con su id, su huella y su vencimiento, y la tarjeta que la muestra. */
 export function filaNueva(p: {
   readonly negocio: NegocioId
   readonly palabrasDelDueno: string

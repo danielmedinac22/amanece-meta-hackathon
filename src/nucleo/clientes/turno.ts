@@ -7,7 +7,8 @@ import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
 import type { CasoId, ClienteId, Instante, Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoVigente } from '../estado'
-import { comoClave, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
+import type { ItemDePedido } from '@/db/esquema'
+import { claveDeProducto, comoClave, comoMonto, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
 import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
@@ -24,6 +25,19 @@ export type PedidoDelCliente = {
   readonly resumen: string
   /** Lo que una regla de pedido necesita saber; `null` si el pedido ya no está abierto. */
   readonly paraReglas: PedidoParaReglas | null
+}
+
+const PEDIDO_ABIERTO: ReadonlySet<string> = new Set(['pendiente', 'confirmado', 'enviado'])
+
+/** Un pedido guardado como lo ve el turno: producción y ensayo lo arman igual. Abierto es pendiente, confirmado o enviado. */
+export function pedidoDelCliente(p: { readonly numero: number; readonly total: number; readonly estado: string; readonly items: readonly ItemDePedido[]; readonly ciudad: string; readonly direccion: string }): PedidoDelCliente {
+  return {
+    numero: p.numero,
+    total: comoMonto(p.total),
+    estado: p.estado,
+    resumen: `${p.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}; ${p.ciudad}, ${p.direccion}`,
+    paraReglas: PEDIDO_ABIERTO.has(p.estado) ? { borrador: { items: p.items.map((i) => ({ producto: claveDeProducto.deId(i.productoId), cantidad: i.cantidad })), ciudad: p.ciudad }, total: comoMonto(p.total) } : null,
+  }
 }
 
 export type ClienteDelTurno = {

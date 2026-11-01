@@ -100,7 +100,6 @@ export async function leerHiloConTarjetas(ctx: ContextoDelDueno): Promise<{ mens
   return { mensajes, tarjetas }
 }
 
-/** Las tarjetas de un Hilo, las mismas que pinta `hilo.tsx`. */
 export function tarjetasDe(mensajes: readonly UIMessage[]): TarjetaDeAprobacion[] {
   return mensajes.flatMap((m) => m.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []))
 }

@@ -39,7 +39,6 @@ export type Envuelto = {
   cotizaciones(): readonly Cotizacion[]
   /** Los Casos nuevos del turno: `atender` los trae al Dueño después de responder. Uno reusado ya le llegó. */
   casosAbiertos(): readonly CasoId[]
-  /** Las reglas de pedido que activó `crear_pedido` en este turno. */
   activadas(): readonly Activa[]
   /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título. Queda en `hechas()` como `abrir_caso`. */
   abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string }): Promise<CasoId | null>

@@ -75,7 +75,6 @@ export function origenDelPrecio(precio: number, escritoPorElDueno: ReadonlySet<n
   return enLaTarjeta.has(precio) ? 'lectura' : 'nadie'
 }
 
-/** Las cifras de dinero de un Elemento: el precio de un producto y los montos de sus textos. */
 export function cifrasDe(e: Elemento): readonly number[] {
   return [...(e.tipo === 'producto' ? [e.precio] : []), ...definicionDe(e.tipo).textos(e).flatMap((t) => montosEn(t.texto))]
 }
@@ -90,10 +89,8 @@ export function origenDeLasCifras(e: Elemento, escritoPorElDueno: ReadonlySet<nu
   return origenes.includes('nadie') ? 'nadie' : origenes.includes('lectura') ? 'lectura' : 'dueno'
 }
 
-/** Cuántos mensajes del Dueño cuentan para saber qué números escribió. */
 export const MENSAJES_DEL_DUENO = 30
 
-/** Los números de los últimos mensajes de texto que el Dueño escribió en su Hilo. */
 export async function numerosDelDueno(dueno: DuenoId): Promise<ReadonlySet<number>> {
   const filas = await db
     .select({ mensaje: esquema.mensajesDueno.mensaje })

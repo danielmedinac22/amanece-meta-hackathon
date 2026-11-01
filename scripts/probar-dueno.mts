@@ -424,6 +424,25 @@ try {
       afirmar('8 regla: el botón la aplica y queda entre las reglas vigentes', r.tipo === 'aplicado' && (await reglasDe()) === reglasAntes + 1, r)
     }
 
+    titulo('8b. La regla de Manizales, cuando pedido, propuesta por el Agente del dueño')
+    const deManizales = async () => (await leerEstado(N)).vigentes('regla').filter((v) => v.elemento.cuando.tipo === 'pedido').length
+    const deManizalesAntes = await deManizales()
+    const pide = await turno(negocio.id, dueno.id, 'Cuando un pedido sea para fuera de Manizales, ábreme un Caso y no le prometas fecha de entrega al cliente.')
+    const mensajesDeLaRegla = tarjetasDe([pide]).length ? [pide] : [pide, await turno(negocio.id, dueno.id, 'Sí, prepáralo así.')]
+    const tarjetaDePedido = tarjetasDe(mensajesDeLaRegla).at(-1)
+    const [filaDePedido] = tarjetaDePedido ? await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, tarjetaDePedido.propuesta)) : []
+    const reglaPropuesta = filaDePedido?.escritura.elementos.find((c) => c.despues?.tipo === 'regla')?.despues
+    console.log('Regla propuesta:', JSON.stringify(reglaPropuesta), '\nVista previa:', JSON.stringify(filaDePedido?.vistaPrevia))
+    afirmar(
+      '8b regla de pedido: espera el botón, es cuando pedido con abrir_caso y trae la vista previa de conversaciones',
+      filaDePedido?.estado === 'espera_al_dueno' && reglaPropuesta?.tipo === 'regla' && reglaPropuesta.cuando.tipo === 'pedido' && reglaPropuesta.efectos.some((e) => e.tipo === 'abrir_caso') && (filaDePedido.vistaPrevia.conversaciones?.ensayos.length ?? 0) > 0,
+      { estado: filaDePedido?.estado, reglaPropuesta, herramientas: mensajesDeLaRegla.flatMap(herramientasDe) },
+    )
+    if (tarjetaDePedido) {
+      const r = await aprobar(ctx, tarjetaDePedido.propuesta, tarjetaDePedido.huella)
+      afirmar('8b regla de pedido: el botón la aplica y queda vigente', r.tipo === 'aplicado' && (await deManizales()) === deManizalesAntes + 1, r)
+    }
+
     const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
     await turno(negocio.id, dueno.id, '¿Me puedes mandar una factura electrónica a cada cliente?')
     const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))

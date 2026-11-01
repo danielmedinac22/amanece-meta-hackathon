@@ -119,7 +119,12 @@ export type ElementoDe<T extends TipoDeElemento> = Extract<Elemento, { tipo: T }
 export type EntradaDe<T extends TipoDeElemento> = Omit<ElementoDe<T>, 'tipo'>
 
 export type Alcance = 'clientes' | 'panel'
-export type ProfundidadDeVistaPrevia = 'describir' | 'cotizar' | 'panel' | 'conversaciones'
+/**
+ * `cotizar` y `panel` salen hasta que un tipo los use: `precio` (semanas 3-4) vuelve con `cotizar` sobre los últimos
+ * pedidos, y Sección e Indicador con `panel` el 2-nov. Un `producto` que cambia de precio se describe: no recalcula
+ * pedidos guardados.
+ */
+export type ProfundidadDeVistaPrevia = 'describir' | 'conversaciones'
 
 export const VISTA_PREVIA = {
   regla: 'conversaciones',

@@ -122,7 +122,6 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
 
   const preguntaFrecuente = z.object({ pregunta: z.string(), respuesta: z.string() })
 
-  /** Lo que falta ahora, con la tarjeta de lectura pendiente. */
   const faltaAhora = async () => faltaEnElResumen(queFaltaParaAbrir(await leerEstado(negocioId), (await lecturaPendiente(negocioId))?.escritura ?? null))
 
   /** El resumen lo escribe el código: qué se guardó, qué espera la tarjeta, qué hay que preguntar y qué falta. */

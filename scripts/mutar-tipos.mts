@@ -76,6 +76,12 @@ const MUTACIONES: readonly Mutacion[] = [
     antes: "'envios_sin_detalle' | 'pagos' | 'horario'\n",
     despues: "'envios_sin_detalle' | 'pagos' | 'horario' | 'voz'\n",
   },
+  {
+    nombre: 'texto en lo que se guarda de un ensayo',
+    archivo: 'src/nucleo/cambios/ensayar.ts',
+    antes: "  readonly corregido: 'no' | 'si' | 'respaldo'\n}",
+    despues: "  readonly corregido: 'no' | 'si' | 'respaldo'\n  readonly texto: string\n}",
+  },
 ]
 
 function tsc(): { readonly pasa: boolean; readonly errores: string } {
