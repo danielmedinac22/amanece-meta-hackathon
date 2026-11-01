@@ -70,6 +70,12 @@ const MUTACIONES: readonly Mutacion[] = [
     despues: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'si', pedido: 'si' },\n",
     tambien: { antes: "type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedir_dato' | 'no_vender'", despues: "type DelPlanB = 'tema' | 'pedir_dato' | 'no_vender'" },
   },
+  {
+    nombre: 'una Falta nueva sin su fila en BLOQUEA ni AVISA',
+    archivo: 'src/nucleo/cambios/politica.ts',
+    antes: "'envios_sin_detalle' | 'pagos' | 'horario'\n",
+    despues: "'envios_sin_detalle' | 'pagos' | 'horario' | 'voz'\n",
+  },
 ]
 
 function tsc(): { readonly pasa: boolean; readonly errores: string } {

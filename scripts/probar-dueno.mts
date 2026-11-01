@@ -488,7 +488,7 @@ try {
     const guardado = await guardarEnElAlta(ctxOtro, { nombre: 'Arepas de Rosa', rubro: 'arepas', quiere: [poner({ tipo: 'producto', nombre: 'Arepa de choclo', descripcion: '', precio: el.comoMonto(6000), activo: true }), poner({ tipo: 'dato', campo: 'ciudad', valor: 'Medellín' })] })
     const abre = await abrirEnElAlta(ctxOtro)
     const [abierto] = await db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(eq(esquema.negocios.id, otro.id))
-    afirmar('9b: con nombre y un producto abre, y el horario, los envíos y los pagos solo avisan', 'guardado' in guardado && abre.abierto && abierto.estado === 'listo' && abre.avisos.includes('el horario') && !abre.avisos.includes('la ciudad'), { guardado, abre })
+    afirmar('9b: con nombre y un producto abre, y el horario, los envíos y los pagos solo avisan', 'guardado' in guardado && abre.abierto && abierto.estado === 'listo' && abre.avisos.some((f) => f.que === 'horario') && !abre.avisos.some((f) => f.que === 'ciudad'), { guardado, abre })
     const tarde = await guardarEnElAlta(ctxOtro, { nombre: null, rubro: null, quiere: [poner({ tipo: 'dato', campo: 'horario', valor: '8 a 5' })] })
     afirmar('9b: abierto, la entrevista ya no escribe', 'problemas' in tarde && tarde.problemas[0]?.tipo === 'solo_mientras_se_arma', tarde)
     const arequipesActivos = arequipes.filter((p) => p.activo)

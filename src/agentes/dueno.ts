@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { LO_QUE_NO_HAY, registrarFaltante, type LoQueNoHay } from '@/nucleo/capacidades'
-import { abrirEnElAlta, descartar, ESQUEMA_DEL_PEDIDO, guardarEnElAlta, historial, problemaEnPalabras, proponer, type QuierePoner, type TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { abrirEnElAlta, descartar, ESQUEMA_DEL_PEDIDO, guardarEnElAlta, historial, problemaEnPalabras, proponer, type Falta, type QuierePoner, type TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { leerEstado } from '@/nucleo/estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, LARGO_DEL_ESTILO, normalizar, reglaEnPalabras, tratoDelTono } from '@/nucleo/estado/elementos'
 import { revisarTextoDelDueno } from '@/nucleo/salida/revisar'
@@ -152,9 +152,9 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     execute: () =>
       seguro(async () => {
         const r = await abrirEnElAlta(ctx)
-        if (!r.abierto) return { ok: false as const, falta: r.falta, convieneCompletar: r.avisos }
+        if (!r.abierto) return { ok: false as const, falta: r.falta.map(faltaEnPalabras), convieneCompletar: r.avisos.map(faltaEnPalabras) }
         const { nombre, codigo } = (await leerEstado(negocioId)).identidad
-        return { ok: true as const, link: linkDeWhatsapp(nombre, codigo), codigo, convieneCompletar: r.avisos }
+        return { ok: true as const, link: linkDeWhatsapp(nombre, codigo), codigo, convieneCompletar: r.avisos.map(faltaEnPalabras) }
       }),
   })
 
@@ -245,6 +245,9 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
 
   return { system: instrucciones(negocio, dueno), tools }
 }
+
+/** Lo que falta, como lo lee el modelo: si ya está en la tarjeta, se pide el botón y no se pregunta. */
+export const faltaEnPalabras = (f: Falta) => (f.enLaTarjeta ? `${f.enPalabras} (ya está en la tarjeta: que el Dueño la revise y toque el botón)` : f.enPalabras)
 
 /**
  * Las partes de datos del Hilo, como las ve el modelo: el id del Caso o de la propuesta, nunca la huella. Así

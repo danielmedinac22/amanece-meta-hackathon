@@ -15,7 +15,8 @@ process.env.ENVIO_SIMULADO = '1'
 
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
-const { leerEstado, EstadoIlegible } = await import('../src/nucleo/estado')
+const { armarEstado, leerEstado, EstadoIlegible } = await import('../src/nucleo/estado')
+const { queFaltaParaAbrir } = await import('../src/nucleo/cambios')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { cotizar } = await import('../src/nucleo/precios/cotizar')
@@ -170,6 +171,23 @@ try {
   const conDefectos = await escribirEn(A, [{ clave: crudo, base: 'nueva', despues: { tipo: 'producto', nombre: 'Molido', precio: 20000 } as unknown as Elemento }])
   const [fila] = await db.select({ contenido: esquema.elementos.contenido }).from(esquema.elementos).where(and(eq(esquema.elementos.negocioId, A), eq(esquema.elementos.clave, crudo)))
   afirmar('E11: se guarda el Elemento parseado, con sus valores por defecto', conDefectos.tipo === 'escrito' && (fila?.contenido as { descripcion?: string })?.descripcion === '' && (fila?.contenido as { activo?: boolean })?.activo === true, fila)
+
+  console.log('\n=== queFaltaParaAbrir ===')
+  {
+    const identidad = { id: marcar.negocio('00000000-0000-4000-8000-0000000000f1'), nombre: 'Café Trigo', rubro: 'café', codigo: 'FALTA', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'armando' } as const
+    const estadoCon = (...elementos: [string, Elemento][]) =>
+      armarEstado(identidad, version(1), elementos.map(([c, e]) => ({ clave: clave(c), version: version(1), origen: { tipo: 'entrevista' as const }, elemento: e }) as never))
+    const molido: Elemento = { tipo: 'producto', nombre: 'Molido 500 g', descripcion: '', precio: monto(32000), activo: true }
+    const sinProductos = queFaltaParaAbrir(estadoCon(), null)
+    afirmar('abrir: sin productos bloquea producto_con_precio, sin nada en la tarjeta', sinProductos.bloquea.some((f) => f.que === 'producto_con_precio' && !f.enLaTarjeta), sinProductos)
+    const pendiente = { elementos: [{ clave: el.claveNueva('producto'), base: 'nueva' as const, despues: molido }], filas: [] }
+    const conTarjeta = queFaltaParaAbrir(estadoCon(), pendiente)
+    afirmar('abrir: un producto que espera en la tarjeta sigue bloqueando, con enLaTarjeta', conTarjeta.bloquea.some((f) => f.que === 'producto_con_precio' && f.enLaTarjeta), conTarjeta)
+    const todoElPais = queFaltaParaAbrir(estadoCon(['producto:1', molido], ['dato:envios', { tipo: 'dato', campo: 'envios', valor: 'Enviamos a todo el país' }]), null)
+    afirmar('abrir: «Enviamos a todo el país» avisa envios_sin_detalle y no bloquea', todoElPais.bloquea.length === 0 && todoElPais.avisa.some((f) => f.que === 'envios_sin_detalle'), todoElPais)
+    const conDetalle = queFaltaParaAbrir(estadoCon(['producto:1', molido], ['dato:envios', { tipo: 'dato', campo: 'envios', valor: 'A todo el país, de 2 a 4 días hábiles; el envío cuesta $12.000' }]), null)
+    afirmar('abrir: con costo y plazo los envíos no avisan; ciudad, pagos y horario solo avisan', conDetalle.bloquea.length === 0 && JSON.stringify(conDetalle.avisa.map((f) => f.que)) === JSON.stringify(['ciudad', 'pagos', 'horario']), conDetalle)
+  }
 
   console.log('\n=== cotizar ===')
   const cafe = el.claveDeProducto.deId('00000000-0000-4000-8000-0000000000a1')

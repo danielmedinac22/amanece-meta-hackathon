@@ -9,7 +9,7 @@ import { leerEstado } from '../estado'
 import { escribir } from '../estado/escribir'
 import type { Problema } from '../estado/elementos'
 import type { ContextoDelDueno } from '../identidad'
-import { queFaltaParaAbrir } from './politica'
+import { queFaltaParaAbrir, type Falta } from './politica'
 import { traducir, type QuierePoner } from './traducir'
 
 const SOLO_MIENTRAS_SE_ARMA: Problema = { tipo: 'solo_mientras_se_arma' }
@@ -43,9 +43,9 @@ export async function guardarEnElAlta(
 }
 
 /** Abre si nada bloquea. Lo que solo avisa vuelve para que el Agente del dueño se lo cuente al Dueño. */
-export async function abrirEnElAlta(ctx: ContextoDelDueno): Promise<{ readonly abierto: false; readonly falta: readonly string[]; readonly avisos: readonly string[] } | { readonly abierto: true; readonly avisos: readonly string[] }> {
+export async function abrirEnElAlta(ctx: ContextoDelDueno): Promise<{ readonly abierto: false; readonly falta: readonly Falta[]; readonly avisos: readonly Falta[] } | { readonly abierto: true; readonly avisos: readonly Falta[] }> {
   const estado = await leerEstado(ctx.negocio)
-  const { bloquea, avisa } = queFaltaParaAbrir(estado)
+  const { bloquea, avisa } = queFaltaParaAbrir(estado, null)
   if (estado.identidad.modo !== 'armando') return { abierto: true, avisos: [] }
   if (bloquea.length) return { abierto: false, falta: bloquea, avisos: avisa }
   await db.update(esquema.negocios).set({ estado: 'listo' }).where(and(eq(esquema.negocios.id, ctx.negocio), eq(esquema.negocios.estado, 'armando')))

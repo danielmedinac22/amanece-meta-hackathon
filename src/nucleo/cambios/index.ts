@@ -43,7 +43,7 @@ export type { MotivoDeFaltante } from '../capacidades'
 export type { Acto, QuierePoner } from './traducir'
 export type { ClaveEnConflicto } from '../estado/escribir'
 export { abrirEnElAlta, guardarEnElAlta } from './alta'
-export { queFaltaParaAbrir } from './politica'
+export { queFaltaParaAbrir, type Falta } from './politica'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
 
