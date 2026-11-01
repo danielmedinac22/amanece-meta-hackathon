@@ -320,6 +320,14 @@ try {
     afirmar(`${nombre}: capacidad_faltante sin_cumplidor, sin propuesta ni fila en elementos`, f.desenlace === 'capacidad_faltante' && faltante?.motivo === `sin_cumplidor:${nombre}` && JSON.stringify(despues) === JSON.stringify(filas), { f, faltante, filas, despues })
   }
 
+  console.log('\n=== 14b. Siempre con pasar_al_dueno o abrir_caso no se propone ===')
+  for (const efecto of [{ tipo: 'pasar_al_dueno', avisoAlCliente: 'Ya le paso tu mensaje al equipo.' }, { tipo: 'abrir_caso', titulo: 'Un Cliente escribió' }] as const) {
+    const filas = { elementos: await db.$count(elementos, eq(elementos.negocioId, ladera.id)), propuestas: await db.$count(propuestas, eq(propuestas.negocioId, ladera.id)) }
+    const f = await proponer(A, { palabrasDelDueno: `siempre ${efecto.tipo} (${marca})`, origen: 'hilo', quiere: [poner({ tipo: 'regla', nombre: `Siempre ${efecto.tipo}`, cuando: { tipo: 'siempre' }, efectos: [efecto], escenarios })] })
+    const despues = { elementos: await db.$count(elementos, eq(elementos.negocioId, ladera.id)), propuestas: await db.$count(propuestas, eq(propuestas.negocioId, ladera.id)) }
+    afirmar(`siempre con ${efecto.tipo}: corregir, sin propuesta ni fila en elementos`, f.desenlace === 'corregir' && f.problemas.some((p) => p.tipo === 'valor_invalido' && p.campo === 'efectos') && JSON.stringify(despues) === JSON.stringify(filas), { f, filas, despues })
+  }
+
   console.log('\n=== 15. La regla de Manizales: siempre y no_prometer plazo, por el botón ===')
   const manizales = await proponer(A, {
     palabrasDelDueno: 'No prometas fechas de entrega',

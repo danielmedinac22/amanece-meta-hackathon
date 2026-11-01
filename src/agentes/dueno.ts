@@ -289,8 +289,8 @@ Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp.
     - poner_voz: cómo habla el agente (trato tu o usted, emojis por mensaje de 0 a 3, estilo en pocas palabras).
     - poner_pregunta: una pregunta frecuente con su respuesta.
     - poner_producto: nombre, descripción, precio en pesos enteros y activo. Para cambiar uno que existe, pasa su clave de ver_negocio en reemplaza; para dejar de venderlo, ponlo con activo false.
-    - poner_regla: con nombre, cuando, efectos y escenarios. Hoy el núcleo hace cumplir reglas con cuando siempre y estos efectos: pasar_al_dueno (le pasa la conversación y contesta un aviso), abrir_caso, no_prometer (plazo, descuento o disponibilidad) y no_decir (frases). En escenarios pon al menos un mensaje realista de un cliente en el que aplica, con lo que el agente hace (por ejemplo abrir_caso) y lo que no hace.
-    - Una regla que depende del tema, del horario o del pedido, o que pide un dato o niega una venta, todavía no se puede cumplir: si la propones, proponer la deja anotada sola para el equipo. Díselo al Dueño con honestidad.
+    - poner_regla: con nombre, cuando, efectos y escenarios. Hoy el núcleo solo hace cumplir reglas con cuando siempre y estos efectos: no_prometer (plazo, descuento o disponibilidad) y no_decir (frases). En escenarios pon al menos un mensaje realista de un cliente en el que aplica, con lo que el agente hace y lo que no hace.
+    - Todo lo demás todavía no se puede cumplir: una regla que depende del tema, del horario o del pedido, que pasa la conversación al Dueño o le abre un Caso (eso siempre depende de cuándo), que pide un dato o que niega una venta. Propónla con su condición (por ejemplo cuando tema) y proponer la deja anotada sola para el equipo. Díselo al Dueño con honestidad.
   - Quitar algo: quitar, con sus claves de ver_negocio.
   - Ver algo en su Panel: una lista o tabla (por ejemplo pedidos con novedad) es seccion; un número o una serie (por ejemplo pedidos por día) es indicador. Van solos en su propuesta.
   - Deshacer algo que ya se aplicó: revertir, con el id de listar_propuestas. Lo que una regla ya hizo con clientes no se deshace.

@@ -97,6 +97,12 @@ export const SE_CUMPLE_HOY = {
 
 export const LARGO_DEL_ESTILO = 300
 
+/**
+ * Con solo `siempre`, pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje, hasta en un
+ * "hola": esperan a que exista una condición que se cumpla hoy (`tema`, `fuera_de_horario`, `pedido`).
+ */
+const ESPERAN_UNA_CONDICION: readonly Efecto['tipo'][] = ['pasar_al_dueno', 'abrir_caso']
+
 export type Elemento =
   | {
       readonly tipo: 'regla'
@@ -381,6 +387,14 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
         problemas.push(invalido('nombre', 'Ya hay una regla con ese nombre: para cambiarla, usa reemplaza con su clave'))
       }
       if (r.cuando.tipo === 'tema' && r.escenarios.noActivan.length === 0) problemas.push(invalido('escenarios', 'Una regla de tema necesita un mensaje en el que no se active'))
+      if (r.cuando.tipo === 'siempre' && r.efectos.some((e) => ESPERAN_UNA_CONDICION.includes(e.tipo))) {
+        problemas.push(
+          invalido(
+            'efectos',
+            'Hoy una regla que vale siempre solo puede no prometer (plazos, descuentos o disponibilidad) o no decir frases: pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje. Eso necesita saber cuándo (un tema, el horario o el pedido): propónla con esa condición y queda anotada para el equipo de Amanece',
+          ),
+        )
+      }
       for (const e of r.efectos) {
         if (ordenDelPunto(DONDE_SE_CUMPLE[e.tipo]) < ordenDelPunto(CUANDO[r.cuando.tipo].seSabeEn)) {
           problemas.push(invalido('efectos', `${e.tipo} se cumple antes de que se sepa si la regla aplica`))

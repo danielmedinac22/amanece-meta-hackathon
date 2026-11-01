@@ -138,6 +138,10 @@ try {
   }
   const sinForma = await escribirEn(A, [{ clave: clave('dato:pagos'), base: 'nueva', despues: { tipo: 'dato', campo: 'pagos' } as unknown as Elemento }])
   afirmar('E9: un Elemento sin la forma de su tipo no se escribe: invalida', sinForma.tipo === 'invalida', sinForma)
+  for (const efecto of [{ tipo: 'pasar_al_dueno', avisoAlCliente: 'Ya le aviso a Ana.' }, { tipo: 'abrir_caso', titulo: 'Un Cliente escribió' }] as const) {
+    const siempre = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'siempre' }, [efecto]) }])
+    afirmar(`E9: una regla siempre con ${efecto.tipo} es invalida`, siempre.tipo === 'invalida' && siempre.problemas.some((p) => p.tipo === 'valor_invalido' && p.campo === 'efectos'), siempre)
+  }
   afirmar('E9: nada de lo invalido dejó filas', (await filasDe(A)) === antesDeE9)
   const permitida = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'siempre' }, [{ tipo: 'no_prometer', que: 'plazo' }]) }])
   afirmar('E9: una regla siempre con no_prometer sí se escribe', permitida.tipo === 'escrito' && (await filasDe(A)) === antesDeE9 + 1, permitida)

@@ -256,16 +256,13 @@ try {
     const ctx = ctxDe(negocio.id, dueno.id)
     const reglasDe = async () => (await leerEstado(N)).vigentes('regla')
     const reglasAntes = (await reglasDe()).length
-    const regla = await aplicar(ctx, 'No prometas fechas de entrega y ábreme un Caso', [
+    const regla = await aplicar(ctx, 'No prometas fechas de entrega', [
       poner({
         tipo: 'regla',
         nombre: 'Sin fechas de entrega (prueba)',
         cuando: { tipo: 'siempre' },
-        efectos: [
-          { tipo: 'no_prometer', que: 'plazo' },
-          { tipo: 'abrir_caso', titulo: 'Pregunta por entregas' },
-        ],
-        escenarios: { activan: [{ mensajeDelCliente: '¿Cuánto demora un envío a Cali?', momento: null, pedido: null, esperado: { hace: ['abrir_caso'], noHace: [] } }], noActivan: [] },
+        efectos: [{ tipo: 'no_prometer', que: 'plazo' }],
+        escenarios: { activan: [{ mensajeDelCliente: '¿Cuánto demora un envío a Cali?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] },
       }),
     ])
     const conLaNueva = await reglasDe()
@@ -498,6 +495,12 @@ try {
     const propuestasDespues = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id), sql`${esquema.propuestas.estado} <> 'capacidad_faltante'`))
     const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
     afirmar('10 horario: queda una Capacidad faltante, sin propuesta y con la versión igual', faltantes > faltantesAntes && propuestasDespues === propuestasAntes && (await leerEstado(N)).version === versionAntes, { faltantesAntes, faltantes, propuestasAntes, propuestasDespues })
+
+    titulo('10b. "Pásamelo" queda anotado: ni regla ni propuesta')
+    const reglasAntes = (await leerEstado(N)).vigentes('regla').length
+    await turno(negocio.id, dueno.id, 'Cuando un cliente pregunte por ventas al por mayor, pásamelo a mí.')
+    const conPasar = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id), sql`${esquema.propuestas.estado} <> 'capacidad_faltante'`))
+    afirmar('10b pásamelo: queda otra Capacidad faltante, sin propuesta, sin regla y con la versión igual', (await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))) > faltantes && conPasar === propuestasAntes && (await leerEstado(N)).vigentes('regla').length === reglasAntes && (await leerEstado(N)).version === versionAntes, { conPasar, propuestasAntes })
   }
 
   const turnos = await db.select().from(esquema.turnos).where(eq(esquema.turnos.negocioId, negocio.id))
