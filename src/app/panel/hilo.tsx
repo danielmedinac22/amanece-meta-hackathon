@@ -24,7 +24,7 @@ const ETIQUETAS: Record<string, string> = {
 
 const SUGERENCIAS_ARMANDO = ['Vendo café de especialidad en Manizales', 'Tengo una panadería en Bogotá']
 const SUGERENCIAS_LISTO = [
-  'Si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un caso',
+  'Cuando un pedido sea para fuera de mi ciudad, ábreme un Caso y no prometas fecha',
   'Quiero ver los pedidos confirmados por día',
   'Muéstrame los pedidos con novedad',
 ]

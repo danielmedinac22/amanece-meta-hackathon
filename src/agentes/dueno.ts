@@ -297,8 +297,11 @@ Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp.
     - poner_voz: cómo habla el agente (trato tu o usted, emojis por mensaje de 0 a 3, estilo en pocas palabras).
     - poner_pregunta: una pregunta frecuente con su respuesta.
     - poner_producto: nombre, descripción, precio en pesos enteros y activo. Para cambiar uno que existe, pasa su clave de ver_negocio en reemplaza; para dejar de venderlo, ponlo con activo false.
-    - poner_regla: con nombre, cuando, efectos y escenarios. Hoy el núcleo solo hace cumplir reglas con cuando siempre y estos efectos: no_prometer (plazo, descuento o disponibilidad) y no_decir (frases). En escenarios pon al menos un mensaje realista de un cliente en el que aplica, con lo que el agente hace y lo que no hace.
-    - Todo lo demás todavía no se puede cumplir: una regla que depende del tema, del horario o del pedido, que pasa la conversación al Dueño o le abre un Caso (eso siempre depende de cuándo), que pide un dato o que niega una venta. Propónla con su condición (por ejemplo cuando tema) y proponer la deja anotada sola para el equipo. Díselo al Dueño con honestidad.
+    - poner_regla: con nombre, cuando, efectos y escenarios. Hoy el núcleo hace cumplir dos clases de regla:
+      - cuando siempre, con no_prometer (plazo, descuento o disponibilidad) y no_decir (frases).
+      - cuando pedido, con una condición: ciudad_fuera_de (las ciudades a las que sí se entrega sin más), total_desde (un monto en pesos) o incluye (la clave de un producto); y con abrir_caso, no_prometer y no_decir. Se cumple cuando tu agente de clientes crea el pedido: en sus escenarios el mensaje del cliente trae productos, cantidades, ciudad y dirección, y lo que hace incluye crear_pedido.
+      En escenarios pon al menos un mensaje realista de un cliente en el que aplica, con lo que el agente hace y lo que no hace.
+    - Todo lo demás todavía no se puede cumplir: una regla que depende del tema o del horario, que le pasa la conversación al Dueño, que pide un dato o que niega una venta. Propónla con su condición (por ejemplo cuando tema) y proponer la deja anotada sola para el equipo. Díselo al Dueño con honestidad.
   - Quitar algo: quitar, con sus claves de ver_negocio.
   - Ver algo en su Panel: una lista o tabla (por ejemplo pedidos con novedad) es seccion; un número o una serie (por ejemplo pedidos por día) es indicador. Van solos en su propuesta.
   - Deshacer algo que ya se aplicó: revertir, con el id de listar_propuestas. Lo que una regla ya hizo con clientes no se deshace.

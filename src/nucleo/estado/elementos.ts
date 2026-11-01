@@ -88,7 +88,7 @@ export const DONDE_SE_CUMPLE = {
  * algo en `no` no se escribe: `traducir` la deja como Capacidad faltante y `escribir` la rechaza.
  */
 export const SE_CUMPLE_HOY = {
-  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'no' },
+  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'si' },
   efecto: { pasar_al_dueno: 'si', abrir_caso: 'si', no_prometer: 'si', no_decir: 'si', pedir_dato: 'no', no_vender: 'no' },
 } as const satisfies {
   readonly cuando: Record<Cuando['tipo'], 'si' | 'no'>
@@ -97,10 +97,7 @@ export const SE_CUMPLE_HOY = {
 
 export const LARGO_DEL_ESTILO = 300
 
-/**
- * Con solo `siempre`, pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje, hasta en un
- * "hola": esperan a que exista una condición que se cumpla hoy (`tema`, `fuera_de_horario`, `pedido`).
- */
+/** Con `siempre`, pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje, hasta en un "hola". */
 const ESPERAN_UNA_CONDICION: readonly Efecto['tipo'][] = ['pasar_al_dueno', 'abrir_caso']
 
 export type Elemento =
@@ -331,7 +328,33 @@ function cuandoEnPalabras(c: Cuando): string {
     case 'fuera_de_horario':
       return 'fuera del horario de atención'
     case 'pedido':
-      return 'según el pedido'
+      return condicionEnPalabras(c.condicion)
+  }
+}
+
+export function condicionEnPalabras(c: CondicionDePedido): string {
+  switch (c.tipo) {
+    case 'ciudad_fuera_de':
+      return `cuando el pedido es para fuera de ${c.ciudades.join(', ')}`
+    case 'total_desde':
+      return `cuando el pedido suma ${pesos(c.monto)} o más`
+    case 'incluye':
+      return `cuando el pedido incluye ${c.producto}`
+  }
+}
+
+/** Lo que una condición de pedido necesita saber: el borrador y el total que calculó `cotizar`, o un pedido guardado. */
+export type PedidoParaReglas = { readonly borrador: BorradorDePedido; readonly total: Monto }
+
+/** Pura. La única evaluación de una `CondicionDePedido`. La ciudad se compara normalizada: "Manizales, Caldas" está en Manizales. */
+export function seCumpleLaCondicion(c: CondicionDePedido, p: PedidoParaReglas): boolean {
+  switch (c.tipo) {
+    case 'ciudad_fuera_de':
+      return !c.ciudades.some((ciudad) => normalizar(p.borrador.ciudad).includes(normalizar(ciudad)))
+    case 'total_desde':
+      return p.total >= c.monto
+    case 'incluye':
+      return p.borrador.items.some((i) => i.producto === c.producto)
   }
 }
 
@@ -397,7 +420,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
         problemas.push(
           invalido(
             'efectos',
-            'Hoy una regla que vale siempre solo puede no prometer (plazos, descuentos o disponibilidad) o no decir frases: pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje. Eso necesita saber cuándo (un tema, el horario o el pedido): propónla con esa condición y queda anotada para el equipo de Amanece',
+            'Una regla que vale siempre solo puede no prometer (plazos, descuentos o disponibilidad) o no decir frases: pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje. Para abrir un Caso, ponle una condición de pedido (ciudad_fuera_de, total_desde o incluye)',
           ),
         )
       }
@@ -516,7 +539,7 @@ type _DatoSoloSeDescribe = Es<(typeof VISTA_PREVIA)['dato'] extends 'describir' 
 type _EsquemaDaElementos = Es<[z.output<typeof ESQUEMA_DE_ELEMENTO>] extends [Elemento] ? true : false>
 type Apagados<T> = { [K in keyof T]: T[K] extends 'no' ? K : never }[keyof T]
 type Atrasados = Apagados<(typeof SE_CUMPLE_HOY)['cuando']> | Apagados<(typeof SE_CUMPLE_HOY)['efecto']>
-type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedido' | 'pedir_dato' | 'no_vender'
+type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedir_dato' | 'no_vender'
 /** Encender uno de estos exige su compilador en `clientes/reglas.ts` y tocar esta línea. */
 type _AtrasadosSonLosDelPlanB = Es<[Atrasados] extends [DelPlanB] ? ([DelPlanB] extends [Atrasados] ? true : false) : false>
 export type ComprobacionesDeElementos = [

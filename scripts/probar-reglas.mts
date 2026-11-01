@@ -176,6 +176,78 @@ try {
     afirmar('crear_pedido: un producto que no existe no llega al puerto', r2.puerto.pedidos.length === 0 && r2.t.acciones.some((a) => a.nombre === 'crear_pedido' && a.detalle.startsWith('negado')), r2.t.acciones)
   }
 
+  console.log('\n=== La regla de pedido se cumple en crear_pedido ===')
+  {
+    const manizales: [string, Elemento] = [
+      'regla:Fuera de Manizales',
+      {
+        tipo: 'regla',
+        nombre: 'Envíos fuera de Manizales',
+        cuando: { tipo: 'pedido', condicion: { tipo: 'ciudad_fuera_de', ciudades: ['Manizales'] } },
+        efectos: [
+          { tipo: 'abrir_caso', titulo: 'Pedido fuera de Manizales' },
+          { tipo: 'no_prometer', que: 'plazo' },
+        ],
+        escenarios: { activan: [{ mensajeDelCliente: 'Quiero 2 cafés para Pereira', momento: null, pedido: null, esperado: { hace: ['crear_pedido', 'abrir_caso'], noHace: [] } }], noActivan: [] },
+      },
+    ]
+    const estado = estadoCon(manizales)
+    const pide = (ciudad: string, cantidad: number, texto: string) =>
+      guion(async ({ puerto }) => {
+        await puerto.crear_pedido({ pedido: { items: [{ producto: CAFE, cantidad }], ciudad }, direccion: 'Calle 10 # 5-20' })
+        return { texto, uso: SIN_USO }
+      }, 'Listo, quedó tu pedido. La fecha de entrega te la confirma el equipo.')
+
+    const pereira = await correr(estado, 'Quiero 2 cafés para Pereira, calle 10 # 5-20', pide('Pereira', 2, 'Listo, pedido creado por $76.000. Te llega el martes.').motores)
+    afirmar('pedido a Pereira: el núcleo abre el Caso de la regla y la regla queda activa', pereira.puerto.casos.some((c) => c.titulo === 'Pedido fuera de Manizales') && pereira.t.reglasActivas.includes(clave('regla:Fuera de Manizales')), { casos: pereira.puerto.casos, activas: pereira.t.reglasActivas })
+    afirmar('pedido a Pereira: "te llega el martes" se corrige por no_prometer', pereira.t.corregido === 'si' && pereira.t.violaciones.some((v) => v.efecto === 'no_prometer'), pereira.t)
+
+    const enCasa = await correr(estado, 'Quiero 2 cafés para Manizales', pide('Manizales, Caldas', 2, 'Listo, pedido creado por $76.000. Te llega mañana.').motores)
+    afirmar('pedido a "Manizales, Caldas": sin Caso, sin regla activa y "llega mañana" sale sin corrección', enCasa.puerto.casos.length === 0 && enCasa.t.reglasActivas.length === 0 && enCasa.t.corregido === 'no', { casos: enCasa.puerto.casos, t: enCasa.t })
+
+    const hola = await correr(estado, 'Hola', guion('¡Hola! ¿Qué café te provoca?').motores)
+    afirmar('un "hola" sin crear_pedido no activa la regla ni abre Caso', hola.puerto.casos.length === 0 && hola.t.reglasActivas.length === 0, hola.t)
+
+    const conAbierto: ClienteDelTurno = {
+      ...cliente,
+      pedidos: [{ numero: 7, total: monto(76000), estado: 'pendiente', resumen: '2 x Café 500 g; Pereira', paraReglas: { borrador: { items: [{ producto: CAFE, cantidad: 2 }], ciudad: 'Pereira' }, total: monto(76000) } }],
+    }
+    const cuando = guion('Te llega en 3 días hábiles.', 'La fecha de entrega te la confirma el equipo por aquí.')
+    const puertoAbierto = puertoEnMemoria(estado, conAbierto)
+    const abierto = await turno(estado, { ...conversacion('¿Cuándo me llega?'), cliente: conAbierto }, entornoDeEnsayo(estado, conAbierto, puertoAbierto), cuando.motores)
+    afirmar('con un pedido abierto a Pereira, "¿cuándo me llega?" se corrige y no abre otro Caso', abierto.corregido === 'si' && puertoAbierto.casos.length === 0 && abierto.reglasActivas.length === 1, { t: abierto, casos: puertoAbierto.casos })
+
+    const reusado = guion(async ({ puerto }) => {
+      await puerto.crear_pedido({ pedido: { items: [{ producto: CAFE, cantidad: 2 }], ciudad: 'Pereira' }, direccion: 'Calle 10' })
+      return { texto: 'Listo, tu pedido quedó creado.', uso: SIN_USO }
+    })
+    const yaAbierto = { ...puertoEnMemoria(estado, cliente), abrir_caso: async () => ({ caso: marcar.caso('00000000-0000-4000-8000-0000000000ca'), nuevo: false }) }
+    const otraVez = await turno(estado, conversacion('Quiero 2 cafés para Pereira'), entornoDeEnsayo(estado, cliente, yaAbierto), reusado.motores)
+    afirmar('un Caso que el puerto reusa no vuelve en casosAbiertos: el Dueño no recibe el aviso dos veces', otraVez.acciones.some((a) => a.nombre === 'abrir_caso') && otraVez.casosAbiertos.length === 0, otraVez)
+  }
+
+  console.log('\n=== total_desde e incluye ===')
+  {
+    const MOLINO = el.claveDeProducto.deId('00000000-0000-4000-8000-0000000000c2')
+    const conRegla = (nombre: string, condicion: Extract<Regla['cuando'], { tipo: 'pedido' }>['condicion']): [string, Elemento] => [
+      `regla:${nombre}`,
+      { tipo: 'regla', nombre, cuando: { tipo: 'pedido', condicion }, efectos: [{ tipo: 'abrir_caso', titulo: nombre }], escenarios: { activan: [{ mensajeDelCliente: 'Quiero un pedido', momento: null, pedido: null, esperado: { hace: ['crear_pedido'], noHace: [] } }], noActivan: [] } },
+    ]
+    const molino: [string, Elemento] = [MOLINO, { tipo: 'producto', nombre: 'Molino manual', descripcion: '', precio: monto(120000), activo: true }]
+    const estado = estadoCon(molino, conRegla('Pedido grande', { tipo: 'total_desde', monto: monto(100000) }), conRegla('Con molino', { tipo: 'incluye', producto: MOLINO }))
+    const pedir = (items: { producto: typeof CAFE; cantidad: number }[]) =>
+      guion(async ({ puerto }) => {
+        await puerto.crear_pedido({ pedido: { items, ciudad: 'Manizales' }, direccion: 'Calle 1' })
+        return { texto: 'Listo, tu pedido quedó creado.', uso: SIN_USO }
+      }).motores
+    const dos = await correr(estado, 'Quiero 2 cafés', pedir([{ producto: CAFE, cantidad: 2 }]))
+    const tres = await correr(estado, 'Quiero 3 cafés', pedir([{ producto: CAFE, cantidad: 3 }]))
+    const conMolino = await correr(estado, 'Quiero el molino', pedir([{ producto: MOLINO, cantidad: 1 }]))
+    afirmar('total_desde 100.000: 2 x 38.000 no activa', dos.t.reglasActivas.length === 0 && dos.puerto.casos.length === 0, dos.t.reglasActivas)
+    afirmar('total_desde 100.000: 3 x 38.000 activa', tres.t.reglasActivas.includes(clave('regla:Pedido grande')) && !tres.t.reglasActivas.includes(clave('regla:Con molino')), tres.t.reglasActivas)
+    afirmar('incluye: activa solo con ese producto', conMolino.t.reglasActivas.includes(clave('regla:Con molino')) && conMolino.puerto.casos.some((c) => c.titulo === 'Con molino'), conMolino.t.reglasActivas)
+  }
+
   console.log('\n=== revisar ===')
   {
     const g = guion('Te lo dejo en $50.000 con envío.', 'El café de tueste medio vale $38.000.')

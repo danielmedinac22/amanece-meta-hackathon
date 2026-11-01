@@ -9,7 +9,9 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { afirmar, terminar } from './afirmar.mjs'
 
-type Mutacion = { readonly nombre: string; readonly archivo: string; readonly antes: string; readonly despues: string }
+type Cambio = { readonly antes: string; readonly despues: string }
+/** `tambien`: un segundo cambio en el mismo archivo, para mutar una tabla con su comprobación al día. */
+type Mutacion = Cambio & { readonly nombre: string; readonly archivo: string; readonly tambien?: Cambio }
 
 const ELEMENTOS = 'src/nucleo/estado/elementos.ts'
 const MUTACIONES: readonly Mutacion[] = [
@@ -52,14 +54,21 @@ const MUTACIONES: readonly Mutacion[] = [
   {
     nombre: 'encender fuera_de_horario en SE_CUMPLE_HOY sin tocar la comprobación',
     archivo: ELEMENTOS,
-    antes: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'no' },",
-    despues: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'si', pedido: 'no' },",
+    antes: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'si' },",
+    despues: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'si', pedido: 'si' },",
   },
   {
     nombre: 'encender tema en SE_CUMPLE_HOY sin tocar la comprobación',
     archivo: ELEMENTOS,
-    antes: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'no' },",
-    despues: "  cuando: { siempre: 'si', tema: 'si', fuera_de_horario: 'no', pedido: 'no' },",
+    antes: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'si' },",
+    despues: "  cuando: { siempre: 'si', tema: 'si', fuera_de_horario: 'no', pedido: 'si' },",
+  },
+  {
+    nombre: 'encender fuera_de_horario con su comprobación al día y sin su fila en ACTIVACION',
+    archivo: ELEMENTOS,
+    antes: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'si' },\n",
+    despues: "  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'si', pedido: 'si' },\n",
+    tambien: { antes: "type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedir_dato' | 'no_vender'", despues: "type DelPlanB = 'tema' | 'pedir_dato' | 'no_vender'" },
   },
 ]
 
@@ -72,12 +81,14 @@ const limpio = tsc()
 afirmar('sin mutaciones, tsc pasa', limpio.pasa, limpio.errores)
 for (const m of MUTACIONES) {
   const original = readFileSync(m.archivo, 'utf8')
-  if (original.split(m.antes).length !== 2) {
-    afirmar(`${m.nombre}: el texto a mutar está una sola vez en ${m.archivo}`, false, m.antes)
+  const cambios = [m, ...(m.tambien ? [m.tambien] : [])]
+  const faltan = cambios.filter((c) => original.split(c.antes).length !== 2)
+  if (faltan.length) {
+    afirmar(`${m.nombre}: el texto a mutar está una sola vez en ${m.archivo}`, false, faltan.map((c) => c.antes))
     continue
   }
   try {
-    writeFileSync(m.archivo, original.replace(m.antes, m.despues))
+    writeFileSync(m.archivo, cambios.reduce((texto, c) => texto.replace(c.antes, c.despues), original))
     const r = tsc()
     afirmar(`${m.nombre}: tsc falla`, !r.pasa, r.errores)
     if (!r.pasa) console.log(`      ${r.errores.split('\n')[0]}`)

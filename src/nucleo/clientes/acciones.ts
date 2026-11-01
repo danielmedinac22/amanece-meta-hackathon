@@ -8,6 +8,7 @@ import { marcar, type CasoId, type ClienteId } from '../identidad'
 import type { EstadoDelNegocio, EstadoVigente } from '../estado'
 import { claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
 import { cotizar, type Cotizacion } from '../precios/cotizar'
+import type { Activa, ReglasCompiladas } from './reglas'
 import type { ClienteDelTurno } from './turno'
 
 export type PedidoConsultado = { readonly numero: number; readonly estado: string; readonly total: Monto; readonly items: readonly string[]; readonly ciudad: string; readonly direccion: string }
@@ -17,8 +18,8 @@ export interface PuertoDeAcciones {
   crear_pedido(e: { readonly pedido: BorradorDePedido; readonly direccion: string; readonly cotizacion: Cotizacion }): Promise<{ readonly numero: number; readonly total: Monto } | { readonly negado: string }>
   confirmar_pedido(numero: number): Promise<{ readonly ok: true; readonly total: Monto } | { readonly ok: false; readonly porQue: string }>
   consultar_pedido(numero: number | null): Promise<readonly PedidoConsultado[]>
-  /** Con `reusar`, suma el detalle al Caso sin resolver de este Cliente con el mismo título en vez de abrir otro. */
-  abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reusar: boolean }): Promise<{ readonly caso: CasoId | null }>
+  /** Con `reusar`, suma el detalle al Caso sin resolver de este Cliente con el mismo título en vez de abrir otro; `nuevo` dice cuál pasó. */
+  abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reusar: boolean }): Promise<{ readonly caso: CasoId | null; readonly nuevo: boolean }>
 }
 
 /** `pasar_al_dueno` es un efecto, no una acción: en un escenario se espera `abrir_caso`. */
@@ -36,22 +37,28 @@ export type Envuelto = {
   readonly puerto: PuertoParaElModelo
   hechas(): readonly AccionHecha[]
   cotizaciones(): readonly Cotizacion[]
-  /** Los Casos del turno: `atender` los trae al Dueño después de responder. */
+  /** Los Casos nuevos del turno: `atender` los trae al Dueño después de responder. Uno reusado ya le llegó. */
   casosAbiertos(): readonly CasoId[]
+  /** Las reglas de pedido que activó `crear_pedido` en este turno. */
+  activadas(): readonly Activa[]
   /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título. Queda en `hechas()` como `abrir_caso`. */
   abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string }): Promise<CasoId | null>
 }
 
-/** La única envoltura, igual en producción y en el ensayo: `cotizar` en `crear_pedido` y cada llamada en `hechas()`. */
-export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio): Envuelto {
+/**
+ * La única envoltura, igual en producción y en el ensayo: `cotizar` en `crear_pedido`, la activación de las reglas de
+ * pedido con el borrador y el total que calculó el código, y cada llamada en `hechas()`.
+ */
+export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reglas: ReglasCompiladas): Envuelto {
   const hechas: AccionHecha[] = []
   const cotizaciones: Cotizacion[] = []
   const casos: CasoId[] = []
+  const activadas: Activa[] = []
   const anotar = (nombre: NombreDeAccion, detalle: string) => hechas.push({ nombre, detalle })
   const abrir = async (e: Parameters<PuertoDeAcciones['abrir_caso']>[0]) => {
     const r = await puerto.abrir_caso(e)
     anotar('abrir_caso', e.titulo)
-    if (r.caso && !casos.includes(r.caso)) casos.push(r.caso)
+    if (r.caso && r.nuevo && !casos.includes(r.caso)) casos.push(r.caso)
     return r
   }
   return {
@@ -66,6 +73,7 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio): En
           anotar('crear_pedido', `negado: ${cotizacion.noCubre}`)
           return { negado: cotizacion.noCubre }
         }
+        for (const a of reglas.alCotizar({ borrador: e.pedido, total: cotizacion.total })) if (!activadas.some((b) => b.regla === a.regla)) activadas.push(a)
         const r = await puerto.crear_pedido({ ...e, cotizacion })
         anotar('crear_pedido', 'negado' in r ? `negado: ${r.negado}` : `#${r.numero}`)
         if ('negado' in r) return r
@@ -80,11 +88,12 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio): En
         anotar('consultar_pedido', numero === null ? 'los últimos' : `#${numero}`)
         return puerto.consultar_pedido(numero)
       },
-      abrir_caso: (e) => abrir({ ...e, reusar: false }),
+      abrir_caso: async (e) => ({ caso: (await abrir({ ...e, reusar: false })).caso }),
     },
     hechas: () => hechas,
     cotizaciones: () => cotizaciones,
     casosAbiertos: () => casos,
+    activadas: () => activadas,
     abrirCasoDelNucleo: async (e) => (await abrir({ ...e, pedido: null, reusar: true })).caso,
   }
 }
@@ -177,14 +186,14 @@ export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): Puert
             ),
           )
           .returning({ id: esquema.casos.id })
-        if (abierto) return { caso: marcar.caso(abierto.id) }
+        if (abierto) return { caso: marcar.caso(abierto.id), nuevo: false }
       }
       const [delPedido] = pedido !== null ? await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(and(deEsteCliente, eq(esquema.pedidos.numero, pedido))) : []
       const [caso] = await db
         .insert(esquema.casos)
         .values({ negocioId: negocio, clienteId: cliente, pedidoId: delPedido?.id ?? null, titulo, detalle })
         .returning({ id: esquema.casos.id })
-      return { caso: marcar.caso(caso.id) }
+      return { caso: marcar.caso(caso.id), nuevo: true }
     },
   }
 }
@@ -196,7 +205,7 @@ export type PuertoEnMemoria = PuertoDeAcciones & {
 
 /** El de ensayo: en memoria, encima de los datos del estado y de los pedidos del Cliente. No escribe nada. */
 export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTurno): PuertoEnMemoria {
-  const pedidos = cliente.pedidos.map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: [p.resumen], ciudad: '', direccion: '', cotizacion: null as Cotizacion | null }))
+  const pedidos = cliente.pedidos.map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: [p.resumen], ciudad: p.paraReglas?.borrador.ciudad ?? '', direccion: '', cotizacion: null as Cotizacion | null }))
   const casos: { titulo: string; detalle: string }[] = []
   return {
     pedidos,
@@ -219,7 +228,7 @@ export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTur
       const i = reusar ? casos.findIndex((c) => c.titulo === titulo) : -1
       if (i >= 0) casos[i] = { titulo, detalle: `${casos[i].detalle}\n\n${detalle}` }
       else casos.push({ titulo, detalle })
-      return { caso: null }
+      return { caso: null, nuevo: i < 0 }
     },
   }
 }

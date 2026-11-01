@@ -7,21 +7,30 @@ import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
 import type { CasoId, ClienteId, Instante, Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoVigente } from '../estado'
-import { comoClave, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type VersionDelNegocio } from '../estado/elementos'
+import { comoClave, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
 import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
 import { envolver, puertoDeLaBase, puertoEnMemoria, type AccionHecha, type PuertoDeAcciones, type PuertoParaElModelo } from './acciones'
-import { compilarReglas, type ViolacionDeRegla } from './reglas'
+import { compilarReglas, sinRepetir, type ViolacionDeRegla } from './reglas'
 
 export type Modo = 'real' | 'ensayo'
 export type TurnoDeConversacion = { readonly rol: 'cliente' | 'agente'; readonly texto: string }
+
+export type PedidoDelCliente = {
+  readonly numero: number
+  readonly total: Monto
+  readonly estado: string
+  readonly resumen: string
+  /** Lo que una regla de pedido necesita saber; `null` si el pedido ya no está abierto. */
+  readonly paraReglas: PedidoParaReglas | null
+}
 
 export type ClienteDelTurno = {
   readonly id: ClienteId
   readonly nombre: string
   readonly telefono: string | null
-  readonly pedidos: readonly { readonly numero: number; readonly total: Monto; readonly estado: string; readonly resumen: string }[]
+  readonly pedidos: readonly PedidoDelCliente[]
 }
 
 export type Conversacion = {
@@ -112,8 +121,9 @@ export async function turno<M extends Modo>(
 ): Promise<TurnoResuelto<M>> {
   const inicio = Date.now()
   const reglas = compilarReglas(estado)
-  const activas = reglas.alEntrar()
-  const envuelto = envolver(entorno.acciones, estado)
+  const alEntrar = reglas.alEntrar(conversacion.cliente.pedidos.flatMap((p) => (p.paraReglas ? [p.paraReglas] : [])))
+  let activas = alEntrar
+  const envuelto = envolver(entorno.acciones, estado, reglas)
   const { cliente, mensaje } = conversacion
   const detalle = `${cliente.nombre || 'El Cliente'} escribió: «${mensaje.texto}»`
   let llamadas = 0
@@ -130,7 +140,7 @@ export async function turno<M extends Modo>(
   let revision: Revision = { tipo: 'pasa' }
   let corregido: TurnoResuelto<M>['corregido'] = 'no'
 
-  const alDueno = reglas.enEntrada(activas)
+  const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
     await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle })
     texto = alDueno.avisoAlCliente
@@ -140,6 +150,7 @@ export async function turno<M extends Modo>(
     const b = await motores.responder({ system, mensajes, herramientas: herramientasPara(estado, envuelto.puerto), puerto: envuelto.puerto })
     contar(b.uso)
     const borrador = b.texto.trim() || SIN_TEXTO
+    activas = sinRepetir([...envuelto.activadas(), ...alEntrar])
     const deSalida = reglas.enSalida(activas, borrador, envuelto.hechas().some((h) => h.nombre === 'abrir_caso'))
     for (const titulo of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle })
     const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
@@ -167,7 +178,7 @@ export async function turno<M extends Modo>(
   return {
     texto,
     acciones: envuelto.hechas(),
-    reglasActivas: activas,
+    reglasActivas: activas.map((a) => a.regla),
     violaciones,
     revision,
     corregido,

@@ -4,12 +4,13 @@ import { traerCasoAlDueno } from '@/agentes/avisos'
 import { registrarTurno } from '@/negocio/medir'
 import type { MensajeEntrante } from '../entrada'
 import { leerEstado, NegocioInexistente, otrosNegocios, type EstadoVigente } from '../estado'
-import { comoMonto } from '../estado/elementos'
+import { claveDeProducto, comoMonto } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId } from '../identidad'
 import { despachar, intencion, type AlCliente } from '../salida'
 import { entornoReal, turno, type ClienteDelTurno } from './turno'
 
 const HISTORIAL = 20
+const PEDIDO_ABIERTO: ReadonlySet<string> = new Set(['pendiente', 'confirmado', 'enviado'] satisfies (typeof esquema.ESTADOS_DE_PEDIDO)[number][])
 
 /** El único que junta `turno` y `despachar`. Nunca lanza por el turno: el Cliente recibe el aviso `falla_tecnica`. */
 export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Promise<void> {
@@ -81,7 +82,13 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
       id: destinatario.cliente,
       nombre: cliente.nombre,
       telefono: cliente.telefono,
-      pedidos: pedidos.map((p) => ({ numero: p.numero, total: comoMonto(p.total), estado: p.estado, resumen: `${p.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}; ${p.ciudad}, ${p.direccion}` })),
+      pedidos: pedidos.map((p) => ({
+        numero: p.numero,
+        total: comoMonto(p.total),
+        estado: p.estado,
+        resumen: `${p.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}; ${p.ciudad}, ${p.direccion}`,
+        paraReglas: PEDIDO_ABIERTO.has(p.estado) ? { borrador: { items: p.items.map((i) => ({ producto: claveDeProducto.deId(i.productoId), cantidad: i.cantidad })), ciudad: p.ciudad }, total: comoMonto(p.total) } : null,
+      })),
     }
     const conversacion = { cliente: delTurno, historial: anteriores.reverse(), mensaje: { texto: m.texto, wamid: m.wamid, enviadoEn: marcar.instante(enviadoEn) } }
     const t = await turno(estado, conversacion, entornoReal(estado, delTurno.id, await otrosNegocios(estado)))

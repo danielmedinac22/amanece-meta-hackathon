@@ -44,9 +44,9 @@ const foto = async (negocio: NegocioId) => {
   return JSON.stringify({ version: e.version, todos: e.todos() })
 }
 const horario = (valor: string): Elemento => ({ tipo: 'dato', campo: 'horario', valor })
-const regla = (cuando: Extract<Elemento, { tipo: 'regla' }>['cuando'], efectos: Extract<Elemento, { tipo: 'regla' }>['efectos']): Elemento => ({
+const regla = (cuando: Extract<Elemento, { tipo: 'regla' }>['cuando'], efectos: Extract<Elemento, { tipo: 'regla' }>['efectos'], nombre = 'Regla de prueba'): Elemento => ({
   tipo: 'regla',
-  nombre: 'Regla de prueba',
+  nombre,
   cuando,
   efectos,
   escenarios: { activan: [{ mensajeDelCliente: '¿Cuándo llega?', momento: null, pedido: null, esperado: { hace: ['abrir_caso'], noHace: [] } }], noActivan: [] },
@@ -129,10 +129,10 @@ try {
 
   console.log('\n=== E9. escribir no deja entrar lo que hoy nada hace cumplir ===')
   const antesDeE9 = await filasDe(A)
-  const conPedido = regla({ tipo: 'pedido', condicion: { tipo: 'total_desde', monto: monto(100000) } }, [{ tipo: 'abrir_caso', titulo: 'Pedido grande' }])
+  const pasarConPedido = regla({ tipo: 'pedido', condicion: { tipo: 'ciudad_fuera_de', ciudades: ['Manizales'] } }, [{ tipo: 'pasar_al_dueno', avisoAlCliente: 'Ya le aviso a Ana.' }])
   const conNoVender = regla({ tipo: 'siempre' }, [{ tipo: 'no_vender', explicacionAlCliente: 'Hoy no vendemos' }])
   const conTema = regla({ tipo: 'tema', tema: 'envíos' }, [{ tipo: 'abrir_caso', titulo: 'Envíos' }])
-  for (const [nombre, r] of [['cuando: pedido', conPedido], ['efecto no_vender', conNoVender], ['cuando: tema', conTema]] as const) {
+  for (const [nombre, r] of [['cuando: pedido y pasar_al_dueno, que se cumpliría antes de saberse', pasarConPedido], ['efecto no_vender', conNoVender], ['cuando: tema', conTema]] as const) {
     const intento = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: r }])
     afirmar(`E9: una regla con ${nombre} no se escribe: invalida`, intento.tipo === 'invalida', intento)
   }
@@ -145,6 +145,10 @@ try {
   afirmar('E9: nada de lo invalido dejó filas', (await filasDe(A)) === antesDeE9)
   const permitida = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'siempre' }, [{ tipo: 'no_prometer', que: 'plazo' }]) }])
   afirmar('E9: una regla siempre con no_prometer sí se escribe', permitida.tipo === 'escrito' && (await filasDe(A)) === antesDeE9 + 1, permitida)
+  const deManizales = await escribirEn(A, [
+    { clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'pedido', condicion: { tipo: 'ciudad_fuera_de', ciudades: ['Manizales'] } }, [{ tipo: 'abrir_caso', titulo: 'Pedido fuera de Manizales' }, { tipo: 'no_prometer', que: 'plazo' }], 'Fuera de Manizales') },
+  ])
+  afirmar('E9: la regla de Manizales, cuando pedido con abrir_caso y no_prometer, sí se escribe', deManizales.tipo === 'escrito', deManizales)
 
   console.log('\n=== E10. La validación corre dentro de la transacción, después del FOR UPDATE ===')
   const torta = (): CambioDeElemento => ({ clave: el.claveNueva('producto'), base: 'nueva', despues: { tipo: 'producto', nombre: 'Torta', descripcion: '', precio: monto(30000), activo: true } })
