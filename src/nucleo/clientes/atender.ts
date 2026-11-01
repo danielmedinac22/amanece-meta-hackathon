@@ -1,10 +1,9 @@
 import { and, desc, eq, ne, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { traerCasoAlDueno } from '@/agentes/avisos'
-import { NOMBRE_TEMPORAL } from '@/negocio/alta'
 import { registrarTurno } from '@/negocio/medir'
 import type { MensajeEntrante } from '../entrada'
-import { leerEstado, NegocioInexistente, type EstadoVigente } from '../estado'
+import { leerEstado, NegocioInexistente, otrosNegocios, type EstadoVigente } from '../estado'
 import { comoMonto } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId } from '../identidad'
 import { despachar, intencion, type AlCliente } from '../salida'
@@ -64,7 +63,7 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
   const destinatario: AlCliente = { tipo: 'cliente', negocio, cliente: marcar.cliente(cliente.id) }
   let casos: readonly CasoId[] = []
   try {
-    const [anteriores, pedidos, otros] = await db.batch([
+    const [anteriores, pedidos] = await db.batch([
       db
         .select({ rol: esquema.mensajesCliente.rol, texto: esquema.mensajesCliente.texto })
         .from(esquema.mensajesCliente)
@@ -77,10 +76,6 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
         .where(and(eq(esquema.pedidos.negocioId, negocio), eq(esquema.pedidos.clienteId, cliente.id)))
         .orderBy(desc(esquema.pedidos.creado))
         .limit(5),
-      db
-        .select({ nombre: esquema.negocios.nombre })
-        .from(esquema.negocios)
-        .where(and(ne(esquema.negocios.id, negocio), eq(esquema.negocios.estado, 'listo'), ne(esquema.negocios.nombre, NOMBRE_TEMPORAL))),
     ])
     const delTurno: ClienteDelTurno = {
       id: destinatario.cliente,
@@ -89,8 +84,20 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
       pedidos: pedidos.map((p) => ({ numero: p.numero, total: comoMonto(p.total), estado: p.estado, resumen: `${p.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}; ${p.ciudad}, ${p.direccion}` })),
     }
     const conversacion = { cliente: delTurno, historial: anteriores.reverse(), mensaje: { texto: m.texto, wamid: m.wamid, enviadoEn: marcar.instante(enviadoEn) } }
-    const t = await turno(estado, conversacion, entornoReal(estado, delTurno.id, otros.map((o) => o.nombre)))
+    const t = await turno(estado, conversacion, entornoReal(estado, delTurno.id, await otrosNegocios(estado)))
     casos = t.casosAbiertos
+    // Para medir cuánto frena el núcleo: solo ids y códigos, nunca texto ni teléfono.
+    console.info(
+      '[atender] turno',
+      JSON.stringify({
+        wamid: m.wamid,
+        negocio,
+        corregido: t.corregido,
+        revision: t.revision.tipo === 'corregir' ? t.revision.motivos : [],
+        violaciones: t.violaciones.map((v) => v.efecto),
+        reglas: t.reglasActivas,
+      }),
+    )
     const salida = await despachar(t.intencion)
     if (salida.tipo === 'por_enviar') throw new Error(`Kapso no tomó la respuesta: ${salida.error}`)
     if (salida.tipo === 'no_salio') console.error('[atender] la respuesta no salió', m.wamid, salida.motivo)

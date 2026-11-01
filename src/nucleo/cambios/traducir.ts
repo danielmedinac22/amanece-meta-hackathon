@@ -2,11 +2,10 @@
  * Cada `Quiere` a una `Escritura`, sin modelo. El único lugar que ramifica por `Quiere`. Puro salvo `revertir` y
  * `responder_caso`, que leen la base.
  */
-import { and, eq, ne } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { NOMBRE_TEMPORAL } from '@/negocio/alta'
 import type { MotivoDeFaltante } from '../capacidades'
-import { historiaParaRevertir, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
+import { historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
 import { claveNueva, comoVersion, definicionDe, describirCambio, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
@@ -36,15 +35,6 @@ export type SinTraduccion = { readonly tipo: 'corregir'; readonly problemas: rea
 const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_invalido', campo, porQue })
 const corregir = (...problemas: Problema[]): SinTraduccion => ({ tipo: 'corregir', problemas })
 const ahora = () => marcar.instante(new Date())
-
-/** Los nombres de los otros Negocios abiertos, para que un texto del Dueño no hable de ellos. */
-async function otrosNegocios(negocio: NegocioId): Promise<readonly string[]> {
-  const filas = await db
-    .select({ nombre: esquema.negocios.nombre })
-    .from(esquema.negocios)
-    .where(and(ne(esquema.negocios.id, negocio), eq(esquema.negocios.estado, 'listo'), ne(esquema.negocios.nombre, NOMBRE_TEMPORAL)))
-  return filas.map((f) => f.nombre)
-}
 
 /** Varias `Quiere` se suman en una sola Escritura; dos sobre la misma clave se corrigen. */
 export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeElementos[]): Promise<Traduccion | SinTraduccion> {
@@ -113,7 +103,7 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
   if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] } }
   const v = validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') problemas.push(...v.problemas)
-  const otros = cambios.some((c) => c.despues) ? await otrosNegocios(negocio) : []
+  const otros = cambios.some((c) => c.despues) ? await otrosNegocios(estado) : []
   for (const c of cambios) if (c.despues) for (const t of definicionDe(c.despues.tipo).textos(c.despues)) for (const motivo of revisarTextoDelDueno(t.texto, otros)) problemas.push({ tipo: 'norma', campo: t.campo, motivo })
   if (problemas.length) return corregir(...problemas)
 

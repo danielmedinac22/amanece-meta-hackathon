@@ -1,7 +1,7 @@
 /**
  * Lo que el Agente de clientes puede hacer, con dos adaptadores (la base y la memoria) y la única envoltura.
  */
-import { and, desc, eq, gt, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { ItemDePedido } from '@/db/esquema'
 import { marcar, type CasoId, type ClienteId } from '../identidad'
@@ -17,8 +17,8 @@ export interface PuertoDeAcciones {
   crear_pedido(e: { readonly pedido: BorradorDePedido; readonly direccion: string; readonly cotizacion: Cotizacion }): Promise<{ readonly numero: number; readonly total: Monto } | { readonly negado: string }>
   confirmar_pedido(numero: number): Promise<{ readonly ok: true; readonly total: Monto } | { readonly ok: false; readonly porQue: string }>
   consultar_pedido(numero: number | null): Promise<readonly PedidoConsultado[]>
-  /** Con `regla`, reusa el Caso sin resolver de ese Cliente por esa regla. */
-  abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly regla: Clave | null }): Promise<{ readonly caso: CasoId | null }>
+  /** Con `reusar`, suma el detalle al Caso sin resolver de este Cliente con el mismo título en vez de abrir otro. */
+  abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reusar: boolean }): Promise<{ readonly caso: CasoId | null }>
 }
 
 /** `pasar_al_dueno` es un efecto, no una acción: en un escenario se espera `abrir_caso`. */
@@ -38,8 +38,8 @@ export type Envuelto = {
   cotizaciones(): readonly Cotizacion[]
   /** Los Casos del turno: `atender` los trae al Dueño después de responder. */
   casosAbiertos(): readonly CasoId[]
-  /** Un Caso que abre el núcleo por una regla o por el respaldo. Queda en `hechas()` como `abrir_caso`. */
-  abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string; readonly regla: Clave | null }): Promise<CasoId | null>
+  /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título. Queda en `hechas()` como `abrir_caso`. */
+  abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string }): Promise<CasoId | null>
 }
 
 /** La única envoltura, igual en producción y en el ensayo: `cotizar` en `crear_pedido` y cada llamada en `hechas()`. */
@@ -80,12 +80,12 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio): En
         anotar('consultar_pedido', numero === null ? 'los últimos' : `#${numero}`)
         return puerto.consultar_pedido(numero)
       },
-      abrir_caso: (e) => abrir({ ...e, regla: null }),
+      abrir_caso: (e) => abrir({ ...e, reusar: false }),
     },
     hechas: () => hechas,
     cotizaciones: () => cotizaciones,
     casosAbiertos: () => casos,
-    abrirCasoDelNucleo: async (e) => (await abrir({ ...e, pedido: null })).caso,
+    abrirCasoDelNucleo: async (e) => (await abrir({ ...e, pedido: null, reusar: true })).caso,
   }
 }
 
@@ -165,13 +165,18 @@ export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): Puert
       return filas.map((p) => ({ numero: p.numero, estado: p.estado, total: comoMonto(p.total), items: p.items.map((i) => `${i.cantidad} x ${i.nombre}`), ciudad: p.ciudad, direccion: p.direccion }))
     },
 
-    async abrir_caso({ titulo, detalle, pedido, regla }) {
-      if (regla) {
+    async abrir_caso({ titulo, detalle, pedido, reusar }) {
+      if (reusar) {
         const [abierto] = await db
-          .select({ id: esquema.casos.id })
-          .from(esquema.casos)
-          .where(and(eq(esquema.casos.negocioId, negocio), eq(esquema.casos.clienteId, cliente), eq(esquema.casos.titulo, titulo), ne(esquema.casos.estado, 'resuelto')))
-          .limit(1)
+          .update(esquema.casos)
+          .set({ detalle: sql`${esquema.casos.detalle} || ${`\n\n${detalle}`}` })
+          .where(
+            eq(
+              esquema.casos.id,
+              sql`(select id from casos where negocio_id = ${negocio} and cliente_id = ${cliente} and titulo = ${titulo} and estado <> 'resuelto' order by creado desc limit 1)`,
+            ),
+          )
+          .returning({ id: esquema.casos.id })
         if (abierto) return { caso: marcar.caso(abierto.id) }
       }
       const [delPedido] = pedido !== null ? await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(and(deEsteCliente, eq(esquema.pedidos.numero, pedido))) : []
@@ -186,13 +191,13 @@ export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): Puert
 
 export type PuertoEnMemoria = PuertoDeAcciones & {
   readonly pedidos: readonly (PedidoConsultado & { readonly cotizacion: Cotizacion | null })[]
-  readonly casos: readonly { readonly titulo: string; readonly regla: Clave | null }[]
+  readonly casos: readonly { readonly titulo: string; readonly detalle: string }[]
 }
 
 /** El de ensayo: en memoria, encima de los datos del estado y de los pedidos del Cliente. No escribe nada. */
 export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTurno): PuertoEnMemoria {
   const pedidos = cliente.pedidos.map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: [p.resumen], ciudad: '', direccion: '', cotizacion: null as Cotizacion | null }))
-  const casos: { titulo: string; regla: Clave | null }[] = []
+  const casos: { titulo: string; detalle: string }[] = []
   return {
     pedidos,
     casos,
@@ -210,8 +215,10 @@ export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTur
       return { ok: true, total: pedidos[i].total }
     },
     consultar_pedido: async (numero) => (numero === null ? pedidos.slice(-3).reverse() : pedidos.filter((p) => p.numero === numero)),
-    async abrir_caso({ titulo, regla }) {
-      if (!regla || !casos.some((c) => c.regla === regla)) casos.push({ titulo, regla })
+    async abrir_caso({ titulo, detalle, reusar }) {
+      const i = reusar ? casos.findIndex((c) => c.titulo === titulo) : -1
+      if (i >= 0) casos[i] = { titulo, detalle: `${casos[i].detalle}\n\n${detalle}` }
+      else casos.push({ titulo, detalle })
       return { caso: null }
     },
   }

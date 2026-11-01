@@ -1,9 +1,10 @@
 /**
  * El único lector del estado de un Negocio. Nadie más consulta `elementos`; `probar-elementos` lo verifica.
  */
-import { and, desc, eq, inArray, lt, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, ne, type SQL } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
+import { NOMBRE_TEMPORAL } from '@/negocio/alta'
 import { marcar, type Marca, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import {
   comoClave,
@@ -11,6 +12,7 @@ import {
   DEFINICIONES,
   definicionDe,
   ESQUEMA_DE_ELEMENTO,
+  normalizar,
   sinCumplidorHoy,
   type CampoDeConocimiento,
   type Clave,
@@ -171,6 +173,27 @@ export async function leerEstado(negocio: NegocioId, x: Lector = db): Promise<Es
     .map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
   const identidad: IdentidadDelNegocio = { id: negocio, nombre: n.nombre, rubro: n.rubro, codigo: n.codigo, pais: n.pais, moneda: n.moneda, zonaHoraria: n.zonaHoraria, modo: n.modo ?? 'armando' }
   return armarEstado(identidad, comoVersion(n.version), vigentes) as EstadoVigente
+}
+
+/**
+ * Pura. De los nombres de los otros Negocios, los que el Agente de clientes no debe nombrar: de dos palabras o más
+ * (un "Trigo" suelto frenaría a cualquiera) y que no aparezcan en lo que el propio Negocio dice de sí.
+ */
+export function nombresAjenos(nombres: readonly string[], estado: EstadoDelNegocio): readonly string[] {
+  const propio = normalizar([estado.identidad.nombre, ...estado.todos().flatMap((v) => definicionDe(v.elemento.tipo).textos(v.elemento).map((t) => t.texto))].join(' \n '))
+  return nombres.filter((n) => n.trim().split(/\s+/).length >= 2 && !propio.includes(normalizar(n)))
+}
+
+/** Los nombres de los otros Negocios abiertos que se vigilan en lo que llega a un Cliente. El único que los consulta. */
+export async function otrosNegocios(estado: EstadoDelNegocio): Promise<readonly string[]> {
+  const filas = await db
+    .select({ nombre: esquema.negocios.nombre })
+    .from(esquema.negocios)
+    .where(and(ne(esquema.negocios.id, estado.identidad.id), eq(esquema.negocios.estado, 'listo'), ne(esquema.negocios.nombre, NOMBRE_TEMPORAL)))
+  return nombresAjenos(
+    filas.map((f) => f.nombre),
+    estado,
+  )
 }
 
 export function valorDelDato(estado: EstadoDelNegocio, campo: CampoDeConocimiento): string {

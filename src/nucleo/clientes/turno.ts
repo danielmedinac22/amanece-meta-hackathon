@@ -132,7 +132,7 @@ export async function turno<M extends Modo>(
 
   const alDueno = reglas.enEntrada(activas)
   if (alDueno) {
-    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, regla: alDueno.regla })
+    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle })
     texto = alDueno.avisoAlCliente
   } else {
     const system = armarPrompt(estado, cliente, reglas.textoParaElPrompt)
@@ -141,7 +141,7 @@ export async function turno<M extends Modo>(
     contar(b.uso)
     const borrador = b.texto.trim() || SIN_TEXTO
     const deSalida = reglas.enSalida(activas, borrador, envuelto.hechas().some((h) => h.nombre === 'abrir_caso'))
-    for (const c of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo: c.titulo, detalle, regla: c.regla })
+    for (const titulo of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle })
     const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
     texto = borrador
     violaciones = deSalida.violaciones
@@ -158,7 +158,7 @@ export async function turno<M extends Modo>(
       } else {
         texto = RESPALDO
         corregido = 'respaldo'
-        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, regla: null })
+        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»` })
       }
     }
   }
@@ -194,7 +194,7 @@ export function hechosDeRevision(estado: EstadoDelNegocio, cliente: ClienteDelTu
     telefonoDelCliente: cliente.telefono,
     telefonosDelNegocio: textos.flatMap(telefonosEn),
     nombresInternos: Object.keys(HERRAMIENTAS_EN_PALABRAS),
-    otrosNegocios: otrosNegocios.filter((n) => n !== estado.identidad.nombre),
+    otrosNegocios,
     emojisMaximos: estado.vigentes('voz')[0]?.elemento.emojisPorMensaje ?? 1,
   }
 }

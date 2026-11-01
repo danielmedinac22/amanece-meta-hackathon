@@ -5,12 +5,13 @@
  *   pnpm tsx scripts/probar-reglas.mts
  */
 import { config } from 'dotenv'
-import { afirmar, terminar } from './afirmar.mjs'
+import { afirmar, capturarErrores, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
 process.env.ENVIO_SIMULADO = '1'
+const errores = capturarErrores()
 
-const { armarEstado } = await import('../src/nucleo/estado')
+const { armarEstado, nombresAjenos } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { turno, entornoDeEnsayo, RESPALDO } = await import('../src/nucleo/clientes/turno')
 const { puertoEnMemoria } = await import('../src/nucleo/clientes/acciones')
@@ -76,14 +77,14 @@ try {
     const { t, puerto } = await correr(estadoCon(regla('Todo al Dueño', [{ tipo: 'pasar_al_dueno', avisoAlCliente: 'Ya le paso tu mensaje a Ana.' }])), 'Quiero 2 cafés', g.motores)
     afirmar('pasar_al_dueno: el modelo no se llama', g.llamadas.responder === 0 && g.llamadas.reescribir === 0, g.llamadas)
     afirmar('pasar_al_dueno: el texto es el aviso de la regla', t.texto === 'Ya le paso tu mensaje a Ana.', t.texto)
-    afirmar('pasar_al_dueno: queda un abrir_caso con la regla y ningún pedido', t.acciones.length === 1 && t.acciones[0].nombre === 'abrir_caso' && puerto.casos.length === 1 && puerto.casos[0].regla === 'regla:Todo al Dueño' && puerto.pedidos.length === 0, { acciones: t.acciones, casos: puerto.casos })
+    afirmar('pasar_al_dueno: queda un abrir_caso con la regla y ningún pedido', t.acciones.length === 1 && t.acciones[0].nombre === 'abrir_caso' && puerto.casos.length === 1 && puerto.casos[0].titulo === 'Regla: Todo al Dueño' && puerto.pedidos.length === 0, { acciones: t.acciones, casos: puerto.casos })
   }
 
   console.log('\n=== abrir_caso de salida ===')
   {
     const estado = estadoCon(regla('Avisar', [{ tipo: 'abrir_caso', titulo: 'Un Cliente escribió' }]))
     const { puerto } = await correr(estado, 'Hola', guion('¡Hola! ¿En qué te ayudo?').motores)
-    afirmar('abrir_caso: si el modelo no lo abrió, lo abre el núcleo con la regla', puerto.casos.length === 1 && puerto.casos[0].titulo === 'Un Cliente escribió' && puerto.casos[0].regla === 'regla:Avisar', puerto.casos)
+    afirmar('abrir_caso: si el modelo no lo abrió, lo abre el núcleo con el título de la regla', puerto.casos.length === 1 && puerto.casos[0].titulo === 'Un Cliente escribió', puerto.casos)
     const abre = guion(async ({ puerto: p }) => {
       await p.abrir_caso({ titulo: 'Lo abrió el modelo', detalle: '', pedido: null })
       return { texto: 'Ya se lo paso al equipo.', uso: SIN_USO }
@@ -99,12 +100,47 @@ try {
     const { t, puerto } = await correr(estado, '¿Cuándo me llega?', terco.motores)
     afirmar('no_prometer dos veces: sale el respaldo fijo', t.texto === RESPALDO && t.corregido === 'respaldo', t.texto)
     afirmar('no_prometer dos veces: una sola corrección y un Caso del núcleo', terco.llamadas.reescribir === 1 && puerto.casos.some((c) => c.titulo === 'Respuesta frenada por el núcleo'), { llamadas: terco.llamadas, casos: puerto.casos })
+    const otraVez = guion('Te llega el jueves.', 'Lo recibes mañana sin falta.')
+    await turno(estado, conversacion('¿Y si pago hoy?'), entornoDeEnsayo(estado, cliente, puerto), otraVez.motores)
+    const frenados = puerto.casos.filter((c) => c.titulo === 'Respuesta frenada por el núcleo')
+    afirmar('respaldo dos veces: un solo Caso, con los dos mensajes en el detalle', frenados.length === 1 && frenados[0].detalle.includes('¿Cuándo me llega?') && frenados[0].detalle.includes('¿Y si pago hoy?'), puerto.casos)
     const corrige = guion('Te llega en 3 días hábiles.', 'Despachamos de lunes a viernes; la fecha exacta te la confirma el equipo.')
     const r2 = await correr(estado, '¿Cuándo me llega?', corrige.motores)
     afirmar('no_prometer corregido: sale la corrección, con el motivo a la vista del modelo', r2.t.corregido === 'si' && r2.t.texto.startsWith('Despachamos') && corrige.llamadas.motivos.some((m) => m.includes('plazos')), { texto: r2.t.texto, motivos: corrige.llamadas.motivos })
     const noAplica = guion('¡Claro! El café de tueste medio vale $38.000.')
     const r3 = await correr(estado, '¿Cuánto vale?', noAplica.motores)
     afirmar('una regla que no aplica no frena: sale el borrador sin corrección', r3.t.corregido === 'no' && noAplica.llamadas.reescribir === 0 && r3.t.texto === '¡Claro! El café de tueste medio vale $38.000.', r3.t)
+  }
+
+  console.log('\n=== Lo que ve el modelo de las reglas ===')
+  {
+    let system = ''
+    const g = guion(async (e) => {
+      system = e.system
+      return { texto: '¡Hola! ¿En qué te ayudo?', uso: SIN_USO }
+    })
+    await correr(estadoCon(regla('Sin fechas', [{ tipo: 'no_prometer', que: 'plazo' }]), regla('Sin gratis', [{ tipo: 'no_decir', frases: ['envío gratis'] }])), 'Hola', g.motores)
+    afirmar('el prompt trae las reglas en palabras para el modelo, no las del Dueño', system.includes('- No prometas fechas ni plazos de entrega.') && system.includes('- No digas «envío gratis».') && !system.includes('tu agente de clientes'), system.slice(system.indexOf('## Preferencias')))
+  }
+
+  console.log('\n=== Una regla vigente sin cumplidor no tumba el turno ===')
+  {
+    const deTema: [string, Elemento] = [
+      'regla:Mayoristas',
+      { tipo: 'regla', nombre: 'Mayoristas', cuando: { tipo: 'tema', tema: 'ventas al por mayor' }, efectos: [{ tipo: 'pasar_al_dueno', avisoAlCliente: 'Ya le aviso a Ana.' }], escenarios: { activan: [{ mensajeDelCliente: '¿Venden por mayor?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] } },
+    ]
+    const antes = errores.length
+    const g = guion('Te llega en 3 días hábiles.', 'Despachamos de lunes a viernes.')
+    const { t } = await correr(estadoCon(deTema, regla('Sin fechas', [{ tipo: 'no_prometer', que: 'plazo' }])), '¿Venden por mayor?', g.motores)
+    const delTurno = errores.splice(antes).map((e) => e.join(' '))
+    afirmar('sin cumplidor: el turno responde, la regla de tema se salta con un error y la de siempre sigue cumpliéndose', t.corregido === 'si' && t.reglasActivas.length === 1 && delTurno.some((e) => e.includes('regla:Mayoristas')), { t, delTurno })
+  }
+
+  console.log('\n=== Los otros Negocios que se vigilan ===')
+  {
+    const estado = estadoCon(['dato:descripcion', { tipo: 'dato', campo: 'descripcion', valor: 'Tostamos para Café Ladera y otras tiendas' }])
+    const vigilados = nombresAjenos(['Trigo', 'Panadería Trigo y Leña', 'Café Ladera', 'Café de Ensayo'], estado)
+    afirmar('habla_de_otro_negocio vigila solo nombres de dos palabras o más que el Negocio no nombra de sí', JSON.stringify(vigilados) === JSON.stringify(['Panadería Trigo y Leña']), vigilados)
   }
 
   console.log('\n=== no_decir, con tildes y mayúsculas distintas ===')
@@ -153,5 +189,6 @@ try {
 } catch (e) {
   afirmar('probar-reglas terminó sin error inesperado', false, e)
 } finally {
+  afirmar('probar-reglas no registró otros errores', errores.length === 0, errores)
   terminar()
 }
