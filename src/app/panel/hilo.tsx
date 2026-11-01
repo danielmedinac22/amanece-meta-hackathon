@@ -68,7 +68,9 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
     router.refresh()
   }, [releer, router])
 
-  useEffect(() => final.current?.scrollIntoView({ behavior: 'smooth' }), [messages])
+  useEffect(() => {
+    final.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   function enviar(contenido: string) {
     if (!contenido.trim() || ocupado) return
@@ -83,8 +85,8 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
         {messages.length === 0 && (
           <div className="rounded-2xl bg-tarjeta p-4 text-sm">
-            Hola, soy tu agente. Trabajo para tu negocio todo el día. Cuéntame qué vendes y cómo trabajas, y armo el agente
-            que atiende a tus clientes por WhatsApp.
+            Hola, soy tu agente. Trabajo para tu negocio todo el día. Si ya lo tienes publicado en una página o en Instagram,
+            pégame el enlace y lo leo. Si no, cuéntame cómo se llama y qué vendes.
           </div>
         )}
         {messages.map((m) => (
