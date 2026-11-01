@@ -58,7 +58,9 @@ export function Hilo({ inicial, estado }: { inicial: UIMessage[]; estado: 'arman
     return () => clearInterval(intervalo)
   }, [ocupado, messages.length, setMessages, router])
 
-  useEffect(() => final.current?.scrollIntoView({ behavior: 'smooth' }), [messages])
+  useEffect(() => {
+    final.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   function enviar(contenido: string) {
     if (!contenido.trim() || ocupado) return
