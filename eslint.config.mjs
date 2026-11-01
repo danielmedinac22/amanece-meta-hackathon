@@ -37,30 +37,32 @@ const ESCRIBIR = {
   regex: String.raw`(^|/)estado/escribir` + EXTENSION,
   message: "Solo src/nucleo/cambios y scripts/ escriben Elementos: pide el Cambio con proponer.",
 };
+const LIBPG = { regex: String.raw`^libpg-query$`, message: "Solo src/nucleo/consultas/validar.ts parsea SQL: usa validarConsulta." };
 const POOL = { regex: String.raw`^(.*/)?db/pool` + EXTENSION, message: "Solo src/nucleo/cambios abre transacciones." };
 const prohibir = (...patterns) => ({ "no-restricted-imports": ["error", { patterns }] });
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  { ignores: ["src/nucleo/salida/index.ts"], rules: prohibir(KAPSO) },
+  { ignores: ["src/nucleo/salida/index.ts"], rules: prohibir(KAPSO, LIBPG) },
   // Un bloque posterior reemplaza las opciones de la regla, no las suma: cada bloque repite todo lo que le toca.
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/nucleo/**", "src/negocio/sesion.ts"],
-    rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO),
+    rules: prohibir(KAPSO, MARCAR, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG),
   },
-  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO) },
+  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG) },
   {
     files: ["src/nucleo/**/*.ts"],
     ignores: ["src/nucleo/cambios/**", "src/nucleo/salida/index.ts", "src/nucleo/estado/escribir.ts", "src/nucleo/estado/index.ts"],
-    rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO),
+    rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG),
   },
   // `escribir` y `leerEstado` reciben la transacción de quien reclama: importan el tipo, nunca la abren.
-  { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, VIEJO) },
-  { files: ["src/nucleo/estado/index.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, ESCRIBIR, VIEJO) },
-  { files: ["src/nucleo/cambios/**/*.ts"], ignores: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, VIEJO) },
-  { files: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, VIEJO) },
+  { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, VIEJO, LIBPG) },
+  { files: ["src/nucleo/estado/index.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, ESCRIBIR, VIEJO, LIBPG) },
+  { files: ["src/nucleo/cambios/**/*.ts"], ignores: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, VIEJO, LIBPG) },
+  { files: ["src/nucleo/cambios/puente.ts"], rules: prohibir(KAPSO, VIEJO, LIBPG) },
+  { files: ["src/nucleo/consultas/validar.ts"], rules: prohibir(KAPSO, CAMBIOS_VIEJOS, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO) },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
