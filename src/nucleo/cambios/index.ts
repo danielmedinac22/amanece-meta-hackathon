@@ -165,11 +165,14 @@ export type ResultadoDeAprobar =
    * Negocio que dejó la escritura; null si no escribió Elementos (una pieza o una respuesta).
    */
   | { readonly tipo: 'aplicado'; readonly resumen: string; readonly envio: ResultadoDeEnvio | null; readonly version: VersionDelNegocio | null }
-  /** Otro Dueño cambió alguna de esas claves después de que se propuso: ROLLBACK, y la propuesta sigue esperando. */
-  | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
+  /**
+   * Otro cambió alguna de esas claves después de que se propuso: ROLLBACK, y la propuesta queda descartada porque
+   * ya nunca podrá aplicarse. `resumen` dice quién tocó qué y cuándo.
+   */
+  | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[]; readonly resumen: string }
   | { readonly tipo: 'vencido' }
   /** Ya no cabe en el estado de ahora (`escribir` revalida dentro del reclamo): ROLLBACK, y la propuesta sigue esperando. */
-  | { readonly tipo: 'ya_no_cabe'; readonly problemas: readonly Problema[] }
+  | { readonly tipo: 'ya_no_cabe'; readonly problemas: readonly Problema[]; readonly resumen: string }
   /** Otro Negocio, otra huella, id mal formado, descartada o inexistente. */
   | { readonly tipo: 'no_existe' }
 
@@ -251,10 +254,6 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno): Promise<Resul
   const t = await traducirPedido(quien, pedido)
   if ('desenlace' in t) return t
 
-  const [negocio] = await db.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, quien.negocio))
-  if (!negocio) throw new Error(`No existe el Negocio ${quien.negocio}`)
-  const politica = politicaDeAprobacion(negocio.modo ?? 'armando', t.alcance, pedido.origen, t.actos.length > 0)
-
   const id = marcar.propuesta(randomUUID())
   const huella = huellaDe({ negocio: quien.negocio, cambio: t.cambio, revierte: t.revierte, actos: t.actos, escritura: t.escritura, version: t.version })
   const vence = new Date(Date.now() + VIGENCIA_DE_UNA_PROPUESTA_HORAS * 3600_000)
@@ -277,10 +276,15 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno): Promise<Resul
     ...(t.cambio ? [vincular(t.cambio, id)] : []),
   ])
 
-  if (politica === 'se_aplica') {
+  // Con actos nunca se aplica sin el botón; lo demás lo decide la política con el modo leído dentro del reclamo.
+  if (!t.actos.length) {
     try {
-      const r = await aplicarConReclamo({ negocio: quien.negocio, propuesta: id, huella, aprobadoPor: null })
+      const r = await aplicarConReclamo({ negocio: quien.negocio, propuesta: id, huella, aprobadoPor: null, sinBoton: { alcance: t.alcance, origen: pedido.origen } })
       if (r.tipo === 'aplicado') return { desenlace: 'aplicado', propuesta: id, tarjeta: null, vistaPrevia, gasto: t.gasto, resumen: armarResumen('aplicado', id, t) }
+      if (r.tipo === 'conflicto' || r.tipo === 'ya_no_cabe') {
+        await descartarSinBoton(id)
+        return corregir(r.tipo === 'ya_no_cabe' ? r.problemas : [{ tipo: 'valor_invalido', campo: 'quiere', porQue: `${r.resumen} Mira ver_negocio y propónlo de nuevo si todavía lo quiere` }])
+      }
     } catch (e) {
       console.error('[cambios] la política no pudo aplicarla; queda con tarjeta', id, e)
     }
@@ -288,6 +292,12 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno): Promise<Resul
   const tarjeta: TarjetaDeAprobacion = { propuesta: id, huella, vence: marcar.instante(vence), lineas: t.lineas, accion: t.actos.length ? 'enviar' : 'aplicar' }
   return { desenlace: 'espera_al_dueno', propuesta: id, tarjeta, vistaPrevia, gasto: t.gasto, resumen: armarResumen('espera_al_dueno', id, t) }
 }
+
+const descartarSinBoton = (id: PropuestaId) =>
+  db
+    .update(esquema.propuestas)
+    .set({ estado: 'descartada' })
+    .where(and(eq(esquema.propuestas.id, id), eq(esquema.propuestas.estado, 'espera_al_dueno')))
 
 /** Una respuesta pendiente por Caso y una reversión pendiente por propuesta: la nueva deja descartada a la vieja. */
 function reemplazadas(negocio: NegocioId, nueva: PropuestaId, t: Traducida) {
@@ -413,7 +423,9 @@ function armarResumen(desenlace: 'espera_al_dueno' | 'aplicado', id: PropuestaId
  */
 export async function aprobar(ctx: ContextoDelDueno, propuesta: string, huella: string): Promise<ResultadoDeAprobar> {
   if (!UUID.test(propuesta) || !HUELLA.test(huella)) return { tipo: 'no_existe' }
-  const r = await aplicarConReclamo({ negocio: ctx.negocio, propuesta: marcar.propuesta(propuesta), huella, aprobadoPor: ctx.dueno })
+  const r = await aplicarConReclamo({ negocio: ctx.negocio, propuesta: marcar.propuesta(propuesta), huella, aprobadoPor: ctx.dueno, sinBoton: null })
+  if (r.tipo === 'conflicto') await descartarSinBoton(marcar.propuesta(propuesta))
+  if (r.tipo === 'sigue_esperando') return { tipo: 'no_existe' }
   if (r.tipo !== 'aplicado') return r
   // Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño.
   const desenlace = await desenlaceEnPalabras(ctx.negocio, r.fila, r.envio).catch((e) => {
@@ -432,6 +444,11 @@ type Reclamo =
   | { readonly tipo: 'sin_reclamo' }
   | { readonly tipo: 'ya_no_cabe'; readonly problemas: readonly Problema[] }
   | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
+  /** La política, releída con el modo de ahora, pide el botón: ROLLBACK y la propuesta espera. */
+  | { readonly tipo: 'sigue_esperando' }
+
+/** Lo que la política pasa para aplicar sin el botón. El botón pasa null. */
+type SinBoton = { readonly alcance: Alcance; readonly origen: 'hilo' | 'panel' }
 
 /** `avisar`: este clic es el que deja la línea del desenlace en los Hilos. El doble clic no. */
 type Aplicada = { readonly tipo: 'aplicado'; readonly fila: FilaDePropuesta; readonly envio: ResultadoDeEnvio | null; readonly avisar: boolean }
@@ -448,7 +465,8 @@ async function aplicarConReclamo(a: {
   readonly propuesta: PropuestaId
   readonly huella: string
   readonly aprobadoPor: DuenoId | null
-}): Promise<Aplicada | Exclude<ResultadoDeAprobar, { tipo: 'aplicado' }>> {
+  readonly sinBoton: SinBoton | null
+}): Promise<Aplicada | Exclude<ResultadoDeAprobar, { tipo: 'aplicado' }> | { readonly tipo: 'sigue_esperando' }> {
   const reclamo = await conTransaccion<Reclamo>(async (tx, deshacer) => {
     // Un primer clic colgado no deja esperando al segundo para siempre.
     await tx.execute(sql`set local lock_timeout = '10s'`)
@@ -466,6 +484,13 @@ async function aplicarConReclamo(a: {
       )
       .returning()
     if (!fila) return { tipo: 'sin_reclamo' }
+    if (a.sinBoton) {
+      // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón. El
+      // puente escribe por otra conexión con llave hacia el Negocio: con FOR UPDATE se quedaría esperándose a sí mismo.
+      const candado = fila.escritura.elementos.length ? 'update' : 'share'
+      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for(candado)
+      if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return deshacer({ tipo: 'sigue_esperando' })
+    }
     const [acto] = fila.actos
     if (acto) {
       const r = await cerrarCaso(tx, a.negocio, acto)
@@ -482,15 +507,34 @@ async function aplicarConReclamo(a: {
     return r.tipo === 'ya_no_cabe' ? deshacer(r) : { tipo: 'reclamada', fila, respuesta: null }
   })
   switch (reclamo.tipo) {
-    case 'ya_no_cabe':
-    case 'conflicto':
+    case 'sigue_esperando':
       return reclamo
+    case 'ya_no_cabe':
+      return { ...reclamo, resumen: `No se aplicó. ${reclamo.problemas.map(problemaEnPalabras).join(' ')}` }
+    case 'conflicto':
+      return { ...reclamo, resumen: await conflictoEnPalabras(a.negocio, reclamo.claves) }
     case 'reclamada':
       // Fuera de la transacción: `despachar` no corre dentro de una. La clave lleva la huella, así que es idempotente.
       return { tipo: 'aplicado', fila: reclamo.fila, envio: reclamo.respuesta ? await despacharDespuesDelCommit(intencionDe(a.negocio, reclamo.respuesta, reclamo.fila.huella)) : null, avisar: true }
     case 'sin_reclamo':
       return releer(a)
   }
+}
+
+const QUIEN_ESCRIBIO = { propuesta: 'Otro Dueño', entrevista: 'La entrevista', tablas_viejas: 'La migración' } as const
+
+/** Lo arma el código: quién tocó cada clave, cuándo, y lo que vale ahora. */
+async function conflictoEnPalabras(negocio: NegocioId, claves: readonly ClaveEnConflicto[]): Promise<string> {
+  const ids = claves.flatMap((c) => (c.dueno ? [c.dueno] : []))
+  const nombres = new Map(ids.length ? (await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(inArray(esquema.duenos.id, ids))).map((d) => [d.id, d.nombre]) : [])
+  const [n] = await db.select({ zona: esquema.negocios.zonaHoraria }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio))
+  const lineas = claves.map((c) => {
+    if (!c.tocadaPor || !c.cuando) return `${c.clave} ya no existe.`
+    const quien = (c.dueno && nombres.get(c.dueno)) || QUIEN_ESCRIBIO[c.tocadaPor.tipo]
+    const cuando = new Date(c.cuando).toLocaleString('es-CO', { timeZone: n?.zona ?? 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' })
+    return `${quien} lo cambió el ${cuando}; ahora vale: ${c.resumen}.`
+  })
+  return `No se aplicó porque mientras tanto cambió. ${lineas.join(' ')} Pídelo de nuevo si todavía lo quieres.`
 }
 
 /**

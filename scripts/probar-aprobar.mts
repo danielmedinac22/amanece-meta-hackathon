@@ -17,7 +17,7 @@ const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
 const { marcar } = await import('../src/nucleo/identidad')
-const { proponer, proponerRespuestaAlCaso, aprobar, descartar, historial } = await import('../src/nucleo/cambios')
+const { proponer, proponerRespuestaAlCaso, aprobar, descartar, historial, guardarEnElAlta } = await import('../src/nucleo/cambios')
 const { politicaDeAprobacion } = await import('../src/nucleo/cambios/politica')
 const { leerEstado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
@@ -25,7 +25,7 @@ type Elemento = import('../src/nucleo/estado/elementos').Elemento
 
 const inicio = new Date()
 const marca = String(Date.now()).slice(-8)
-const creados = { duenos: [] as string[], clientes: [] as string[], casos: [] as string[] }
+const creados = { duenos: [] as string[], clientes: [] as string[], casos: [] as string[], negocios: [] as string[], cambios: [] as string[] }
 const { propuestas, cambios, casos, clientes, mensajesDueno, mensajesSalientes, elementos, capacidadesFaltantes } = esquema
 
 const [ladera] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.codigo, 'LADERA'))
@@ -111,6 +111,8 @@ async function limpiar() {
   if (creados.casos.length) await db.delete(casos).where(inArray(casos.id, creados.casos))
   if (creados.clientes.length) await db.delete(clientes).where(inArray(clientes.id, creados.clientes))
   if (creados.duenos.length) await db.delete(esquema.duenos).where(inArray(esquema.duenos.id, creados.duenos))
+  if (creados.negocios.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, creados.negocios))
+  if (creados.cambios.length) await db.delete(cambios).where(inArray(cambios.id, creados.cambios))
   const alTerminar = await conteos()
   afirmar('limpieza: LADERA y TRIGO quedan con las mismas filas que al empezar', JSON.stringify(alTerminar) === JSON.stringify(alEmpezar), { alEmpezar, alTerminar })
 }
@@ -301,7 +303,10 @@ try {
   const vale = tras13.vigente(el.comoClave('dato:horario'))
   afirmar('conflicto: la de Ana se aplica', r13a.tipo === 'aplicado', r13a)
   afirmar('conflicto: la de Beto da conflicto en dato:horario, con quién la tocó', r13b.tipo === 'conflicto' && r13b.claves[0]?.clave === 'dato:horario' && r13b.claves[0].dueno === A.dueno, r13b)
-  afirmar('conflicto: el horario es el de Ana, la versión subió una sola vez y la de Beto sigue esperando', vale?.elemento.tipo === 'dato' && vale.elemento.valor.startsWith('Todos') && tras13.version === antesDelHorario + 1 && (await filaDe(deBeto.propuesta)).estado === 'espera_al_dueno', { vale, version: tras13.version })
+  afirmar('conflicto: el resumen nombra a Ana y dice lo que vale ahora, sin "nuevo"', r13b.tipo === 'conflicto' && r13b.resumen.includes('Ana') && r13b.resumen.includes(`Horario: «Todos los días (${marca})»`) && !r13b.resumen.includes('Horario nuevo'), r13b)
+  afirmar('conflicto: el horario es el de Ana, la versión subió una sola vez y la de Beto queda descartada', vale?.elemento.tipo === 'dato' && vale.elemento.valor.startsWith('Todos') && tras13.version === antesDelHorario + 1 && (await filaDe(deBeto.propuesta)).estado === 'descartada', { vale, version: tras13.version })
+  const deNuevoBeto = await aprobar(B, deBeto.propuesta, deBeto.tarjeta.huella)
+  afirmar('conflicto: un segundo clic sobre la descartada es no_existe', deNuevoBeto.tipo === 'no_existe', deNuevoBeto)
   const pagos = await proponer(A, { palabrasDelDueno: 'pagos', origen: 'hilo', quiere: [poner({ tipo: 'dato', campo: 'pagos', valor: `Nequi (${marca})` })] })
   const envios13 = await proponer(B, { palabrasDelDueno: 'envíos', origen: 'hilo', quiere: [poner({ tipo: 'dato', campo: 'envios', valor: `Todo el país (${marca})` })] })
   const dosClaves = pagos.tarjeta && envios13.tarjeta ? [await aprobar(A, pagos.tarjeta.propuesta, pagos.tarjeta.huella), await aprobar(B, envios13.tarjeta.propuesta, envios13.tarjeta.huella)] : []
@@ -340,6 +345,27 @@ try {
     const regla = (await leerEstado(LADERA)).vigentes('regla').find((v) => v.elemento.nombre === `Sin fechas (${marca})`)
     afirmar('Manizales: el botón la deja vigente, escrita por esa propuesta', r15.tipo === 'aplicado' && regla?.origen.tipo === 'propuesta' && regla.origen.propuesta === manizales.tarjeta.propuesta, { r15, regla })
   }
+
+  console.log('\n=== 17. Mientras se arma: la política se decide con el modo leído dentro del reclamo ===')
+  const [armando] = await db.insert(esquema.negocios).values({ nombre: `Prueba de aprobar ${marca}`, codigo: `PAP${marca}`, estado: 'armando' }).returning()
+  creados.negocios.push(armando.id)
+  const D = await nuevoDueno(armando.id, 'Dora')
+  const sinBoton = await proponer(D, pedidoDeProducto(`Pan (${marca})`))
+  afirmar('armando: se aplica sin tarjeta', sinBoton.desenlace === 'aplicado' && sinBoton.tarjeta === null, sinBoton)
+  const dosTortas = await Promise.all([proponer(D, pedidoDeProducto(`Torta (${marca})`)), proponer(D, pedidoDeProducto(`Torta (${marca})`))])
+  const esperan = await db.$count(propuestas, and(eq(propuestas.negocioId, armando.id), eq(propuestas.estado, 'espera_al_dueno')))
+  console.log(`dos Torta a la vez: ${dosTortas.map((r) => r.desenlace).join(', ')}; filas descartadas: ${await db.$count(propuestas, and(eq(propuestas.negocioId, armando.id), eq(propuestas.estado, 'descartada')))}`)
+  afirmar('armando: dos Torta a la vez dan una aplicada y una corregir, sin tarjeta ni propuesta esperando', JSON.stringify(dosTortas.map((r) => r.desenlace).sort()) === JSON.stringify(['aplicado', 'corregir']) && dosTortas.every((r) => r.tarjeta === null) && esperan === 0, { dosTortas, esperan })
+  const alta = await guardarEnElAlta(A, { nombre: null, rubro: null, quiere: [poner(horario(`De alta (${marca})`))] })
+  afirmar('alta con el Negocio abierto: solo mientras se arma, sin escribir', 'problemas' in alta && alta.problemas.some((p) => p.tipo === 'solo_mientras_se_arma') && !(await leerEstado(LADERA)).todos().some((v) => v.elemento.tipo === 'dato' && v.elemento.valor.startsWith('De alta')), alta)
+
+  console.log('\n=== 18. Una tarjeta de antes del corte dice que se pida de nuevo ===')
+  const huellaVieja = 'e'.repeat(64)
+  const [vieja] = await db.insert(propuestas).values({ negocioId: ladera.id, palabrasDelDueno: 'regla de antes', huella: huellaVieja, vence: new Date(Date.now() + 3600_000), vistaPrevia: { lineas: ['Regla: no prometer fechas'] } }).returning()
+  const [cambioViejo] = await db.insert(cambios).values({ negocioId: ladera.id, tipo: 'regla', pedido: 'no prometas fechas', propuesta: { texto: 'No prometas fechas' }, propuestaId: vieja.id }).returning()
+  creados.cambios.push(cambioViejo.id)
+  const r18 = await aprobar(A, vieja.id, huellaVieja)
+  afirmar('tarjeta vieja: ya_no_cabe y el resumen dice que se pida de nuevo', r18.tipo === 'ya_no_cabe' && r18.resumen.includes('pídelo de nuevo'), r18)
 
   console.log('\n=== 16. Dos propuestas con el mismo producto nuevo: la segunda ya no cabe al aprobarla ===')
   const tortaA = await proponerProducto(A, `Torta doble (${marca})`)
