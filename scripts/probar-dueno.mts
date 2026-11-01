@@ -33,6 +33,8 @@ const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type Ctx = import('../src/nucleo/identidad').ContextoDelDueno
+type SalidaDelRedactor = import('../src/nucleo/cambios').SalidaDelRedactor
+type MotorDelRedactor = import('../src/nucleo/cambios').MotorDelRedactor
 const { traerCasoAlDueno } = await import('../src/agentes/avisos')
 
 const inicioDeLaPrueba = new Date()
@@ -42,14 +44,6 @@ const seccionesPedidas = process.argv.slice(2)
 const quiero = (nombre: string) => seccionesPedidas.length === 0 || seccionesPedidas.includes(nombre)
 
 const titulo = (t: string) => console.log(`\n${'='.repeat(78)}\n${t}\n${'='.repeat(78)}`)
-const json = (v: unknown) => JSON.stringify(v, null, 2)
-const vistaPreviaExitosa = (vista: unknown) => {
-  const v = vista as { resultado?: unknown; error?: unknown } | null
-  return v?.resultado !== undefined && v.error === undefined
-}
-const medida = (c: { tokensEntrada: number; tokensSalida: number; costoUsd: number; msHastaPropuesta: number | null; msHastaAplicado: number | null }) =>
-  `tokens ${c.tokensEntrada} entrada / ${c.tokensSalida} salida, costo US$${c.costoUsd.toFixed(6)}, propuesta ${c.msHastaPropuesta} ms, aplicado ${c.msHastaAplicado ?? '-'} ms`
-
 // --- Preparación ------------------------------------------------------------------------------------
 
 const creadosCambios: string[] = []
@@ -182,78 +176,62 @@ try {
   creadosDuenos.push(dueno.id)
 
   if (quiero('cambios')) {
-    titulo('1. Indicador: pedidos confirmados por día en los últimos 14 días')
-    const indicador = await cambios.proponerPieza(N, dueno.id, 'Quiero ver los pedidos confirmados por día en los últimos 14 días', 'indicador', 'Pedidos confirmados por día')
-    creadosCambios.push(indicador.id)
-    const pi = indicador.propuesta as { codigo: string; descripcion: string }
-    console.log(`estado: ${indicador.estado}\n${pi.descripcion}\n--- código ---\n${pi.codigo}\n--- resultado aislado ---\n${json(indicador.vistaPrevia)}\n${medida(indicador)}`)
-    afirmar('1 indicador: queda propuesto', indicador.estado === 'propuesto', indicador.vistaPrevia)
-    afirmar('1 indicador: la vista previa trae un resultado y ningún error', vistaPreviaExitosa(indicador.vistaPrevia), indicador.vistaPrevia)
-    afirmar('1 indicador: midió tokens de entrada y de salida', indicador.tokensEntrada > 0 && indicador.tokensSalida > 0, medida(indicador))
-
-    titulo('2. Sección: pedidos con novedad')
-    const seccion = await cambios.proponerPieza(N, dueno.id, 'Quiero una lista de los pedidos con novedad', 'seccion', 'Pedidos con novedad')
-    creadosCambios.push(seccion.id)
-    const ps = seccion.propuesta as { codigo: string; descripcion: string; vista: unknown }
-    console.log(`estado: ${seccion.estado}\n${ps.descripcion}\n--- código ---\n${ps.codigo}\n--- vista ---\n${json(ps.vista)}\n--- resultado aislado ---\n${json(seccion.vistaPrevia)}\n${medida(seccion)}`)
-    afirmar('2 sección: queda propuesta', seccion.estado === 'propuesto', seccion.vistaPrevia)
-    afirmar('2 sección: la vista previa trae un resultado y ningún error', vistaPreviaExitosa(seccion.vistaPrevia), seccion.vistaPrevia)
-    afirmar('2 sección: midió tokens de entrada y de salida', seccion.tokensEntrada > 0 && seccion.tokensSalida > 0, medida(seccion))
-
-    titulo('3. Aplicar, ver en el Panel y revertir')
-    for (const c of [indicador, seccion]) if (c.estado === 'propuesto') await cambios.aplicarCambio(N, c.id)
-    const activas = await cambios.piezasActivas(N)
-    console.log(`Piezas activas tras aplicar: ${activas.map((a) => `${a.pieza.nombre} v${a.pieza.version} (${a.resultado.ok ? `ok ${a.resultado.ms} ms` : a.resultado.error})`).join(' | ')}`)
-    const [aplicadoI] = await db.select().from(esquema.cambios).where(eq(esquema.cambios.id, indicador.id))
-    const [aplicadoS] = await db.select().from(esquema.cambios).where(eq(esquema.cambios.id, seccion.id))
-    console.log(`Indicador: ${medida(aplicadoI)}\nSección:   ${medida(aplicadoS)}`)
-    for (const [nombre, c, fila] of [['el indicador', indicador, aplicadoI], ['la sección', seccion, aplicadoS]] as const) {
-      afirmar(`3 aplicar: ${nombre} queda aplicado y activo, y corre bien en el Panel`, fila.estado === 'aplicado' && activas.some((a) => a.pieza.cambioId === c.id && a.resultado.ok), { estado: fila.estado, activas: activas.map((a) => ({ cambioId: a.pieza.cambioId, resultado: a.resultado })) })
-    }
-
-    if (indicador.estado === 'propuesto') {
-      console.log('\nNueva versión del mismo indicador (últimos 7 días):')
-      const v2 = await cambios.proponerPieza(N, dueno.id, 'Mejor solo los últimos 7 días', 'indicador', 'Pedidos confirmados por día')
-      creadosCambios.push(v2.id)
-      console.log(`estado: ${v2.estado}, ${medida(v2)}`)
-      afirmar('3 nueva versión: la v2 del indicador queda propuesta', v2.estado === 'propuesto', v2.vistaPrevia)
-      if (v2.estado === 'propuesto') {
-        await cambios.aplicarCambio(N, v2.id)
-        const filas = await db.select().from(esquema.piezas).where(eq(esquema.piezas.negocioId, negocio.id))
-        console.log('Versiones:', filas.filter((f) => f.cambioId && creadosCambios.includes(f.cambioId)).map((f) => `${f.nombre} v${f.version} activa=${f.activa}`).join(' | '))
-        const versionDe = (todas: typeof filas, cambioId: string) => todas.find((f) => f.cambioId === cambioId)
-        afirmar('3 nueva versión: al aplicar la v2 es la activa y la v1 no', versionDe(filas, v2.id)?.activa === true && versionDe(filas, v2.id)?.version === 2 && versionDe(filas, indicador.id)?.activa === false, filas.filter((f) => f.cambioId && creadosCambios.includes(f.cambioId)))
-        await cambios.revertirCambio(N, v2.id)
-        const tras = (await db.select().from(esquema.piezas).where(eq(esquema.piezas.negocioId, negocio.id))).filter((f) => f.cambioId && creadosCambios.includes(f.cambioId))
-        console.log('Tras revertir la v2:', tras.map((f) => `${f.nombre} v${f.version} activa=${f.activa}`).join(' | '))
-        afirmar('3 nueva versión: al revertir la v2 vuelve a estar activa la v1', versionDe(tras, v2.id)?.activa === false && versionDe(tras, indicador.id)?.activa === true, tras)
-      }
-    }
-    for (const c of [indicador, seccion]) if (c.estado === 'propuesto') await cambios.revertirCambio(N, c.id)
-    const piezasTras = await cambios.piezasActivas(N)
-    console.log(`Piezas activas tras revertir: ${piezasTras.length}`)
-    afirmar('3 revertir: no queda activa ninguna pieza de esta corrida', piezasTras.every((a) => !a.pieza.cambioId || !creadosCambios.includes(a.pieza.cambioId)), piezasTras.map((a) => a.pieza))
-
-    titulo('3b. Reintento: el primer código falla y el error vuelve al generador')
-    const { generarPieza } = await import('../src/agentes/generador')
-    const intentosVistos: ({ codigo: string; error: string } | undefined)[] = []
-    const malos = ['function calcular(datos) { return { valor: datos.pedidos.filtrar(function (p) { return p.estado === "novedad" }).length } }', 'function calcular(datos) { return { total: 3 } }']
-    const reintento = await cambios.proponerPieza(N, dueno.id, 'Cuántos pedidos tienen novedad', 'indicador', 'Novedades (prueba de reintento)', async (entrada) => {
-      intentosVistos.push(entrada.intentoFallido)
-      if (intentosVistos.length <= malos.length) return { pieza: { descripcion: 'malo a propósito', codigo: malos[intentosVistos.length - 1], vista: null }, medida: { entrada: 0, salida: 0, costo: 0, ms: 0 } }
-      return generarPieza(entrada)
+    const ctx = ctxDe(negocio.id, dueno.id)
+    const salida = (sql: string, extra: Partial<SalidaDelRedactor> = {}): SalidaDelRedactor => ({
+      decision: 'consulta',
+      sql,
+      enPalabras: 'pedidos confirmados por día de los últimos 30 días',
+      ventana: 'la_que_pidio',
+      supuestos: [],
+      unidad: 'cantidad',
+      nombreDeLaUnidad: 'pedidos',
+      titulos: [],
+      faltaEn: 'ninguna',
+      falta: '',
+      ...extra,
     })
-    creadosCambios.push(reintento.id)
-    console.log(`estado: ${reintento.estado}; intentos: ${intentosVistos.length}`)
-    intentosVistos.forEach((v, i) => console.log(`  intento ${i + 1} recibió: ${v ? v.error.slice(0, 160) : '(sin error previo)'}`))
-    console.log(`resultado: ${JSON.stringify((reintento.vistaPrevia as { resultado?: unknown }).resultado)}`)
-    afirmar('3b reintento: el generador corrió exactamente 3 veces', intentosVistos.length === 3, intentosVistos.length)
-    afirmar('3b reintento: el primer intento no recibió error previo', intentosVistos[0] === undefined, intentosVistos[0])
-    afirmar('3b reintento: el 2.º y el 3.º recibieron el código y el error del intento anterior', intentosVistos.slice(1).length === 2 && intentosVistos.slice(1).every((v, i) => v?.codigo === malos[i] && v.error.length > 0), intentosVistos.slice(1))
-    afirmar('3b reintento: el Cambio termina propuesto con un resultado', reintento.estado === 'propuesto' && vistaPreviaExitosa(reintento.vistaPrevia), reintento.vistaPrevia)
+    /** El redactor con un guion en vez de Muse Spark: devuelve las salidas en orden y guarda cada prompt. */
+    const guion = (salidas: readonly (SalidaDelRedactor | 'cortada')[]) => {
+      const prompts: string[] = []
+      const motor: MotorDelRedactor = async (p) => {
+        prompts.push(p)
+        return { salida: salidas[prompts.length - 1] ?? 'cortada', uso: { inputTokens: 0, outputTokens: 0 } }
+      }
+      return { prompts, motor }
+    }
+    const pedirIndicador = (nombre: string, g: ReturnType<typeof guion>) =>
+      proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'indicador', nombre, queQuiereVer: nombre, salida: 'serie', reemplaza: null }] }, undefined, g.motor)
+    const BUENA = 'select dia_local::text as etiqueta, count(*) as valor from pedidos where cuenta_como_venta group by dia_local order by dia_local'
+    const faltanteDe = async (id: string) => (await db.select().from(esquema.capacidadesFaltantes).where(eq(esquema.capacidadesFaltantes.id, id)))[0]
+
+    titulo('3b. El error vuelve al redactor: dos consultas malas y una buena')
+    const g3b = guion([salida("select count(*) as valor from pedidos p, (select set_config('app.negocio_id', 'x', true)) s"), salida('select telefono as etiqueta, count(*) as valor from clientes group by 1'), salida(BUENA)])
+    const r3b = await pedirIndicador('Confirmados por día (prueba 3b)', g3b)
+    const vigente3b = (await leerEstado(N)).vigentes('indicador').find((v) => v.elemento.nombre === 'Confirmados por día (prueba 3b)')
+    afirmar('3b: el redactor corrió exactamente 3 veces', g3b.prompts.length === 3, g3b.prompts.length)
+    afirmar('3b: el 2.º intento recibió la consulta anterior y por qué no sirvió', g3b.prompts[1]?.includes('set_config') && g3b.prompts[1].includes('No se permite set_config()'), g3b.prompts[1]?.slice(-400))
+    afirmar('3b: el 3.º intento recibió el dato que no existe y los campos que sí', g3b.prompts[2]?.includes('telefono no existe') && g3b.prompts[2].includes('Campos:'), g3b.prompts[2]?.slice(-400))
+    afirmar('3b: queda un Indicador vigente con la consulta buena, aplicado sin botón', r3b.desenlace === 'aplicado' && vigente3b?.elemento.consulta.sql === BUENA, { r3b, vigente3b })
+
+    titulo('3c. El redactor declina: Capacidad faltante con motivo tipado')
+    const g3c = guion([salida('', { decision: 'no_se_puede', faltaEn: 'pedidos', falta: 'la fecha de entrega' })])
+    const r3c = await pedirIndicador('Días hasta la entrega (prueba 3c)', g3c)
+    const fila3c = r3c.desenlace === 'capacidad_faltante' ? await faltanteDe(r3c.capacidadFaltante) : undefined
+    afirmar('3c: termina en una Capacidad faltante no_se_puede:pedidos, sin Elemento', r3c.desenlace === 'capacidad_faltante' && fila3c?.tipo === 'no_se_puede' && fila3c.claveDeAgrupacion === 'no_se_puede:pedidos' && (fila3c.detalle as { falta?: string })?.falta === 'la fecha de entrega' && !(await leerEstado(N)).vigentes('indicador').some((v) => v.elemento.nombre.includes('3c')), fila3c)
+
+    titulo('3d. Tres consultas malas: sin_converger con el tipo del último error')
+    const mala = salida('select now() as etiqueta, count(*) as valor from pedidos group by 1')
+    const g3d = guion([mala, mala, mala])
+    const r3d = await pedirIndicador('Nunca converge (prueba 3d)', g3d)
+    const fila3d = r3d.desenlace === 'capacidad_faltante' ? await faltanteDe(r3d.capacidadFaltante) : undefined
+    afirmar('3d: tres intentos y una Capacidad faltante sin_converger:no_permitido', g3d.prompts.length === 3 && fila3d?.tipo === 'sin_converger' && fila3d.claveDeAgrupacion === 'sin_converger:no_permitido', fila3d)
+
+    titulo('3e. Una respuesta cortada cuenta como intento')
+    const g3e = guion(['cortada', 'cortada', salida(BUENA)])
+    const r3e = await pedirIndicador('Confirmados (prueba 3e)', g3e)
+    afirmar('3e: dos cortadas y la tercera sirve: 3 intentos y queda aplicado', g3e.prompts.length === 3 && r3e.desenlace === 'aplicado' && g3e.prompts[1].includes('se cortó'), { intentos: g3e.prompts.length, desenlace: r3e.desenlace })
 
     titulo('4. Regla: no prometer fechas, por Elementos')
-    const ctx = ctxDe(negocio.id, dueno.id)
     const reglasDe = async () => (await leerEstado(N)).vigentes('regla')
     const reglasAntes = (await reglasDe()).length
     const regla = await aplicar(ctx, 'No prometas fechas de entrega', [

@@ -29,6 +29,7 @@ import {
   type NegocioId,
   type PropuestaId,
 } from '../identidad'
+import { explicar } from '../consultas/validar'
 import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDeEnvio } from '../salida'
 import { fueraDeVentana } from '../salida/compuerta'
 import type { Motores } from '../clientes/turno'
@@ -37,11 +38,13 @@ import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } f
 import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import { ESQUEMAS_DEL_PUENTE, escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
+import type { MotorDelRedactor } from './redactar-consulta'
 import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuierePoner } from './traducir'
 
 export type { Problema } from '../estado/elementos'
 export type { MotivoDeFaltante } from '../capacidades'
-export type { Acto, QuierePoner } from './traducir'
+export type { Acto, QuiereDelPanel, QuierePoner } from './traducir'
+export { INTENTOS_DE_REDACTAR, SALIDA_DEL_REDACTOR, type MotorDelRedactor, type SalidaDelRedactor } from './redactar-consulta'
 export type { ClaveEnConflicto } from '../estado/escribir'
 export { abrirEnElAlta, guardarEnElAlta, type ResultadoDelAlta } from './alta'
 export { queFaltaParaAbrir, type Falta } from './politica'
@@ -199,9 +202,9 @@ const instanteDe = (d: Date | null) => (d ? marcar.instante(d) : null)
 
 // ══ Proponer ════════════════════════════════════════════════════════════════════════════════════
 
-/** Un pedido del Dueño desde su Hilo. El Negocio sale de `ctx`, nunca del modelo. `motores` solo lo cambian los `probar`. */
-export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
-  return proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, pedido, motores)
+/** Un pedido del Dueño desde su Hilo. El Negocio sale de `ctx`, nunca del modelo. `motores` y `redactor` solo los cambian los `probar`. */
+export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
+  return proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, pedido, motores, redactor)
 }
 
 /**
@@ -260,10 +263,10 @@ type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capa
 
 const esDelPuente = (q: Quiere): q is QuiereDelPuente => q.tipo === 'seccion' || q.tipo === 'indicador'
 
-async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
+async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
   if (pedido.origen !== 'lectura' && pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
   if (pedido.quiere.some(esDelPuente) && pedido.quiere.length > 1) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Una Sección o un Indicador van solos, en su propia propuesta' }])
-  const traducida = await traducirPedido(quien, pedido)
+  const traducida = await traducirPedido(quien, pedido, redactor)
   if ('desenlace' in traducida) return traducida
 
   const ensayo =
@@ -311,30 +314,35 @@ function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelP
   return []
 }
 
-const SIN_PIEZA = { cambio: null, gasto: SIN_GASTO, advertencias: [] } as const
+const SIN_PIEZA = { cambio: null, advertencias: [] } as const
 const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
-async function traducirPedido(quien: Quien, pedido: PedidoDelDueno): Promise<Traducida | SinPropuesta> {
+async function traducirPedido(quien: Quien, pedido: PedidoDelDueno, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
   const [q] = pedido.quiere
   if (esDelPuente(q) && pedido.origen !== 'lectura') return traducirPieza(quien, pedido.palabrasDelDueno, q)
   if (q.tipo === 'revertir' && (await esDelPuenteLaPropuesta(quien.negocio, q.propuesta))) return traducirReversionVieja(quien.negocio, q.propuesta)
   const estado = await leerEstado(quien.negocio)
-  const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[])
+  const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[], redactor)
   if (!('tipo' in t)) return { ...t, ...SIN_PIEZA, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
   if (t.tipo === 'corregir') return corregir(t.problemas)
-  return faltante(quien.negocio, pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno, t.motivo, SIN_GASTO)
+  return faltante(quien.negocio, pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno, t.motivo, t.gasto)
 }
 
 async function faltante(negocio: NegocioId, palabras: string, motivo: MotivoDeFaltante, gasto: Gasto): Promise<SinPropuesta> {
   const capacidadFaltante = await registrarFaltante(negocio, palabras, motivo)
-  const porQue = motivo.tipo === 'sin_converger' ? `No lo logré armar (${motivo.ultimoError.slice(0, 300)}).` : 'Eso todavía no lo sé hacer cumplir.'
+  const porQue =
+    motivo.tipo === 'sin_converger'
+      ? `No lo logré armar (${explicar(motivo.ultimoError).slice(0, 300)}).`
+      : motivo.tipo === 'no_se_puede'
+        ? `Eso no está en los datos que tengo: ${motivo.falta}.`
+        : 'Eso todavía no lo sé hacer cumplir.'
   return { desenlace: 'capacidad_faltante', tarjeta: null, capacidadFaltante, motivo, gasto, resumen: `${porQue} Quedó anotado para el equipo de Amanece; díselo al Dueño sin tecnicismos y sin prometer cuándo.` }
 }
 
 async function traducirPieza(quien: Quien, palabras: string, q: QuiereDelPuente): Promise<Traducida | SinPropuesta> {
   const r = await proponerLoViejo(quien, q)
   if (r.tipo === 'listo') return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: r.cambio, revierte: null, actos: [], version: null, estado: null, advertencias: [] }
-  return faltante(quien.negocio, palabras, { tipo: 'sin_converger', ultimoError: r.ultimoError }, r.gasto)
+  return faltante(quien.negocio, palabras, { tipo: 'sin_converger', ultimoError: { tipo: 'sintaxis', mensaje: r.ultimoError.slice(0, 200) } }, r.gasto)
 }
 
 /** Una aplicada sin Elementos ni actos la escribió el puente: una pieza, o una regla o conocimiento de antes del corte. */

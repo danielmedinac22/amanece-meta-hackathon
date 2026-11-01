@@ -6,17 +6,25 @@ import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { MotivoDeFaltante } from '../capacidades'
 import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
-import { claveNueva, comoVersion, definicionDe, describirCambio, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
+import { claveNueva, comoVersion, definicionDe, describirCambio, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
 import { revisarTextoDelDueno } from '../salida/revisar'
+import type { Gasto } from './index'
+import { MOTOR_DEL_REDACTOR, redactarConsulta, type MotorDelRedactor } from './redactar-consulta'
 
 export const LARGO_DE_UNA_RESPUESTA = 4000
 
 export type QuierePoner = { readonly tipo: 'poner'; readonly elemento: Elemento; readonly reemplaza: Clave | null }
 export type Acto = { readonly tipo: 'responder_caso'; readonly caso: CasoId; readonly texto: string }
+/** Una Sección o un Indicador que el Dueño pidió en palabras: `traducir` le pide la consulta al redactor. */
+export type QuiereDelPanel = { readonly tipo: 'panel'; readonly nombre: string; readonly queQuiereVer: string; readonly reemplaza: Clave | null } & (
+  | { readonly que: 'seccion'; readonly salida: 'filas' }
+  | { readonly que: 'indicador'; readonly salida: 'numero' | 'serie' }
+)
 export type QuiereDeElementos =
   | QuierePoner
+  | QuiereDelPanel
   | { readonly tipo: 'quitar'; readonly claves: readonly [Clave, ...Clave[]] }
   | { readonly tipo: 'revertir'; readonly propuesta: PropuestaId }
   | Acto
@@ -28,22 +36,32 @@ export type Traduccion = {
   readonly alcance: Alcance
   /** Lo que lee el Dueño en la tarjeta: `describir(antes, despues)` de cada clave, y cada acto. */
   readonly lineas: readonly string[]
+  /** Lo que gastó el redactor; cero sin una Sección o un Indicador. */
+  readonly gasto: Gasto
 }
 
-export type SinTraduccion = { readonly tipo: 'corregir'; readonly problemas: readonly Problema[] } | { readonly tipo: 'faltante'; readonly motivo: MotivoDeFaltante }
+export type SinTraduccion =
+  | { readonly tipo: 'corregir'; readonly problemas: readonly Problema[] }
+  | { readonly tipo: 'faltante'; readonly motivo: MotivoDeFaltante; readonly gasto: Gasto }
+
+const SIN_GASTO: Gasto = { llamadas: 0, usd: 0, ms: 0 }
 
 const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_invalido', campo, porQue })
 const corregir = (...problemas: Problema[]): SinTraduccion => ({ tipo: 'corregir', problemas })
 const ahora = () => marcar.instante(new Date())
 
-/** Varias `Quiere` se suman en una sola Escritura; dos sobre la misma clave se corrigen. */
-export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeElementos[]): Promise<Traduccion | SinTraduccion> {
+/**
+ * Varias `Quiere` se suman en una sola Escritura; dos sobre la misma clave se corrigen. Una Sección o un Indicador va
+ * solo y es lo único que llama a un modelo: el redactor (`redactor` solo lo cambian los `probar`).
+ */
+export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeElementos[], redactor: MotorDelRedactor = MOTOR_DEL_REDACTOR): Promise<Traduccion | SinTraduccion> {
   const negocio = estado.identidad.id
   const cambios: CambioDeElemento[] = []
   const actos: Acto[] = []
   const lineas: string[] = []
   const problemas: Problema[] = []
   let revierte: PropuestaId | null = null
+  let gasto = SIN_GASTO
   const tocar = (c: CambioDeElemento) => {
     if (cambios.some((x) => x.clave === c.clave)) problemas.push(invalido('quiere', `Dos cosas del mismo pedido tocan ${c.clave}: júntalas en una`))
     else cambios.push(c)
@@ -66,6 +84,24 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
         }
         const clave = q.reemplaza ?? fija ?? claveNueva(q.elemento.tipo)
         tocar({ clave, base: estado.vigente(clave)?.version ?? 'nueva', despues: q.elemento })
+        break
+      }
+      case 'panel': {
+        if (quiere.length > 1) return corregir(invalido('quiere', 'Una Sección o un Indicador van solos, en su propia propuesta'))
+        const anterior = q.reemplaza ? estado.vigente(q.reemplaza) : null
+        if (q.reemplaza && anterior?.elemento.tipo !== q.que) return corregir({ tipo: 'referencia_rota', clave: q.reemplaza })
+        const delPanel = [...estado.vigentes('seccion'), ...estado.vigentes('indicador')]
+        if (delPanel.some((v) => v.clave !== q.reemplaza && normalizar(v.elemento.nombre) === normalizar(q.nombre))) {
+          return corregir(invalido('nombre', 'Ya hay algo en el Panel con ese nombre: para cambiarlo, usa reemplaza con su clave'))
+        }
+        const consultaAnterior = anterior?.elemento.tipo === 'seccion' || anterior?.elemento.tipo === 'indicador' ? anterior.elemento.consulta : null
+        const base = { nombre: q.nombre.trim(), queQuiereVer: q.queQuiereVer }
+        const r = await redactarConsulta(estado, { ...base, salida: q.salida, anterior: consultaAnterior }, redactor)
+        gasto = r.gasto
+        if (r.tipo === 'faltante') return { tipo: 'faltante', motivo: r.motivo, gasto }
+        // `que` y `salida` van juntos en QuiereDelPanel: una seccion siempre trae una consulta de filas.
+        const despues = { tipo: q.que, ...base, consulta: r.consulta } as Elemento
+        tocar({ clave: q.reemplaza ?? claveNueva(q.que), base: anterior?.version ?? 'nueva', despues })
         break
       }
       case 'quitar':
@@ -100,7 +136,7 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
 
   const escritura: Escritura = { elementos: cambios, filas: [] }
   const sinCumplidor = new Set(cambios.flatMap((c) => (c.despues?.tipo === 'regla' ? sinCumplidorHoy(c.despues) : [])))
-  if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] } }
+  if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] }, gasto }
   const v = validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') problemas.push(...v.problemas)
   const otros = cambios.some((c) => c.despues) ? await otrosNegocios(estado) : []
@@ -116,6 +152,7 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
     actos,
     revierte,
     alcance: actos.length || alcances.includes('clientes') || !alcances.length ? 'clientes' : 'panel',
+    gasto,
     lineas: revierte ? lineas : [...cambios.map((c) => describirCambio(estado.vigente(c.clave)?.elemento ?? null, c.despues, conPropuesta(estado, escritura))), ...lineas],
   }
 }
