@@ -32,6 +32,12 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
     case 'atendiendo':
       break
   }
+  if (estado.version === 0) {
+    // Abierto y sin un solo Elemento: se desplegó antes de correr a-elementos. Atenderlo sería vender sin catálogo.
+    console.error('[atender] Negocio atendiendo sin Elementos: falta correr scripts/a-elementos.mts', negocio, estado.identidad.codigo, m.wamid)
+    await despachar(intencion.aviso({ destinatario: { tipo: 'telefono', telefono: m.telefono, negocio }, aviso: { cual: 'falla_tecnica' }, enRespuestaA: m.wamid }))
+    return
+  }
 
   const enviadoEn = new Date(m.enviadoEn)
   const [cliente] = await db

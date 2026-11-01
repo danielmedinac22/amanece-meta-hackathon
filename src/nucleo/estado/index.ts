@@ -23,7 +23,8 @@ import {
 } from './elementos'
 
 export type OrigenDeEscritura =
-  | { readonly tipo: 'propuesta'; readonly propuesta: PropuestaId }
+  /** `null` si la propuesta ya no existe: la llave es ON DELETE SET NULL. */
+  | { readonly tipo: 'propuesta'; readonly propuesta: PropuestaId | null }
   /** La migración de las tablas viejas y `sembrar`. */
   | { readonly tipo: 'tablas_viejas' }
   /** La entrevista mientras el Negocio se arma, hasta que pase a `proponer`. */
@@ -90,7 +91,7 @@ type FilaDeElemento = {
 }
 
 export function origenDe(f: { readonly origen: FilaDeElemento['origen']; readonly propuestaId: string | null }): OrigenDeEscritura {
-  if (f.origen === 'propuesta') return { tipo: 'propuesta', propuesta: marcar.propuesta(f.propuestaId ?? '') }
+  if (f.origen === 'propuesta') return { tipo: 'propuesta', propuesta: f.propuestaId ? marcar.propuesta(f.propuestaId) : null }
   return { tipo: f.origen }
 }
 

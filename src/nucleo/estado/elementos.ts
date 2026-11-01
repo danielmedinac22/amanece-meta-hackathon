@@ -164,6 +164,12 @@ export function normalizar(texto: string): string {
 
 export const pesos = (n: number) => `$${n.toLocaleString('es-CO')}`
 
+/** "Trátalos de usted" da usted; "nunca de usted" o "sin usted", tú. */
+export function tratoDelTono(tono: string): 'tu' | 'usted' {
+  const t = normalizar(tono)
+  return /\busted\b/.test(t) && !/\b(no|nunca|jamas|sin|ni)\b(\s\S+){0,3}\s(de\s)?usted\b/.test(t) ? 'usted' : 'tu'
+}
+
 export function claveNueva(tipo: TipoDeElemento): Clave {
   return comoClave(`${tipo}:${randomUUID()}`)
 }
@@ -352,7 +358,7 @@ export function reglaEnPalabras(r: ElementoDe<'regla'>): string {
 
 const vozEnPalabras = (v: ElementoDe<'voz'>) => `${v.estilo} (trata de ${v.trato}, hasta ${v.emojisPorMensaje} emoji por mensaje)`
 
-const ETIQUETA_DEL_DATO = { descripcion: 'Descripción', ciudad: 'Ciudad', horario: 'Horario', envios: 'Envíos', pagos: 'Pagos' } as const satisfies Record<CampoDeConocimiento, string>
+export const ETIQUETA_DEL_DATO = { descripcion: 'Descripción', ciudad: 'Ciudad', horario: 'Horario', envios: 'Envíos', pagos: 'Pagos' } as const satisfies Record<CampoDeConocimiento, string>
 
 function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => string, etiqueta: string): string {
   if (antes && despues) return `${etiqueta}: «${enPalabras(antes)}» → «${enPalabras(despues)}»`

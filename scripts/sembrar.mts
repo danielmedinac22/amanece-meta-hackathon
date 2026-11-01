@@ -249,7 +249,7 @@ async function sembrar(n: NegocioSemilla) {
     unico: p.unico ?? false,
   }))
   // El conocimiento y el catálogo entran como Elementos por el mismo camino que la migración: corrido otra vez, no escribe nada.
-  const pasada = await pasarAElementos(marcar.negocio(negocio.id), elementosDeLasTablasViejas(n.conocimiento, productos))
+  const pasada = await pasarAElementos(marcar.negocio(negocio.id), elementosDeLasTablasViejas(n.conocimiento, productos).deseados)
 
   // Los pedidos, del más viejo al más nuevo, para que el número crezca con el tiempo.
   const fechas = Array.from({ length: n.pedidos }, () => AHORA - r() * n.dias * DIA).sort((a, b) => a - b)

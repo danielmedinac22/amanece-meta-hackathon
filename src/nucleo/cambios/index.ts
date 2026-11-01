@@ -14,6 +14,7 @@ import { and, asc, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
+import { canonico } from '@/lib/canonico'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
 import { ESCRITURA_VACIA, leerEstado, type Escritura } from '../estado'
@@ -393,18 +394,6 @@ function huellaDe(contenido: {
   readonly version: VersionDelNegocio | null
 }): Huella {
   return createHash('sha256').update(canonico(contenido)).digest('hex') as Huella
-}
-
-function canonico(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(canonico).join(',')}]`
-  if (v !== null && typeof v === 'object') {
-    const o = v as Record<string, unknown>
-    return `{${Object.keys(o)
-      .sort()
-      .map((k) => `${JSON.stringify(k)}:${canonico(o[k])}`)
-      .join(',')}}`
-  }
-  return JSON.stringify(v ?? null)
 }
 
 /** Lo único que ve el modelo, sin la huella. El id va para que pueda descartarla sin listar. */
