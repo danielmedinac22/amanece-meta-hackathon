@@ -67,10 +67,10 @@ export function entornoDeEnsayo(estado: EstadoDelNegocio, cliente: ClienteDelTur
 export type Uso = Pick<LanguageModelUsage, 'inputTokens' | 'outputTokens'>
 type Escrito = { readonly texto: string; readonly uso: Uso }
 
-/** Lo que el turno necesita de un modelo. Los `probar` pasan guiones; producción, Muse Spark. */
+/** Lo que el turno necesita de un modelo. Los `probar` pasan guiones; producción, Muse Spark. `senal` corta la llamada cuando el ensayo se queda sin tiempo. */
 export type Motores = {
-  responder(e: { readonly system: string; readonly mensajes: readonly ModelMessage[]; readonly herramientas: ToolSet; readonly puerto: PuertoParaElModelo }): Promise<Escrito>
-  reescribir(e: { readonly system: string; readonly mensajes: readonly ModelMessage[]; readonly borrador: string; readonly motivos: readonly string[] }): Promise<Escrito>
+  responder(e: { readonly system: string; readonly mensajes: readonly ModelMessage[]; readonly herramientas: ToolSet; readonly puerto: PuertoParaElModelo; readonly senal?: AbortSignal }): Promise<Escrito>
+  reescribir(e: { readonly system: string; readonly mensajes: readonly ModelMessage[]; readonly borrador: string; readonly motivos: readonly string[]; readonly senal?: AbortSignal }): Promise<Escrito>
 }
 
 export const PASOS_DEL_AGENTE = 6
@@ -79,15 +79,16 @@ export const PASOS_DEL_AGENTE = 6
 const RAZONAMIENTO = (process.env.RAZONAMIENTO_CLIENTES ?? 'low') as 'minimal' | 'low' | 'medium' | 'high'
 
 export const MOTORES: Motores = {
-  async responder({ system, mensajes, herramientas }) {
-    const r = await generateText({ model: modelo, system, messages: [...mensajes], tools: herramientas, stopWhen: isStepCount(PASOS_DEL_AGENTE), reasoning: RAZONAMIENTO })
+  async responder({ system, mensajes, herramientas, senal }) {
+    const r = await generateText({ model: modelo, system, messages: [...mensajes], tools: herramientas, stopWhen: isStepCount(PASOS_DEL_AGENTE), reasoning: RAZONAMIENTO, abortSignal: senal })
     return { texto: r.text, uso: r.totalUsage }
   },
-  async reescribir({ system, mensajes, borrador, motivos }) {
+  async reescribir({ system, mensajes, borrador, motivos, senal }) {
     const r = await generateText({
       model: modelo,
       system,
       reasoning: RAZONAMIENTO,
+      abortSignal: senal,
       messages: [
         ...mensajes,
         { role: 'assistant', content: borrador },
@@ -125,6 +126,8 @@ export type TurnoResuelto<M extends Modo> = {
   readonly version: VersionDelNegocio
   readonly gasto: Gasto
   readonly casosAbiertos: readonly CasoId[]
+  /** Los Casos que abrió el núcleo por una regla en este turno: no dependen del texto del modelo. */
+  readonly casosPorReglas: number
   readonly intencion: M extends 'real' ? IntencionDeEnvio : IntencionEnsayada
 }
 
@@ -133,6 +136,7 @@ export async function turno<M extends Modo>(
   conversacion: Conversacion,
   entorno: Entorno<M>,
   motores: Motores = MOTORES,
+  senal?: AbortSignal,
 ): Promise<TurnoResuelto<M>> {
   const inicio = Date.now()
   const reglas = compilarReglas(estado)
@@ -154,27 +158,30 @@ export async function turno<M extends Modo>(
   let violaciones: readonly ViolacionDeRegla[] = []
   let revision: Revision = { tipo: 'pasa' }
   let corregido: TurnoResuelto<M>['corregido'] = 'no'
+  let casosPorReglas = 0
 
   const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
     await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, pedido: null })
+    casosPorReglas++
     texto = alDueno.avisoAlCliente
   } else {
     const system = armarPrompt(estado, cliente, reglas.textoParaElPrompt)
     const mensajes = aMensajes(conversacion)
-    const b = await motores.responder({ system, mensajes, herramientas: herramientasPara(estado, envuelto.puerto), puerto: envuelto.puerto })
+    const b = await motores.responder({ system, mensajes, herramientas: herramientasPara(estado, envuelto.puerto), puerto: envuelto.puerto, senal })
     contar(b.uso)
     const borrador = b.texto.trim() || SIN_TEXTO
     activas = sinRepetir([...envuelto.activadas(), ...alEntrar])
     const deSalida = reglas.enSalida(activas, borrador, envuelto.casosDelModelo())
     for (const { titulo, pedido } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido })
+    casosPorReglas += deSalida.casosPorAbrir.length
     const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
     texto = borrador
     violaciones = deSalida.violaciones
     revision = revisar(borrador, hechos())
     if (violaciones.length || revision.tipo === 'corregir') {
       const motivos = [...violaciones.map((v) => v.detalle), ...(revision.tipo === 'corregir' ? revision.motivos.map((m) => MOTIVO_PARA_EL_MODELO[m]) : [])]
-      const c = await motores.reescribir({ system, mensajes, borrador, motivos })
+      const c = await motores.reescribir({ system, mensajes, borrador, motivos, senal })
       contar(c.uso)
       const otra = c.texto.trim()
       const pasa = otra !== '' && reglas.enSalida(activas, otra, []).violaciones.length === 0 && revisar(otra, hechos()).tipo === 'pasa'
@@ -200,6 +207,7 @@ export async function turno<M extends Modo>(
     version: estado.version,
     gasto: { llamadas, entrada, salida, ms: Date.now() - inicio },
     casosAbiertos: envuelto.casosAbiertos(),
+    casosPorReglas,
     intencion: (entorno.modo === 'real' ? intencion.respuesta(datos) : ensayo.respuesta(datos)) as TurnoResuelto<M>['intencion'],
   }
 }

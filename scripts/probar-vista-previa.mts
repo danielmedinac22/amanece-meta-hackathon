@@ -16,6 +16,8 @@ const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
 const { descartar, proponer, proponerLectura } = await import('../src/nucleo/cambios')
 const { escribir } = await import('../src/nucleo/estado/escribir')
+const { vistaPreviaDe } = await import('../src/nucleo/cambios/ensayar')
+const { armarEstado, leerEstado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
 
@@ -28,8 +30,10 @@ const antes = await contar()
 const SIN_USO = { inputTokens: 0, outputTokens: 0 }
 const CAFE_ID = randomUUID()
 const CAFE = el.claveDeProducto.deId(CAFE_ID)
+const MOLINO = el.claveDeProducto.deId(randomUUID())
 const SECRETOS = ['SECRETO-UNO ¿tienen descafeinado?', 'SECRETO-DOS ¿cuánto vale la bolsa?', 'SECRETO-TRES ¿cuándo me llega lo de Pereira?']
 const NOMBRES = ['Zoila Reservada', 'Ramiro Confidencial', 'Petra Privada']
+const CALLADA = { nombre: 'Olga Callada', texto: 'SECRETO-CUATRO ¿siguen abiertos?' }
 let negocioId: string | null = null
 
 const manizales = (nombre = 'Envíos fuera de Manizales'): Elemento => ({
@@ -70,7 +74,7 @@ function guion(opciones: { readonly lanzaSi?: (texto: string) => boolean; readon
 const filaDe = async (id: string) => (await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, id)))[0]
 const sinTextoDeClientes = (v: unknown) => {
   const json = JSON.stringify(v)
-  return [...SECRETOS, ...NOMBRES, 'SECRETO'].filter((t) => json.includes(t))
+  return [...SECRETOS, ...NOMBRES, CALLADA.nombre, 'SECRETO'].filter((t) => json.includes(t))
 }
 
 try {
@@ -84,6 +88,7 @@ try {
       elementos: [
         { clave: CAFE, base: 'nueva', despues: { tipo: 'producto', nombre: 'Café 500 g', descripcion: 'Tueste medio', precio: el.comoMonto(38000), activo: true } },
         { clave: el.comoClave('dato:ciudad'), base: 'nueva', despues: { tipo: 'dato', campo: 'ciudad', valor: 'Manizales' } },
+        { clave: MOLINO, base: 'nueva', despues: { tipo: 'producto', nombre: 'Molino manual', descripcion: '', precio: el.comoMonto(120000), activo: true } },
       ],
       filas: [],
     }),
@@ -93,6 +98,9 @@ try {
     .values(NOMBRES.map((nombre, i) => ({ negocioId: n.id, telefono: `57300555000${i}`, nombre, ultimoMensajeEntrante: new Date() })))
     .returning({ id: esquema.clientes.id })
   await db.insert(esquema.mensajesCliente).values(SECRETOS.map((texto, i) => ({ negocioId: n.id, clienteId: clientes[i].id, rol: 'cliente' as const, texto })))
+  const [callada] = await db.insert(esquema.clientes).values({ negocioId: n.id, telefono: '573005550009', nombre: CALLADA.nombre, ultimoMensajeEntrante: new Date() }).returning({ id: esquema.clientes.id })
+  await db.insert(esquema.mensajesCliente).values({ negocioId: n.id, clienteId: callada.id, rol: 'cliente', texto: CALLADA.texto, creado: new Date(Date.now() - 60_000) })
+  await db.insert(esquema.mensajesCliente).values(Array.from({ length: 31 }, (_, i) => ({ negocioId: n.id, clienteId: callada.id, rol: 'agente' as const, texto: `Aviso ${i}` })))
   await db.insert(esquema.pedidos).values({ negocioId: n.id, clienteId: clientes[2].id, numero: 1, items: [{ productoId: CAFE_ID, nombre: 'Café 500 g', cantidad: 2, precio: 38000 }], total: 76000, ciudad: 'Pereira', direccion: 'Calle 10 # 5-20', estado: 'pendiente' })
   const delNegocio = async () => ({ pedidos: await db.$count(esquema.pedidos, eq(esquema.pedidos.negocioId, n.id)), casos: await db.$count(esquema.casos, eq(esquema.casos.negocioId, n.id)) })
 
@@ -110,7 +118,7 @@ try {
   const p = await proponer(ctx, { origen: 'hilo', palabrasDelDueno: 'Cuando un pedido sea para fuera de Manizales, ábreme un Caso y no prometas fecha', quiere: [poner(manizales())] }, g.motores)
   const fila = p.desenlace === 'espera_al_dueno' ? await filaDe(p.propuesta) : null
   const v = fila?.vistaPrevia.conversaciones
-  afirmar('regla: queda espera_al_dueno con 2 escenarios y 3 reales probados', p.desenlace === 'espera_al_dueno' && v?.probadas === 5 && v.fallaron === 0, v)
+  afirmar('regla: queda espera_al_dueno con 2 escenarios y 3 reales probados; la Cliente sin mensaje suyo en sus últimos 30 se salta', p.desenlace === 'espera_al_dueno' && v?.probadas === 5 && v.fallaron === 0, v)
   const reales = v?.ensayos.filter((e) => e.muestra.origen === 'real') ?? []
   afirmar('regla: las reales se ensayan con hoy y con el cambio', reales.length === 3 && reales.every((e) => !('fallo' in e) && e.hoy !== null), reales)
   const escenarios = v?.ensayos.filter((e) => e.muestra.origen === 'escenario') ?? []
@@ -138,6 +146,14 @@ try {
     afirmar('pendientes: hay una regla y una lectura esperando', sinGratis.desenlace === 'espera_al_dueno' && lectura.tarjeta !== null && r.desenlace === 'espera_al_dueno', { sinGratis: sinGratis.desenlace, lectura: lectura.tarjeta?.propuesta, r: r.desenlace })
     afirmar('pendientes: la regla pendiente está activa en el borrador del ensayo', otra.vistos.systems.some((s) => s.includes('No digas «envío gratis».')), otra.vistos.systems.length)
     afirmar('pendientes: la lectura pendiente no aporta productos al borrador', otra.vistos.systems.length > 0 && otra.vistos.systems.every((s) => !s.includes('Pandebono')))
+    const [filaGratis, filaOtra] = [sinGratis, r].map((x) => (x.desenlace === 'espera_al_dueno' ? filaDe(x.propuesta) : Promise.resolve(undefined)))
+    const gratis = (await filaGratis)?.escritura.elementos[0]?.clave
+    const conv = (await filaOtra)?.vistaPrevia.conversaciones
+    const propias = new Set((await filaOtra)?.escritura.elementos.map((c) => c.clave))
+    const escenariosDeOtra = conv?.ensayos.filter((e) => e.muestra.origen === 'escenario') ?? []
+    afirmar('pendientes: solo se ensayan los escenarios de las reglas de esta propuesta', escenariosDeOtra.length === 2 && escenariosDeOtra.every((e) => e.muestra.origen === 'escenario' && propias.has(e.muestra.regla)), escenariosDeOtra.map((e) => e.muestra))
+    const realesDeOtra = conv?.ensayos.filter((e) => e.muestra.origen === 'real') ?? []
+    afirmar('pendientes: hoy ya trae la regla pendiente, así que solo cambia el Cliente con pedido a Pereira', gratis !== undefined && realesDeOtra.length === 3 && realesDeOtra.every((e) => !('fallo' in e) && e.hoy?.reglasActivas.includes(gratis)) && conv?.cambiaron === 1, { cambiaron: conv?.cambiaron, realesDeOtra })
     for (const x of [sinGratis, r]) if (x.desenlace === 'espera_al_dueno') await descartar(ctx, x.propuesta)
     if (lectura.tarjeta) await descartar(ctx, lectura.tarjeta.propuesta)
   }
@@ -148,6 +164,61 @@ try {
     const f = r.desenlace === 'espera_al_dueno' ? await filaDe(r.propuesta) : null
     afirmar('falla: la propuesta espera el botón con fallaron = 1 y la advertencia arriba de la tarjeta', r.desenlace === 'espera_al_dueno' && f?.vistaPrevia.conversaciones?.fallaron === 1 && (r.tarjeta?.advertencias[0] ?? '').startsWith('No pude ensayar 1 de'), { conversaciones: f?.vistaPrevia.conversaciones, tarjeta: r.tarjeta })
     if (r.desenlace === 'espera_al_dueno') await descartar(ctx, r.propuesta)
+  }
+
+  console.log('\n=== Cambiaron cuenta solo reglas activas y Casos del núcleo ===')
+  {
+    const conMolino: Elemento = {
+      tipo: 'regla',
+      nombre: 'Pedidos con molino',
+      cuando: { tipo: 'pedido', condicion: { tipo: 'incluye', producto: MOLINO } },
+      efectos: [{ tipo: 'abrir_caso', titulo: 'Pedido con molino' }, { tipo: 'no_prometer', que: 'plazo' }],
+      escenarios: { activan: [{ mensajeDelCliente: 'Quiero el molino manual para Manizales', momento: null, pedido: null, esperado: { hace: ['crear_pedido'], noHace: [] } }], noActivan: [] },
+    }
+    const caprichoso: Motores = {
+      async responder({ system, puerto }) {
+        if (/Si el pedido incluye/.test(system)) await puerto.abrir_caso({ titulo: 'Lo abrió el modelo', detalle: 'Por las dudas', pedido: null })
+        return { texto: 'Con gusto te ayudo.', uso: SIN_USO }
+      },
+      reescribir: async () => ({ texto: 'Con gusto te ayudo.', uso: SIN_USO }),
+    }
+    const r = await proponer(ctx, { origen: 'hilo', palabrasDelDueno: 'Si piden el molino, ábreme un Caso', quiere: [poner(conMolino)] }, caprichoso)
+    const conv = r.desenlace === 'espera_al_dueno' ? (await filaDe(r.propuesta))?.vistaPrevia.conversaciones : null
+    afirmar('un Caso que el modelo abre por el texto del prompt no cuenta como cambio: cambiaron = 0', conv?.ensayos.filter((e) => e.muestra.origen === 'real').length === 3 && conv.cambiaron === 0, conv)
+    if (r.desenlace === 'espera_al_dueno') await descartar(ctx, r.propuesta)
+  }
+
+  console.log('\n=== El ensayo cabe en su tope total y la preparación no tumba la propuesta ===')
+  {
+    let abortadas = 0
+    const lento: Motores = {
+      responder: ({ senal }) =>
+        new Promise((listo, falla) => {
+          const t = setTimeout(() => listo({ texto: 'Con gusto te ayudo.', uso: SIN_USO }), 3000)
+          senal?.addEventListener(
+            'abort',
+            () => {
+              abortadas++
+              clearTimeout(t)
+              falla(new Error('abortada'))
+            },
+            { once: true },
+          )
+        }),
+      reescribir: async () => ({ texto: 'Con gusto te ayudo.', uso: SIN_USO }),
+    }
+    const escritura = { elementos: [{ clave: el.claveNueva('regla'), base: 'nueva' as const, despues: manizales('Con tope') }], filas: [] as never[] }
+    const inicio = Date.now()
+    const conTope = await vistaPreviaDe(await leerEstado(N), escritura, [], lento, 300)
+    const ms = Date.now() - inicio
+    const c = conTope.guardada.conversaciones
+    afirmar(`tope total: a los 300 ms lo que no terminó cuenta como no ensayado (${ms} ms)`, ms < 2000 && c !== null && c !== undefined && c.fallaron === c.ensayos.length && c.ensayos.length === 5 && (conTope.guardada.advertencias?.[0] ?? '').startsWith('No pude ensayar 5 de 5'), { ms, c, advertencias: conTope.guardada.advertencias })
+    afirmar('tope total: las llamadas al modelo que no terminaron se abortan', abortadas > 0, abortadas)
+
+    const identidad = { id: marcar.negocio('no-es-un-uuid'), nombre: 'Roto', rubro: 'café', codigo: 'ROTO', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'atendiendo' } as const
+    const roto = armarEstado(identidad, el.comoVersion(1), []) as Parameters<typeof vistaPreviaDe>[0]
+    const sinPreparar = await vistaPreviaDe(roto, escritura, ['Regla nueva'], guion({ prohibido: true }).motores).catch((e: unknown) => e)
+    afirmar('si la preparación falla, vuelve la advertencia y conversaciones null, sin lanzar', !(sinPreparar instanceof Error) && 'guardada' in (sinPreparar as object) && (sinPreparar as Awaited<ReturnType<typeof vistaPreviaDe>>).guardada.conversaciones === null && (sinPreparar as Awaited<ReturnType<typeof vistaPreviaDe>>).guardada.advertencias?.[0]?.startsWith('No pude ensayar este cambio') === true, sinPreparar)
   }
   if (p.desenlace === 'espera_al_dueno') await descartar(ctx, p.propuesta)
 
