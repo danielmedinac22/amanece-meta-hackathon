@@ -266,7 +266,8 @@ try {
       }),
     ])
     const conLaNueva = await reglasDe()
-    console.log('Reglas vigentes tras aplicar:', conLaNueva.map((v) => el.reglaEnPalabras(v.elemento)))
+    const estadoTras = await leerEstado(N)
+    console.log('Reglas vigentes tras aplicar:', conLaNueva.map((v) => el.reglaEnPalabras(v.elemento, estadoTras)))
     afirmar('4 regla: tras aplicar aparece entre las reglas vigentes', conLaNueva.length === reglasAntes + 1 && conLaNueva.some((v) => v.origen.tipo === 'propuesta' && v.origen.propuesta === regla), conLaNueva)
     await aplicar(ctx, 'Quita esa regla', [{ tipo: 'revertir', propuesta: regla }])
     const reglasTras = await reglasDe()

@@ -34,6 +34,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
   if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version) }
 
+  const estado = await leerEstado(negocio, tx)
   const claves = escritura.elementos.map((c) => c.clave)
   const ultimaDe = new Map((await ultimasDe(tx, negocio, inArray(esquema.elementos.clave, claves))).map((u) => [u.clave, u]))
   const chocan = escritura.elementos.flatMap((c) => {
@@ -55,13 +56,13 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
           tocadaPor: ultima ? origenDe(ultima) : null,
           dueno: aprobo ? marcar.dueno(aprobo) : null,
           cuando: ultima ? marcar.instante(ultima.creado) : null,
-          resumen: viva ? describirVigente(elementoDe(viva)) : 'Se quitó',
+          resumen: viva ? describirVigente(elementoDe(viva), estado) : 'Se quitó',
         }
       }),
     }
   }
 
-  const v = validarEscritura(await leerEstado(negocio, tx), escritura)
+  const v = validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') return v
 
   const version = n.version + 1

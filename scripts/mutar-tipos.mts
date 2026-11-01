@@ -82,6 +82,12 @@ const MUTACIONES: readonly Mutacion[] = [
     antes: "  readonly corregido: 'no' | 'si' | 'respaldo'\n}",
     despues: "  readonly corregido: 'no' | 'si' | 'respaldo'\n  readonly texto: string\n}",
   },
+  {
+    nombre: 'un estado de pedido sin decir si está abierto',
+    archivo: 'src/nucleo/clientes/turno.ts',
+    antes: 'enviado: true, novedad: true, entregado: false,',
+    despues: 'enviado: true, entregado: false,',
+  },
 ]
 
 function tsc(): { readonly pasa: boolean; readonly errores: string } {

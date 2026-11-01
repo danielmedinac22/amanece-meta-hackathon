@@ -86,6 +86,7 @@ export const mensajesCliente = pgTable(
 export type ItemDePedido = { productoId: string; nombre: string; cantidad: number; precio: number }
 
 export const ESTADOS_DE_PEDIDO = ['pendiente', 'confirmado', 'enviado', 'entregado', 'novedad', 'cancelado'] as const
+export type EstadoDePedido = (typeof ESTADOS_DE_PEDIDO)[number]
 
 export const pedidos = pgTable(
   'pedidos',

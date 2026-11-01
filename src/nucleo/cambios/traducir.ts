@@ -5,7 +5,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { MotivoDeFaltante } from '../capacidades'
-import { historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
+import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
 import { claveNueva, comoVersion, definicionDe, describirCambio, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
@@ -116,7 +116,7 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
     actos,
     revierte,
     alcance: actos.length || alcances.includes('clientes') || !alcances.length ? 'clientes' : 'panel',
-    lineas: revierte ? lineas : [...cambios.map((c) => describirCambio(estado.vigente(c.clave)?.elemento ?? null, c.despues)), ...lineas],
+    lineas: revierte ? lineas : [...cambios.map((c) => describirCambio(estado.vigente(c.clave)?.elemento ?? null, c.despues, conPropuesta(estado, escritura))), ...lineas],
   }
 }
 
@@ -144,12 +144,12 @@ async function reversion(estado: EstadoVigente, propuesta: PropuestaId): Promise
     const h = historia.get(clave)
     const vigente = estado.vigente(clave)
     if (!h || h.ultima !== p.version) {
-      lineas.push(`No se deshace ${describirCambio(null, vigente?.elemento ?? null) || clave}: lo cambió otra propuesta después`)
+      lineas.push(`No se deshace ${describirCambio(null, vigente?.elemento ?? null, estado) || clave}: lo cambió otra propuesta después`)
       continue
     }
     if (!h.antes && !vigente) continue
     cambios.push({ clave, base: vigente?.version ?? 'nueva', despues: h.antes })
-    lineas.unshift(`Deshacer: ${describirCambio(vigente?.elemento ?? null, h.antes)}`)
+    lineas.unshift(`Deshacer: ${describirCambio(vigente?.elemento ?? null, h.antes, estado)}`)
   }
   if (!cambios.length) return no('Todo lo de esa propuesta ya lo cambió otra después')
   return { cambios, lineas }

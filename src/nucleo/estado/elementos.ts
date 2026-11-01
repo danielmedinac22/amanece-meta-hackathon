@@ -157,7 +157,7 @@ export type DefinicionDeElemento<T extends TipoDeElemento> = {
   textos(e: ElementoDe<T>): readonly { readonly campo: string; readonly texto: string }[]
   /** Determinista, sin modelo. Corre al proponer y otra vez al aprobar. `clave` es la del propio Elemento. */
   validar(e: ElementoDe<T>, clave: Clave, estado: Vigentes): readonly Problema[]
-  describir(antes: ElementoDe<T> | null, despues: ElementoDe<T> | null): string
+  describir(antes: ElementoDe<T> | null, despues: ElementoDe<T> | null, estado: Vigentes): string
 }
 
 export function normalizar(texto: string): string {
@@ -324,7 +324,7 @@ const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_in
 
 const QUE_NO_PROMETER_EN_PALABRAS = { plazo: 'fechas ni plazos de entrega', descuento: 'descuentos', disponibilidad: 'disponibilidad' } as const satisfies Record<QueNoPrometer, string>
 
-function cuandoEnPalabras(c: Cuando): string {
+function cuandoEnPalabras(c: Cuando, estado: Vigentes): string {
   switch (c.tipo) {
     case 'siempre':
       return 'siempre'
@@ -333,29 +333,40 @@ function cuandoEnPalabras(c: Cuando): string {
     case 'fuera_de_horario':
       return 'fuera del horario de atención'
     case 'pedido':
-      return condicionEnPalabras(c.condicion)
+      return condicionEnPalabras(c.condicion, estado)
   }
 }
 
-export function condicionEnPalabras(c: CondicionDePedido): string {
+const productoEnPalabras = (clave: Clave, estado: Vigentes) => estado.vigentes('producto').find((v) => v.clave === clave)?.elemento.nombre ?? 'un producto que ya no está en el catálogo'
+
+/** `incluye` nombra el producto: el Dueño no conoce las claves. */
+export function condicionEnPalabras(c: CondicionDePedido, estado: Vigentes): string {
   switch (c.tipo) {
     case 'ciudad_fuera_de':
       return `cuando el pedido es para fuera de ${c.ciudades.join(', ')}`
     case 'total_desde':
       return `cuando el pedido suma ${pesos(c.monto)} o más`
     case 'incluye':
-      return `cuando el pedido incluye ${c.producto}`
+      return `cuando el pedido incluye ${productoEnPalabras(c.producto, estado)}`
   }
 }
 
 /** Lo que una condición de pedido necesita saber: el borrador y el total que calculó `cotizar`, o un pedido guardado. */
 export type PedidoParaReglas = { readonly borrador: BorradorDePedido; readonly total: Monto }
 
-/** Pura. La única evaluación de una `CondicionDePedido`. La ciudad se compara normalizada: "Manizales, Caldas" está en Manizales. */
+/** Pura. La ciudad como se compara: el primer tramo, antes de una coma, un guion o un paréntesis, normalizado. «Manizales, Caldas» es «manizales». */
+export const ciudadDe = (texto: string) => normalizar(texto.split(/[,(\-–—]/)[0])
+
+/**
+ * Pura. La única evaluación de una `CondicionDePedido`. La ciudad se compara por igualdad con `ciudadDe`: «Calima» no
+ * está en Cali. Una ciudad vacía no está fuera de ninguna: `crear_pedido` no la deja pasar.
+ */
 export function seCumpleLaCondicion(c: CondicionDePedido, p: PedidoParaReglas): boolean {
   switch (c.tipo) {
-    case 'ciudad_fuera_de':
-      return !c.ciudades.some((ciudad) => normalizar(p.borrador.ciudad).includes(normalizar(ciudad)))
+    case 'ciudad_fuera_de': {
+      const ciudad = ciudadDe(p.borrador.ciudad)
+      return ciudad !== '' && !c.ciudades.some((x) => ciudadDe(x) === ciudad)
+    }
     case 'total_desde':
       return p.total >= c.monto
     case 'incluye':
@@ -380,8 +391,8 @@ function efectoEnPalabras(e: Efecto): string {
   }
 }
 
-export function reglaEnPalabras(r: ElementoDe<'regla'>): string {
-  return `${r.nombre}: ${cuandoEnPalabras(r.cuando)}, tu agente de clientes ${r.efectos.map(efectoEnPalabras).join(' y ')}`
+export function reglaEnPalabras(r: ElementoDe<'regla'>, estado: Vigentes): string {
+  return `${r.nombre}: ${cuandoEnPalabras(r.cuando, estado)}, tu agente de clientes ${r.efectos.map(efectoEnPalabras).join(' y ')}`
 }
 
 const vozEnPalabras = (v: ElementoDe<'voz'>) => `${v.estilo} (trata de ${v.trato}, hasta ${v.emojisPorMensaje} emoji por mensaje)`
@@ -436,7 +447,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
       }
       return problemas
     },
-    describir: (antes, despues) => cambio(antes, despues, reglaEnPalabras, 'Regla'),
+    describir: (antes, despues, estado) => cambio(antes, despues, (r) => reglaEnPalabras(r, estado), 'Regla'),
   },
   voz: {
     contrato: 1,
@@ -513,10 +524,10 @@ export function definicionDe(tipo: TipoDeElemento): DefinicionDeElemento<TipoDeE
 }
 
 /** Lo que vale ahora, sin "nuevo": para contarle al Dueño qué dejó otro. */
-export function describirVigente(e: Elemento): string {
+export function describirVigente(e: Elemento, estado: Vigentes): string {
   switch (e.tipo) {
     case 'regla':
-      return `Regla ${reglaEnPalabras(e)}`
+      return `Regla ${reglaEnPalabras(e, estado)}`
     case 'voz':
       return `Cómo habla tu agente: «${vozEnPalabras(e)}»`
     case 'dato':
@@ -528,9 +539,9 @@ export function describirVigente(e: Elemento): string {
   }
 }
 
-export function describirCambio(antes: Elemento | null, despues: Elemento | null): string {
+export function describirCambio(antes: Elemento | null, despues: Elemento | null, estado: Vigentes): string {
   const tipo = (despues ?? antes)?.tipo
-  return tipo ? definicionDe(tipo).describir(antes, despues) : ''
+  return tipo ? definicionDe(tipo).describir(antes, despues, estado) : ''
 }
 
 type Es<A extends true> = A

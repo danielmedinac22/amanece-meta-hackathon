@@ -6,9 +6,9 @@ import { db, esquema } from '@/db'
 import type { ItemDePedido } from '@/db/esquema'
 import { marcar, type CasoId, type ClienteId } from '../identidad'
 import type { EstadoDelNegocio, EstadoVigente } from '../estado'
-import { claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
+import { ciudadDe, claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
 import { cotizar, type Cotizacion } from '../precios/cotizar'
-import type { Activa, ReglasCompiladas } from './reglas'
+import type { PorPedidoNuevo, ReglasCompiladas } from './reglas'
 import type { ClienteDelTurno } from './turno'
 
 export type PedidoConsultado = { readonly numero: number; readonly estado: string; readonly total: Monto; readonly items: readonly string[]; readonly ciudad: string; readonly direccion: string }
@@ -18,7 +18,7 @@ export interface PuertoDeAcciones {
   crear_pedido(e: { readonly pedido: BorradorDePedido; readonly direccion: string; readonly cotizacion: Cotizacion }): Promise<{ readonly numero: number; readonly total: Monto } | { readonly negado: string }>
   confirmar_pedido(numero: number): Promise<{ readonly ok: true; readonly total: Monto } | { readonly ok: false; readonly porQue: string }>
   consultar_pedido(numero: number | null): Promise<readonly PedidoConsultado[]>
-  /** Con `reusar`, suma el detalle al Caso sin resolver de este Cliente con el mismo título en vez de abrir otro; `nuevo` dice cuál pasó. */
+  /** Con `reusar`, suma el detalle al Caso sin resolver de este Cliente con el mismo título y el mismo pedido en vez de abrir otro; `nuevo` dice cuál pasó. */
   abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reusar: boolean }): Promise<{ readonly caso: CasoId | null; readonly nuevo: boolean }>
 }
 
@@ -39,10 +39,14 @@ export type Envuelto = {
   cotizaciones(): readonly Cotizacion[]
   /** Los Casos nuevos del turno: `atender` los trae al Dueño después de responder. Uno reusado ya le llegó. */
   casosAbiertos(): readonly CasoId[]
-  activadas(): readonly Activa[]
-  /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título. Queda en `hechas()` como `abrir_caso`. */
-  abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string }): Promise<CasoId | null>
+  activadas(): readonly PorPedidoNuevo[]
+  /** Los pedidos de los Casos que abrió el modelo en el turno (`null` si no nombró ninguno). */
+  casosDelModelo(): readonly (number | null)[]
+  /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título y pedido. Queda en `hechas()` como `abrir_caso`. */
+  abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null }): Promise<CasoId | null>
 }
+
+const SIN_CIUDAD = 'Falta la ciudad de entrega: pregúntasela al Cliente antes de crear el pedido.'
 
 /**
  * La única envoltura, igual en producción y en el ensayo: `cotizar` en `crear_pedido`, la activación de las reglas de
@@ -52,7 +56,8 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
   const hechas: AccionHecha[] = []
   const cotizaciones: Cotizacion[] = []
   const casos: CasoId[] = []
-  const activadas: Activa[] = []
+  const activadas: PorPedidoNuevo[] = []
+  const casosDelModelo: (number | null)[] = []
   const anotar = (nombre: NombreDeAccion, detalle: string) => hechas.push({ nombre, detalle })
   const abrir = async (e: Parameters<PuertoDeAcciones['abrir_caso']>[0]) => {
     const r = await puerto.abrir_caso(e)
@@ -67,16 +72,24 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
         return puerto.buscar_productos(texto)
       },
       async crear_pedido(e) {
+        if (!ciudadDe(e.pedido.ciudad)) {
+          anotar('crear_pedido', 'negado: sin ciudad')
+          return { negado: SIN_CIUDAD }
+        }
         const cotizacion = cotizar(e.pedido, estado)
         if ('noCubre' in cotizacion) {
           anotar('crear_pedido', `negado: ${cotizacion.noCubre}`)
           return { negado: cotizacion.noCubre }
         }
-        for (const a of reglas.alCotizar({ borrador: e.pedido, total: cotizacion.total })) if (!activadas.some((b) => b.regla === a.regla)) activadas.push(a)
         const r = await puerto.crear_pedido({ ...e, cotizacion })
         anotar('crear_pedido', 'negado' in r ? `negado: ${r.negado}` : `#${r.numero}`)
         if ('negado' in r) return r
         cotizaciones.push(cotizacion)
+        for (const a of reglas.alCrear({ borrador: e.pedido, total: cotizacion.total }, r.numero)) {
+          const i = activadas.findIndex((b) => b.regla === a.regla)
+          if (i < 0) activadas.push(a)
+          else if (!activadas[i].pedidos.includes(r.numero)) activadas[i] = { ...activadas[i], pedidos: [...activadas[i].pedidos, r.numero] }
+        }
         return { numero: r.numero, cotizacion }
       },
       async confirmar_pedido(numero) {
@@ -87,13 +100,18 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
         anotar('consultar_pedido', numero === null ? 'los últimos' : `#${numero}`)
         return puerto.consultar_pedido(numero)
       },
-      abrir_caso: async (e) => ({ caso: (await abrir({ ...e, reusar: false })).caso }),
+      async abrir_caso(e) {
+        const r = await abrir({ ...e, reusar: false })
+        casosDelModelo.push(e.pedido)
+        return { caso: r.caso }
+      },
     },
     hechas: () => hechas,
     cotizaciones: () => cotizaciones,
     casosAbiertos: () => casos,
     activadas: () => activadas,
-    abrirCasoDelNucleo: async (e) => (await abrir({ ...e, pedido: null, reusar: true })).caso,
+    casosDelModelo: () => casosDelModelo,
+    abrirCasoDelNucleo: async (e) => (await abrir({ ...e, reusar: true })).caso,
   }
 }
 
@@ -174,6 +192,8 @@ export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): Puert
     },
 
     async abrir_caso({ titulo, detalle, pedido, reusar }) {
+      const [delPedido] = pedido !== null ? await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(and(deEsteCliente, eq(esquema.pedidos.numero, pedido))) : []
+      const pedidoId = delPedido?.id ?? null
       if (reusar) {
         const [abierto] = await db
           .update(esquema.casos)
@@ -181,16 +201,15 @@ export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): Puert
           .where(
             eq(
               esquema.casos.id,
-              sql`(select id from casos where negocio_id = ${negocio} and cliente_id = ${cliente} and titulo = ${titulo} and estado <> 'resuelto' order by creado desc limit 1)`,
+              sql`(select id from casos where negocio_id = ${negocio} and cliente_id = ${cliente} and titulo = ${titulo} and pedido_id is not distinct from ${pedidoId}::uuid and estado <> 'resuelto' order by creado desc limit 1)`,
             ),
           )
           .returning({ id: esquema.casos.id })
         if (abierto) return { caso: marcar.caso(abierto.id), nuevo: false }
       }
-      const [delPedido] = pedido !== null ? await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(and(deEsteCliente, eq(esquema.pedidos.numero, pedido))) : []
       const [caso] = await db
         .insert(esquema.casos)
-        .values({ negocioId: negocio, clienteId: cliente, pedidoId: delPedido?.id ?? null, titulo, detalle })
+        .values({ negocioId: negocio, clienteId: cliente, pedidoId, titulo, detalle })
         .returning({ id: esquema.casos.id })
       return { caso: marcar.caso(caso.id), nuevo: true }
     },
@@ -199,13 +218,13 @@ export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): Puert
 
 export type PuertoEnMemoria = PuertoDeAcciones & {
   readonly pedidos: readonly (PedidoConsultado & { readonly cotizacion: Cotizacion | null })[]
-  readonly casos: readonly { readonly titulo: string; readonly detalle: string }[]
+  readonly casos: readonly { readonly titulo: string; readonly detalle: string; readonly pedido: number | null }[]
 }
 
 /** El de ensayo: en memoria, encima de los datos del estado y de los pedidos del Cliente. No escribe nada. */
 export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTurno): PuertoEnMemoria {
   const pedidos = cliente.pedidos.map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: [p.resumen], ciudad: p.paraReglas?.borrador.ciudad ?? '', direccion: '', cotizacion: null as Cotizacion | null }))
-  const casos: { titulo: string; detalle: string }[] = []
+  const casos: { titulo: string; detalle: string; pedido: number | null }[] = []
   return {
     pedidos,
     casos,
@@ -223,10 +242,10 @@ export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTur
       return { ok: true, total: pedidos[i].total }
     },
     consultar_pedido: async (numero) => (numero === null ? pedidos.slice(-3).reverse() : pedidos.filter((p) => p.numero === numero)),
-    async abrir_caso({ titulo, detalle, reusar }) {
-      const i = reusar ? casos.findIndex((c) => c.titulo === titulo) : -1
-      if (i >= 0) casos[i] = { titulo, detalle: `${casos[i].detalle}\n\n${detalle}` }
-      else casos.push({ titulo, detalle })
+    async abrir_caso({ titulo, detalle, pedido, reusar }) {
+      const i = reusar ? casos.findIndex((c) => c.titulo === titulo && c.pedido === pedido) : -1
+      if (i >= 0) casos[i] = { ...casos[i], detalle: `${casos[i].detalle}\n\n${detalle}` }
+      else casos.push({ titulo, detalle, pedido })
       return { caso: null, nuevo: i < 0 }
     },
   }

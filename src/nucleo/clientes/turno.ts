@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
 import type { CasoId, ClienteId, Instante, Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoVigente } from '../estado'
-import type { ItemDePedido } from '@/db/esquema'
+import type { EstadoDePedido, ItemDePedido } from '@/db/esquema'
 import { claveDeProducto, comoClave, comoMonto, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
@@ -27,16 +27,17 @@ export type PedidoDelCliente = {
   readonly paraReglas: PedidoParaReglas | null
 }
 
-const PEDIDO_ABIERTO: ReadonlySet<string> = new Set(['pendiente', 'confirmado', 'enviado'])
+/** Un pedido con `novedad` sigue abierto: el Cliente todavía lo espera. */
+const PEDIDO_ABIERTO = { pendiente: true, confirmado: true, enviado: true, novedad: true, entregado: false, cancelado: false } as const satisfies Record<EstadoDePedido, boolean>
 
-/** Un pedido guardado como lo ve el turno: producción y ensayo lo arman igual. Abierto es pendiente, confirmado o enviado. */
-export function pedidoDelCliente(p: { readonly numero: number; readonly total: number; readonly estado: string; readonly items: readonly ItemDePedido[]; readonly ciudad: string; readonly direccion: string }): PedidoDelCliente {
+/** Un pedido guardado como lo ve el turno: producción y ensayo lo arman igual. */
+export function pedidoDelCliente(p: { readonly numero: number; readonly total: number; readonly estado: EstadoDePedido; readonly items: readonly ItemDePedido[]; readonly ciudad: string; readonly direccion: string }): PedidoDelCliente {
   return {
     numero: p.numero,
     total: comoMonto(p.total),
     estado: p.estado,
     resumen: `${p.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}; ${p.ciudad}, ${p.direccion}`,
-    paraReglas: PEDIDO_ABIERTO.has(p.estado) ? { borrador: { items: p.items.map((i) => ({ producto: claveDeProducto.deId(i.productoId), cantidad: i.cantidad })), ciudad: p.ciudad }, total: comoMonto(p.total) } : null,
+    paraReglas: PEDIDO_ABIERTO[p.estado] ? { borrador: { items: p.items.map((i) => ({ producto: claveDeProducto.deId(i.productoId), cantidad: i.cantidad })), ciudad: p.ciudad }, total: comoMonto(p.total) } : null,
   }
 }
 
@@ -156,7 +157,7 @@ export async function turno<M extends Modo>(
 
   const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
-    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle })
+    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, pedido: null })
     texto = alDueno.avisoAlCliente
   } else {
     const system = armarPrompt(estado, cliente, reglas.textoParaElPrompt)
@@ -165,8 +166,8 @@ export async function turno<M extends Modo>(
     contar(b.uso)
     const borrador = b.texto.trim() || SIN_TEXTO
     activas = sinRepetir([...envuelto.activadas(), ...alEntrar])
-    const deSalida = reglas.enSalida(activas, borrador, envuelto.hechas().some((h) => h.nombre === 'abrir_caso'))
-    for (const titulo of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle })
+    const deSalida = reglas.enSalida(activas, borrador, envuelto.casosDelModelo())
+    for (const { titulo, pedido } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido })
     const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
     texto = borrador
     violaciones = deSalida.violaciones
@@ -176,14 +177,14 @@ export async function turno<M extends Modo>(
       const c = await motores.reescribir({ system, mensajes, borrador, motivos })
       contar(c.uso)
       const otra = c.texto.trim()
-      const pasa = otra !== '' && reglas.enSalida(activas, otra, true).violaciones.length === 0 && revisar(otra, hechos()).tipo === 'pasa'
+      const pasa = otra !== '' && reglas.enSalida(activas, otra, []).violaciones.length === 0 && revisar(otra, hechos()).tipo === 'pasa'
       if (pasa) {
         texto = otra
         corregido = 'si'
       } else {
         texto = RESPALDO
         corregido = 'respaldo'
-        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»` })
+        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, pedido: null })
       }
     }
   }

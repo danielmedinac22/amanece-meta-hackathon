@@ -10,11 +10,15 @@ export type ViolacionDeRegla = { readonly regla: Clave; readonly efecto: Efecto[
 
 /**
  * Por qué una regla está activa en este turno. Lo decide el código y viaja hasta la salida.
- *  - `pedido_nuevo`: `crear_pedido` cotizó en este turno un pedido que cumple la condición.
+ *  - `pedido_nuevo`: `crear_pedido` creó en este turno los `pedidos` que cumplen la condición; cada uno abre su Caso.
  *  - `pedido_abierto`: el Cliente ya tiene un pedido abierto que la cumple. Restringe la salida pero no abre Caso: si
  *    lo abriera, cada mensaje de ese Cliente avisaría al Dueño.
  */
-export type Activa = { readonly regla: Clave; readonly porque: 'siempre' | 'pedido_nuevo' | 'pedido_abierto' }
+export type Activa = { readonly regla: Clave; readonly porque: 'siempre' | 'pedido_abierto' } | PorPedidoNuevo
+export type PorPedidoNuevo = { readonly regla: Clave; readonly porque: 'pedido_nuevo'; readonly pedidos: readonly [number, ...number[]] }
+
+/** Un Caso que pide una regla: el de un pedido nuevo lleva su número. */
+export type CasoPorAbrir = { readonly titulo: string; readonly pedido: number | null }
 
 /** Qué partes de una regla cumple cada razón. `enSalida` no ramifica por `porque`. */
 const CUMPLE = {
@@ -27,14 +31,15 @@ export type ReglasCompiladas = {
   readonly textoParaElPrompt: string
   /** Las de `siempre` y las de pedido que cumple un pedido abierto del Cliente. */
   alEntrar(abiertos: readonly PedidoParaReglas[]): readonly Activa[]
-  /** La llama `envolver` dentro de `crear_pedido`, después de `cotizar`. */
-  alCotizar(p: PedidoParaReglas): readonly Activa[]
+  /** La llama `envolver` cuando `crear_pedido` ya devolvió el número: un pedido negado o que no se guardó no activa nada. */
+  alCrear(p: PedidoParaReglas, numero: number): readonly PorPedidoNuevo[]
   enEntrada(activas: readonly Activa[]): null | { readonly regla: Clave; readonly nombre: string; readonly avisoAlCliente: string }
+  /** `casosDelModelo`: los pedidos de los Casos que abrió el modelo en el turno. Uno de ese mismo pedido reemplaza al de la regla. */
   enSalida(
     activas: readonly Activa[],
     texto: string,
-    casoAbierto: boolean,
-  ): { readonly violaciones: readonly ViolacionDeRegla[]; readonly casosPorAbrir: readonly string[] }
+    casosDelModelo: readonly (number | null)[],
+  ): { readonly violaciones: readonly ViolacionDeRegla[]; readonly casosPorAbrir: readonly CasoPorAbrir[] }
 }
 
 /** Sin repetir regla: si una vale por dos razones, gana la primera, así que quien llama pone primero la que más cumple. */
@@ -114,13 +119,13 @@ export function compilarReglas(estado: EstadoDelNegocio): ReglasCompiladas {
   const activasDe = (activas: readonly Activa[]) =>
     sinRepetir(activas).flatMap((a) => {
       const c = compiladas.find((x) => x.clave === a.regla)
-      return c ? [{ c, cumple: CUMPLE[a.porque] }] : []
+      return c ? [{ a, c, cumple: CUMPLE[a.porque] }] : []
     })
   const alPedido = compiladas.filter((c) => ACTIVACION[c.cuando.tipo]?.al === 'pedido')
   return {
     textoParaElPrompt: compiladas
       .flatMap((c) => {
-        const si = c.cuando.tipo === 'pedido' ? `Si ${condicionEnPalabras(c.cuando.condicion).replace(/^cuando /, '')}: ` : ''
+        const si = c.cuando.tipo === 'pedido' ? `Si ${condicionEnPalabras(c.cuando.condicion, estado).replace(/^cuando /, '')}: ` : ''
         return c.partes.flatMap((p) => (p.en === 'salida' ? [`- ${si}${p.paraElModelo}`] : []))
       })
       .join('\n'),
@@ -128,21 +133,23 @@ export function compilarReglas(estado: EstadoDelNegocio): ReglasCompiladas {
       ...compiladas.filter((c) => ACTIVACION[c.cuando.tipo]?.al === 'entrar').map((c): Activa => ({ regla: c.clave, porque: 'siempre' })),
       ...alPedido.filter((c) => abiertos.some((p) => cumpleElPedido(c, p))).map((c): Activa => ({ regla: c.clave, porque: 'pedido_abierto' })),
     ],
-    alCotizar: (p) => alPedido.filter((c) => cumpleElPedido(c, p)).map((c): Activa => ({ regla: c.clave, porque: 'pedido_nuevo' })),
+    alCrear: (p, numero) => alPedido.filter((c) => cumpleElPedido(c, p)).map((c): PorPedidoNuevo => ({ regla: c.clave, porque: 'pedido_nuevo', pedidos: [numero] })),
     enEntrada(activas) {
       for (const { c, cumple } of activasDe(activas)) if (cumple.entrada) for (const p of c.partes) if (p.en === 'entrada') return { regla: c.clave, nombre: c.nombre, avisoAlCliente: p.avisoAlCliente }
       return null
     },
-    enSalida(activas, texto, casoAbierto) {
+    enSalida(activas, texto, casosDelModelo) {
       const violaciones: ViolacionDeRegla[] = []
-      const casosPorAbrir: string[] = []
-      for (const { c, cumple } of activasDe(activas)) {
+      const casosPorAbrir: CasoPorAbrir[] = []
+      for (const { a, c, cumple } of activasDe(activas)) {
         for (const p of c.partes) {
           if (p.en === 'salida' && cumple.salida) {
             const detalle = p.detecta(texto)
             if (detalle) violaciones.push({ regla: c.clave, efecto: p.efecto, detalle })
           }
-          if (p.en === 'caso' && cumple.caso && !casoAbierto) casosPorAbrir.push(p.titulo)
+          if (p.en === 'caso' && cumple.caso) {
+            for (const pedido of a.porque === 'pedido_nuevo' ? a.pedidos : [null]) if (!casosDelModelo.includes(pedido)) casosPorAbrir.push({ titulo: p.titulo, pedido })
+          }
         }
       }
       return { violaciones, casosPorAbrir }

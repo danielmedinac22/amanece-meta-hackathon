@@ -13,7 +13,7 @@ const errores = capturarErrores()
 
 const { armarEstado, nombresAjenos } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
-const { turno, entornoDeEnsayo, RESPALDO } = await import('../src/nucleo/clientes/turno')
+const { turno, entornoDeEnsayo, pedidoDelCliente, RESPALDO } = await import('../src/nucleo/clientes/turno')
 const { puertoEnMemoria } = await import('../src/nucleo/clientes/acciones')
 const { marcar } = await import('../src/nucleo/identidad')
 
@@ -224,6 +224,72 @@ try {
     const yaAbierto = { ...puertoEnMemoria(estado, cliente), abrir_caso: async () => ({ caso: marcar.caso('00000000-0000-4000-8000-0000000000ca'), nuevo: false }) }
     const otraVez = await turno(estado, conversacion('Quiero 2 cafés para Pereira'), entornoDeEnsayo(estado, cliente, yaAbierto), reusado.motores)
     afirmar('un Caso que el puerto reusa no vuelve en casosAbiertos: el Dueño no recibe el aviso dos veces', otraVez.acciones.some((a) => a.nombre === 'abrir_caso') && otraVez.casosAbiertos.length === 0, otraVez)
+
+    const enUnTurno = (puerto: ReturnType<typeof puertoEnMemoria>, texto: string, motores: Motores) => turno(estado, conversacion(texto), entornoDeEnsayo(estado, cliente, puerto), motores)
+    const aPereira = (cantidad: number, despues?: (p: Parameters<Motores['responder']>[0]['puerto'], numero: number) => Promise<unknown>) =>
+      guion(async ({ puerto }) => {
+        const r = await puerto.crear_pedido({ pedido: { items: [{ producto: CAFE, cantidad }], ciudad: 'Pereira' }, direccion: 'Calle 10' })
+        if (despues && 'numero' in r) await despues(puerto, r.numero)
+        return { texto: 'Listo, tu pedido quedó creado.', uso: SIN_USO }
+      }).motores
+
+    const lanza = { ...puertoEnMemoria(estado, cliente), crear_pedido: async () => Promise.reject(new Error('el INSERT falló')) }
+    const fallido = await enUnTurno(
+      lanza,
+      'Quiero 2 cafés para Pereira',
+      guion(async ({ puerto }) => {
+        await puerto.crear_pedido({ pedido: { items: [{ producto: CAFE, cantidad: 2 }], ciudad: 'Pereira' }, direccion: 'Calle 10' }).catch(() => null)
+        return { texto: 'Tuve un problema con tu pedido, ya lo reviso.', uso: SIN_USO }
+      }).motores,
+    )
+    afirmar('un crear_pedido que lanza no activa la regla ni abre Caso', lanza.casos.length === 0 && fallido.reglasActivas.length === 0, { casos: lanza.casos, activas: fallido.reglasActivas })
+
+    const dosPedidos = puertoEnMemoria(estado, cliente)
+    await enUnTurno(dosPedidos, 'Quiero 2 cafés para Pereira', aPereira(2))
+    await enUnTurno(dosPedidos, 'Y otro de 3 cafés para Pereira', aPereira(3))
+    afirmar('dos pedidos distintos a Pereira del mismo Cliente: dos Casos, cada uno con su pedido', JSON.stringify(dosPedidos.casos.map((c) => c.pedido)) === '[1,2]', dosPedidos.casos)
+    const mismoTurno = puertoEnMemoria(estado, cliente)
+    await enUnTurno(mismoTurno, 'Quiero dos pedidos para Pereira', aPereira(2, (p) => p.crear_pedido({ pedido: { items: [{ producto: CAFE, cantidad: 4 }], ciudad: 'Pereira' }, direccion: 'Calle 11' })))
+    afirmar('dos pedidos a Pereira en el mismo turno: dos Casos', JSON.stringify(mismoTurno.casos.map((c) => c.pedido)) === '[1,2]', mismoTurno.casos)
+
+    const base7 = puertoEnMemoria(estado, cliente)
+    const repite = { ...base7, crear_pedido: async ({ cotizacion }: { cotizacion: { total: ReturnType<typeof monto> } }) => ({ numero: 7, total: cotizacion.total }) }
+    await enUnTurno(repite, 'Quiero 2 cafés para Pereira', aPereira(2))
+    await enUnTurno(repite, 'Quiero 2 cafés para Pereira', aPereira(2))
+    afirmar('el mismo pedido repetido reusa su Caso', base7.casos.length === 1 && base7.casos[0].pedido === 7 && base7.casos[0].detalle.split('Quiero 2 cafés').length === 3, base7.casos)
+
+    const ajeno = puertoEnMemoria(estado, cliente)
+    await enUnTurno(ajeno, 'Quiero 2 cafés para Pereira y tengo un reclamo', aPereira(2, (p) => p.abrir_caso({ titulo: 'Reclamo', detalle: 'Un reclamo', pedido: null })))
+    afirmar('un abrir_caso del modelo sin pedido no apaga el Caso de la regla', ajeno.casos.length === 2 && ajeno.casos.some((c) => c.titulo === 'Pedido fuera de Manizales' && c.pedido === 1), ajeno.casos)
+    const propio = puertoEnMemoria(estado, cliente)
+    await enUnTurno(propio, 'Quiero 2 cafés para Pereira', aPereira(2, (p, numero) => p.abrir_caso({ titulo: 'Envío a Pereira', detalle: 'Fuera de Manizales', pedido: numero })))
+    afirmar('un abrir_caso del modelo con el mismo pedido reemplaza al de la regla', propio.casos.length === 1 && propio.casos[0].titulo === 'Envío a Pereira', propio.casos)
+
+    const sinCiudad = puertoEnMemoria(estado, cliente)
+    const vacia = await enUnTurno(
+      sinCiudad,
+      'Quiero 2 cafés',
+      guion(async ({ puerto }) => {
+        const r = await puerto.crear_pedido({ pedido: { items: [{ producto: CAFE, cantidad: 2 }], ciudad: ' ' }, direccion: 'Calle 10' })
+        return { texto: 'negado' in r ? '¿A qué ciudad te lo envío?' : 'Listo.', uso: SIN_USO }
+      }).motores,
+    )
+    afirmar('crear_pedido con la ciudad vacía queda negado: ni pedido ni Caso', sinCiudad.pedidos.length === 0 && sinCiudad.casos.length === 0 && vacia.acciones.some((a) => a.nombre === 'crear_pedido' && a.detalle.startsWith('negado')), vacia.acciones)
+  }
+
+  console.log('\n=== La ciudad se compara por su primer tramo ===')
+  {
+    const fuera = (ciudades: [string, ...string[]], ciudad: string) => el.seCumpleLaCondicion({ tipo: 'ciudad_fuera_de', ciudades }, { borrador: { items: [], ciudad }, total: monto(0) })
+    afirmar('«Calima» está fuera de Cali', fuera(['Cali'], 'Calima'))
+    afirmar('«Manizales, Caldas» no está fuera de Manizales', !fuera(['Manizales'], 'Manizales, Caldas'))
+    afirmar('«Villamaría» está fuera de Manizales', fuera(['Manizales'], 'Villamaría'))
+    afirmar('«Cali (Valle)» y «cali - centro» no están fuera de Cali', !fuera(['Cali'], 'Cali (Valle)') && !fuera(['Cali'], 'cali - centro'))
+  }
+
+  console.log('\n=== Un pedido con novedad sigue abierto ===')
+  {
+    const guardado = (estado: 'novedad' | 'entregado' | 'cancelado' | 'pendiente') => pedidoDelCliente({ numero: 7, total: 76000, estado, items: [{ productoId: '00000000-0000-4000-8000-0000000000c1', nombre: 'Café 500 g', cantidad: 2, precio: 38000 }], ciudad: 'Pereira', direccion: 'Calle 10' })
+    afirmar('novedad y pendiente cuentan como abiertos; entregado y cancelado no', guardado('novedad').paraReglas !== null && guardado('pendiente').paraReglas !== null && guardado('entregado').paraReglas === null && guardado('cancelado').paraReglas === null)
   }
 
   console.log('\n=== total_desde e incluye ===')
@@ -246,6 +312,8 @@ try {
     afirmar('total_desde 100.000: 2 x 38.000 no activa', dos.t.reglasActivas.length === 0 && dos.puerto.casos.length === 0, dos.t.reglasActivas)
     afirmar('total_desde 100.000: 3 x 38.000 activa', tres.t.reglasActivas.includes(clave('regla:Pedido grande')) && !tres.t.reglasActivas.includes(clave('regla:Con molino')), tres.t.reglasActivas)
     afirmar('incluye: activa solo con ese producto', conMolino.t.reglasActivas.includes(clave('regla:Con molino')) && conMolino.puerto.casos.some((c) => c.titulo === 'Con molino'), conMolino.t.reglasActivas)
+    const enPalabras = el.condicionEnPalabras({ tipo: 'incluye', producto: MOLINO }, estado)
+    afirmar('incluye: en palabras nombra el producto y no su clave', enPalabras.includes('Molino manual') && !enPalabras.includes(MOLINO), enPalabras)
   }
 
   console.log('\n=== revisar ===')

@@ -46,7 +46,7 @@ export async function guardarEnElAlta(
   for (const q of pedido.quiere) {
     const origen = origenDeLasCifras(q.elemento, escritoPorElDueno, enLaTarjeta, q.reemplaza ? (estado.vigente(q.reemplaza)?.elemento ?? null) : null)
     if (origen === 'dueno') quedan.push(q)
-    else (origen === 'lectura' ? porConfirmar : sinFuente).push(describirVigente(q.elemento))
+    else (origen === 'lectura' ? porConfirmar : sinFuente).push(describirVigente(q.elemento, estado))
   }
   const t = quedan.length ? await traducir(estado, quedan) : null
   if (t && 'tipo' in t) return { problemas: t.tipo === 'corregir' ? t.problemas : [{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Eso todavía no lo sé hacer cumplir' }] }

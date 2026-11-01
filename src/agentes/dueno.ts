@@ -115,7 +115,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
           voz: estado.vigentes('voz').map((v) => ({ clave: v.clave, ...v.elemento }))[0] ?? null,
           preguntas: estado.vigentes('pregunta').map((v) => ({ clave: v.clave, pregunta: v.elemento.pregunta, respuesta: v.elemento.respuesta })),
           productos: estado.vigentes('producto').map((v) => ({ clave: v.clave, nombre: v.elemento.nombre, descripcion: v.elemento.descripcion, precio: v.elemento.precio, activo: v.elemento.activo })),
-          reglas: estado.vigentes('regla').map((v) => ({ clave: v.clave, enPalabras: reglaEnPalabras(v.elemento), regla: v.elemento })),
+          reglas: estado.vigentes('regla').map((v) => ({ clave: v.clave, enPalabras: reglaEnPalabras(v.elemento, estado), regla: v.elemento })),
           piezas: piezas.map((p) => ({ nombre: p.nombre, tipo: p.tipo, descripcion: p.descripcion })),
         }
       }),

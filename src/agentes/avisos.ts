@@ -29,7 +29,7 @@ export async function traerCasoAlDueno(negocio: NegocioId, casoId: string): Prom
   const estado = await leerEstado(negocio)
   const [cliente] = caso.clienteId ? await db.select().from(esquema.clientes).where(and(eq(esquema.clientes.id, caso.clienteId), eq(esquema.clientes.negocioId, negocioId))) : []
   const [pedido] = caso.pedidoId ? await db.select().from(esquema.pedidos).where(and(eq(esquema.pedidos.id, caso.pedidoId), eq(esquema.pedidos.negocioId, negocioId))) : []
-  const reglas = estado.vigentes('regla').map((v) => reglaEnPalabras(v.elemento))
+  const reglas = estado.vigentes('regla').map((v) => reglaEnPalabras(v.elemento, estado))
   const ultimos = caso.clienteId
     ? (
         await db
