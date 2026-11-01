@@ -27,7 +27,7 @@ Las **piezas compartidas** son lo que tocan todos los Negocios a la vez:
 - La puerta del Negocio: `src/negocio/sesion.ts`. El Negocio sale de la sesión y nunca entra como parámetro.
 - Las propuestas: `src/nucleo/cambios/` (`proponer`, `aprobar`, `descartar`, `historial`; `traducir.ts`, el único que ramifica por `Quiere`; `alta.ts`, la entrevista) y `src/db/pool.ts`, la única transacción interactiva. `puente.ts` es lo único que llama al `aplicarCambio` viejo, solo para Sección e Indicador, y se borra el 2-nov.
 - El Agente de clientes: `src/nucleo/clientes/` (`turno.ts` compone, `reglas.ts` hace cumplir las reglas del Dueño, `acciones.ts` es el puerto). `atender.ts` es lo único que junta `turno` y `despachar`.
-- Los permisos del Agente del dueño: las herramientas de `src/agentes/dueno.ts`, qué existe. El modelo propone; aplicar, revertir y responder un Caso son el botón del Dueño.
+- Los permisos del Agente del dueño: las herramientas de `src/agentes/dueno.ts`, qué existe. El modelo propone; aplicar, revertir y responder un Caso son el botón del Dueño. `src/lib/leer-enlace.ts` es lo único que pide una URL que escribe el Dueño: revisa la IP resuelta en el `lookup`, cada salto, el tiempo y los bytes.
 - El generador de piezas y su aplicación, hasta el 2-nov: `src/agentes/generador.ts` y `src/negocio/cambios.ts`.
 - El intérprete aislado: `src/lib/aislado.ts`.
 - El esquema: `src/db/esquema.ts`, `src/db/viejo.ts` (las tablas de antes, sin lector hasta el 4-nov; eslint las prohíbe en `src/`) y `drizzle/`.
