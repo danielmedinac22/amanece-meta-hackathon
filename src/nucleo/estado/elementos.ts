@@ -399,9 +399,11 @@ const vozEnPalabras = (v: ElementoDe<'voz'>) => `${v.estilo} (trata de ${v.trato
 
 export const ETIQUETA_DEL_DATO = { descripcion: 'Descripción', ciudad: 'Ciudad', horario: 'Horario', envios: 'Envíos', pagos: 'Pagos' } as const satisfies Record<CampoDeConocimiento, string>
 
-function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => string, etiqueta: string): string {
+const NUEVO_DEL_DATO = { descripcion: 'nueva', ciudad: 'nueva', horario: 'nuevo', envios: 'nuevos', pagos: 'nuevos' } as const satisfies Record<CampoDeConocimiento, string>
+
+function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => string, etiqueta: string, nuevo = 'nuevo'): string {
   if (antes && despues) return `${etiqueta}: «${enPalabras(antes)}» → «${enPalabras(despues)}»`
-  if (despues) return `${etiqueta} nuevo: «${enPalabras(despues)}»`
+  if (despues) return `${etiqueta} ${nuevo}: «${enPalabras(despues)}»`
   if (antes) return `Quitar ${etiqueta.toLowerCase()}: «${enPalabras(antes)}»`
   return etiqueta
 }
@@ -447,7 +449,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
       }
       return problemas
     },
-    describir: (antes, despues, estado) => cambio(antes, despues, (r) => reglaEnPalabras(r, estado), 'Regla'),
+    describir: (antes, despues, estado) => cambio(antes, despues, (r) => reglaEnPalabras(r, estado), 'Regla', 'nueva'),
   },
   voz: {
     contrato: 1,
@@ -467,7 +469,10 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
     referencias: () => [],
     textos: (d) => [{ campo: d.campo, texto: d.valor }],
     validar: (d) => (d.valor.trim() ? [] : [invalido(d.campo, 'El dato no puede quedar vacío: para borrarlo, quítalo')]),
-    describir: (antes, despues) => cambio(antes, despues, (d) => d.valor, ETIQUETA_DEL_DATO[(despues ?? antes)?.campo ?? 'descripcion']),
+    describir: (antes, despues) => {
+      const campo = (despues ?? antes)?.campo ?? 'descripcion'
+      return cambio(antes, despues, (d) => d.valor, ETIQUETA_DEL_DATO[campo], NUEVO_DEL_DATO[campo])
+    },
   },
   pregunta: {
     contrato: 1,
@@ -481,7 +486,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
       const repetida = estado.vigentes('pregunta').find((v) => v.clave !== clave && normalizar(v.elemento.pregunta) === normalizar(p.pregunta))
       return repetida ? [invalido('pregunta', `Esa pregunta ya existe: para cambiarla, usa reemplaza con la clave ${repetida.clave}`)] : []
     },
-    describir: (antes, despues) => cambio(antes, despues, (p) => `${p.pregunta} ${p.respuesta}`, 'Pregunta frecuente'),
+    describir: (antes, despues) => cambio(antes, despues, (p) => `${p.pregunta} ${p.respuesta}`, 'Pregunta frecuente', 'nueva'),
   },
   producto: {
     contrato: 1,

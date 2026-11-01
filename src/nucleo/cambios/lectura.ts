@@ -204,25 +204,27 @@ export function sinLoYaEscrito(estado: EstadoDelNegocio, escritura: Escritura): 
 
 /**
  * Pura. Las líneas de la tarjeta, escritas por el código: lo leído y también lo que el Dueño ya escribió. Si faltara
- * uno que el Dueño corrigió, creería que se perdió (pasó en el prototipo de #29).
+ * uno que el Dueño corrigió, creería que se perdió (pasó en el prototipo de #29). La fuente va una vez, arriba.
  */
 export function lineasDeLaTarjeta(estado: EstadoDelNegocio, escritura: Escritura, fuente: string): readonly string[] {
   const leidas = escritura.elementos.flatMap((c) => {
     const e = c.despues
-    if (e?.tipo === 'producto') return [`${e.nombre} · ${pesos(e.precio)} · lo leí de ${fuente}`]
-    if (e?.tipo === 'dato') return [`${ETIQUETA_DEL_DATO[e.campo]}: «${e.valor}» · lo leí de ${fuente}`]
+    if (e?.tipo === 'producto') return [`${e.nombre} · ${pesos(e.precio)} · lo leí`]
+    if (e?.tipo === 'dato') return [`${ETIQUETA_DEL_DATO[e.campo]}: «${e.valor}» · lo leí`]
     return []
   })
   const tuyas = estado
     .vigentes('producto')
     .filter((v) => v.elemento.activo)
-    .map((v) => `${v.elemento.nombre} · ${pesos(v.elemento.precio)} · lo escribiste o lo confirmaste tú`)
+    .map((v) => `${v.elemento.nombre} · ${pesos(v.elemento.precio)} · lo escribiste tú`)
   return [`Esto leí de ${fuente}. Tu agente de clientes no lo usa hasta que lo confirmes.`, ...leidas, ...tuyas, 'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.']
 }
 
 const PREFIJO = 'Lo que leí de '
 export const palabrasDeLaLectura = (fuente: string) => `${PREFIJO}${fuente}`
 const fuenteDe = (palabras: string) => (palabras.startsWith(PREFIJO) ? palabras.slice(PREFIJO.length) : 'tu página')
+
+export const confirmadaEnPalabras = (por: string, palabrasDelDueno: string) => `${por} confirmó lo que leí de ${fuenteDe(palabrasDelDueno)}.`
 
 const pendienteDe = (negocio: NegocioId) =>
   and(eq(esquema.propuestas.negocioId, negocio), eq(esquema.propuestas.origen, 'lectura'), eq(esquema.propuestas.estado, 'espera_al_dueno'), gt(esquema.propuestas.vence, sql`now()`))

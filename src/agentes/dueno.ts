@@ -68,9 +68,10 @@ function faltaEnElResumen({ bloquea, avisa }: { readonly bloquea: readonly Falta
 }
 
 /**
- * El Agente del dueño de un Negocio: `{ system, tools }` para `streamText`. Cada herramienta se cierra
- * sobre el `ctx` de la sesión; ninguna recibe un Negocio del modelo, así que no hay cómo tocar otro. Lee y
- * propone: aplicar, revertir y responder un Caso son el botón del Dueño.
+ * El Agente del dueño de un Negocio: `{ system, tools }` para `streamText`, con las herramientas del modo, y `todas`
+ * para convertir el Hilo: una salida vieja del alta pasa por su `toModelOutput` aunque el Negocio ya esté abierto.
+ * Cada herramienta se cierra sobre el `ctx` de la sesión; ninguna recibe un Negocio del modelo, así que no hay cómo
+ * tocar otro. Lee y propone: aplicar, revertir y responder un Caso son el botón del Dueño.
  */
 export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: { negocio: Negocio; dueno: Dueno }, puertos: PuertosDelDueno = PUERTOS_DE_PRODUCCION) {
   const negocioId = ctx.negocio
@@ -321,26 +322,13 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       }),
   })
 
-  const tools: ToolSet =
-    negocio.modo === 'armando'
-      ? {
-          ver_negocio: verNegocio,
-          leer_enlace: leerEnlace,
-          guardar_conocimiento: guardarConocimiento,
-          guardar_productos: guardarProductosTool,
-          abrir_negocio: abrirNegocio,
-          registrar_capacidad_faltante: registrarCapacidadFaltante,
-        }
-      : {
-          ver_negocio: verNegocio,
-          proponer: proponerTool,
-          descartar_propuesta: descartarPropuesta,
-          listar_propuestas: listarPropuestas,
-          listar_casos: listarCasos,
-          registrar_capacidad_faltante: registrarCapacidadFaltante,
-        }
+  const comunes = { ver_negocio: verNegocio, registrar_capacidad_faltante: registrarCapacidadFaltante }
+  const delAlta = { leer_enlace: leerEnlace, guardar_conocimiento: guardarConocimiento, guardar_productos: guardarProductosTool, abrir_negocio: abrirNegocio }
+  const deAbierto = { proponer: proponerTool, descartar_propuesta: descartarPropuesta, listar_propuestas: listarPropuestas, listar_casos: listarCasos }
+  const tools: ToolSet = { ...comunes, ...(negocio.modo === 'armando' ? delAlta : deAbierto) }
+  const todas: ToolSet = { ...comunes, ...delAlta, ...deAbierto }
 
-  return { system: instrucciones(negocio, dueno), tools }
+  return { system: instrucciones(negocio, dueno), tools, todas }
 }
 
 /** Lo que falta, como lo lee el modelo: si ya está en la tarjeta, se pide el botón y no se pregunta. */

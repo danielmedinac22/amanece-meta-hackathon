@@ -13,7 +13,8 @@ process.env.ENVIO_SIMULADO = '1'
 
 const { db, esquema } = await import('../src/db')
 const { lectorDeGuion } = await import('../src/lib/leer-enlace')
-const { guardarEnElHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
+const { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
+const { mensajesParaElModelo } = await import('../src/negocio/dueno-chat')
 const { aprobar, guardarEnElAlta, proponerLectura, queFaltaParaAbrir, lecturaPendiente } = await import('../src/nucleo/cambios')
 const { armarLectura, buscarProducto, MAXIMO_DE_PRODUCTOS_LEIDOS } = await import('../src/nucleo/cambios/lectura')
 const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
@@ -138,12 +139,17 @@ try {
   afirmar('la tarjeta vieja queda descartada y la nueva no trae el Latte', vieja?.estado === 'descartada' && nueva !== undefined && !nombresNueva.includes('Latte') && nombresNueva.includes('Capuchino'), { vieja: vieja?.estado, nombresNueva })
   afirmar('guardar_productos devuelve la tarjeta rearmada', 'tarjeta' in latte && latte.tarjeta?.propuesta === nueva?.id, latte)
   afirmar('la tarjeta nueva lista también lo que escribió el Dueño', (nueva?.vistaPrevia.lineas ?? []).some((l) => l.startsWith('Latte · $9.000') && l.includes('tú')), nueva?.vistaPrevia.lineas)
+  const [arriba, ...resto] = nueva?.vistaPrevia.lineas ?? []
+  afirmar('la fuente va una vez, arriba; cada línea dice solo «lo leí» o «lo escribiste tú»', arriba?.includes('cafetrigo.co') === true && resto.every((l) => !l.includes('cafetrigo.co')) && resto.some((l) => l.endsWith('· lo leí')) && resto.some((l) => l.endsWith('· lo escribiste tú')), nueva?.vistaPrevia.lineas)
 
   console.log('\n=== El botón ===')
   const r = nueva ? await aprobar(ctx, nueva.id, nueva.huella) : null
   const tras = await productosDe(ctx)
   afirmar('aprobar deja los productos leídos vigentes con origen propuesta', r?.tipo === 'aplicado' && tras.filter((v) => v.origen.tipo === 'propuesta').length === 2, { r, tras: tras.map((v) => [v.elemento.nombre, v.origen.tipo]) })
   afirmar('el Latte sigue a 9.000, nunca a 8.000', tras.filter((v) => v.elemento.nombre === 'Latte').every((v) => v.elemento.precio === 9000))
+  const ultima = (await leerHilo(ctx.dueno)).at(-1)
+  const textoDeLaUltima = ultima?.parts.flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('') ?? ''
+  afirmar('la línea del Hilo dice que el Dueño confirmó lo leído de su página', textoDeLaUltima === 'Dueño de prueba confirmó lo que leí de tu página (cafetrigo.co).', textoDeLaUltima)
   const falta = queFaltaParaAbrir(await leerEstado(ctx.negocio), null)
   afirmar('queFaltaParaAbrir ya no bloquea por producto_con_precio', !falta.bloquea.some((f) => f.que === 'producto_con_precio'), falta)
 
@@ -156,6 +162,21 @@ try {
     await agente.tools.guardar_productos.execute!({ productos: [{ nombre: 'Capuchino grande', precio: 9500 }] }, { toolCallId: 'prueba', messages: [], context: {} })
     const capuchinos = (await productosDe(ctx)).filter((v) => /capuchino/i.test(v.elemento.nombre))
     afirmar('«Capuchino grande» reemplaza al Capuchino leído: queda uno, a 9.500', capuchinos.length === 1 && capuchinos[0].elemento.precio === 9500, capuchinos.map((v) => [v.elemento.nombre, v.elemento.precio]))
+  }
+
+  console.log('\n=== Con el Negocio abierto, una salida vieja de leer_enlace llega al modelo solo como resumen ===')
+  {
+    const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, ctx.negocio))
+    const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, ctx.dueno))
+    const abierto = crearAgenteDelDueno(ctx, { negocio: { ...negocio, modo: 'atendiendo' }, dueno })
+    const salida = { resumen: 'Leí 3 cosas de tu página.', tarjeta: { propuesta: '00000000-0000-4000-8000-000000000001', huella: 'f'.repeat(64), lineas: ['Latte · $8.000 · lo leí'], advertencias: [], accion: 'confirmar' } }
+    const hilo = [
+      { id: 'm1', role: 'user' as const, parts: [{ type: 'text' as const, text: 'Mi página es cafetrigo.co' }] },
+      { id: 'm2', role: 'assistant' as const, parts: [{ type: 'tool-leer_enlace', toolCallId: 'llamada-1', state: 'output-available', input: { url: 'cafetrigo.co' }, output: salida }, { type: 'text' as const, text: 'Listo.' }] },
+    ] as Parameters<typeof mensajesParaElModelo>[0]
+    const comoLoVe = JSON.stringify(await mensajesParaElModelo(hilo, abierto))
+    afirmar('Hilo en modo abierto: no trae huella ni líneas, sí el resumen', !comoLoVe.includes('f'.repeat(64)) && !comoLoVe.includes('lo leí') && comoLoVe.includes('Leí 3 cosas'), comoLoVe)
+    afirmar('Hilo en modo abierto: al modelo no se le ofrece leer_enlace', !('leer_enlace' in abierto.tools) && 'proponer' in abierto.tools)
   }
 
   console.log('\n=== Una segunda lectura descarta la primera ===')

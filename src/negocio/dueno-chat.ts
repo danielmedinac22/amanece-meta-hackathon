@@ -1,4 +1,4 @@
-import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from 'ai'
+import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type ToolSet, type UIMessage } from 'ai'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
@@ -25,6 +25,11 @@ export function mensajeDelDueno(crudo: unknown): UIMessage | null {
   return mensajeDelDuenoEnTexto(texto)
 }
 
+/** El Hilo como lo ve el modelo: cada salida de herramienta pasa por el `toModelOutput` de su definición, también la de otro modo. */
+export function mensajesParaElModelo(hilo: UIMessage[], agente: { readonly todas: ToolSet }) {
+  return convertToModelMessages(hilo, { tools: agente.todas, convertDataPart: parteDeDatosParaElModelo, ignoreIncompleteToolCalls: true })
+}
+
 /**
  * Un turno del Hilo: guarda el mensaje del Dueño, corre al Agente del dueño con hasta 8 pasos y guarda
  * su respuesta al terminar. El turno queda medido con `registrarTurno`.
@@ -43,16 +48,16 @@ export async function responderEnElHilo({
   /** Solo los `probar` los cambian: la página de guion con el modelo real. */
   puertos?: PuertosDelDueno
 }) {
-  const { system, tools } = crearAgenteDelDueno(ctx, { negocio, dueno }, puertos)
+  const agente = crearAgenteDelDueno(ctx, { negocio, dueno }, puertos)
   await guardarEnElHilo(negocio.id, dueno.id, 'dueno', mensaje)
   const historial = await leerHilo(dueno.id, MENSAJES_QUE_VE_EL_MODELO)
 
   const inicio = Date.now()
   const resultado = streamText({
     model: modelo,
-    instructions: system,
-    messages: await convertToModelMessages(historial, { tools, convertDataPart: parteDeDatosParaElModelo, ignoreIncompleteToolCalls: true }),
-    tools,
+    instructions: agente.system,
+    messages: await mensajesParaElModelo(historial, agente),
+    tools: agente.tools,
     stopWhen: isStepCount(8),
     onEnd: async ({ totalUsage }) => {
       await registrarTurno('dueno', negocio.id, totalUsage, Date.now() - inicio).catch((e) => console.warn('No se pudo registrar el turno del Agente del dueño', e))

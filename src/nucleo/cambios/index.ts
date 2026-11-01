@@ -34,7 +34,7 @@ import { fueraDeVentana } from '../salida/compuerta'
 import type { Motores } from '../clientes/turno'
 import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
 import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
-import { lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
+import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import { ESQUEMAS_DEL_PUENTE, escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
 import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuierePoner } from './traducir'
@@ -604,6 +604,7 @@ async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio
   const [quien] = f.aprobadoPor ? await db.select({ nombre: esquema.duenos.nombre }).from(esquema.duenos).where(eq(esquema.duenos.id, f.aprobadoPor)) : []
   const por = quien?.nombre || 'Un Dueño'
   const [acto] = f.actos
+  if (f.origen === 'lectura') return { por, texto: confirmadaEnPalabras(por, f.palabrasDelDueno) }
   if (!acto) return { por, texto: `${por} aplicó: ${f.vistaPrevia.lineas[0] ?? 'el Cambio'}` }
   const [cliente] = await db
     .select({ nombre: esquema.clientes.nombre })

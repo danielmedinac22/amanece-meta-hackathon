@@ -203,6 +203,14 @@ try {
   afirmar('cotizar: una clave que no existe no cubre', 'noCubre' in cotizar({ items: [{ producto: clave('producto:nada'), cantidad: 1 }], ciudad: 'Pasto' }, eB))
   afirmar('claveDeProducto: ida y vuelta al id de pedidos.items', el.claveDeProducto.aId(cafe) === '00000000-0000-4000-8000-0000000000a1')
 
+  console.log('\n=== Las líneas concuerdan con su etiqueta ===')
+  {
+    const vacio = armarEstado({ id: marcar.negocio('00000000-0000-4000-8000-0000000000f3'), nombre: 'X', rubro: 'x', codigo: 'X', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'atendiendo' }, version(1), [])
+    const regla: Elemento = { tipo: 'regla', nombre: 'Sin fechas', cuando: { tipo: 'siempre' }, efectos: [{ tipo: 'no_prometer', que: 'plazo' }], escenarios: { activan: [{ mensajeDelCliente: '¿Cuándo llega?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] } }
+    const lineas = [el.describirCambio(null, regla, vacio), el.describirCambio(null, { tipo: 'dato', campo: 'ciudad', valor: 'Manizales' }, vacio), el.describirCambio(null, { tipo: 'dato', campo: 'envios', valor: 'A todo el país' }, vacio)]
+    afirmar('«Regla nueva», «Ciudad nueva» y «Envíos nuevos»', lineas[0].startsWith('Regla nueva:') && lineas[1].startsWith('Ciudad nueva:') && lineas[2].startsWith('Envíos nuevos:'), lineas)
+  }
+
   console.log('\n=== E8. Importaciones ===')
   const archivos = (dir: string): string[] =>
     readdirSync(dir).flatMap((n) => {

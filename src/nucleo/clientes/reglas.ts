@@ -17,7 +17,6 @@ export type ViolacionDeRegla = { readonly regla: Clave; readonly efecto: Efecto[
 export type Activa = { readonly regla: Clave; readonly porque: 'siempre' | 'pedido_abierto' } | PorPedidoNuevo
 export type PorPedidoNuevo = { readonly regla: Clave; readonly porque: 'pedido_nuevo'; readonly pedidos: readonly [number, ...number[]] }
 
-/** Un Caso que pide una regla: el de un pedido nuevo lleva su número. */
 export type CasoPorAbrir = { readonly titulo: string; readonly pedido: number | null }
 
 /** Qué partes de una regla cumple cada razón. `enSalida` no ramifica por `porque`. */

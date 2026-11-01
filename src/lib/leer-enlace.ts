@@ -27,7 +27,6 @@ export type NoSeLeyo =
   /** Instagram y otras redes piden sesión: el Agente sigue con la entrevista. */
   | { readonly tipo: 'pide_sesion' }
   | { readonly tipo: 'no_conecta' }
-  /** Lo que escribió el Dueño no es un enlace ni un usuario de Instagram. */
   | { readonly tipo: 'no_parece_enlace' }
 
 /** El puerto. Producción usa `LECTOR_DE_INTERNET`; los `probar`, `lectorDeGuion`. */
@@ -195,7 +194,7 @@ function sinBloques(html: string): string {
   return partes.join(' ')
 }
 
-/** Pura. Los `meta` con `name` o `property` y `content`. `[^<>]` deja la búsqueda lineal. */
+/** `[^<>]` deja la búsqueda lineal. */
 function metasDe(html: string): readonly { readonly nombre: string; readonly contenido: string }[] {
   return [...html.matchAll(/<meta\b[^<>]*>/gi)].flatMap((m) => {
     const nombre = /(?:name|property)\s*=\s*["']([^"']*)["']/i.exec(m[0])?.[1]
