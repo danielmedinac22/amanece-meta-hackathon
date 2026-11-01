@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { LO_QUE_NO_HAY, registrarFaltante, type LoQueNoHay } from '@/nucleo/capacidades'
-import { LECTOR_DE_INTERNET, type Lector, type NoSeLeyo } from '@/lib/leer-enlace'
+import { enlaceDe, LECTOR_DE_INTERNET, type Lector, type NoSeLeyo } from '@/lib/leer-enlace'
 import { registrarTurno } from '@/negocio/medir'
 import type { SalidaConTarjeta } from '@/negocio/partes-del-hilo'
 import {
@@ -47,6 +47,7 @@ const NO_SE_LEYO_EN_PALABRAS = {
   respuesta: 'La página no respondió bien.',
   pide_sesion: 'Esa red pide iniciar sesión para verla.',
   no_conecta: 'No pude conectarme a esa página.',
+  no_parece_enlace: 'Eso no parece un enlace: pídele al Dueño el enlace completo (como cafeladera.co) o su usuario de Instagram con @.',
 } as const satisfies Record<NoSeLeyo['tipo'], string>
 
 const lista = (cosas: readonly string[]) => cosas.join('; ')
@@ -156,8 +157,8 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     inputSchema: z.object({ url: z.string().describe('El enlace tal como lo escribió el Dueño') }),
     execute: ({ url }) =>
       conTarjeta(async () => {
-        const limpio = url.trim()
-        const pagina = await puertos.lector(/^[a-z][a-z0-9+.-]*:/i.test(limpio) ? limpio : `https://${limpio}`)
+        const enlace = enlaceDe(url)
+        const pagina = typeof enlace === 'string' ? await puertos.lector(enlace) : enlace
         if (pagina.tipo !== 'leida') return { resumen: `${NO_SE_LEYO_EN_PALABRAS[pagina.tipo]} Sigue con la entrevista. ${await faltaAhora()}`, tarjeta: null }
         const inicio = Date.now()
         const { extraido, uso } = await puertos.extractor(pagina)
