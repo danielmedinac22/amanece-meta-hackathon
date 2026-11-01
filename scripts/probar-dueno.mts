@@ -33,6 +33,10 @@ const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type Ctx = import('../src/nucleo/identidad').ContextoDelDueno
+const { pintarPanel } = await import('../src/nucleo/panel')
+const { VENTANA_POR_DEFECTO } = await import('../src/nucleo/consultas/catalogo')
+const { conTransaccion } = await import('../src/db/pool')
+const { escribir } = await import('../src/nucleo/estado/escribir')
 type SalidaDelRedactor = import('../src/nucleo/cambios').SalidaDelRedactor
 type MotorDelRedactor = import('../src/nucleo/cambios').MotorDelRedactor
 const { traerCasoAlDueno } = await import('../src/agentes/avisos')
@@ -203,6 +207,60 @@ try {
       proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'indicador', nombre, queQuiereVer: nombre, salida: 'serie', reemplaza: null }] }, undefined, g.motor)
     const BUENA = 'select dia_local::text as etiqueta, count(*) as valor from pedidos where cuenta_como_venta group by dia_local order by dia_local'
     const faltanteDe = async (id: string) => (await db.select().from(esquema.capacidadesFaltantes).where(eq(esquema.capacidadesFaltantes.id, id)))[0]
+
+    const pedirSeccion = (nombre: string, g: ReturnType<typeof guion>) =>
+      proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'seccion', nombre, queQuiereVer: nombre, salida: 'filas', reemplaza: null }] }, undefined, g.motor)
+    const pedirNumero = (nombre: string, g: ReturnType<typeof guion>) =>
+      proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'indicador', nombre, queQuiereVer: nombre, salida: 'numero', reemplaza: null }] }, undefined, g.motor)
+    const pintadaDe = async (nombre: string) => (await pintarPanel(await leerEstado(N))).find((p) => p.nombre === nombre)
+    const vistaDe = async (r: Awaited<ReturnType<typeof proponer>>) => ('propuesta' in r ? (await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, r.propuesta)))[0]?.vistaPrevia : undefined)
+
+    titulo('1. Indicador con una consulta fija: queda aplicado sin botón y el Panel da la misma cifra')
+    const r1 = await pedirNumero('Confirmados (prueba 1)', guion([salida('select count(*) as valor from pedidos where cuenta_como_venta')]))
+    const [verdad1] = (await db.execute(sql`select count(*)::int as n from pedidos where negocio_id = ${negocio.id} and estado in ('confirmado', 'enviado', 'entregado', 'novedad')`)).rows as { n: number }[]
+    const p1 = await pintadaDe('Confirmados (prueba 1)')
+    afirmar('1: queda aplicado sin botón', r1.desenlace === 'aplicado', r1.resumen)
+    afirmar('1: la línea de la tarjeta trae la cifra de hoy', 'vistaPrevia' in r1 && r1.vistaPrevia.lineas.some((l) => l.includes(`hoy: ${verdad1.n.toLocaleString('es-CO')} pedidos`)), 'vistaPrevia' in r1 ? r1.vistaPrevia.lineas : r1)
+    afirmar('1: pintarPanel da la misma cifra que la base', p1?.resultado.tipo === 'numero' && p1.resultado.valor === verdad1.n, { p1, verdad: verdad1.n })
+    const deshecho = 'propuesta' in r1 ? await proponer(ctx, { palabrasDelDueno: 'Quita ese indicador', origen: 'hilo', quiere: [{ tipo: 'revertir', propuesta: r1.propuesta }] }) : null
+    afirmar('1: revertirlo también va sin botón y lo saca del Panel', deshecho?.desenlace === 'aplicado' && !(await pintadaDe('Confirmados (prueba 1)')), deshecho?.resumen)
+
+    titulo('2. Sección con una consulta fija')
+    const r2 = await pedirSeccion('Con novedad (prueba 2)', guion([salida("select numero, ciudad from pedidos where estado = 'novedad' order by numero", { titulos: [{ columna: 'numero', titulo: 'Pedido' }] })]))
+    const [verdad2] = (await db.execute(sql`select count(*)::int as n from pedidos where negocio_id = ${negocio.id} and estado = 'novedad'`)).rows as { n: number }[]
+    const p2 = await pintadaDe('Con novedad (prueba 2)')
+    afirmar('2: queda aplicada sin botón y la línea dice cuántas filas', r2.desenlace === 'aplicado' && r2.vistaPrevia.lineas.some((l) => l.includes(`hoy: ${verdad2.n} fila`)), 'vistaPrevia' in r2 ? r2.vistaPrevia.lineas : r2)
+    afirmar('2: pintarPanel trae esas filas con el título que puso el redactor', p2?.resultado.tipo === 'filas' && p2.total === verdad2.n && p2.resultado.columnas[0]?.titulo === 'Pedido' && p2.resultado.columnas[1]?.titulo === 'ciudad', p2)
+
+    titulo('3. 600 filas: filas_recortadas al proponer y otra vez al pintar')
+    const r3 = await pedirSeccion('Seiscientas (prueba 3)', guion([salida('select n as numero from hoy, generate_series(1, 600) as g(n)')]))
+    const recorte = (a: readonly { tipo: string }[] | undefined) => a?.find((x) => x.tipo === 'filas_recortadas') as { total: number; mostradas: number } | undefined
+    const p3 = await pintadaDe('Seiscientas (prueba 3)')
+    afirmar('3: la vista previa guarda filas_recortadas con 600 y 500', recorte((await vistaDe(r3))?.panel?.[0]?.advertencias)?.total === 600 && recorte((await vistaDe(r3))?.panel?.[0]?.advertencias)?.mostradas === 500, (await vistaDe(r3))?.panel)
+    afirmar('3: pintarPanel también la trae, con 500 filas mostradas', recorte(p3?.advertencias)?.total === 600 && p3?.mostradas === 500 && p3.total === 600, p3 && { total: p3.total, mostradas: p3.mostradas, advertencias: p3.advertencias })
+
+    titulo('4. La ventana por defecto es la primera advertencia')
+    const r4 = await pedirNumero('Ventas sin periodo (prueba 4)', guion([salida('select sum(total) as valor from pedidos, hoy where cuenta_como_venta and dia_local > hoy.hoy_local - 30', { ventana: 'por_defecto', unidad: 'dinero' })]))
+    const p4 = await pintadaDe('Ventas sin periodo (prueba 4)')
+    afirmar('4: la primera advertencia, al proponer y al pintar, es el supuesto de la ventana', 'vistaPrevia' in r4 && r4.vistaPrevia.advertencias?.[0] === VENTANA_POR_DEFECTO.supuesto && p4?.advertencias[0]?.tipo === 'supuesto', { r4: 'vistaPrevia' in r4 ? r4.vistaPrevia.advertencias : r4, p4: p4?.advertencias })
+
+    titulo('5. Un día sin pedidos en un Negocio con pedidos: resultado_vacio_con_datos')
+    const r5 = await pedirSeccion('Un día vacío (prueba 5)', guion([salida("select numero from pedidos where dia_local = '1999-01-01'::date")]))
+    const p5 = await pintadaDe('Un día vacío (prueba 5)')
+    afirmar('5: la vista previa y el Panel avisan que salió vacío habiendo datos', (await vistaDe(r5))?.panel?.[0]?.advertencias.some((a) => a.tipo === 'resultado_vacio_con_datos') === true && p5?.advertencias.some((a) => a.tipo === 'resultado_vacio_con_datos') === true, p5?.advertencias)
+
+    titulo('6. Lo que se guarda de la vista previa no trae nombres de Clientes')
+    const nombres = (await db.select({ nombre: esquema.clientes.nombre }).from(esquema.clientes).where(eq(esquema.clientes.negocioId, negocio.id))).map((c) => c.nombre).filter((n) => n.trim().length > 2)
+    const r6 = await pedirSeccion('Mis clientes (prueba 6)', guion([salida('select nombre, creado from clientes order by creado desc')]))
+    const guardada6 = JSON.stringify(await vistaDe(r6))
+    afirmar('6: propuestas.vista_previa no contiene ningún nombre de Cliente', r6.desenlace === 'aplicado' && nombres.length > 0 && !nombres.some((n) => guardada6.includes(n)), { nombres: nombres.length, guardada6: guardada6.slice(0, 300) })
+
+    titulo('7. Una consulta guardada que ya no valida: no_se_pudo_calcular y el Panel no se cae')
+    const rota = el.claveNueva('indicador')
+    const indicadorRoto = { tipo: 'indicador', nombre: 'Roto (prueba 7)', queQuiereVer: 'x', consulta: { sql: 'select now() as valor', enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'numero', unidad: { tipo: 'dinero' } } } } as unknown as Elemento
+    await conTransaccion((tx) => escribir(tx, N, { tipo: 'entrevista' }, { elementos: [{ clave: rota, base: 'nueva', despues: indicadorRoto }], filas: [] }))
+    const conRota = await pintarPanel(await leerEstado(N))
+    afirmar('7: la rota sale como no_se_pudo_calcular y las demás se pintan', conRota.find((p) => p.clave === rota)?.resultado.tipo === 'no_se_pudo_calcular' && conRota.some((p) => p.nombre === 'Con novedad (prueba 2)' && p.resultado.tipo === 'filas'), conRota.map((p) => [p.nombre, p.resultado.tipo]))
 
     titulo('3b. El error vuelve al redactor: dos consultas malas y una buena')
     const g3b = guion([salida("select count(*) as valor from pedidos p, (select set_config('app.negocio_id', 'x', true)) s"), salida('select telefono as etiqueta, count(*) as valor from clientes group by 1'), salida(BUENA)])

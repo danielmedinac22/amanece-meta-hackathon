@@ -14,6 +14,8 @@ import type { ClienteId, Marca, Wamid } from '../identidad'
 import type { AccionHecha } from '../clientes/acciones'
 import { entornoDeEnsayo, MOTORES, pedidoDelCliente, turno, type ClienteDelTurno, type Conversacion, type Motores, type TurnoDeConversacion } from '../clientes/turno'
 import type { Revision } from '../salida/revisar'
+import type { ErrorDeConsulta } from '../consultas/tipos'
+import { advertenciaEnPalabras, conUnidad, pintarUna, type Advertencia, type ElementoDelPanel } from '../panel'
 
 export type MensajeDeClienteId = Marca<string, 'MensajeDeClienteId'>
 
@@ -68,10 +70,22 @@ export type VistaPreviaDeConversaciones = {
  * Lo que se guarda en `propuestas.vista_previa` y lo que muestra la tarjeta. `lineas` y `advertencias` las escribe el
  * código; solo citan escenarios, que escribió el Dueño. Las filas viejas traen solo `lineas`.
  */
+/** Lo que se guarda de una Sección o un Indicador ensayado: cuentas y lo que escribió el código, nunca filas. */
+export type PanelEnsayado = {
+  readonly clave: Clave
+  readonly total: number
+  readonly mostradas: number
+  /** Solo en un Indicador `numero`: una cifra no es texto de nadie. */
+  readonly valor: number | null
+  readonly advertencias: readonly Advertencia[]
+  readonly fallo: ErrorDeConsulta['tipo'] | null
+}
+
 export type VistaPreviaGuardada = {
   readonly lineas: readonly string[]
   readonly advertencias?: readonly string[]
   readonly conversaciones?: VistaPreviaDeConversaciones | null
+  readonly panel?: readonly PanelEnsayado[] | null
 }
 
 export type GastoDelEnsayo = { readonly llamadas: number; readonly usd: number; readonly ms: number }
@@ -223,7 +237,9 @@ export async function vistaPreviaDe(
   motores: Motores = MOTORES,
   relojTotalMs: number = MUESTRAS.relojTotalMs,
 ): Promise<{ readonly guardada: VistaPreviaGuardada; readonly gasto: GastoDelEnsayo }> {
-  if (profundidadDe(vigente, escritura) !== 'conversaciones') return { guardada: { lineas, advertencias: [], conversaciones: null }, gasto: { llamadas: 0, usd: 0, ms: 0 } }
+  const profundidad = profundidadDe(vigente, escritura)
+  if (profundidad === 'describir') return { guardada: { lineas, advertencias: [], conversaciones: null }, gasto: { llamadas: 0, usd: 0, ms: 0 } }
+  if (profundidad === 'panel') return { guardada: await ensayarPanel(conPropuesta(vigente, escritura), escritura, lineas), gasto: { llamadas: 0, usd: 0, ms: 0 } }
   try {
     return await ensayarConversaciones(vigente, escritura, lineas, motores, Date.now() + relojTotalMs)
   } catch (e) {
@@ -295,6 +311,42 @@ async function ensayarConversaciones(vigente: EstadoVigente, escritura: Escritur
   }
 }
 
+const QUE_NO_SE_PUDO = 'No pude calcularlo sobre tus datos de hoy'
+
+/**
+ * La profundidad `panel`: corre las consultas del borrador sobre los datos reales en solo lectura, con lo mismo que
+ * pinta el Panel. Las líneas dicen la cifra o cuántas filas; las advertencias van arriba y primero en el resumen.
+ */
+export async function ensayarPanel(borrador: EstadoDelNegocio, escritura: Escritura, lineas: readonly string[]): Promise<VistaPreviaGuardada> {
+  const delPanel = escritura.elementos.flatMap((c) => (c.despues?.tipo === 'seccion' || c.despues?.tipo === 'indicador' ? [{ clave: c.clave, elemento: c.despues as ElementoDelPanel }] : []))
+  const pintadas = await Promise.all(delPanel.map((v) => pintarUna(borrador, v.clave, v.elemento)))
+  const panel = pintadas.map(
+    (p): PanelEnsayado => ({
+      clave: p.clave,
+      total: p.total,
+      mostradas: p.mostradas,
+      valor: p.resultado.tipo === 'numero' ? p.resultado.valor : null,
+      advertencias: p.advertencias,
+      fallo: p.resultado.tipo === 'no_se_pudo_calcular' ? p.resultado.porQue : null,
+    }),
+  )
+  const hoy = pintadas.map((p) => {
+    const que = `${p.tipo === 'seccion' ? 'Sección' : 'Indicador'} «${p.nombre}»`
+    switch (p.resultado.tipo) {
+      case 'no_se_pudo_calcular':
+        return `${que}: ${QUE_NO_SE_PUDO}.`
+      case 'numero':
+        return `${que} hoy: ${conUnidad(p.resultado.valor, p.resultado.unidad)}.`
+      case 'serie':
+        // Sin la etiqueta: en una serie por Cliente sería su nombre.
+        return `${que} hoy: ${p.total} ${p.total === 1 ? 'punto' : 'puntos'}.`
+      case 'filas':
+        return `${que} hoy: ${p.total} ${p.total === 1 ? 'fila' : 'filas'}, muestro ${p.mostradas}.`
+    }
+  })
+  return { lineas: [...lineas, ...hoy], advertencias: pintadas.flatMap((p) => p.advertencias.map(advertenciaEnPalabras)), conversaciones: null, panel }
+}
+
 type Es<A extends true> = A
 /** Ninguna hoja de lo guardado de un ensayo es un `string` sin marca: no hay por dónde guardar texto de un Cliente. */
 type SinTextoLibre<T> = T extends Marca<string, string>
@@ -311,4 +363,5 @@ type SinTextoLibre<T> = T extends Marca<string, string>
           : false
         : true
 type _ConversacionesSinTexto = Es<SinTextoLibre<VistaPreviaDeConversaciones>>
-export type ComprobacionesDelEnsayo = [_ConversacionesSinTexto]
+type _PanelSinTextoLibre = Es<SinTextoLibre<PanelEnsayado>>
+export type ComprobacionesDelEnsayo = [_ConversacionesSinTexto, _PanelSinTextoLibre]

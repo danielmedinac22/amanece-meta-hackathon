@@ -37,9 +37,9 @@ import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
 import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
-import { ESQUEMAS_DEL_PUENTE, escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
+import { escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
 import type { MotorDelRedactor } from './redactar-consulta'
-import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuierePoner } from './traducir'
+import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuiereDelPanel, type QuierePoner } from './traducir'
 
 export type { Problema } from '../estado/elementos'
 export type { MotivoDeFaltante } from '../capacidades'
@@ -97,6 +97,18 @@ const ESQUEMAS_DE_PONER = [
   poner('producto', ENTRADA_PARA_PONER.producto, 'Un producto del catálogo. Para dejar de venderlo, ponlo con activo false.'),
 ] as const
 
+/** Planas, como `poner_<tipo>`: el Agente del dueño dice qué quiere ver y el redactor escribe la consulta. */
+const ESQUEMAS_DEL_PANEL = [
+  ENTRADA_PARA_PONER.seccion
+    .extend({ tipo: z.literal('poner_seccion'), reemplaza })
+    .transform((x): QuiereDelPanel => ({ tipo: 'panel', que: 'seccion', salida: 'filas', nombre: x.nombre, queQuiereVer: x.queQuiereVer, reemplaza: x.reemplaza }))
+    .describe('Una lista en el Panel (por ejemplo pedidos con novedad). Solo la ve el Dueño. Va sola en su propuesta.'),
+  ENTRADA_PARA_PONER.indicador
+    .extend({ tipo: z.literal('poner_indicador'), forma: z.enum(['numero', 'serie']).describe('numero: una cifra; serie: una cifra por día, semana o producto'), reemplaza })
+    .transform((x): QuiereDelPanel => ({ tipo: 'panel', que: 'indicador', salida: x.forma, nombre: x.nombre, queQuiereVer: x.queQuiereVer, reemplaza: x.reemplaza }))
+    .describe('Un número o una serie en el Panel (por ejemplo pedidos confirmados por día). Solo lo ve el Dueño. Va solo en su propuesta.'),
+] as const
+
 const esquemaDeQuitar = z
   .object({
     tipo: z.literal('quitar'),
@@ -106,9 +118,9 @@ const esquemaDeQuitar = z
       .transform((c) => c as unknown as readonly [ReturnType<typeof comoClave>, ...ReturnType<typeof comoClave>[]])
       .describe('Las claves de ver_negocio de lo que se quita'),
   })
-  .describe('Quitar reglas, datos, preguntas o productos. Para que un producto deje de venderse sin borrarlo, ponlo con activo: false.')
+  .describe('Quitar reglas, datos, preguntas, productos, secciones o indicadores. Para que un producto deje de venderse sin borrarlo, ponlo con activo: false.')
 
-const ESQUEMA_DE_QUIERE = z.union([...ESQUEMAS_DE_PONER, esquemaDeQuitar, esquemaDeRevertir, esquemaDeResponderCaso, ...ESQUEMAS_DEL_PUENTE])
+const ESQUEMA_DE_QUIERE = z.union([...ESQUEMAS_DE_PONER, ...ESQUEMAS_DEL_PANEL, esquemaDeQuitar, esquemaDeRevertir, esquemaDeResponderCaso])
 
 export type Quiere = QuiereDeElementos | QuiereDelPuente
 type Es<A extends true> = A
@@ -394,9 +406,9 @@ export function problemaEnPalabras(p: Problema): string {
 /** Lo único que ve el modelo, sin la huella. El id va para que pueda descartarla sin listar. */
 function armarResumen(desenlace: 'espera_al_dueno' | 'aplicado', id: PropuestaId, t: Traducida): string {
   const lineas = t.lineas.map((l) => `- ${l}`).join('\n')
-  if (desenlace === 'aplicado') return `Ya quedó aplicado, sin botón porque solo lo ve el Dueño [Propuesta ${id}]:\n${lineas}`
-  const boton = t.actos.length ? 'Enviar' : 'Aplicar'
   const avisos = t.advertencias.length ? `Advertencias del ensayo, cuéntaselas al Dueño:\n${t.advertencias.map((a) => `- ${a}`).join('\n')}\n` : ''
+  if (desenlace === 'aplicado') return `${avisos}Ya quedó aplicado, sin botón porque solo lo ve el Dueño [Propuesta ${id}]:\n${lineas}`
+  const boton = t.actos.length ? 'Enviar' : 'Aplicar'
   return `${avisos}Quedó lista la tarjeta [Propuesta ${id}]:\n${lineas}\nSe ${t.actos.length ? 'envía' : 'aplica'} solo cuando el Dueño toque ${boton} en la tarjeta. No digas que ya quedó ni le pidas que te diga que sí.`
 }
 

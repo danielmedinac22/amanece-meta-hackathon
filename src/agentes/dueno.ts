@@ -105,7 +105,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     inputSchema: z.object({}),
     execute: () =>
       seguro(async () => {
-        const [estado, piezas] = await Promise.all([leerEstado(negocioId), db.select().from(esquema.piezas).where(and(eq(esquema.piezas.negocioId, negocioId), eq(esquema.piezas.activa, true)))])
+        const estado = await leerEstado(negocioId)
         const { nombre, rubro, codigo, modo } = estado.identidad
         return {
           nombre,
@@ -117,7 +117,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
           preguntas: estado.vigentes('pregunta').map((v) => ({ clave: v.clave, pregunta: v.elemento.pregunta, respuesta: v.elemento.respuesta })),
           productos: estado.vigentes('producto').map((v) => ({ clave: v.clave, nombre: v.elemento.nombre, descripcion: v.elemento.descripcion, precio: v.elemento.precio, activo: v.elemento.activo })),
           reglas: estado.vigentes('regla').map((v) => ({ clave: v.clave, enPalabras: reglaEnPalabras(v.elemento, estado), regla: v.elemento })),
-          piezas: piezas.map((p) => ({ nombre: p.nombre, tipo: p.tipo, descripcion: p.descripcion })),
+          panel: [...estado.vigentes('indicador'), ...estado.vigentes('seccion')].map((v) => ({ clave: v.clave, tipo: v.elemento.tipo, nombre: v.elemento.nombre, enPalabras: v.elemento.consulta.enPalabras })),
         }
       }),
   })
@@ -394,7 +394,8 @@ Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp.
       En escenarios pon al menos un mensaje realista de un cliente en el que aplica, con lo que el agente hace y lo que no hace.
     - Todo lo demás todavía no se puede cumplir: una regla que depende del tema o del horario, que le pasa la conversación al Dueño, que pide un dato o que niega una venta. Propónla con su condición (por ejemplo cuando tema) y proponer la deja anotada sola para el equipo. Díselo al Dueño con honestidad.
   - Quitar algo: quitar, con sus claves de ver_negocio.
-  - Ver algo en su Panel: una lista o tabla (por ejemplo pedidos con novedad) es seccion; un número o una serie (por ejemplo pedidos por día) es indicador. Van solos en su propuesta.
+  - Ver algo en su Panel: una lista (por ejemplo pedidos con novedad) es poner_seccion; un número o una serie (por ejemplo pedidos confirmados por día) es poner_indicador, con forma numero o serie. En queQuiereVer pon lo que pidió, en sus palabras y con el periodo si lo dijo. Va solo en su propuesta. Para cambiar uno, pasa su clave de ver_negocio en reemplaza; para sacarlo del Panel, quitar.
+  - Si proponer te dice que ese dato no está en lo que Amanece tiene, díselo con honestidad: ya quedó anotado para el equipo.
   - Deshacer algo que ya se aplicó: revertir, con el id de listar_propuestas. Lo que una regla ya hizo con clientes no se deshace.
   - La respuesta a un Caso que el Dueño te dictó: responder_caso, con el id del Caso (aparece como [Caso id] en el aviso) y el texto exacto.
   - Si no encaja en nada de esto: dilo con honestidad y llama registrar_capacidad_faltante.

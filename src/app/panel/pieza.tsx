@@ -1,73 +1,92 @@
-/** Pinta el resultado de una Sección o un Indicador. El código generado da los datos; la forma de pintarlos es fija. */
-import type { Vista } from '@/db/esquema'
+/** Pinta una Sección o un Indicador ya calculados. La consulta da los datos; la forma de pintarlos es fija. */
+import { advertenciaEnPalabras, conUnidad, type SeccionPintada } from '@/nucleo/panel'
 
-type Serie = { etiqueta: string; valor: number }[]
-type ResultadoIndicador = { valor?: number | string; unidad?: string; serie?: Serie; nota?: string }
+const formato = (v: unknown) => (typeof v === 'number' ? v.toLocaleString('es-CO') : v === null || v === undefined ? '—' : String(v))
 
-const formato = (v: unknown) =>
-  typeof v === 'number' ? v.toLocaleString('es-CO') : v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v)
+function Advertencias({ p }: { p: SeccionPintada }) {
+  if (!p.advertencias.length) return null
+  return (
+    <ul className="mb-2 space-y-1 text-xs text-sol">
+      {p.advertencias.map((a, i) => (
+        <li key={i}>{advertenciaEnPalabras(a)}</li>
+      ))}
+    </ul>
+  )
+}
 
-export function Indicador({ nombre, valor }: { nombre: string; valor: unknown }) {
-  const r = (valor ?? {}) as ResultadoIndicador
-  const serie = Array.isArray(r.serie) ? r.serie.slice(-14) : []
-  const maximo = Math.max(1, ...serie.map((s) => Number(s.valor) || 0))
+export function Indicador({ p }: { p: SeccionPintada }) {
+  const r = p.resultado
+  const puntos = r.tipo === 'serie' ? r.puntos.slice(-14) : []
+  const maximo = Math.max(1, ...puntos.map((s) => s.valor))
   return (
     <div className="rounded-2xl border border-borde bg-tarjeta p-4">
-      <p className="text-sm text-suave">{nombre}</p>
-      <p className="mt-1 text-3xl font-semibold">
-        {formato(r.valor)} {r.unidad && <span className="text-base font-normal text-suave">{r.unidad}</span>}
-      </p>
-      {serie.length > 0 && (
-        <div className="mt-3 flex h-16 items-end gap-1">
-          {serie.map((s) => (
-            <div key={s.etiqueta} title={`${s.etiqueta}: ${formato(s.valor)}`} className="flex-1 rounded-t bg-sol/80" style={{ height: `${((Number(s.valor) || 0) / maximo) * 100}%`, minHeight: 2 }} />
-          ))}
-        </div>
+      <Advertencias p={p} />
+      <p className="text-sm text-suave">{p.nombre}</p>
+      {r.tipo === 'numero' && <p className="mt-1 text-3xl font-semibold">{conUnidad(r.valor, r.unidad)}</p>}
+      {r.tipo === 'serie' && (
+        <>
+          <p className="mt-1 text-3xl font-semibold">{puntos.length ? conUnidad(puntos.at(-1)!.valor, r.unidad) : '—'}</p>
+          {puntos.length > 0 && (
+            <div className="mt-3 flex h-16 items-end gap-1">
+              {puntos.map((s) => (
+                <div key={s.etiqueta} title={`${s.etiqueta}: ${conUnidad(s.valor, r.unidad)}`} className="flex-1 rounded-t bg-sol/80" style={{ height: `${(Math.max(0, s.valor) / maximo) * 100}%`, minHeight: 2 }} />
+              ))}
+            </div>
+          )}
+        </>
       )}
-      {r.nota && <p className="mt-2 text-xs text-suave">{r.nota}</p>}
+      <p className="mt-2 text-xs text-suave">{p.enPalabras}</p>
     </div>
   )
 }
 
-export function Seccion({ nombre, vista, filas }: { nombre: string; vista: Vista | null; filas: unknown }) {
-  const lista = Array.isArray(filas) ? (filas as Record<string, unknown>[]) : []
-  const columnas = vista?.columnas?.length ? vista.columnas : Object.keys(lista[0] ?? {}).map((clave) => ({ clave, titulo: clave }))
+export function Seccion({ p }: { p: SeccionPintada }) {
+  if (p.resultado.tipo !== 'filas') return null
+  const { filas, columnas } = p.resultado
   return (
     <div className="rounded-2xl border border-borde bg-tarjeta p-4">
+      <Advertencias p={p} />
       <p className="font-medium">
-        {nombre} <span className="text-sm font-normal text-suave">· {lista.length}</span>
+        {p.nombre} <span className="text-sm font-normal text-suave">· {p.total > p.mostradas ? `muestro ${formato(p.mostradas)} de ${formato(p.total)}` : formato(p.total)}</span>
       </p>
-      {lista.length === 0 ? (
+      <p className="text-xs text-suave">{p.enPalabras}</p>
+      {filas.length === 0 ? (
         <p className="mt-2 text-sm text-suave">Nada por ahora.</p>
-      ) : vista?.tipo === 'tarjetas' ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {lista.slice(0, 12).map((fila, i) => (
-            <div key={i} className="rounded-xl bg-fondo p-3 text-sm">
-              {columnas.map((c) => (
-                <p key={c.clave}>
-                  <span className="text-suave">{c.titulo}: </span>
-                  {formato(fila[c.clave])}
-                </p>
-              ))}
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 max-h-96 overflow-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-suave">
-              <tr>{columnas.map((c) => <th key={c.clave} className="py-1 pr-3 font-normal">{c.titulo}</th>)}</tr>
+              <tr>
+                {columnas.map((c) => (
+                  <th key={c.columna} className="py-1 pr-3 font-normal">
+                    {c.titulo}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
-              {lista.slice(0, 20).map((fila, i) => (
+              {filas.map((fila, i) => (
                 <tr key={i} className="border-t border-borde">
-                  {columnas.map((c) => <td key={c.clave} className="py-1.5 pr-3">{formato(fila[c.clave])}</td>)}
+                  {columnas.map((c) => (
+                    <td key={c.columna} className="py-1.5 pr-3">
+                      {formato(fila[c.columna])}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+export function Fallo({ nombre }: { nombre: string }) {
+  return (
+    <div className="rounded-2xl border border-borde bg-tarjeta p-4 text-sm">
+      <p className="font-medium">{nombre}</p>
+      <p className="mt-1 text-suave">No se pudo calcular ahora. Pídele a tu agente que lo revise.</p>
     </div>
   )
 }

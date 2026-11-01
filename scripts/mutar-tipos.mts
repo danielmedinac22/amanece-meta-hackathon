@@ -95,6 +95,18 @@ const MUTACIONES: readonly Mutacion[] = [
     despues: "  seccion: 'describir',\n  indicador: 'panel',",
   },
   {
+    nombre: 'filas de una consulta en lo que se guarda de la vista previa del Panel',
+    archivo: 'src/nucleo/cambios/ensayar.ts',
+    antes: "  readonly fallo: ErrorDeConsulta['tipo'] | null\n}",
+    despues: "  readonly fallo: ErrorDeConsulta['tipo'] | null\n  readonly filas: readonly Record<string, string>[]\n}",
+  },
+  {
+    nombre: 'un motivo de Capacidad faltante sin su lugar en el CHECK',
+    archivo: 'src/nucleo/capacidades.ts',
+    antes: "  | { readonly tipo: 'regla_vieja' }\n",
+    despues: "  | { readonly tipo: 'regla_vieja' }\n  | { readonly tipo: 'cobrar2' }\n",
+  },
+  {
     nombre: 'un estado de pedido sin decir si está abierto',
     archivo: 'src/nucleo/clientes/turno.ts',
     antes: 'enviado: true, novedad: true, entregado: false,',

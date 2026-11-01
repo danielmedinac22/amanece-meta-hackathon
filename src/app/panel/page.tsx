@@ -3,14 +3,14 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
-import { piezasActivas } from '@/negocio/cambios'
 import { leerEstado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import type { NegocioId } from '@/nucleo/identidad'
+import { pintarPanel } from '@/nucleo/panel'
 import { leerHiloConTarjetas } from '@/negocio/dueno-chat'
 import { duenoActual } from '@/negocio/sesion'
 import { Hilo } from './hilo'
-import { Indicador, Seccion } from './pieza'
+import { Fallo, Indicador, Seccion } from './pieza'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -50,9 +50,8 @@ export default async function Panel() {
 }
 
 async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$inferSelect; id: NegocioId }) {
-  const [estado, piezas, casos] = await Promise.all([
+  const [estado, casos] = await Promise.all([
     leerEstado(id),
-    piezasActivas(id),
     db
       .select()
       .from(esquema.casos)
@@ -62,8 +61,9 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
   ])
   const reglas = estado.vigentes('regla')
   const productos = estado.vigentes('producto').filter((v) => v.elemento.activo)
-  const indicadores = piezas.filter((p) => p.pieza.tipo === 'indicador')
-  const secciones = piezas.filter((p) => p.pieza.tipo === 'seccion')
+  const pintadas = await pintarPanel(estado)
+  const indicadores = pintadas.filter((p) => p.tipo === 'indicador')
+  const secciones = pintadas.filter((p) => p.tipo === 'seccion')
 
   return (
     <div className="space-y-6">
@@ -92,13 +92,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
 
       {indicadores.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {indicadores.map(({ pieza, resultado }) =>
-            resultado.ok ? (
-              <Indicador key={pieza.id} nombre={pieza.nombre} valor={resultado.valor} />
-            ) : (
-              <Fallo key={pieza.id} nombre={pieza.nombre} />
-            ),
-          )}
+          {indicadores.map((p) => (p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo key={p.clave} nombre={p.nombre} /> : <Indicador key={p.clave} p={p} />))}
         </div>
       )}
 
@@ -116,9 +110,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
         </div>
       )}
 
-      {secciones.map(({ pieza, resultado }) =>
-        resultado.ok ? <Seccion key={pieza.id} nombre={pieza.nombre} vista={pieza.vista} filas={resultado.valor} /> : <Fallo key={pieza.id} nombre={pieza.nombre} />,
-      )}
+      {secciones.map((p) => (p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo key={p.clave} nombre={p.nombre} /> : <Seccion key={p.clave} p={p} />))}
 
       {reglas.length > 0 && (
         <div className="rounded-2xl border border-borde bg-tarjeta p-4">
@@ -130,15 +122,6 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
           </ol>
         </div>
       )}
-    </div>
-  )
-}
-
-function Fallo({ nombre }: { nombre: string }) {
-  return (
-    <div className="rounded-2xl border border-borde bg-tarjeta p-4 text-sm">
-      <p className="font-medium">{nombre}</p>
-      <p className="mt-1 text-suave">No se pudo calcular ahora. Pídele a tu agente que lo revise.</p>
     </div>
   )
 }
