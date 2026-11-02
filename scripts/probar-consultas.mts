@@ -333,6 +333,12 @@ try {
   afirmar('5 quáter una consulta que solo usa hoy no cuenta nada', soloHoy.tipo === 'filas' && Object.keys(soloHoy.filasPorFuente).length === 0, soloHoy)
   const variasFilas = await pintar(delPanel('numero', 'select total as valor from pedidos'))
   afirmar('5 quáter un numero con varias filas no pinta una cifra arbitraria: falla con forma', variasFilas.resultado.tipo === 'no_se_pudo_calcular' && variasFilas.resultado.porQue === 'forma', variasFilas.resultado)
+  const sinNumero = await pintar(delPanel('numero', 'select min(ciudad) as valor from pedidos'))
+  afirmar('5 quáter un numero cuyo valor es un texto falla con forma: no dice "sin datos" sobre una consulta que trajo filas', sinNumero.resultado.tipo === 'no_se_pudo_calcular' && sinNumero.resultado.porQue === 'forma', sinNumero.resultado)
+  const serieSinNumero = await pintar(delPanel('serie', 'select ciudad as etiqueta, ciudad as valor from pedidos'))
+  afirmar('5 quáter una serie cuyo valor es un texto falla con forma, no pinta ceros', serieSinNumero.resultado.tipo === 'no_se_pudo_calcular' && serieSinNumero.resultado.porQue === 'forma', serieSinNumero.resultado)
+  const vacioEsNull = await pintar(delPanel('numero', "select sum(total) as valor from pedidos where ciudad = 'No existe'"))
+  afirmar('5 quáter un numero sin filas que sumar sigue siendo sin datos, no un error', vacioEsNull.resultado.tipo === 'numero' && vacioEsNull.resultado.valor === null, vacioEsNull.resultado)
   const unaFila = await pintar(delPanel('numero', 'select count(*) as valor from pedidos'))
   afirmar('5 quáter un numero con una fila se pinta', unaFila.resultado.tipo === 'numero' && (unaFila.resultado.valor ?? 0) > 0, unaFila.resultado)
   const intentos: string[] = []

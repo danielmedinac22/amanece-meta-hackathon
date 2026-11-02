@@ -120,7 +120,7 @@ export async function redactarConsulta<S extends TipoDeSalida>(estado: EstadoDel
     const validada = await validarConsulta(s.sql, pedido.salida)
     const corrida = esErrorDeConsulta(validada) ? null : await ejecutar(estado, validada)
     if (corrida?.tipo === 'sin_configurar' || corrida?.tipo === 'no_disponible') return { tipo: 'sin_configurar', gasto }
-    const error = esErrorDeConsulta(validada) ? validada : corrida?.tipo === 'error' ? corrida.error : corrida?.tipo === 'filas' ? formaDelResultado(pedido.salida, corrida.total) : null
+    const error = esErrorDeConsulta(validada) ? validada : corrida?.tipo === 'error' ? corrida.error : corrida?.tipo === 'filas' ? formaDelResultado(pedido.salida, corrida) : null
     ultimoSql = s.sql
     if (error || esErrorDeConsulta(validada)) {
       ultimoError = error ?? ultimoError

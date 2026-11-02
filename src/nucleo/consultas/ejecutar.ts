@@ -121,9 +121,19 @@ const CLASES: Partial<Record<string, string>> = {
   '25006': 'solo se lee',
 }
 
-/** Puro. Un `numero` es una fila: con más, `filas[0]` sería una cifra arbitraria. Depende de los datos: el validador no lo ve. */
-export const formaDelResultado = (salida: TipoDeSalida, total: number): Extract<ErrorDeConsulta, { tipo: 'forma' }> | null =>
-  salida === 'numero' && total > 1 ? { tipo: 'forma', esperada: 'numero', hay: [`${total} filas`] } : null
+/** Un `valor` vacío es un número que todavía no hay; uno que no se puede leer como número (un uuid, un nombre) es otra cosa. */
+export const numero = (v: unknown): number | null => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
+const noEsNumero = (v: unknown) => v !== null && v !== undefined && numero(v) === null
+
+/**
+ * Puro. Lo que depende de los datos y el validador no ve. Un `numero` es una fila: con más, `filas[0]` sería una cifra
+ * arbitraria. En `numero` y `serie`, `valor` es un número: si no, el Panel diría "sin datos" sobre una consulta que sí trajo filas.
+ */
+export function formaDelResultado(salida: TipoDeSalida, r: { readonly total: number; readonly filas: Filas }): Extract<ErrorDeConsulta, { tipo: 'forma' }> | null {
+  if (salida === 'filas') return null
+  if (salida === 'numero' && r.total > 1) return { tipo: 'forma', esperada: 'numero', hay: [`${r.total} filas`] }
+  return r.filas.some((f) => noEsNumero(f.valor)) ? { tipo: 'forma', esperada: salida, hay: ['un valor que no es un número'] } : null
+}
 
 export const SIN_CODIGO = 'sin_codigo'
 

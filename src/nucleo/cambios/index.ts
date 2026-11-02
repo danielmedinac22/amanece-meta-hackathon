@@ -103,7 +103,7 @@ const ESQUEMAS_DEL_PANEL = [
     .transform((x): QuiereDelPanel => ({ tipo: 'panel', que: 'seccion', salida: 'filas', nombre: x.nombre, queQuiereVer: x.queQuiereVer, reemplaza: x.reemplaza }))
     .describe('Una lista en el Panel (por ejemplo pedidos con novedad). Solo la ve el Dueño. Va sola en su propuesta.'),
   ENTRADA_PARA_PONER.indicador
-    .extend({ tipo: z.literal('poner_indicador'), forma: z.enum(['numero', 'serie']).describe('numero: una cifra; serie: una cifra por día, semana o producto'), reemplaza })
+    .extend({ tipo: z.literal('poner_indicador'), forma: z.enum(['numero', 'serie']).describe('numero: una sola cifra; serie: una cifra por día, semana o producto, también para "cuál es el más vendido", porque el nombre va en la etiqueta'), reemplaza })
     .transform((x): QuiereDelPanel => ({ tipo: 'panel', que: 'indicador', salida: x.forma, nombre: x.nombre, queQuiereVer: x.queQuiereVer, reemplaza: x.reemplaza }))
     .describe('Un número o una serie en el Panel (por ejemplo pedidos confirmados por día). Solo lo ve el Dueño. Va solo en su propuesta.'),
 ] as const

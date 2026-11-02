@@ -3,7 +3,7 @@
  * Indicador y contar sus advertencias. Nunca lanza: una consulta que ya no valida o que Postgres rechaza se pinta
  * como `no_se_pudo_calcular`.
  */
-import { codigoDe, ejecutar, formaDelResultado, type ResultadoDeEjecutar } from './consultas/ejecutar'
+import { codigoDe, ejecutar, formaDelResultado, numero, type ResultadoDeEjecutar } from './consultas/ejecutar'
 import type { ConsultaGuardada, ErrorDeConsulta, Filas, Supuesto, Unidad } from './consultas/tipos'
 import { esErrorDeConsulta, validarConsulta } from './consultas/validar'
 import type { EstadoDelNegocio } from './estado'
@@ -52,8 +52,6 @@ const FECHA = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/
 /** Pura. Fechas en orden: el último punto es lo de hoy y sirve de cifra grande. En un ranking sería el menor; sin orden, cualquiera. */
 export const vaPorTiempo = (puntos: readonly PuntoDeSerie[]) => puntos.length > 0 && puntos.every((p, i) => FECHA.test(p.etiqueta) && (i === 0 || puntos[i - 1].etiqueta < p.etiqueta))
 
-const numero = (v: unknown): number | null => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
-
 /** Revalida la consulta con el catálogo de hoy y la corre. */
 export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: ElementoDelPanel): Promise<SeccionPintada> {
   const base = { clave, tipo: e.tipo, nombre: e.nombre, enPalabras: e.consulta.enPalabras }
@@ -72,7 +70,7 @@ export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: Eleme
       console.error('[panel] no se pudo pintar', clave, r.error.tipo === 'postgres' ? r.error.codigo : '42703')
       return fallo(r.error.tipo)
     }
-    const forma = formaDelResultado(salida.tipo, r.total)
+    const forma = formaDelResultado(salida.tipo, r)
     if (forma) {
       console.error('[panel] no se pudo pintar', clave, forma.tipo)
       return fallo(forma.tipo)
