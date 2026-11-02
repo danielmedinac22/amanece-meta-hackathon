@@ -17,7 +17,7 @@ const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
-const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
+const { leerEstado, ultimasDe, valorDelDato } = await import('../src/nucleo/estado')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
@@ -26,6 +26,7 @@ const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
 const { elementosDeLasTablasViejas, pasarAElementos, migrarReglasViejas, piezasActivas } = await import('./a-elementos.mjs')
 
 type Conocimiento = import('./a-elementos.mjs').Conocimiento
+type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type NegocioId = import('../src/nucleo/identidad').NegocioId
 
 const marca = String(Date.now()).slice(-7)
@@ -122,6 +123,32 @@ try {
   afirmar('versión 0: el error nombra el Negocio, sin texto del Cliente', delError.some((e) => e.includes(V) && e.includes('a-elementos')) && !delError.some((e) => e.includes('qué venden')), delError)
   afirmar('versión 0: no guardó Cliente ni mensaje', (await db.$count(esquema.clientes, eq(esquema.clientes.negocioId, V))) === 0)
   errores.splice(erroresAntes)
+
+  console.log('\n=== quitar-panel: la lápida antes de un rollback ===')
+  const conPanel = await negocioDesechable('Q')
+  const consulta = { sql: 'select count(*) as valor from pedidos', enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'numero', unidad: { tipo: 'cantidad', nombre: 'pedidos' } } }
+  const indicador = el.claveNueva('indicador')
+  const seccion = el.claveNueva('seccion')
+  const ciudad = el.comoClave('dato:ciudad')
+  const delPanelVivo = [
+    { clave: indicador, base: 'nueva' as const, despues: { tipo: 'indicador', nombre: `Pedidos ${marca}`, queQuiereVer: 'x', consulta } as unknown as Elemento },
+    { clave: seccion, base: 'nueva' as const, despues: { tipo: 'seccion', nombre: `Lista ${marca}`, queQuiereVer: 'x', consulta: { ...consulta, salida: { tipo: 'filas', columnas: [{ columna: 'valor', titulo: 'Valor' }] } } } as unknown as Elemento },
+    { clave: ciudad, base: 'nueva' as const, despues: { tipo: 'dato', campo: 'ciudad', valor: 'Pasto' } as Elemento },
+  ]
+  await conTransaccion((tx) => escribir(tx, conPanel, { tipo: 'entrevista' }, { elementos: delPanelVivo, filas: [] }))
+  const quitar = (...argumentos: string[]) => spawnSync('tsx', ['scripts/quitar-panel.mts', `--negocio=${conPanel}`, ...argumentos], { encoding: 'utf8' })
+  const versionAntes = (await leerEstado(conPanel)).version
+  const enSecoPanel = quitar()
+  const trasElSeco = await leerEstado(conPanel)
+  afirmar('quitar-panel en seco: nombra las dos claves y no escribe', enSecoPanel.status === 0 && enSecoPanel.stdout.includes(indicador) && enSecoPanel.stdout.includes(seccion) && !enSecoPanel.stdout.includes('dato:') && trasElSeco.version === versionAntes && trasElSeco.vigente(indicador) !== null && trasElSeco.vigente(seccion) !== null, { status: enSecoPanel.status, stdout: enSecoPanel.stdout.slice(0, 300), stderr: enSecoPanel.stderr.slice(0, 300) })
+  const deVerdad = quitar('--de-verdad')
+  const trasLaLapida = await leerEstado(conPanel)
+  const ultimasDelPanel = await ultimasDe(db, conPanel)
+  const lapidas = ultimasDelPanel.filter((u) => u.clave === indicador || u.clave === seccion)
+  afirmar('quitar-panel --de-verdad: la última fila de cada clave tiene contenido null y la versión siguiente', deVerdad.status === 0 && lapidas.length === 2 && lapidas.every((u) => u.contenido === null && u.version === versionAntes + 1), { status: deVerdad.status, stderr: deVerdad.stderr.slice(0, 300), lapidas })
+  afirmar('quitar-panel --de-verdad: el estado ya no las ve, y lo demás sigue', trasLaLapida.version === versionAntes + 1 && trasLaLapida.vigente(indicador) === null && trasLaLapida.vigente(seccion) === null && valorDelDato(trasLaLapida, 'ciudad') === 'Pasto', trasLaLapida.version)
+  const otraVez = quitar('--de-verdad')
+  afirmar('quitar-panel otra vez: escribe 0 y no sube la versión', otraVez.status === 0 && otraVez.stdout.includes('Resumen: 0 claves') && (await leerEstado(conPanel)).version === versionAntes + 1, otraVez.stdout.slice(0, 200))
 
   console.log('\n=== Una pieza activa detiene a-elementos ===')
   const conPieza = await negocioDesechable('P')
