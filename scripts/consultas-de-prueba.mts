@@ -26,25 +26,28 @@ export const BUENAS_DE_M2: readonly (readonly [id: string, salida: TipoDeSalida,
   ["pendientes_viejos", "filas", "SELECT p.numero AS numero_pedido, p.id AS pedido_id, p.cliente_id, p.ciudad, p.total, p.creado, p.dia_local AS dia_creado, (hoy.hoy_local - p.dia_local) AS dias_pendientes FROM pedidos p CROSS JOIN hoy WHERE p.estado = 'pendiente' AND p.dia_local < hoy.hoy_local - 3 ORDER BY p.creado ASC"],
 ]
 
+const SET = /^SET y RESET/
+const SET_CONFIG = /^set_config\(\)/
+
 /**
  * Los 13 escapes de #12 (medir-segundo-anillo.mts), con neondb_owner donde decía n_B: aquí no hay rol por Negocio.
  * amanece_negocio no existe en esta base y un rol inexistente no prueba nada: en su lugar va neon_auth, el dueño de las cuentas. Neon frena antes, con otro mensaje, a neon_superuser y a los pg_*.
- * Cada uno es la lista de sentencias que corre crudo dentro del lote; el validador recibe las sentencias unidas.
+ * Cada uno es la lista de sentencias que corre crudo dentro del lote, cada sentencia con lo que el validador dice de ella.
  */
-export const ESCAPES_DE_12: readonly (readonly [nombre: string, sentencias: readonly string[]])[] = [
-  ['SET ROLE neondb_owner', ['SET ROLE neondb_owner']],
-  ["set_config('role', 'neondb_owner', false)", ["select set_config('role', 'neondb_owner', false)"]],
-  ["SET LOCAL ROLE amanece_consultas y luego set_config('role', 'neondb_owner', true)", ['SET LOCAL ROLE amanece_consultas', "select set_config('role', 'neondb_owner', true)"]],
-  ['SET LOCAL ROLE amanece_consultas y luego SET ROLE neondb_owner', ['SET LOCAL ROLE amanece_consultas', 'SET ROLE neondb_owner']],
-  ['SET ROLE neondb_owner (el dueño)', ['SET ROLE neondb_owner']],
-  ['SET LOCAL ROLE amanece_consultas y luego SET ROLE neondb_owner (el dueño)', ['SET LOCAL ROLE amanece_consultas', 'SET ROLE neondb_owner']],
-  ['SET SESSION AUTHORIZATION neondb_owner', ['SET SESSION AUTHORIZATION neondb_owner']],
-  ['SET ROLE neon_auth', ['SET ROLE neon_auth']],
-  ['SET ROLE amanece_consultas', ['SET ROLE amanece_consultas']],
-  ['ALTER ROLE amanece_consultas BYPASSRLS', ['ALTER ROLE amanece_consultas BYPASSRLS']],
-  ['leer pg_authid', ['select count(*) from pg_authid']],
-  ['leer public.negocios', ['select count(*) from public.negocios']],
-  ['crear una función en public', ["create function public.f() returns int language sql as 'select 1'"]],
+export const ESCAPES_DE_12: readonly (readonly [nombre: string, sentencias: readonly (readonly [sql: string, que: RegExp])[]])[] = [
+  ['SET ROLE neondb_owner', [['SET ROLE neondb_owner', SET]]],
+  ["set_config('role', 'neondb_owner', false)", [["select set_config('role', 'neondb_owner', false)", SET_CONFIG]]],
+  ["SET LOCAL ROLE amanece_consultas y luego set_config('role', 'neondb_owner', true)", [['SET LOCAL ROLE amanece_consultas', SET], ["select set_config('role', 'neondb_owner', true)", SET_CONFIG]]],
+  ['SET LOCAL ROLE amanece_consultas y luego SET ROLE neondb_owner', [['SET LOCAL ROLE amanece_consultas', SET], ['SET ROLE neondb_owner', SET]]],
+  ['SET SESSION AUTHORIZATION neondb_owner', [['SET SESSION AUTHORIZATION neondb_owner', SET]]],
+  ['SET ROLE neon_auth', [['SET ROLE neon_auth', SET]]],
+  ['SET ROLE amanece_consultas', [['SET ROLE amanece_consultas', SET]]],
+  ['ALTER ROLE amanece_consultas BYPASSRLS', [['ALTER ROLE amanece_consultas BYPASSRLS', /AlterRoleStmt/]]],
+  ['leer pg_authid', [['select count(*) from pg_authid', /^pg_authid/]]],
+  ['leer public.negocios', [['select count(*) from public.negocios', /^public\.negocios/]]],
+  ['crear una función en public', [["create function public.f() returns int language sql as 'select 1'", /CreateFunctionStmt/]]],
+  ['firmar_consulta(B)', [["select public.firmar_consulta('00000000-0000-4000-8000-00000000000b'::uuid)", /public\.firmar_consulta/]]],
+  ['leer llave_de_consultas', [['select clave from public.llave_de_consultas', /^public\.llave_de_consultas/]]],
 ]
 
 /** El ataque de #8: `set_config` dentro del SELECT cambia de Negocio en la misma sentencia. */

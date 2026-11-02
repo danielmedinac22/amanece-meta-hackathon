@@ -58,7 +58,7 @@ export const hayConexionDeConsultas = () => Boolean(process.env.DATABASE_URL_CON
  */
 export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada, firma: string): readonly Sentencia[] {
   const parametros = parametrosDelPrologo(estado)
-  const orden = consulta.orden.length ? `ORDER BY ${consulta.orden.map((o) => `q."${o.columna}"${o.descendente ? ' DESC' : ''}`).join(', ')}` : ''
+  const orden = consulta.orden.length ? `ORDER BY ${consulta.orden.map((o) => `q."${o.columna.replaceAll('"', '""')}"${o.descendente ? ' DESC' : ''}`).join(', ')}` : ''
   const conteos = consulta.fuentes.map((f) => `'${f}', (SELECT count(*) FROM ${f})`).join(', ')
   return [
     { texto: 'RESET ALL', parametros: [] },

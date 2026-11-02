@@ -3,10 +3,10 @@
  * `libpg-query` (eslint). En Next necesita `serverExternalPackages`: empaquetado, el WASM no carga.
  *
  * Revisa lo que importa para la seguridad (la sentencia, cada nodo y cada campo de cada nodo, las funciones, las
- * fuentes, los esquemas, las zonas y los desplazamientos) con una fila por tipo de nodo en `NODOS`: lo que no tiene
- * fila se rechaza, y un campo que la fila no nombra también. No resuelve alcances de columnas: un nombre que no es
- * campo del catálogo ni nombre de la propia consulta es `dato_inexistente` antes de correr; lo demás lo resuelve
- * Postgres, y su 42703 vuelve como `dato_inexistente` desde `ejecutar`.
+ * fuentes, los esquemas, los nombres de columna, las zonas y los desplazamientos) con una fila por tipo de nodo en
+ * `NODOS`: lo que no tiene fila se rechaza, y un campo que la fila no nombra también. No resuelve alcances: un nombre
+ * que no es campo del catálogo ni columna definida en la propia consulta es `dato_inexistente` antes de correr; lo
+ * demás lo resuelve Postgres, y su 42703 vuelve como `dato_inexistente` desde `ejecutar`.
  */
 import { loadModule, parseSync, type Node } from 'libpg-query'
 import { COLUMNAS, esFuente, FUENTES, NOMBRES_DE_FUENTE } from './catalogo'
@@ -26,8 +26,12 @@ type Hijo = 'nodo' | 'valor' | TipoDeNodo
 type Contexto = {
   /** Cada nombre en FROM, con su alias, a su fuente del catálogo; `null` si no es una fuente (una CTE propia) o es ambiguo. */
   readonly fuentes: Map<string, NombreDeFuente | null>
+  /** Solo `RangeVar.relname`, lo que de verdad se lee: un alias no vuelve válida una relación. Cada una es una fuente o una CTE. */
+  readonly relaciones: Set<string>
   readonly ctes: Set<string>
-  /** Alias de salida, de tablas, de columnas y de CTE: nombres que la consulta define y Postgres resuelve. */
+  /** Lo que, sin calificar, es una fila entera: relaciones, alias de tabla, de subconsulta y de JOIN, y CTE. */
+  readonly filas: Set<string>
+  /** Las columnas que la consulta define: alias de salida, `colnames`, `aliascolnames` y el alias de una función en FROM. */
   readonly nombres: Set<string>
   readonly columnas: { readonly calificador: string | null; readonly nombre: string }[]
 }
@@ -55,7 +59,7 @@ export const FUNCIONES = {
   round: 'escalar', floor: 'escalar', ceil: 'escalar', ceiling: 'escalar', abs: 'escalar', trunc: 'escalar', sign: 'escalar', mod: 'escalar', power: 'escalar', sqrt: 'escalar',
   date_trunc: 'escalar', date_part: 'escalar', extract: 'escalar', to_char: 'escalar', to_date: 'escalar', make_date: 'escalar',
   lower: 'escalar', upper: 'escalar', btrim: 'escalar', ltrim: 'escalar', rtrim: 'escalar', length: 'escalar', char_length: 'escalar', substr: 'escalar', substring: 'escalar',
-  position: 'escalar', concat: 'escalar', replace: 'escalar', split_part: 'escalar', left: 'escalar', right: 'escalar', initcap: 'escalar', lpad: 'escalar', rpad: 'escalar',
+  position: 'escalar', concat: 'escalar', replace: 'escalar', split_part: 'escalar', left: 'escalar', right: 'escalar', initcap: 'escalar',
   generate_series: 'genera_filas',
 } as const satisfies Record<string, 'agregado' | 'ventana' | 'escalar' | 'genera_filas'>
 
@@ -89,9 +93,6 @@ const PISTA_DE_FUNCION: Partial<Record<string, string>> = {
   age: 'resta fechas con hoy.hoy_local',
 }
 
-/** Un nombre de zona IANA, UTC o GMT escrito como texto. */
-const ZONA = /^(utc|gmt|[a-z]+\/[a-z_]+)$/i
-
 /** Los campos que son un instante: sumarles horas es definir otra zona. `ahora` sí se desplaza: "las últimas 24 horas". */
 const INSTANTES = new Set(
   NOMBRES_DE_FUENTE.flatMap((f) =>
@@ -100,6 +101,8 @@ const INSTANTES = new Set(
       .map(([nombre]) => nombre),
   ),
 )
+
+const DEL_CATALOGO_DE_POSTGRES = /^pg_/i
 
 const CAMPOS_DEL_CATALOGO = new Set(NOMBRES_DE_FUENTE.flatMap((f) => COLUMNAS[f]))
 
@@ -113,6 +116,14 @@ function nombreSimple(partes: readonly Node[] | undefined, que: string): string 
   return nombres.at(-1) ?? ''
 }
 
+/** `armarLote` repite estos nombres en su `ORDER BY`: con comillas adentro se saldrían de lo validado. */
+const NOMBRE_DE_COLUMNA = /^[a-z_][a-z0-9_]*$/
+
+function nombreDeColumna(nombre: string): string {
+  if (!NOMBRE_DE_COLUMNA.test(nombre)) rechazar({ tipo: 'no_permitido', que: `la columna ${JSON.stringify(nombre.slice(0, 40))}`, permitidas: ['nombres en minúscula, con letras sin tilde, números y _'] })
+  return nombre
+}
+
 const esIntervalo = (n: Node | undefined) => n !== undefined && 'TypeCast' in n && textos(n.TypeCast.typeName?.names).at(-1) === 'interval'
 
 /** Las columnas de un subárbol, sin resolverlas. */
@@ -121,6 +132,14 @@ function columnasDe(n: unknown): string[] {
   if (!n || typeof n !== 'object') return []
   if ('ColumnRef' in n) return textos(((n as { ColumnRef: NodoDe<'ColumnRef'> }).ColumnRef.fields ?? []).filter((f) => 'String' in f)).slice(-1)
   return Object.values(n).flatMap(columnasDe)
+}
+
+/** Un `*` o un `p.*` en una columna de salida. Lo de adentro de una subconsulta tiene su propia salida. */
+function traeEstrella(n: unknown): boolean {
+  if (Array.isArray(n)) return n.some(traeEstrella)
+  if (!n || typeof n !== 'object' || 'SelectStmt' in n) return false
+  if ('ColumnRef' in n && ((n as { ColumnRef: NodoDe<'ColumnRef'> }).ColumnRef.fields ?? []).some((f) => 'A_Star' in f)) return true
+  return Object.values(n).some(traeEstrella)
 }
 
 /** Una columna de salida depende de un dato: una columna o un `count(*)`, también dentro de una subconsulta. */
@@ -150,8 +169,12 @@ export const NODOS: { readonly [T in TipoDeNodo]: Revisor<T> } = {
     campos: { ctename: 'valor', aliascolnames: 'nodo', ctematerialized: 'valor', ctequery: 'nodo' },
     revisar: (n, c) => {
       if (n.ctename && esFuente(n.ctename)) rechazar({ tipo: 'no_permitido', que: `una CTE llamada ${n.ctename}, como una fuente`, permitidas: [] })
-      if (n.ctename) c.ctes.add(n.ctename)
-      for (const a of textos(n.aliascolnames)) c.nombres.add(a)
+      if (n.ctename && DEL_CATALOGO_DE_POSTGRES.test(n.ctename)) rechazar({ tipo: 'no_permitido', que: `una CTE llamada ${n.ctename}: pg_ es del catálogo de Postgres`, permitidas: [] })
+      if (n.ctename) {
+        c.ctes.add(n.ctename)
+        c.filas.add(n.ctename)
+      }
+      for (const a of textos(n.aliascolnames)) c.nombres.add(nombreDeColumna(a))
     },
   },
   RangeVar: {
@@ -159,33 +182,48 @@ export const NODOS: { readonly [T in TipoDeNodo]: Revisor<T> } = {
     revisar: (n, c) => {
       if (n.schemaname || n.catalogname) rechazar({ tipo: 'no_permitido', que: `${[n.catalogname, n.schemaname, n.relname].filter(Boolean).join('.')}: las fuentes van sin esquema`, permitidas: [...NOMBRES_DE_FUENTE] })
       const nombre = n.relname ?? ''
+      if (DEL_CATALOGO_DE_POSTGRES.test(nombre)) rechazar({ tipo: 'no_permitido', que: `${nombre}: el catálogo de Postgres no es una fuente`, permitidas: [...NOMBRES_DE_FUENTE] })
+      c.relaciones.add(nombre)
+      c.filas.add(nombre)
+      if (n.alias?.aliasname) c.filas.add(n.alias.aliasname)
       const fuente = esFuente(nombre) ? nombre : null
       for (const visto of new Set([nombre, n.alias?.aliasname ?? nombre])) c.fuentes.set(visto, c.fuentes.has(visto) && c.fuentes.get(visto) !== fuente ? null : fuente)
     },
   },
-  RangeSubselect: { campos: { lateral: 'valor', subquery: 'nodo', alias: 'Alias' } },
+  RangeSubselect: {
+    campos: { lateral: 'valor', subquery: 'nodo', alias: 'Alias' },
+    revisar: (n, c) => {
+      if (n.alias?.aliasname) c.filas.add(n.alias.aliasname)
+    },
+  },
   RangeFunction: {
     campos: { lateral: 'valor', ordinality: 'valor', functions: 'nodo', alias: 'Alias' },
-    revisar: (n) => {
+    revisar: (n, c) => {
       const [lista] = n.functions ?? []
       const [llamada] = lista && 'List' in lista ? (lista.List.items ?? []) : []
       const nombre = llamada && 'FuncCall' in llamada ? nombreSimple(llamada.FuncCall.funcname, 'una función en FROM') : ''
-      const genera = nombre in FUNCIONES && FUNCIONES[nombre as keyof typeof FUNCIONES] === 'genera_filas'
+      const genera = Object.hasOwn(FUNCIONES, nombre) && FUNCIONES[nombre as keyof typeof FUNCIONES] === 'genera_filas'
       if ((n.functions?.length ?? 0) !== 1 || !genera) rechazar({ tipo: 'no_permitido', que: `${nombre || 'una función'} en FROM`, permitidas: ['generate_series'] })
+      // `generate_series(0, 29) AS s`: `s` es la columna, no una fila.
+      if (n.alias?.aliasname) c.nombres.add(nombreDeColumna(n.alias.aliasname))
     },
   },
-  JoinExpr: { campos: { jointype: 'valor', isNatural: 'valor', larg: 'nodo', rarg: 'nodo', usingClause: 'nodo', quals: 'nodo', alias: 'Alias', join_using_alias: 'Alias', rtindex: 'valor' } },
+  JoinExpr: {
+    campos: { jointype: 'valor', isNatural: 'valor', larg: 'nodo', rarg: 'nodo', usingClause: 'nodo', quals: 'nodo', alias: 'Alias', join_using_alias: 'Alias', rtindex: 'valor' },
+    revisar: (n, c) => {
+      if (n.alias?.aliasname) c.filas.add(n.alias.aliasname)
+    },
+  },
   Alias: {
     campos: { aliasname: 'valor', colnames: 'nodo' },
     revisar: (n, c) => {
-      if (n.aliasname) c.nombres.add(n.aliasname)
-      for (const a of textos(n.colnames)) c.nombres.add(a)
+      for (const a of textos(n.colnames)) c.nombres.add(nombreDeColumna(a))
     },
   },
   ResTarget: {
     campos: { name: 'valor', val: 'nodo' },
     revisar: (n, c) => {
-      if (n.name) c.nombres.add(n.name)
+      if (n.name) c.nombres.add(nombreDeColumna(n.name))
     },
   },
   ColumnRef: {
@@ -197,13 +235,7 @@ export const NODOS: { readonly [T in TipoDeNodo]: Revisor<T> } = {
     },
   },
   A_Star: { campos: {} },
-  A_Const: {
-    campos: { ival: 'valor', fval: 'valor', boolval: 'valor', sval: 'valor', isnull: 'valor' },
-    revisar: (n) => {
-      const texto = n.sval?.sval
-      if (texto && ZONA.test(texto)) rechazar({ tipo: 'definicion_del_nucleo', que: 'zona_horaria', fragmento: texto })
-    },
-  },
+  A_Const: { campos: { ival: 'valor', fval: 'valor', boolval: 'valor', sval: 'valor', isnull: 'valor' } },
   String: { campos: { sval: 'valor' } },
   Integer: { campos: { ival: 'valor' } },
   Float: { campos: { fval: 'valor' } },
@@ -230,7 +262,8 @@ export const NODOS: { readonly [T in TipoDeNodo]: Revisor<T> } = {
     revisar: (n) => {
       const nombre = nombreSimple(n.funcname, 'una función')
       if (nombre === 'timezone') rechazar({ tipo: 'definicion_del_nucleo', que: 'zona_horaria', fragmento: 'AT TIME ZONE' })
-      if (!(nombre in FUNCIONES)) {
+      if (nombre === 'date_trunc' && (n.args?.length ?? 0) > 2) rechazar({ tipo: 'definicion_del_nucleo', que: 'zona_horaria', fragmento: 'date_trunc con zona' })
+      if (!Object.hasOwn(FUNCIONES, nombre)) {
         const pista = PISTA_DE_FUNCION[nombre]
         rechazar({ tipo: 'no_permitido', que: `${nombre}()${pista ? `: ${pista}` : ''}`, permitidas: Object.keys(FUNCIONES) })
       }
@@ -291,17 +324,6 @@ function revisarNodo(tipo: string, cuerpo: unknown, c: Contexto): void {
   }
 }
 
-/** El nombre que Postgres le pone a una columna de salida sin alias. */
-function nombreDeSalida(n: Node | undefined): string {
-  if (!n) return '?column?'
-  if ('ColumnRef' in n) return columnasDe(n)[0] ?? '?column?'
-  if ('FuncCall' in n) return textos(n.FuncCall.funcname).at(-1) ?? '?column?'
-  if ('TypeCast' in n) return n.TypeCast.arg && !('A_Const' in n.TypeCast.arg) ? nombreDeSalida(n.TypeCast.arg) : (textos(n.TypeCast.typeName?.names).at(-1) ?? '?column?')
-  if ('CaseExpr' in n) return 'case'
-  if ('CoalesceExpr' in n) return 'coalesce'
-  return '?column?'
-}
-
 const FORMAS = {
   numero: (cols: readonly string[]) => cols.length === 1 && cols[0] === 'valor',
   serie: (cols: readonly string[]) => cols.length === 2 && cols.includes('etiqueta') && cols.includes('valor'),
@@ -336,29 +358,37 @@ export async function validarConsulta(sqlDelRedactor: string, salida: TipoDeSali
     const arriba = raiz.SelectStmt
     if (arriba.valuesLists?.length) rechazar({ tipo: 'no_permitido', que: 'VALUES como consulta', permitidas: ['un solo SELECT'] })
 
-    const c: Contexto = { fuentes: new Map(), ctes: new Set(), nombres: new Set(), columnas: [] }
+    const c: Contexto = { fuentes: new Map(), relaciones: new Set(), ctes: new Set(), filas: new Set(), nombres: new Set(), columnas: [] }
     recorrer(raiz, 'nodo', c)
 
-    for (const [nombre, fuente] of c.fuentes) if (fuente === null && !c.ctes.has(nombre) && !c.nombres.has(nombre)) rechazar({ tipo: 'dato_inexistente', fuente: nombre, campo: null, hay: [...NOMBRES_DE_FUENTE] })
+    for (const nombre of c.relaciones) if (!esFuente(nombre) && !c.ctes.has(nombre)) rechazar({ tipo: 'dato_inexistente', fuente: nombre, campo: null, hay: [...NOMBRES_DE_FUENTE] })
     const usadas = [...new Set([...c.fuentes.values()].filter((f) => f !== null))]
     const usa = new Set<Usa>()
     for (const { calificador, nombre } of c.columnas) {
       if (nombre === '*') continue
+      if (calificador === null && c.filas.has(nombre) && !c.nombres.has(nombre)) rechazar({ tipo: 'no_permitido', que: `una fila entera (${nombre})`, permitidas: ['sus columnas, una por una'] })
       const deFuente = calificador === null ? undefined : c.fuentes.get(calificador)
       const hay = deFuente ? COLUMNAS[deFuente] : usadas.flatMap((f) => COLUMNAS[f])
       const fuente = deFuente ?? (usadas.join(', ') || 'ninguna')
       if (deFuente && !COLUMNAS[deFuente].includes(nombre) && !c.nombres.has(nombre)) rechazar({ tipo: 'dato_inexistente', fuente, campo: nombre, hay })
-      if (!CAMPOS_DEL_CATALOGO.has(nombre) && !c.nombres.has(nombre) && !c.ctes.has(nombre)) rechazar({ tipo: 'dato_inexistente', fuente, campo: nombre, hay })
+      if (!CAMPOS_DEL_CATALOGO.has(nombre) && !c.nombres.has(nombre)) rechazar({ tipo: 'dato_inexistente', fuente, campo: nombre, hay })
       for (const f of deFuente ? [deFuente] : usadas) if (COLUMNAS[f].includes(nombre)) usa.add(`${f}.${nombre}`)
     }
 
     let izquierda = arriba
     while (izquierda.op && izquierda.op !== 'SETOP_NONE' && izquierda.larg) izquierda = izquierda.larg
     const objetivos = (izquierda.targetList ?? []).map((t) => ('ResTarget' in t ? t.ResTarget : rechazar({ tipo: 'no_permitido', que: 'esa columna de salida', permitidas: [] })))
-    if (objetivos.some((t) => t.val && 'ColumnRef' in t.val && columnasDe(t.val).length === 0)) rechazar({ tipo: 'forma', esperada: salida, hay: ['*'] })
-    const columnas = objetivos.map((t) => t.name ?? nombreDeSalida(t.val))
+    if (objetivos.some((t) => traeEstrella(t.val))) rechazar({ tipo: 'forma', esperada: salida, hay: ['*'] })
+    const columnas = objetivos.map((t) => {
+      const nombre = t.name ?? (t.val && 'ColumnRef' in t.val ? columnasDe(t.val)[0] : null)
+      return nombreDeColumna(nombre ?? rechazar({ tipo: 'no_permitido', que: 'una columna calculada sin AS', permitidas: ['expresión AS nombre'] }))
+    })
+    // `to_jsonb(q)` del envoltorio resolvería a esa columna y no a la fila.
+    if (columnas.includes('q')) rechazar({ tipo: 'no_permitido', que: 'q como nombre de columna', permitidas: [] })
     if (!FORMAS[salida](columnas)) rechazar({ tipo: 'forma', esperada: salida, hay: columnas })
-    if (izquierda === arriba) for (const t of objetivos) if (!dependeDeDatos(t.val)) rechazar({ tipo: 'sin_datos', columna: t.name ?? nombreDeSalida(t.val) })
+    if (izquierda === arriba) objetivos.forEach((t, i) => {
+      if (!dependeDeDatos(t.val)) rechazar({ tipo: 'sin_datos', columna: columnas[i] })
+    })
 
     const orden = (arriba.sortClause ?? []).map((s) => {
       const por = 'SortBy' in s ? s.SortBy : null

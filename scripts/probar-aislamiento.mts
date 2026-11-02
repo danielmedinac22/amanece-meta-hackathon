@@ -240,7 +240,7 @@ try {
   // Con el rol LOGIN, SET ROLE a sí mismo es legal: no da error y no cambia nada.
   const SIN_ERROR = 'SET ROLE amanece_consultas'
   for (const [nombre, sentencias] of ESCAPES_DE_12) {
-    const r = await correrLote([...preambulo, ...crudas(sentencias), sondaDeEscape])
+    const r = await correrLote([...preambulo, ...crudas(sentencias.map(([sentencia]) => sentencia)), sondaDeEscape])
     if (nombre === SIN_ERROR) afirmar(`8 escape ${nombre}: sigue siendo amanece_consultas y no aparece ninguna fila de B`, sinCambios(r), r)
     else afirmar(`8 escape ${nombre}: lo frena la base`, !r.ok && /permission denied|must be|read-only/.test(r.error), r)
   }
@@ -269,11 +269,19 @@ try {
   console.log('\n=== 8 bis. El validador es el segundo anillo: rechaza esos mismos textos ===')
   for (const [nombre, texto] of [['el ataque de #8', ataqueDe8(B.id)], ...variantesDelAtaque(B.id)] as const) {
     const v = await validarConsulta(texto, 'numero')
-    afirmar(`8 bis el validador rechaza ${nombre}`, esErrorDeConsulta(v), v)
+    afirmar(`8 bis el validador rechaza ${nombre} como no_permitido, por la función`, esErrorDeConsulta(v) && v.tipo === 'no_permitido' && /set_config|current_setting/.test(v.que), v)
   }
-  for (const [nombre, sentencias] of ESCAPES_DE_12) afirmar(`8 bis el validador rechaza el escape de #12 ${nombre}`, esErrorDeConsulta(await validarConsulta(sentencias.join('; '), 'filas')))
+  for (const [nombre, sentencias] of ESCAPES_DE_12) {
+    for (const [sentencia, que] of sentencias) {
+      const v = await validarConsulta(sentencia, 'filas')
+      afirmar(`8 bis el validador rechaza ${sentencia}, del escape ${nombre}, como no_permitido, por ${que.source}`, esErrorDeConsulta(v) && v.tipo === 'no_permitido' && que.test(v.que), v)
+    }
+  }
   const OTROS_TEXTOS = ["select set_config('role', 'none', true)", ataqueEnElSelect, ataqueAparte, `select set_config('app.negocio_id', '${B.id}', false)`, `select set_config('app.firma', '0', true)`]
-  for (const texto of OTROS_TEXTOS) afirmar(`8 bis el validador rechaza ${texto.replace(B.id, 'B')}`, esErrorDeConsulta(await validarConsulta(texto, 'filas')))
+  for (const texto of OTROS_TEXTOS) {
+    const v = await validarConsulta(texto, 'filas')
+    afirmar(`8 bis el validador rechaza ${texto.replace(B.id, 'B')} como no_permitido`, esErrorDeConsulta(v) && v.tipo === 'no_permitido' && /set_config|public\.pedidos/.test(v.que), v)
+  }
 
   console.log('\n=== 9. Un anillo quitado, y los controles que deben dar lo contrario ===')
   const sinWhere = lote.map((x) => ({ ...x, texto: x.texto.replace(/\w+\.negocio_id = \$1::uuid/g, '($1::uuid IS NOT NULL)') }))
@@ -331,7 +339,8 @@ try {
   // Las sondas de arriba confirman su RESET ALL y limpian lo que tocan: el control necesita contagiar otra vez.
   await Promise.all(Array.from({ length: VECES }, () => comoRol.query(contagio.texto, [...contagio.parametros])))
   const sinReset = await Promise.all(Array.from({ length: VECES }, () => correrLote([...sinSetConfig.filter((x) => x.texto !== 'RESET ALL'), sonda])))
-  console.log(`  control: sin RESET ALL, ${sinReset.filter((r) => r.ok && r.filas[0]?.negocio === B.id).length} de ${VECES} sondas ven el Negocio que fijó otra petición (80 de 120 en #28)`)
+  const contagiadas = sinReset.filter((r) => r.ok && r.filas[0]?.negocio === B.id).length
+  afirmar(`10 control: sin RESET ALL, alguna de ${VECES} sondas ve el Negocio que fijó otra petición (hoy ${contagiadas}; 80 de 120 en #28)`, contagiadas > 0, contagiadas)
   const reales = await Promise.all(Array.from({ length: 20 }, () => ejecutar(estadoA, listado)))
   afirmar('10 ejecutar después de esas peticiones: 20 de 20 traen solo los pedidos de A', reales.every((r) => r.tipo === 'filas' && r.total === A.pedidos && ve(r.filas, B.ids).length === 0), reales.find((r) => r.tipo !== 'filas' || r.total !== A.pedidos))
   for (let i = 0; i < VECES; i++) await comoRol.query('RESET ALL')

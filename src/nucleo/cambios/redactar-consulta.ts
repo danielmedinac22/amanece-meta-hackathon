@@ -62,11 +62,12 @@ export const MOTOR_DEL_REDACTOR: MotorDelRedactor = async (prompt) => {
 const FORMA_EN_PALABRAS = {
   numero: 'una sola fila con una sola columna llamada valor (un número)',
   serie: 'dos columnas: etiqueta (texto: el día, la semana o el producto) y valor (un número), una fila por punto',
-  filas: 'las columnas que el Dueño quiere ver, con nombres en minúscula y sin espacios; en titulos, el título en español de cada una',
+  filas: 'las columnas que el Dueño quiere ver; en titulos, el título en español de cada una',
 } as const satisfies Record<TipoDeSalida, string>
 
 const REGLAS = `Reglas de la consulta:
 - Un solo SELECT de Postgres (puede empezar con WITH, sin RECURSIVE). Sin punto y coma.
+- Toda columna calculada lleva AS. Los nombres de columna van en minúscula, con letras sin tilde, números y _. No llames q a ninguna.
 - Lee solo las fuentes de arriba, por su nombre y sin esquema, y solo sus campos. Ya vienen filtradas al Negocio: no filtres por Negocio.
 - Las fechas ya están en la zona del Negocio: usa dia_local, mes_local, hora_local y hoy.hoy_local. No uses zonas horarias, AT TIME ZONE, now() ni current_date.
 - Para "las últimas N horas" usa creado > hoy.ahora - interval 'N hours'. No le sumes ni restes horas a otra columna.

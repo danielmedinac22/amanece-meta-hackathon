@@ -14,7 +14,7 @@ config({ path: '.env.local', quiet: true })
 const { TIPOS_DE_MOTIVO } = await import('../src/db/esquema')
 const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = await import('../src/nucleo/consultas/catalogo')
 const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
-const { ejecutar, firmaDe } = await import('../src/nucleo/consultas/ejecutar')
+const { armarLote, ejecutar, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
 const { pintarUna } = await import('../src/nucleo/panel')
 const { redactarConsulta } = await import('../src/nucleo/cambios/redactar-consulta')
 const { traducir } = await import('../src/nucleo/cambios/traducir')
@@ -162,7 +162,7 @@ try {
     ['SET LOCAL ROLE', 'SET LOCAL ROLE neondb_owner', 'numero', 'no_permitido'],
     ['public.pedidos', 'select count(*) as valor from public.pedidos', 'numero', 'no_permitido'],
     ['pg_catalog.pg_roles', 'select rolname from pg_catalog.pg_roles', 'filas', 'no_permitido'],
-    ['pg_class sin esquema', 'select relname from pg_class', 'filas', 'dato_inexistente'],
+    ['pg_class sin esquema', 'select relname from pg_class', 'filas', 'no_permitido'],
     ['information_schema', 'select table_name from information_schema.tables', 'filas', 'no_permitido'],
     ['pg_sleep', 'select pg_sleep(5) as valor from pedidos', 'numero', 'no_permitido'],
     ['pg_read_file', "select pg_read_file('/etc/passwd') as valor from pedidos", 'numero', 'no_permitido'],
@@ -186,7 +186,7 @@ try {
     ['VALUES como consulta', 'values (1), (2)', 'filas', 'no_permitido'],
     ['VALUES con una función prohibida', 'select x from (values (pg_sleep(1))) as v(x)', 'filas', 'no_permitido'],
     ['AT TIME ZONE', "select (creado at time zone 'America/Bogota')::date as d from pedidos", 'filas', 'definicion_del_nucleo'],
-    ["el literal 'America/Bogota'", "select count(*) as valor from pedidos where ciudad <> 'America/Bogota'", 'numero', 'definicion_del_nucleo'],
+    ['date_trunc con zona', "select date_trunc('day', creado, 'America/Bogota') as d from pedidos", 'filas', 'definicion_del_nucleo'],
     ["creado + interval '5 hours'", "select count(*) as valor from pedidos where creado + interval '5 hours' > hoy_local", 'numero', 'definicion_del_nucleo'],
     ["date_trunc sobre creado menos interval '5 hours'", "select date_trunc('day', creado) - interval '5 hours' as d from pedidos", 'filas', 'definicion_del_nucleo'],
     ['clientes.telefono', 'select telefono from clientes', 'filas', 'dato_inexistente'],
@@ -199,16 +199,68 @@ try {
     ['serie sin etiqueta', 'select ciudad, count(*) as valor from pedidos group by 1', 'serie', 'forma'],
     ['filas con *', 'select * from pedidos', 'filas', 'forma'],
     ['sintaxis', 'select from where', 'filas', 'sintaxis'],
-    ...ESCAPES_DE_12.map(([nombre, sentencias]): [string, string, TipoDeSalida, ErrorDeConsulta['tipo']] => [
-      `escape de #12: ${nombre}`,
-      sentencias.join('; '),
-      'filas',
-      nombre === 'leer pg_authid' ? 'dato_inexistente' : 'no_permitido',
-    ]),
+    ['constructor, del prototipo de FUNCIONES', 'select "constructor"(total) as x from pedidos', 'filas', 'no_permitido'],
+    ['toString, del prototipo de FUNCIONES', 'select "toString"(total) as x from pedidos', 'filas', 'no_permitido'],
+    ['constructor en FROM', 'select x from "constructor"(1) as x', 'filas', 'no_permitido'],
+    ['lpad', 'select lpad(ciudad, 1000000000) as x from pedidos', 'filas', 'no_permitido'],
+    ['rpad', 'select rpad(ciudad, 1000000000) as x from pedidos', 'filas', 'no_permitido'],
+    ['una columna calculada sin AS', "select numero, case when estado = 'novedad' then 1 else total end from pedidos", 'filas', 'no_permitido'],
+    ['una subconsulta sin AS', 'select numero, (select max(total) from pedidos) from pedidos', 'filas', 'no_permitido'],
+    ['q como alias', 'select numero as q from pedidos', 'filas', 'no_permitido'],
+    ['q que viene de una CTE', 'with x as (select id as q from pedidos) select q from x', 'filas', 'no_permitido'],
+    ['p.* en la salida', 'select p.* from pedidos p', 'filas', 'forma'],
+    ['p.* dentro de una expresión', 'select count(p.*) as valor from pedidos p', 'numero', 'forma'],
+    ['la fila entera de un alias', 'select p from pedidos p', 'filas', 'no_permitido'],
+    ['la fila entera de un alias que se llama como un campo', 'select total from clientes total', 'filas', 'no_permitido'],
+    ['la fila entera de una CTE', 'with x as (select id from pedidos) select x from x', 'filas', 'no_permitido'],
   ]
   for (const [nombre, sql, salida, tipo] of rechazos) {
     const r = await valida(sql, salida)
     afirmar(`4 rechaza ${nombre} como ${tipo}`, esErrorDeConsulta(r) && r.tipo === tipo, esErrorDeConsulta(r) ? r : 'pasó')
+  }
+  const rechazaPor = async (nombre: string, sql: string, tipo: ErrorDeConsulta['tipo'], que: RegExp, salida: TipoDeSalida = 'filas') => {
+    const r = await valida(sql, salida)
+    const dice = esErrorDeConsulta(r) ? (r.tipo === 'no_permitido' ? r.que : r.tipo === 'dato_inexistente' ? r.fuente : r.tipo) : ''
+    afirmar(`4 rechaza ${nombre} como ${tipo}, por ${que.source}`, esErrorDeConsulta(r) && r.tipo === tipo && que.test(dice), esErrorDeConsulta(r) ? r : 'pasó')
+  }
+  for (const [nombre, sentencias] of ESCAPES_DE_12) for (const [sql, que] of sentencias) await rechazaPor(`el escape de #12 ${nombre}, sentencia ${sql}`, sql, 'no_permitido', que)
+  const comillas = (nombre: string) => `"${nombre.replaceAll('"', '""')}"`
+  for (const alias of ['x",pg_sleep(60),"x', `x",current_setting('app.firma')::int,"x`, 'x",pg_terminate_backend(1),"x', 'x",(select count(*) from public.negocios),"x', 'x" --', 'x" offset 1 --', 'a", (select 1) --']) {
+    const a = comillas(alias)
+    await rechazaPor(`A1, el alias ${alias}`, `select id as x, id as ${a} from pedidos order by ${a}`, 'no_permitido', /^la columna/)
+    await rechazaPor(`el alias ${alias} en colnames`, `select id from pedidos as p(${a})`, 'no_permitido', /^la columna/)
+    await rechazaPor(`el alias ${alias} en aliascolnames`, `with c(${a}) as (select id from pedidos) select id from pedidos`, 'no_permitido', /^la columna/)
+    await rechazaPor(`el alias ${alias} de una función en FROM`, `select id from pedidos, generate_series(1, 2) as ${a}`, 'no_permitido', /^la columna/)
+  }
+  const empalme = [comillas('a",/*'), comillas('*/(select count(*) from pg_class),"a')]
+  await rechazaPor('A1, dos columnas empalmadas con un comentario', `select id as ${empalme[0]}, id as ${empalme[1]} from pedidos order by ${empalme[0]}, ${empalme[1]}`, 'no_permitido', /^la columna/)
+  await rechazaPor('un alias con mayúscula', 'select id as "Id" from pedidos', 'no_permitido', /^la columna/)
+  const CATALOGO_DE_POSTGRES: [string, string, RegExp][] = [
+    ['A2 pg_class', 'select relname as relname, reltuples as reltuples from pg_class as pg_class', /^pg_class/],
+    ['A2 pg_stat_activity', 'select query as query, pid as pid from pg_stat_activity as pg_stat_activity', /^pg_stat_activity/],
+    ['A2 pg_roles', 'select rolname as rolname from pg_roles as pg_roles', /^pg_roles/],
+    ['A2 pg_proc', 'select prosrc as prosrc from pg_proc as pg_proc', /^pg_proc/],
+    ['A2 pg_authid', 'select rolpassword as rolpassword from pg_authid as pg_authid', /^pg_authid/],
+    ['A2 una CTE fuera de alcance', 'select rolname as rolname from pg_roles, (with pg_roles as (select hoy_local as x from hoy) select x from pg_roles) s', /pg_roles/],
+    ['B1 pg_settings', 'select pg_settings.name as name, pg_settings.setting as setting from pg_settings pg_settings', /^pg_settings/],
+    ['B1 una CTE fuera de alcance', 'select x.relname as relname from (with pg_class as (select 1 as n from hoy) select n from pg_class) y, pg_class x', /pg_class/],
+    ['una CTE llamada pg_algo', 'with pg_algo as (select hoy_local as x from hoy) select x from pg_algo', /pg_algo/],
+  ]
+  for (const [nombre, sql, que] of CATALOGO_DE_POSTGRES) await rechazaPor(nombre, sql, 'no_permitido', que)
+  await rechazaPor('A2 llave_de_consultas con su propio alias', 'select count(*) as valor from llave_de_consultas as llave_de_consultas', 'dato_inexistente', /^llave_de_consultas$/, 'numero')
+  await rechazaPor('un alias de otra tabla no vuelve válida una relación', 'select x.id from negocios x, pedidos negocios', 'dato_inexistente', /^negocios$/)
+  const BUENAS_NUEVAS: [string, string, TipoDeSalida][] = [
+    ["to_char con 'DD/MM'", "select to_char(dia_local, 'DD/MM') as etiqueta, count(*) as valor from pedidos group by 1", 'serie'],
+    ["el literal 'Bogota/Chapinero'", "select count(*) as valor from pedidos where ciudad = 'Bogota/Chapinero'", 'numero'],
+    ["el literal 'America/Bogota', que ya no define nada", "select count(*) as valor from pedidos where ciudad <> 'America/Bogota'", 'numero'],
+    ['date_trunc con 2 argumentos', "select date_trunc('day', creado) as d from pedidos", 'filas'],
+    ['una CTE que se llama como su columna', 'with ventas as (select sum(total) as ventas from pedidos) select ventas from ventas', 'filas'],
+    ['creado::date, que la zona del lote deja bien', 'select creado::date as d from pedidos', 'filas'],
+    ['una columna que viene de una función en FROM', 'select s from generate_series(1, 2) as s, pedidos', 'filas'],
+  ]
+  for (const [nombre, sql, salida] of BUENAS_NUEVAS) {
+    const r = await valida(sql, salida)
+    afirmar(`4 buena: ${nombre} pasa`, !esErrorDeConsulta(r), esErrorDeConsulta(r) ? explicar(r) : undefined)
   }
   const sinPermitidas = await valida('select now() as valor from pedidos', 'numero')
   afirmar('4 el error de una función dice cuáles sí se permiten', esErrorDeConsulta(sinPermitidas) && sinPermitidas.tipo === 'no_permitido' && sinPermitidas.permitidas.includes('count') && explicar(sinPermitidas).includes('hoy.ahora'), sinPermitidas)
@@ -236,6 +288,25 @@ try {
   afirmar('5 el tope de 2 s corta una consulta pesada y vuelve como 57014', lenta.tipo === 'error' && lenta.error.tipo === 'postgres' && lenta.error.codigo === '57014' && lenta.ms < 4000, lenta)
   const contada = await correr('select count(*) as valor from pedidos', 'numero')
   afirmar('5 un count(*) sin columnas cuenta igual las filas de su fuente', contada.tipo === 'filas' && (contada.filasPorFuente.pedidos ?? 0) > 0, contada)
+
+  console.log('\n=== 5 bis. El lote armado, parseado otra vez ===')
+  const { loadModule, parseSync } = await import('libpg-query')
+  await loadModule()
+  const afueraDe = (texto: string) => {
+    const [sentencia] = parseSync(texto).stmts ?? []
+    return (sentencia?.stmt as { SelectStmt?: { sortClause?: { SortBy?: { node?: Record<string, unknown> } }[]; limitCount?: unknown; limitOffset?: unknown } } | undefined)?.SelectStmt
+  }
+  const consultaDelLote = (consulta: Parameters<typeof armarLote>[1]) => armarLote(estado, consulta, 'f'.repeat(64))[PREAMBULO].texto
+  const sana = (texto: string) => {
+    const a = afueraDe(texto)
+    return Boolean(a?.limitCount) && !a?.limitOffset && (a?.sortClause ?? []).every((s) => Object.keys(s.SortBy?.node ?? {}).join() === 'ColumnRef')
+  }
+  for (const [id, salida, sql] of BUENAS_DE_M2) {
+    const v = await valida(sql, salida)
+    afirmar(`5 bis ${id}: el ORDER BY de afuera son solo columnas y hay LIMIT`, !esErrorDeConsulta(v) && sana(consultaDelLote(v)), esErrorDeConsulta(v) ? v : consultaDelLote(v).slice(-120))
+  }
+  const consultaConOrden = (columna: string) => ({ sql: 'select id as x from pedidos', fuentes: ['pedidos'], usa: [], columnas: ['x'], orden: [{ columna, descendente: true }] }) as unknown as Parameters<typeof armarLote>[1]
+  for (const columna of ['x",pg_sleep(60),"x', 'x" --', 'x" offset 1 --']) afirmar(`5 bis armarLote escapa la columna ${columna} aunque llegara al lote`, sana(consultaDelLote(consultaConOrden(columna))), consultaDelLote(consultaConOrden(columna)).slice(-80))
 
   console.log('\n=== 6. Sin DATABASE_URL_CONSULTAS falla cerrado ===')
   const sqlDeUna = 'select count(*) as valor from pedidos'
