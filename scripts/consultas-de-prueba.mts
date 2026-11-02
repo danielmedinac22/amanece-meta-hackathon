@@ -28,6 +28,7 @@ export const BUENAS_DE_M2: readonly (readonly [id: string, salida: TipoDeSalida,
 
 /**
  * Los 13 escapes de #12 (medir-segundo-anillo.mts), con neondb_owner donde decía n_B: aquí no hay rol por Negocio.
+ * amanece_negocio no existe en esta base y un rol inexistente no prueba nada: en su lugar va neon_auth, el dueño de las cuentas. Neon frena antes, con otro mensaje, a neon_superuser y a los pg_*.
  * Cada uno es la lista de sentencias que corre crudo dentro del lote; el validador recibe las sentencias unidas.
  */
 export const ESCAPES_DE_12: readonly (readonly [nombre: string, sentencias: readonly string[]])[] = [
@@ -38,7 +39,7 @@ export const ESCAPES_DE_12: readonly (readonly [nombre: string, sentencias: read
   ['SET ROLE neondb_owner (el dueño)', ['SET ROLE neondb_owner']],
   ['SET LOCAL ROLE amanece_consultas y luego SET ROLE neondb_owner (el dueño)', ['SET LOCAL ROLE amanece_consultas', 'SET ROLE neondb_owner']],
   ['SET SESSION AUTHORIZATION neondb_owner', ['SET SESSION AUTHORIZATION neondb_owner']],
-  ['SET ROLE amanece_negocio', ['SET ROLE amanece_negocio']],
+  ['SET ROLE neon_auth', ['SET ROLE neon_auth']],
   ['SET ROLE amanece_consultas', ['SET ROLE amanece_consultas']],
   ['ALTER ROLE amanece_consultas BYPASSRLS', ['ALTER ROLE amanece_consultas BYPASSRLS']],
   ['leer pg_authid', ['select count(*) from pg_authid']],
