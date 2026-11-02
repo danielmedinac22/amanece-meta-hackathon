@@ -14,6 +14,9 @@ export type Advertencia =
   | { readonly tipo: 'resultado_vacio_con_datos'; readonly clave: Clave; readonly filasEnLasFuentes: number }
   | { readonly tipo: 'filas_recortadas'; readonly clave: Clave; readonly total: number; readonly mostradas: number }
 
+/** Por qué una Sección o un Indicador dicen que no se pudo calcular. */
+export type PorQueNoSePudo = ErrorDeConsulta['tipo'] | 'sin_configurar'
+
 export type ElementoDelPanel = ElementoDe<'seccion' | 'indicador'>
 
 /** Toda forma trae `total` y `mostradas`: un recorte se ve en cualquiera. */
@@ -28,7 +31,7 @@ export type SeccionPintada = {
     | { readonly tipo: 'numero'; readonly valor: number | null; readonly unidad: Unidad }
     | { readonly tipo: 'serie'; readonly puntos: readonly { readonly etiqueta: string; readonly valor: number }[]; readonly unidad: Unidad }
     | { readonly tipo: 'filas'; readonly filas: Filas; readonly columnas: readonly { readonly columna: string; readonly titulo: string }[] }
-    | { readonly tipo: 'no_se_pudo_calcular'; readonly porQue: ErrorDeConsulta['tipo'] }
+    | { readonly tipo: 'no_se_pudo_calcular'; readonly porQue: PorQueNoSePudo }
   readonly advertencias: readonly Advertencia[]
 }
 
@@ -47,12 +50,13 @@ const numero = (v: unknown): number | null => (v === null || v === undefined || 
 /** Revalida la consulta con el catálogo de hoy y la corre. */
 export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: ElementoDelPanel): Promise<SeccionPintada> {
   const base = { clave, tipo: e.tipo, nombre: e.nombre, enPalabras: e.consulta.enPalabras }
-  const fallo = (porQue: ErrorDeConsulta['tipo']): SeccionPintada => ({ ...base, total: 0, mostradas: 0, resultado: { tipo: 'no_se_pudo_calcular', porQue }, advertencias: [] })
+  const fallo = (porQue: PorQueNoSePudo): SeccionPintada => ({ ...base, total: 0, mostradas: 0, resultado: { tipo: 'no_se_pudo_calcular', porQue }, advertencias: [] })
   try {
     const salida = e.consulta.salida
     const validada = await validarConsulta(e.consulta.sql, salida.tipo)
     if (esErrorDeConsulta(validada)) return fallo(validada.tipo)
     const r = await ejecutar(estado, validada)
+    if (r.tipo === 'sin_configurar') return fallo('sin_configurar')
     if (r.tipo === 'error') return fallo(r.error.tipo)
     const resultado: SeccionPintada['resultado'] =
       salida.tipo === 'filas'

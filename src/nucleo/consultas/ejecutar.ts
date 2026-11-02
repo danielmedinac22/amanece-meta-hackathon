@@ -1,8 +1,10 @@
 /**
- * El lote HTTP de una consulta: una transacción de solo lectura, como `amanece_consultas`, con el Negocio fijado con
- * `LOCAL`. Único `neon(…)` de `src/` fuera de `db/index.ts` (eslint).
+ * El lote HTTP de una consulta: una transacción de solo lectura, con su propia conexión de `amanece_consultas`, y el
+ * Negocio y su firma fijados con `LOCAL`. Único `neon(…)` de `src/` fuera de `db/index.ts` (eslint).
  */
 import { neon } from '@neondatabase/serverless'
+import { sql } from 'drizzle-orm'
+import { db } from '@/db'
 import type { EstadoDelNegocio } from '../estado'
 import { claveDeProducto } from '../estado/elementos'
 import { COLUMNAS, prologo } from './catalogo'
@@ -22,6 +24,8 @@ export type ResultadoDeEjecutar =
       readonly ms: number
     }
   | { readonly tipo: 'error'; readonly error: Extract<ErrorDeConsulta, { tipo: 'postgres' | 'dato_inexistente' }>; readonly ms: number }
+  /** Falta `DATABASE_URL_CONSULTAS`. Es de configuración, no de lo que pidió el Dueño: no es una Capacidad faltante ni un intento del redactor. */
+  | { readonly tipo: 'sin_configurar'; readonly ms: 0 }
 
 /** Una sentencia del lote, como dato: `probar-aislamiento` lo lee y lo muta. */
 export type Sentencia = { readonly texto: string; readonly parametros: readonly unknown[] }
@@ -32,22 +36,35 @@ export function parametrosDelPrologo(estado: EstadoDelNegocio): readonly [string
   return [estado.identidad.id, estado.identidad.zonaHoraria, JSON.stringify(productos)]
 }
 
+const firmas = new Map<string, Promise<string>>()
+
+/** La firma del Negocio, por la conexión del dueño, una vez por proceso: la llave nunca sale de la base. Una que falla no queda guardada. */
+export function firmaDe(negocio: string): Promise<string> {
+  const ya = firmas.get(negocio)
+  if (ya) return ya
+  const firma = db.execute(sql`SELECT public.firmar_consulta(${negocio}::uuid) AS firma`).then((r) => (r.rows[0] as { firma: string }).firma)
+  firmas.set(negocio, firma)
+  firma.catch(() => firmas.delete(negocio))
+  return firma
+}
+
+export const hayConexionDeConsultas = () => Boolean(process.env.DATABASE_URL_CONSULTAS)
+
 /**
  * Puro. El lote entero, en orden. `RESET ALL` y `RESET ROLE` primero, porque una petición HTTP a Neon hereda lo que
- * otra fijó sin `LOCAL` (80 de 120 lotes en #28; 0 con el `RESET`). Después el rol sin BYPASSRLS, el `search_path`
- * vacío (el prólogo califica `public.`), el Negocio con `is_local = true`, el tope, la consulta envuelta y el conteo
- * de las fuentes que usa.
+ * otra fijó sin `LOCAL` (80 de 120 lotes en #28; 0 con el `RESET`). Después el `search_path` vacío (el prólogo
+ * califica `public.`), el Negocio y su firma con `is_local = true`, el tope, la consulta envuelta y el conteo de las
+ * fuentes que usa.
  */
-export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada): readonly Sentencia[] {
+export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada, firma: string): readonly Sentencia[] {
   const parametros = parametrosDelPrologo(estado)
   const orden = consulta.orden.length ? `ORDER BY ${consulta.orden.map((o) => `q."${o.columna}"${o.descendente ? ' DESC' : ''}`).join(', ')}` : ''
   const conteos = consulta.fuentes.map((f) => `'${f}', (SELECT count(*) FROM ${f})`).join(', ')
   return [
     { texto: 'RESET ALL', parametros: [] },
     { texto: 'RESET ROLE', parametros: [] },
-    { texto: 'SET LOCAL ROLE amanece_consultas', parametros: [] },
     { texto: "SET LOCAL search_path = ''", parametros: [] },
-    { texto: "SELECT set_config('app.negocio_id', $1, true)", parametros: [estado.identidad.id] },
+    { texto: "SELECT set_config('app.negocio_id', $1, true), set_config('app.firma', $2, true)", parametros: [estado.identidad.id, firma] },
     { texto: `SET LOCAL statement_timeout = '${TOPE_DE_UNA_CONSULTA}'`, parametros: [] },
     { texto: `WITH ${prologo()}\nSELECT to_jsonb(q) AS fila, count(*) OVER () AS total FROM (\n${consulta.sql}\n) AS q ${orden} LIMIT ${FILAS_POR_CONSULTA}`, parametros },
     { texto: `WITH ${prologo()}\nSELECT jsonb_build_object(${conteos}) AS por_fuente`, parametros },
@@ -55,7 +72,7 @@ export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada):
 }
 
 /** Las sentencias que van antes de la consulta: lo que comparten `ejecutar` y la sonda de `probar-aislamiento`. */
-export const PREAMBULO = 6
+export const PREAMBULO = 5
 
 const CLASES: Partial<Record<string, string>> = {
   '57014': 'tardó más de 2 segundos',
@@ -92,10 +109,15 @@ export function sanear(e: unknown, consulta: ConsultaValidada): Extract<ErrorDeC
 
 /** Una petición HTTP, una transacción de solo lectura. Un error de Postgres vuelve saneado, sin filas. */
 export async function ejecutar(estado: EstadoDelNegocio, consulta: ConsultaValidada): Promise<ResultadoDeEjecutar> {
-  const lote = armarLote(estado, consulta)
-  const q = neon(process.env.DATABASE_URL!)
+  const url = process.env.DATABASE_URL_CONSULTAS
+  if (!url) {
+    console.error('[consultas] falta DATABASE_URL_CONSULTAS: no corre ninguna consulta')
+    return { tipo: 'sin_configurar', ms: 0 }
+  }
+  const q = neon(url)
   const inicio = performance.now()
   try {
+    const lote = armarLote(estado, consulta, await firmaDe(estado.identidad.id))
     const r = (await q.transaction((t) => lote.map((s) => t.query(s.texto, [...s.parametros])), { readOnly: true })) as unknown as Record<string, unknown>[][]
     const filas = r[PREAMBULO] as { fila: Record<string, string | number | boolean | null>; total: string | number }[]
     const [conteo] = r[PREAMBULO + 1] as { por_fuente: Record<string, string | number> }[]

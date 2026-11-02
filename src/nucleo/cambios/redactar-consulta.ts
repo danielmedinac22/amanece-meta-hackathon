@@ -10,7 +10,7 @@ import { modeloEstructurado } from '@/negocio/dueno-modelo'
 import { registrarTurno } from '@/negocio/medir'
 import type { MotivoDeFaltante } from '../capacidades'
 import { NOMBRES_DE_FUENTE, textoParaElRedactor, VENTANA_POR_DEFECTO, VERSION_DEL_CATALOGO } from '../consultas/catalogo'
-import { ejecutar } from '../consultas/ejecutar'
+import { ejecutar, hayConexionDeConsultas } from '../consultas/ejecutar'
 import type { ConsultaGuardada, ConsultaValidada, ErrorDeConsulta, FormaDeSalida, Supuesto, TipoDeSalida, Unidad } from '../consultas/tipos'
 import { esErrorDeConsulta, explicar, validarConsulta } from '../consultas/validar'
 import type { EstadoDelNegocio } from '../estado'
@@ -44,6 +44,7 @@ export type PedidoDeConsulta<S extends TipoDeSalida> = {
 export type ConsultaRedactada<S extends TipoDeSalida> =
   | { readonly tipo: 'lista'; readonly consulta: ConsultaGuardada<S>; readonly validada: ConsultaValidada; readonly gasto: Gasto }
   | { readonly tipo: 'faltante'; readonly motivo: Extract<MotivoDeFaltante, { tipo: 'no_se_puede' | 'sin_converger' }>; readonly gasto: Gasto }
+  | { readonly tipo: 'sin_configurar'; readonly gasto: Gasto }
 
 /** Un intento del modelo. `cortada`: la respuesta no llegó entera (`finish_reason: length`) o no tenía la forma. */
 export type MotorDelRedactor = (prompt: string) => Promise<{ readonly salida: SalidaDelRedactor | 'cortada'; readonly uso: Pick<LanguageModelUsage, 'inputTokens' | 'outputTokens'> }>
@@ -98,6 +99,7 @@ function salidaDe<S extends TipoDeSalida>(salida: S, s: SalidaDelRedactor, v: Co
  */
 export async function redactarConsulta<S extends TipoDeSalida>(estado: EstadoDelNegocio, pedido: PedidoDeConsulta<S>, motor: MotorDelRedactor = MOTOR_DEL_REDACTOR): Promise<ConsultaRedactada<S>> {
   let gasto: Gasto = { llamadas: 0, usd: 0, ms: 0 }
+  if (!hayConexionDeConsultas()) return { tipo: 'sin_configurar', gasto }
   let intento: { readonly sql: string; readonly error: ErrorDeConsulta | 'cortada' } | null = null
   let ultimoSql = ''
   let ultimoError: ErrorDeConsulta = { tipo: 'sintaxis', mensaje: 'El redactor no respondió' }
@@ -115,6 +117,7 @@ export async function redactarConsulta<S extends TipoDeSalida>(estado: EstadoDel
     if (s.decision === 'no_se_puede') return { tipo: 'faltante', motivo: { tipo: 'no_se_puede', fuente: s.faltaEn, falta: s.falta.trim() || pedido.queQuiereVer }, gasto }
     const validada = await validarConsulta(s.sql, pedido.salida)
     const corrida = esErrorDeConsulta(validada) ? null : await ejecutar(estado, validada)
+    if (corrida?.tipo === 'sin_configurar') return { tipo: 'sin_configurar', gasto }
     const error = esErrorDeConsulta(validada) ? validada : corrida?.tipo === 'error' ? corrida.error : null
     ultimoSql = s.sql
     if (error || esErrorDeConsulta(validada)) {

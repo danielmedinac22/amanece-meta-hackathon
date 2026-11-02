@@ -1,11 +1,12 @@
 /**
  * El SQL acotado sin modelo: el catálogo contra la base en los dos sentidos, el rol y sus políticas, y el validador.
- * No escribe nada.
+ * Lo único que escribe es la migración 0004, que corre dos veces para ver que deja lo mismo.
  *
  *   pnpm tsx scripts/probar-consultas.mts
  */
+import { readFileSync } from 'node:fs'
 import { config } from 'dotenv'
-import { neon } from '@neondatabase/serverless'
+import { neon, Pool } from '@neondatabase/serverless'
 import { afirmar, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -13,14 +14,22 @@ config({ path: '.env.local', quiet: true })
 const { TIPOS_DE_MOTIVO } = await import('../src/db/esquema')
 const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = await import('../src/nucleo/consultas/catalogo')
 const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
-const { ejecutar } = await import('../src/nucleo/consultas/ejecutar')
+const { ejecutar, firmaDe } = await import('../src/nucleo/consultas/ejecutar')
+const { pintarUna } = await import('../src/nucleo/panel')
+const { redactarConsulta } = await import('../src/nucleo/cambios/redactar-consulta')
+const { traducir } = await import('../src/nucleo/cambios/traducir')
 const { leerEstado } = await import('../src/nucleo/estado')
 const { marcar } = await import('../src/nucleo/identidad')
 const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await import('./consultas-de-prueba.mjs')
 type TipoDeSalida = import('../src/nucleo/consultas/tipos').TipoDeSalida
 type ErrorDeConsulta = import('../src/nucleo/consultas/tipos').ErrorDeConsulta
+type ElementoDelPanel = import('../src/nucleo/panel').ElementoDelPanel
+type Clave = import('../src/nucleo/estado/elementos').Clave
 
 const q = neon(process.env.DATABASE_URL!)
+const urlDelRol = process.env.DATABASE_URL_CONSULTAS
+if (!urlDelRol) throw new Error('Falta DATABASE_URL_CONSULTAS: pnpm tsx scripts/rol-de-consultas.mts .env.local')
+const comoRol = neon(urlDelRol)
 const igual = (a: Iterable<string>, b: Iterable<string>) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort())
 
 try {
@@ -39,40 +48,90 @@ try {
   afirmar('1 GRANT: ningún privilegio de tabla entera', deTabla[0].n === 0, deTabla)
 
   const [negocio] = (await q.query(`select id, zona_horaria from negocios order by creado limit 1`)) as { id: string; zona_horaria: string }[]
+  const firma = await firmaDe(negocio.id)
   for (const f of NOMBRES_DE_FUENTE) {
-    const r = await q.transaction(
+    const r = await comoRol.transaction(
       (t) => [
         t.query('RESET ALL'),
-        t.query('SET LOCAL ROLE amanece_consultas'),
-        t.query(`SELECT set_config('app.negocio_id', $1, true)`, [negocio.id]),
+        t.query(`SELECT set_config('app.negocio_id', $1, true), set_config('app.firma', $2, true)`, [negocio.id, firma]),
         t.query(`WITH ${prologo()}\nSELECT * FROM ${f} LIMIT 0`, [negocio.id, negocio.zona_horaria, '[]']),
       ],
       { readOnly: true, fullResults: true },
     )
-    const columnas = r[3].fields.map((c) => c.name)
+    const columnas = r[2].fields.map((c) => c.name)
     afirmar(`1 CTE: ${f} da como amanece_consultas las columnas de sus campos, en orden`, JSON.stringify(columnas) === JSON.stringify(COLUMNAS[f]), { base: columnas, campos: COLUMNAS[f] })
   }
   afirmar('1 CTE: toda fuente que lee una tabla filtra por $1', NOMBRES_DE_FUENTE.every((f) => Object.keys(FUENTES[f].lee).length === 0 || FUENTES[f].cte.includes('negocio_id = $1::uuid')))
 
   console.log('\n=== 2. El rol y sus políticas ===')
   const [rol] = (await q.query(`select rolsuper, rolcanlogin, rolbypassrls, rolinherit, rolcreaterole, rolcreatedb from pg_roles where rolname = 'amanece_consultas'`)) as Record<string, boolean>[]
-  afirmar('2 rol: amanece_consultas existe, sin login, sin BYPASSRLS, sin superusuario', rol !== undefined && !rol.rolsuper && !rol.rolcanlogin && !rol.rolbypassrls && !rol.rolcreaterole && !rol.rolcreatedb, rol)
-  const pertenencias = (await q.query(
-    `select inherit_option as hereda, set_option as puede from pg_auth_members a join pg_roles r on r.oid = a.roleid join pg_roles m on m.oid = a.member where r.rolname = 'amanece_consultas' and m.rolname = current_user`,
-  )) as { hereda: boolean; puede: boolean }[]
-  afirmar('2 rol: el usuario de la aplicación puede SET ROLE amanece_consultas y no hereda sus privilegios', pertenencias.some((p) => p.puede) && pertenencias.every((p) => !p.hereda), pertenencias)
+  afirmar('2 rol: amanece_consultas puede entrar, sin BYPASSRLS, sin superusuario', rol !== undefined && !rol.rolsuper && rol.rolcanlogin && !rol.rolbypassrls && !rol.rolcreaterole && !rol.rolcreatedb, rol)
+  const [{ usuario }] = (await comoRol.query('select current_user as usuario')) as { usuario: string }[]
+  afirmar('2 rol: la conexión real de DATABASE_URL_CONSULTAS entra como amanece_consultas', usuario === 'amanece_consultas', usuario)
+  const [pertenece] = (await q.query(`select count(*)::int as n from pg_auth_members where member = 'amanece_consultas'::regrole`)) as { n: number }[]
+  afirmar('2 rol: amanece_consultas no pertenece a ningún rol', pertenece.n === 0, pertenece)
+  const [delDueno] = (await q.query(`select pg_has_role(current_user, 'amanece_consultas', 'SET') as puede, pg_has_role(current_user, 'amanece_consultas', 'USAGE') as hereda`)) as { puede: boolean; hereda: boolean }[]
+  afirmar('2 rol: el dueño de la base no tiene SET ni USAGE sobre amanece_consultas', !delDueno.puede && !delDueno.hereda, delDueno)
+  const funciones = (await q.query(
+    `select p.proname as nombre, p.prosecdef as definer, p.proconfig as config,
+       has_function_privilege('public', p.oid, 'execute') as publico,
+       has_function_privilege('amanece_consultas', p.oid, 'execute') as rol
+     from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('consultas_negocio', 'firmar_consulta')`,
+  )) as { nombre: string; definer: boolean; config: string[] | null; publico: boolean; rol: boolean }[]
+  afirmar('2 funciones: las dos existen, son SECURITY DEFINER y fijan search_path=pg_catalog', funciones.length === 2 && funciones.every((f) => f.definer && f.config?.includes('search_path=pg_catalog')), funciones)
+  afirmar('2 funciones: PUBLIC no ejecuta ninguna de las dos', funciones.every((f) => !f.publico), funciones)
+  afirmar('2 funciones: amanece_consultas ejecuta consultas_negocio y no firmar_consulta', funciones.some((f) => f.nombre === 'consultas_negocio' && f.rol) && funciones.some((f) => f.nombre === 'firmar_consulta' && !f.rol), funciones)
+  const leerLaLlave = await comoRol.query('select clave from public.llave_de_consultas').then(
+    () => 'la leyó',
+    (e: { code?: string }) => e.code,
+  )
+  afirmar('2 llave: por la conexión real, amanece_consultas no lee llave_de_consultas (42501)', leerLaLlave === '42501', leerLaLlave)
   const politicas = (await q.query(`select tablename as tabla, roles::text as roles, cmd, qual from pg_policies where schemaname = 'public'`)) as { tabla: string; roles: string; cmd: string; qual: string }[]
   const conPolitica = [...delCatalogo.keys()]
   afirmar(
-    '2 RLS: una política SELECT para amanece_consultas por tabla leída, con app.negocio_id',
+    '2 RLS: una política SELECT para amanece_consultas por tabla leída, con la firma de consultas_negocio',
     igual(
       politicas.map((p) => p.tabla),
       conPolitica,
-    ) && politicas.every((p) => p.roles === '{amanece_consultas}' && p.cmd === 'SELECT' && p.qual.includes("current_setting('app.negocio_id'")),
+    ) && politicas.every((p) => p.roles === '{amanece_consultas}' && p.cmd === 'SELECT' && p.qual.includes('consultas_negocio()')),
     politicas,
   )
   const rls = (await q.query(`select relname as tabla, relrowsecurity as activa, relforcerowsecurity as forzada from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'`)) as { tabla: string; activa: boolean; forzada: boolean }[]
   afirmar('2 RLS: activa justo en las tablas leídas y en ninguna forzada', igual(rls.filter((r) => r.activa).map((r) => r.tabla), conPolitica) && rls.every((r) => !r.forzada), rls.filter((r) => r.activa || r.forzada))
+
+  console.log('\n=== 2 bis. La migración corre dos veces y deja lo mismo ===')
+  const huella = async () => {
+    const [h] = (await q.query(
+      `select
+        (select to_jsonb(r) from (select rolcanlogin, rolbypassrls, rolsuper, rolinherit, rolcreaterole, rolcreatedb from pg_roles where rolname = 'amanece_consultas') r) as rol,
+        (select jsonb_agg(m order by m.roleid, m.member, m.grantor) from (select roleid::regrole::text, member::regrole::text, grantor::regrole::text, admin_option, inherit_option, set_option from pg_auth_members where roleid = 'amanece_consultas'::regrole or member = 'amanece_consultas'::regrole) m) as miembros,
+        (select jsonb_agg(p order by p.tablename) from (select tablename, roles::text, cmd, qual from pg_policies where schemaname = 'public') p) as politicas,
+        (select jsonb_agg(f order by f.proname) from (select proname, prosecdef, provolatile, proconfig, proacl::text from pg_proc where pronamespace = 'public'::regnamespace and proname in ('consultas_negocio', 'firmar_consulta')) f) as funciones,
+        (select jsonb_agg(c order by c.table_name, c.column_name) from (select table_name, column_name from information_schema.column_privileges where grantee = 'amanece_consultas') c) as columnas,
+        (select count(*)::int from public.llave_de_consultas) as filas_de_la_llave,
+        (select encode(public.digest(clave, 'sha256'), 'hex') from public.llave_de_consultas) as llave`,
+    )) as Record<string, unknown>[]
+    const { llave, ...resto } = h
+    return { llave, resto: JSON.stringify(resto) }
+  }
+  const correrMigracion = async () => {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL })
+    try {
+      await pool.query(readFileSync(new URL('../drizzle/0004_consultas.sql', import.meta.url), 'utf8'))
+    } finally {
+      await pool.end()
+    }
+  }
+  const antes = await huella()
+  await correrMigracion()
+  const unaVez = await huella()
+  await correrMigracion()
+  const dosVeces = await huella()
+  afirmar('2 bis: dos corridas dejan igual el rol, sus miembros, las políticas, las funciones y los GRANT', antes.resto === unaVez.resto && unaVez.resto === dosVeces.resto, { antes: antes.resto, dosVeces: dosVeces.resto })
+  afirmar('2 bis: la llave sigue siendo una sola y la misma', antes.llave === dosVeces.llave && JSON.parse(dosVeces.resto).filas_de_la_llave === 1)
+  afirmar('2 bis: el rol sigue con LOGIN', JSON.parse(dosVeces.resto).rol?.rolcanlogin === true, dosVeces.resto)
+  const [{ sigue }] = (await comoRol.query('select current_user as sigue')) as { sigue: string }[]
+  afirmar('2 bis: la conexión real sigue entrando con su contraseña', sigue === 'amanece_consultas', sigue)
 
   console.log('\n=== 3. Capacidad faltante tipada ===')
   const [chequeo] = (await q.query(`select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'capacidades_faltantes_tipo'`)) as { def: string }[]
@@ -177,6 +236,31 @@ try {
   afirmar('5 el tope de 2 s corta una consulta pesada y vuelve como 57014', lenta.tipo === 'error' && lenta.error.tipo === 'postgres' && lenta.error.codigo === '57014' && lenta.ms < 4000, lenta)
   const contada = await correr('select count(*) as valor from pedidos', 'numero')
   afirmar('5 un count(*) sin columnas cuenta igual las filas de su fuente', contada.tipo === 'filas' && (contada.filasPorFuente.pedidos ?? 0) > 0, contada)
+
+  console.log('\n=== 6. Sin DATABASE_URL_CONSULTAS falla cerrado ===')
+  const sqlDeUna = 'select count(*) as valor from pedidos'
+  const validada = await valida(sqlDeUna, 'numero')
+  if (esErrorDeConsulta(validada)) throw new Error(`no valida: ${explicar(validada)}`)
+  const quitada = process.env.DATABASE_URL_CONSULTAS
+  delete process.env.DATABASE_URL_CONSULTAS
+  try {
+    const sinUrl = await ejecutar(estado, validada)
+    afirmar('6 ejecutar devuelve sin_configurar, sin tocar la base ni caer a la conexión del dueño', sinUrl.tipo === 'sin_configurar' && sinUrl.ms === 0, sinUrl)
+    const elemento = { tipo: 'indicador', nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', consulta: { sql: sqlDeUna, enPalabras: 'Los pedidos', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'numero', unidad: { tipo: 'cantidad', nombre: 'pedidos' } } } } as unknown as ElementoDelPanel
+    const pintada = await pintarUna(estado, 'indicador:prueba' as Clave, elemento)
+    afirmar('6 la Sección dice que no se pudo calcular, con su motivo propio', pintada.resultado.tipo === 'no_se_pudo_calcular' && pintada.resultado.porQue === 'sin_configurar', pintada.resultado)
+    let llamadas = 0
+    const motor = async () => {
+      llamadas++
+      throw new Error('el redactor no debía llamar al modelo')
+    }
+    const redactada = await redactarConsulta(estado, { nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', anterior: null }, motor)
+    afirmar('6 el redactor vuelve sin_configurar y no gasta ningún intento', redactada.tipo === 'sin_configurar' && redactada.gasto.llamadas === 0 && llamadas === 0, { redactada, llamadas })
+    const traducida = await traducir(estado, [{ tipo: 'panel', que: 'indicador', nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', reemplaza: null }], motor)
+    afirmar('6 la propuesta no se vuelve Capacidad faltante: vuelve a corregir', 'tipo' in traducida && traducida.tipo === 'corregir' && llamadas === 0, traducida)
+  } finally {
+    process.env.DATABASE_URL_CONSULTAS = quitada
+  }
 } catch (e) {
   afirmar('probar-consultas terminó sin error inesperado', false, e)
 } finally {

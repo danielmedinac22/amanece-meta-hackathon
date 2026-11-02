@@ -14,8 +14,7 @@ import type { ClienteId, Marca, Wamid } from '../identidad'
 import type { AccionHecha } from '../clientes/acciones'
 import { entornoDeEnsayo, MOTORES, pedidoDelCliente, turno, type ClienteDelTurno, type Conversacion, type Motores, type TurnoDeConversacion } from '../clientes/turno'
 import type { Revision } from '../salida/revisar'
-import type { ErrorDeConsulta } from '../consultas/tipos'
-import { advertenciaEnPalabras, conUnidad, pintarUna, type Advertencia, type ElementoDelPanel } from '../panel'
+import { advertenciaEnPalabras, conUnidad, pintarUna, type Advertencia, type ElementoDelPanel, type PorQueNoSePudo } from '../panel'
 
 export type MensajeDeClienteId = Marca<string, 'MensajeDeClienteId'>
 
@@ -78,7 +77,7 @@ export type PanelEnsayado = {
   /** Solo en un Indicador `numero`: una cifra no es texto de nadie. */
   readonly valor: number | null
   readonly advertencias: readonly Advertencia[]
-  readonly fallo: ErrorDeConsulta['tipo'] | null
+  readonly fallo: PorQueNoSePudo | null
 }
 
 export type VistaPreviaGuardada = {
