@@ -1,6 +1,5 @@
 import { after } from 'next/server'
-import { firmaValida, leerMensajeEntrante } from '@/lib/kapso'
-import { recibirMensaje } from '@/negocio/whatsapp'
+import { firmaValida, leerMensajeEntrante, recibirMensaje } from '@/nucleo/entrada'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'

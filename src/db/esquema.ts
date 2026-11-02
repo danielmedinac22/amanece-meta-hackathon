@@ -1,4 +1,6 @@
-import { boolean, integer, jsonb, pgTable, real, text, timestamp, uuid, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { boolean, check, integer, jsonb, pgTable, real, text, timestamp, uuid, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
 
 const id = () => uuid('id').primaryKey().defaultRandom()
 const creado = () => timestamp('creado', { withTimezone: true }).notNull().defaultNow()
@@ -56,9 +58,11 @@ export const duenos = pgTable(
     usuarioId: text('usuario_id').notNull(),
     nombre: text('nombre').notNull().default(''),
     email: text('email').notNull().default(''),
+    /** Su WhatsApp, solo dígitos: un mensaje desde aquí va a su Hilo. */
+    telefono: text('telefono'),
     creado: creado(),
   },
-  (t) => [uniqueIndex('duenos_usuario').on(t.usuarioId)],
+  (t) => [uniqueIndex('duenos_usuario').on(t.usuarioId), uniqueIndex('duenos_telefono').on(t.telefono).where(sql`${t.telefono} is not null`)],
 )
 
 export const productos = pgTable(
@@ -276,3 +280,51 @@ export const sesionesWhatsapp = pgTable('sesiones_whatsapp', {
   negocioId: negocioId(),
   actualizado: timestamp('actualizado', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/** Cada mensaje que entró al número de Amanece, una vez: el INSERT es el reclamo de `recibirMensaje`. */
+export const mensajesEntrantes = pgTable(
+  'mensajes_entrantes',
+  {
+    wamid: text('wamid').primaryKey(),
+    telefono: text('telefono').notNull(),
+    /** El timestamp de Meta: `max(enviado_en)` de un teléfono sin Cliente es su ventana de 24 horas. */
+    enviadoEn: timestamp('enviado_en', { withTimezone: true }).notNull(),
+    boton: text('boton'),
+    recibido: timestamp('recibido', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('mensajes_entrantes_telefono').on(t.telefono, t.enviadoEn)],
+)
+
+/**
+ * Todo lo que pasó por `despachar`, con el veredicto de la compuerta, haya salido o no. Al observar, una fila
+ * `no_sale` con estado `enviado` o `simulado` es un mensaje que la compuerta habría frenado.
+ */
+export const mensajesSalientes = pgTable(
+  'mensajes_salientes',
+  {
+    id: id(),
+    clave: text('clave').notNull(),
+    negocioId: uuid('negocio_id').references(() => negocios.id, { onDelete: 'cascade' }),
+    clienteId: uuid('cliente_id').references(() => clientes.id, { onDelete: 'cascade' }),
+    casoId: uuid('caso_id').references(() => casos.id, { onDelete: 'set null' }),
+    /** Null solo si el Cliente del destinatario no existe: no hubo a quién mandar. */
+    telefono: text('telefono'),
+    clase: text('clase').$type<ClaseDeMensaje>().notNull(),
+    enRespuestaA: text('en_respuesta_a'),
+    veredicto: text('veredicto', { enum: ['sale', 'no_sale'] }).notNull(),
+    motivo: text('motivo').$type<MotivoDeSilencio>(),
+    estado: text('estado', { enum: ['por_enviar', 'enviado', 'simulado', 'no_salio'] }).notNull(),
+    wamid: text('wamid'),
+    error: text('error'),
+    creado: creado(),
+    actualizado: timestamp('actualizado', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('mensajes_salientes_clave').on(t.clave),
+    /** Una respuesta por mensaje aunque dos instancias atiendan el mismo reintento de Kapso. */
+    uniqueIndex('mensajes_salientes_una_respuesta').on(t.enRespuestaA).where(sql`${t.veredicto} = 'sale'`),
+    index('mensajes_salientes_negocio').on(t.negocioId, t.creado),
+    index('mensajes_salientes_telefono').on(t.telefono, t.creado),
+    check('mensajes_salientes_motivo', sql`(${t.veredicto} = 'sale') = (${t.motivo} is null)`),
+  ],
+)

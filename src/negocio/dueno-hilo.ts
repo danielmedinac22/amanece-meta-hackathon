@@ -23,3 +23,11 @@ export async function guardarEnElHilo(negocioId: string, duenoId: string, rol: '
 export function mensajeDelAgente(texto: string, partesExtra: UIMessage['parts'] = []): UIMessage {
   return { id: generateId(), role: 'assistant', parts: [{ type: 'text', text: texto, state: 'done' }, ...partesExtra] }
 }
+
+const LARGO_MAXIMO = 4000
+
+/** El texto de un Dueño, llegue por la web o por WhatsApp, con el mismo tope. `null` si queda vacío. */
+export function mensajeDelDuenoEnTexto(texto: string): UIMessage | null {
+  const limpio = texto.trim().slice(0, LARGO_MAXIMO)
+  return limpio ? { id: generateId(), role: 'user', parts: [{ type: 'text', text: limpio }] } : null
+}
