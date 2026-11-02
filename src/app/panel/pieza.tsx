@@ -16,8 +16,7 @@ function Advertencias({ p }: { p: SeccionPintada }) {
 
 export function Indicador({ p }: { p: SeccionPintada }) {
   const r = p.resultado
-  const puntos = r.tipo === 'serie' ? r.puntos.slice(-14) : []
-  const maximo = Math.max(1, ...puntos.map((s) => s.valor))
+  const maximo = r.tipo === 'serie' ? Math.max(1, ...r.puntos.map((s) => s.valor)) : 1
   return (
     <div className="rounded-2xl border border-borde bg-tarjeta p-4">
       <Advertencias p={p} />
@@ -25,13 +24,19 @@ export function Indicador({ p }: { p: SeccionPintada }) {
       {r.tipo === 'numero' && <p className="mt-1 text-3xl font-semibold">{conUnidad(r.valor, r.unidad)}</p>}
       {r.tipo === 'serie' && (
         <>
-          <p className="mt-1 text-3xl font-semibold">{puntos.length ? conUnidad(puntos.at(-1)!.valor, r.unidad) : '—'}</p>
-          {puntos.length > 0 && (
-            <div className="mt-3 flex h-16 items-end gap-1">
-              {puntos.map((s) => (
-                <div key={s.etiqueta} title={`${s.etiqueta}: ${conUnidad(s.valor, r.unidad)}`} className="flex-1 rounded-t bg-sol/80" style={{ height: `${(Math.max(0, s.valor) / maximo) * 100}%`, minHeight: 2 }} />
+          {r.porTiempo && <p className="mt-1 text-3xl font-semibold">{conUnidad(r.puntos.at(-1)?.valor ?? null, r.unidad)}</p>}
+          {r.puntos.length === 0 ? (
+            <p className="mt-2 text-sm text-suave">Nada por ahora.</p>
+          ) : (
+            <ul className="mt-3 max-h-64 space-y-1 overflow-auto text-sm">
+              {r.puntos.map((s, i) => (
+                <li key={i} className="relative flex justify-between gap-3 rounded px-2 py-0.5">
+                  <span className="absolute inset-y-0 left-0 rounded bg-sol/20" style={{ width: `${(Math.max(0, s.valor) / maximo) * 100}%` }} />
+                  <span className="relative">{s.etiqueta}</span>
+                  <span className="relative whitespace-nowrap font-medium">{conUnidad(s.valor, r.unidad)}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </>
       )}

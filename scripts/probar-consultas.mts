@@ -18,7 +18,12 @@ const { TIPOS_DE_MOTIVO } = await import('../src/db/esquema')
 const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = await import('../src/nucleo/consultas/catalogo')
 const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
 const { armarLote, ejecutar, esNoDisponible, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
-const { pintarUna } = await import('../src/nucleo/panel')
+const { pintarUna, vaPorTiempo } = await import('../src/nucleo/panel')
+const { Indicador } = await import('../src/app/panel/pieza')
+const { renderToStaticMarkup } = await import('react-dom/server')
+const { claveDeAgrupacion } = await import('../src/nucleo/capacidades')
+const { ensayarPanel } = await import('../src/nucleo/cambios/ensayar')
+const { definicionDe } = await import('../src/nucleo/estado/elementos')
 const { redactarConsulta } = await import('../src/nucleo/cambios/redactar-consulta')
 const { traducir } = await import('../src/nucleo/cambios/traducir')
 const { leerEstado } = await import('../src/nucleo/estado')
@@ -27,6 +32,7 @@ const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await imp
 type TipoDeSalida = import('../src/nucleo/consultas/tipos').TipoDeSalida
 type ErrorDeConsulta = import('../src/nucleo/consultas/tipos').ErrorDeConsulta
 type ElementoDelPanel = import('../src/nucleo/panel').ElementoDelPanel
+type SeccionPintada = import('../src/nucleo/panel').SeccionPintada
 type Clave = import('../src/nucleo/estado/elementos').Clave
 
 const q = neon(process.env.DATABASE_URL!)
@@ -120,14 +126,14 @@ try {
   const huella = async () => {
     const [h] = (await q.query(
       `select
-        (select to_jsonb(r) from (select rolcanlogin, rolbypassrls, rolsuper, rolinherit, rolcreaterole, rolcreatedb from pg_roles where rolname = 'amanece_consultas') r) as rol,
+        (select to_jsonb(r) from (select rolcanlogin, rolbypassrls, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolconfig from pg_roles where rolname = 'amanece_consultas') r) as rol,
         (select jsonb_agg(m order by m.roleid, m.member, m.grantor) from (select roleid::regrole::text, member::regrole::text, grantor::regrole::text, admin_option, inherit_option, set_option from pg_auth_members where roleid = 'amanece_consultas'::regrole or member = 'amanece_consultas'::regrole) m) as miembros,
         (select jsonb_agg(p order by p.tablename) from (select tablename, roles::text, cmd, qual from pg_policies where schemaname = 'public') p) as politicas,
         (select jsonb_agg(f order by f.proname) from (select proname, prosecdef, provolatile, proconfig, proacl::text from pg_proc where pronamespace = 'public'::regnamespace and proname in ('consultas_negocio', 'firmar_consulta')) f) as funciones,
         (select jsonb_agg(c order by c.table_name, c.column_name) from (select table_name, column_name from information_schema.column_privileges where grantee = 'amanece_consultas') c) as columnas,
         (select count(*)::int from public.llave_de_consultas) as filas_de_la_llave,
         (select encode(public.digest(clave, 'sha256'), 'hex') from public.llave_de_consultas) as llave`,
-    )) as Record<string, unknown>[]
+    )
     const { llave, ...resto } = h
     return { llave, resto: JSON.stringify(resto) }
   }
@@ -317,6 +323,47 @@ try {
   const sana = (texto: string) => {
     const a = afueraDe(texto)
     return Boolean(a?.limitCount) && !a?.limitOffset && (a?.sortClause ?? []).every((s) => Object.keys(s.SortBy?.node ?? {}).join() === 'ColumnRef')
+  console.log('\n=== 5 quáter. Lo que ve el Dueño ===')
+  const delPanel = (tipo: 'numero' | 'serie', sql: string) => ({ tipo: 'indicador', nombre: 'Prueba', queQuiereVer: 'x', consulta: { sql, enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo, unidad: { tipo: 'cantidad', nombre: 'pedidos' } } } }) as unknown as ElementoDelPanel
+  const pintar = (e: ElementoDelPanel) => pintarUna(estado, 'indicador:prueba' as Clave, e)
+  const conFuentes = await correr('select numero from pedidos, hoy where dia_local > hoy_local - 100000', 'filas')
+  afirmar('5 quáter hoy y productos no cuentan como datos de una fuente', conFuentes.tipo === 'filas' && !('hoy' in conFuentes.filasPorFuente) && 'pedidos' in conFuentes.filasPorFuente, conFuentes.tipo === 'filas' ? conFuentes.filasPorFuente : conFuentes)
+  const soloHoy = await correr('select hoy_local as dia from hoy', 'filas')
+  afirmar('5 quáter una consulta que solo usa hoy no cuenta nada', soloHoy.tipo === 'filas' && Object.keys(soloHoy.filasPorFuente).length === 0, soloHoy)
+  const variasFilas = await pintar(delPanel('numero', 'select total as valor from pedidos'))
+  afirmar('5 quáter un numero con varias filas no pinta una cifra arbitraria: falla con forma', variasFilas.resultado.tipo === 'no_se_pudo_calcular' && variasFilas.resultado.porQue === 'forma', variasFilas.resultado)
+  const unaFila = await pintar(delPanel('numero', 'select count(*) as valor from pedidos'))
+  afirmar('5 quáter un numero con una fila se pinta', unaFila.resultado.tipo === 'numero' && (unaFila.resultado.valor ?? 0) > 0, unaFila.resultado)
+  const intentos: string[] = []
+  const respuesta = (sql: string) => ({ salida: { decision: 'consulta' as const, sql, enPalabras: 'Los pedidos', ventana: 'no_aplica' as const, supuestos: [], unidad: 'cantidad' as const, nombreDeLaUnidad: 'pedidos', titulos: [], faltaEn: 'ninguna' as const, falta: '' }, uso: { inputTokens: 0, outputTokens: 0 } })
+  const dosSql = ['select total as valor from pedidos', 'select count(*) as valor from pedidos']
+  const corregida = await redactarConsulta(estado, { nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', anterior: null }, async (p) => {
+    intentos.push(p)
+    return respuesta(dosSql[intentos.length - 1])
+  })
+  afirmar('5 quáter el redactor recibe un error forma por un numero con varias filas y lo corrige', corregida.tipo === 'lista' && corregida.consulta.sql === dosSql[1] && intentos.length === 2 && /una sola fila/.test(intentos[1]) && /\d+ filas/.test(intentos[1]), intentos[1]?.slice(-200))
+  const ranking = await pintar(delPanel('serie', 'select ciudad as etiqueta, count(*) as valor from pedidos group by ciudad order by valor desc'))
+  const porDia = await pintar(delPanel('serie', 'select dia_local::text as etiqueta, count(*) as valor from pedidos group by dia_local order by dia_local'))
+  afirmar('5 quáter un ranking no va por tiempo; una serie por día sí', ranking.resultado.tipo === 'serie' && !ranking.resultado.porTiempo && porDia.resultado.tipo === 'serie' && porDia.resultado.porTiempo, { ranking: ranking.resultado, porDia: porDia.resultado })
+  const punto = (etiqueta: string, valor = 1) => ({ etiqueta, valor })
+  afirmar('5 quáter vaPorTiempo: fechas en orden sí; al revés, DD/MM, horas o vacía no', vaPorTiempo([punto('2026-10-31'), punto('2026-11-01')]) && vaPorTiempo([punto('2026-10'), punto('2026-11')]) && !vaPorTiempo([punto('2026-11-01'), punto('2026-10-31')]) && !vaPorTiempo([punto('31/10'), punto('01/11')]) && !vaPorTiempo([punto('0'), punto('1')]) && !vaPorTiempo([]))
+  const pintadaSerie = (puntos: readonly { etiqueta: string; valor: number }[], porTiempo: boolean): SeccionPintada => ({ clave: 'indicador:prueba' as Clave, tipo: 'indicador', nombre: 'Prueba', enPalabras: 'x', total: puntos.length, mostradas: puntos.length, advertencias: [], resultado: { tipo: 'serie', puntos, unidad: { tipo: 'cantidad', nombre: '' }, porTiempo } })
+  const htmlDe = (p: SeccionPintada) => renderToStaticMarkup(Indicador({ p }))
+  const treinta = Array.from({ length: 30 }, (_, i) => punto(`2026-10-${String(i + 1).padStart(2, '0')}`, i + 1000))
+  const htmlPorDia = htmlDe(pintadaSerie(treinta, true))
+  afirmar('5 quáter lo pintado: 30 puntos se ven los 30, con su etiqueta en texto y sin recorte', treinta.every((t) => htmlPorDia.includes(`>${t.etiqueta}<`)), htmlPorDia.slice(0, 200))
+  afirmar('5 quáter lo pintado: una serie por tiempo lleva la cifra grande con el último punto', /text-3xl[^>]*>1\.029</.test(htmlPorDia), htmlPorDia.slice(0, 300))
+  const htmlRanking = htmlDe(pintadaSerie([punto('Café 500 g', 40), punto('Té verde', 3)], false))
+  afirmar('5 quáter lo pintado: un ranking muestra el nombre del producto y no lleva cifra grande', htmlRanking.includes('>Café 500 g<') && htmlRanking.includes('>Té verde<') && !htmlRanking.includes('text-3xl'), htmlRanking.slice(0, 300))
+  const errorDe = (fuente: string) => ({ tipo: 'sin_converger' as const, ultimoError: { tipo: 'dato_inexistente' as const, fuente, campo: 'celular_de_maria', hay: [] } })
+  const clavesDeDato = ['pedidos', 'pedidos, hoy', 'hoy, pedidos'].map((f) => claveDeAgrupacion(errorDe(f)))
+  afirmar('5 quáter dato_inexistente: un mismo pedido cae en un solo grupo, sin texto del modelo', clavesDeDato.every((c) => c === 'dato:pedidos'), clavesDeDato)
+  afirmar('5 quáter dato_inexistente: una fuente que escribió el modelo no llega a la clave', claveDeAgrupacion(errorDe('celular_de_maria')) === 'dato:ninguna' && claveDeAgrupacion(errorDe('hoy')) === 'dato:ninguna')
+  const palabrasDe = definicionDe('indicador').describir as unknown as (a: ElementoDelPanel | null, d: ElementoDelPanel | null) => string
+  const palabrasDeSeccion = definicionDe('seccion').describir as unknown as (a: ElementoDelPanel | null, d: ElementoDelPanel | null) => string
+  const unIndicador = delPanel('numero', 'x')
+  afirmar('5 quáter "Indicador nuevo", "Sección nueva", y sin doble espacio al cambiar', palabrasDe(null, unIndicador).startsWith('Indicador nuevo «') && palabrasDeSeccion(null, unIndicador).startsWith('Sección nueva «') && palabrasDe(unIndicador, unIndicador).startsWith('Indicador «'), palabrasDe(unIndicador, unIndicador))
+
   }
   for (const [id, salida, sql] of BUENAS_DE_M2) {
     const v = await valida(sql, salida)
@@ -357,6 +404,8 @@ try {
         return { r: await f(), logueado: lineas.map((l) => l.map((x) => (x instanceof Error ? `${x.message} ${x.stack}` : String(x))).join(' ')).join('\n') }
       } finally {
         Object.assign(console, originales)
+    const ensayada = await ensayarPanel(estado, { elementos: [{ clave: 'indicador:prueba' as Clave, base: 'nueva', despues: elemento }], filas: [] }, [])
+    afirmar('6 un fallo en el ensayo va a las advertencias, no solo a las líneas', (ensayada.advertencias ?? []).some((a) => a.includes('«Pedidos»') && a.includes('No pude calcularlo')), ensayada)
       }
     }
     const MALFORMADAS = [`"postgres://amanece_consultas:${SECRETO}@host.tld/db"`, `postgres://amanece_consultas:${SECRETO}@host con espacio/db`, `postgres://amanece_consultas:${SECRETO}@`, `mysql://amanece_consultas:${SECRETO}@host.tld/db`, `postgres://${SECRETO}@host.tld/db`, SECRETO]

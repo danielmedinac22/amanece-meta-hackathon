@@ -3,7 +3,7 @@
  * Indicador y contar sus advertencias. Nunca lanza: una consulta que ya no valida o que Postgres rechaza se pinta
  * como `no_se_pudo_calcular`.
  */
-import { codigoDe, ejecutar, type ResultadoDeEjecutar } from './consultas/ejecutar'
+import { codigoDe, ejecutar, formaDelResultado, type ResultadoDeEjecutar } from './consultas/ejecutar'
 import type { ConsultaGuardada, ErrorDeConsulta, Filas, Supuesto, Unidad } from './consultas/tipos'
 import { esErrorDeConsulta, validarConsulta } from './consultas/validar'
 import type { EstadoDelNegocio } from './estado'
@@ -19,6 +19,8 @@ export type PorQueNoSePudo = ErrorDeConsulta['tipo'] | 'sin_configurar' | 'no_di
 
 export type ElementoDelPanel = ElementoDe<'seccion' | 'indicador'>
 
+export type PuntoDeSerie = { readonly etiqueta: string; readonly valor: number }
+
 /** Toda forma trae `total` y `mostradas`: un recorte se ve en cualquiera. */
 export type SeccionPintada = {
   readonly clave: Clave
@@ -29,7 +31,7 @@ export type SeccionPintada = {
   readonly mostradas: number
   readonly resultado:
     | { readonly tipo: 'numero'; readonly valor: number | null; readonly unidad: Unidad }
-    | { readonly tipo: 'serie'; readonly puntos: readonly { readonly etiqueta: string; readonly valor: number }[]; readonly unidad: Unidad }
+    | { readonly tipo: 'serie'; readonly puntos: readonly PuntoDeSerie[]; readonly unidad: Unidad; readonly porTiempo: boolean }
     | { readonly tipo: 'filas'; readonly filas: Filas; readonly columnas: readonly { readonly columna: string; readonly titulo: string }[] }
     | { readonly tipo: 'no_se_pudo_calcular'; readonly porQue: PorQueNoSePudo }
   readonly advertencias: readonly Advertencia[]
@@ -44,6 +46,11 @@ export function advertenciasDe(clave: Clave, consulta: ConsultaGuardada, r: Extr
     ...(r.total > r.filas.length ? [{ tipo: 'filas_recortadas', clave, total: r.total, mostradas: r.filas.length } as const] : []),
   ]
 }
+
+const FECHA = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/
+
+/** Pura. Fechas en orden: el último punto es lo de hoy y sirve de cifra grande. En un ranking sería el menor; sin orden, cualquiera. */
+export const vaPorTiempo = (puntos: readonly PuntoDeSerie[]) => puntos.length > 0 && puntos.every((p, i) => FECHA.test(p.etiqueta) && (i === 0 || puntos[i - 1].etiqueta < p.etiqueta))
 
 const numero = (v: unknown): number | null => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
 
@@ -65,12 +72,18 @@ export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: Eleme
       console.error('[panel] no se pudo pintar', clave, r.error.tipo === 'postgres' ? r.error.codigo : '42703')
       return fallo(r.error.tipo)
     }
+    const forma = formaDelResultado(salida.tipo, r.total)
+    if (forma) {
+      console.error('[panel] no se pudo pintar', clave, forma.tipo)
+      return fallo(forma.tipo)
+    }
+    const puntos = r.filas.map((f) => ({ etiqueta: String(f.etiqueta ?? ''), valor: numero(f.valor) ?? 0 }))
     const resultado: SeccionPintada['resultado'] =
       salida.tipo === 'filas'
         ? { tipo: 'filas', filas: r.filas, columnas: salida.columnas }
         : salida.tipo === 'numero'
           ? { tipo: 'numero', valor: numero(r.filas[0]?.valor), unidad: salida.unidad }
-          : { tipo: 'serie', puntos: r.filas.map((f) => ({ etiqueta: String(f.etiqueta ?? ''), valor: numero(f.valor) ?? 0 })), unidad: salida.unidad }
+          : { tipo: 'serie', puntos, unidad: salida.unidad, porTiempo: vaPorTiempo(puntos) }
     return { ...base, total: r.total, mostradas: r.filas.length, resultado, advertencias: advertenciasDe(clave, e.consulta, r) }
   } catch (error) {
     console.error('[panel] no se pudo pintar', clave, codigoDe(error))

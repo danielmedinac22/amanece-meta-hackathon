@@ -7,8 +7,8 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/db'
 import type { EstadoDelNegocio } from '../estado'
 import { claveDeProducto } from '../estado/elementos'
-import { COLUMNAS, prologo } from './catalogo'
-import type { ConsultaValidada, ErrorDeConsulta, Filas, NombreDeFuente } from './tipos'
+import { COLUMNAS, FUENTES, prologo } from './catalogo'
+import type { ConsultaValidada, ErrorDeConsulta, Filas, NombreDeFuente, TipoDeSalida } from './tipos'
 
 export const FILAS_POR_CONSULTA = 500
 export const TOPE_DE_UNA_CONSULTA = '2s'
@@ -21,7 +21,7 @@ export type ResultadoDeEjecutar =
       readonly filas: Filas
       /** Cuántas había antes del `LIMIT`: `count(*) OVER ()` corre antes de recortar. */
       readonly total: number
-      /** Filas de cada fuente que la consulta usa, en este Negocio. Con esto se sabe `resultado_vacio_con_datos`. */
+      /** Filas de cada fuente que usa y lee una tabla, en este Negocio. Con esto se sabe `resultado_vacio_con_datos`: `hoy` siempre tiene una. */
       readonly filasPorFuente: Readonly<Partial<Record<NombreDeFuente, number>>>
       readonly ms: number
     }
@@ -86,7 +86,10 @@ export const hayConexionDeConsultas = () => conexionDeConsultas() !== null
 export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada, firma: string): readonly Sentencia[] {
   const parametros = parametrosDelPrologo(estado)
   const orden = consulta.orden.length ? `ORDER BY ${consulta.orden.map((o) => `q."${o.columna.replaceAll('"', '""')}"${o.descendente ? ' DESC' : ''}`).join(', ')}` : ''
-  const conteos = consulta.fuentes.map((f) => `'${f}', (SELECT count(*) FROM ${f})`).join(', ')
+  const conteos = consulta.fuentes
+    .filter((f) => Object.keys(FUENTES[f].lee).length > 0)
+    .map((f) => `'${f}', (SELECT count(*) FROM ${f})`)
+    .join(', ')
   return [
     { texto: 'RESET ALL', parametros: [] },
     { texto: 'RESET ROLE', parametros: [] },
@@ -117,6 +120,10 @@ const CLASES: Partial<Record<string, string>> = {
   '42601': 'hay un error de sintaxis',
   '25006': 'solo se lee',
 }
+
+/** Puro. Un `numero` es una fila: con más, `filas[0]` sería una cifra arbitraria. Depende de los datos: el validador no lo ve. */
+export const formaDelResultado = (salida: TipoDeSalida, total: number): Extract<ErrorDeConsulta, { tipo: 'forma' }> | null =>
+  salida === 'numero' && total > 1 ? { tipo: 'forma', esperada: 'numero', hay: [`${total} filas`] } : null
 
 export const SIN_CODIGO = 'sin_codigo'
 

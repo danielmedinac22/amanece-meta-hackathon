@@ -10,7 +10,7 @@ import { modeloEstructurado } from '@/negocio/dueno-modelo'
 import { registrarTurno } from '@/negocio/medir'
 import type { MotivoDeFaltante } from '../capacidades'
 import { NOMBRES_DE_FUENTE, textoParaElRedactor, VENTANA_POR_DEFECTO, VERSION_DEL_CATALOGO } from '../consultas/catalogo'
-import { ejecutar, hayConexionDeConsultas } from '../consultas/ejecutar'
+import { ejecutar, formaDelResultado, hayConexionDeConsultas } from '../consultas/ejecutar'
 import type { ConsultaGuardada, ConsultaValidada, ErrorDeConsulta, FormaDeSalida, Supuesto, TipoDeSalida, Unidad } from '../consultas/tipos'
 import { esErrorDeConsulta, explicar, validarConsulta } from '../consultas/validar'
 import type { EstadoDelNegocio } from '../estado'
@@ -120,7 +120,7 @@ export async function redactarConsulta<S extends TipoDeSalida>(estado: EstadoDel
     const validada = await validarConsulta(s.sql, pedido.salida)
     const corrida = esErrorDeConsulta(validada) ? null : await ejecutar(estado, validada)
     if (corrida?.tipo === 'sin_configurar' || corrida?.tipo === 'no_disponible') return { tipo: 'sin_configurar', gasto }
-    const error = esErrorDeConsulta(validada) ? validada : corrida?.tipo === 'error' ? corrida.error : null
+    const error = esErrorDeConsulta(validada) ? validada : corrida?.tipo === 'error' ? corrida.error : corrida?.tipo === 'filas' ? formaDelResultado(pedido.salida, corrida.total) : null
     ultimoSql = s.sql
     if (error || esErrorDeConsulta(validada)) {
       ultimoError = error ?? ultimoError

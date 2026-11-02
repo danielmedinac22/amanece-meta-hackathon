@@ -6,6 +6,7 @@ import { db, esquema } from '@/db'
 import type { DelEquipo } from '@/lib/equipo'
 import { marcar, type CapacidadFaltanteId, type NegocioId } from './identidad'
 import type { Cuando, Efecto } from './estado/elementos'
+import { esFuente } from './consultas/catalogo'
 import type { ErrorDeConsulta, NombreDeFuente } from './consultas/tipos'
 import { explicar } from './consultas/validar'
 
@@ -40,9 +41,12 @@ export type MotivoDeFaltante =
 /** Lo que se lee de una fila: las de antes de 0004 que no se pudieron tipar vuelven con su texto. */
 export type MotivoGuardado = MotivoDeFaltante | { readonly tipo: 'anterior'; readonly texto: string }
 
+/** La primera fuente del catálogo que no es `hoy`. El error trae `pedidos, hoy` o un nombre que escribió el modelo. */
+const fuentePrincipal = (fuente: string) => fuente.split(', ').find((f) => esFuente(f) && f !== 'hoy') ?? 'ninguna'
+
 /**
- * Pura. `no_hay:cobrar`, `no_se_puede:pedidos`, `dato:pedidos.entregado_en`, `sin_converger:forma`: cuántos Negocios
- * piden lo mismo.
+ * Pura. `no_hay:cobrar`, `no_se_puede:pedidos`, `dato:pedidos`, `sin_converger:forma`: cuántos Negocios piden lo
+ * mismo. Lista cerrada: el campo de un `dato:` lo inventa el modelo con lo que dijo el Dueño, y va en `detalle`.
  */
 export function claveDeAgrupacion(m: MotivoDeFaltante): string {
   switch (m.tipo) {
@@ -53,7 +57,7 @@ export function claveDeAgrupacion(m: MotivoDeFaltante): string {
     case 'no_se_puede':
       return `no_se_puede:${m.fuente}`
     case 'sin_converger':
-      return m.ultimoError.tipo === 'dato_inexistente' && m.ultimoError.campo ? `dato:${m.ultimoError.fuente}.${m.ultimoError.campo}` : `sin_converger:${m.ultimoError.tipo}`
+      return m.ultimoError.tipo === 'dato_inexistente' ? `dato:${fuentePrincipal(m.ultimoError.fuente)}` : `sin_converger:${m.ultimoError.tipo}`
     case 'fuera_de_la_lista':
     case 'regla_vieja':
       return m.tipo

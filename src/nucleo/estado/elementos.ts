@@ -475,8 +475,8 @@ function validarDelPanel(e: DelPanel, clave: Clave, estado: Vigentes): readonly 
   return problemas
 }
 
-const delPanel = (etiqueta: string) => (antes: DelPanel | null, despues: DelPanel | null) =>
-  despues ? `${etiqueta} ${antes ? '' : 'nueva '}«${despues.nombre}»: ${despues.consulta.enPalabras}` : `Quitar ${etiqueta.toLowerCase()} «${antes?.nombre ?? ''}»`
+const delPanel = (etiqueta: string, nuevo: string) => (antes: DelPanel | null, despues: DelPanel | null) =>
+  despues ? `${etiqueta} ${antes ? '' : `${nuevo} `}«${despues.nombre}»: ${despues.consulta.enPalabras}` : `Quitar ${etiqueta.toLowerCase()} «${antes?.nombre ?? ''}»`
 
 export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElemento<T> } = {
   regla: {
@@ -595,7 +595,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
     /** Nada de una Sección llega a un Cliente: no pasa por `revisarTextoDelDueno` ni por `nombresAjenos`. */
     textos: () => [],
     validar: validarDelPanel,
-    describir: delPanel('Sección'),
+    describir: delPanel('Sección', 'nueva'),
   },
   indicador: {
     contrato: 1,
@@ -605,7 +605,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
     referencias: () => [],
     textos: () => [],
     validar: validarDelPanel,
-    describir: delPanel('Indicador'),
+    describir: delPanel('Indicador', 'nuevo'),
   },
 }
 

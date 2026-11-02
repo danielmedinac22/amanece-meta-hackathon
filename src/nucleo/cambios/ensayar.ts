@@ -329,8 +329,9 @@ export async function ensayarPanel(borrador: EstadoDelNegocio, escritura: Escrit
       fallo: p.resultado.tipo === 'no_se_pudo_calcular' ? p.resultado.porQue : null,
     }),
   )
+  const queEs = (p: (typeof pintadas)[number]) => `${p.tipo === 'seccion' ? 'Sección' : 'Indicador'} «${p.nombre}»`
   const hoy = pintadas.map((p) => {
-    const que = `${p.tipo === 'seccion' ? 'Sección' : 'Indicador'} «${p.nombre}»`
+    const que = queEs(p)
     switch (p.resultado.tipo) {
       case 'no_se_pudo_calcular':
         return `${que}: ${QUE_NO_SE_PUDO}.`
@@ -343,7 +344,8 @@ export async function ensayarPanel(borrador: EstadoDelNegocio, escritura: Escrit
         return `${que} hoy: ${p.total} ${p.total === 1 ? 'fila' : 'filas'}, muestro ${p.mostradas}.`
     }
   })
-  return { lineas: [...lineas, ...hoy], advertencias: pintadas.flatMap((p) => p.advertencias.map(advertenciaEnPalabras)), conversaciones: null, panel }
+  const fallidas = pintadas.filter((p) => p.resultado.tipo === 'no_se_pudo_calcular').map((p) => `${queEs(p)}: ${QUE_NO_SE_PUDO}.`)
+  return { lineas: [...lineas, ...hoy], advertencias: [...pintadas.flatMap((p) => p.advertencias.map(advertenciaEnPalabras)), ...fallidas], conversaciones: null, panel }
 }
 
 type Es<A extends true> = A

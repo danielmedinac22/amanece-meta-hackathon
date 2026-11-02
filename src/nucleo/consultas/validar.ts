@@ -404,7 +404,7 @@ export async function validarConsulta(sqlDelRedactor: string, salida: TipoDeSali
 
 export const esErrorDeConsulta = (r: ConsultaValidada | ErrorDeConsulta): r is ErrorDeConsulta => 'tipo' in r
 
-const ESPERADAS = { numero: 'una sola columna llamada valor', serie: 'dos columnas llamadas etiqueta y valor', filas: 'una o más columnas con nombres distintos y sin *' } as const satisfies Record<TipoDeSalida, string>
+const ESPERADAS = { numero: 'una sola fila con una sola columna llamada valor', serie: 'dos columnas llamadas etiqueta y valor', filas: 'una o más columnas con nombres distintos y sin *' } as const satisfies Record<TipoDeSalida, string>
 
 /** El texto que vuelve al redactor en el intento siguiente. Siempre dice qué sí se puede usar. */
 export function explicar(e: ErrorDeConsulta): string {

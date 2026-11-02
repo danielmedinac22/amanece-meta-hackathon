@@ -25,9 +25,12 @@ const { leerEstado } = await import('../src/nucleo/estado')
 const { marcar } = await import('../src/nucleo/identidad')
 const { esErrorDeConsulta, validarConsulta } = await import('../src/nucleo/consultas/validar')
 const { armarLote, ejecutar, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
+const { pintarUna } = await import('../src/nucleo/panel')
 const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await import('./consultas-de-prueba.mjs')
 type ConsultaValidada = import('../src/nucleo/consultas/tipos').ConsultaValidada
 type Sentencia = import('../src/nucleo/consultas/ejecutar').Sentencia
+type ElementoDelPanel = import('../src/nucleo/panel').ElementoDelPanel
+type Clave = import('../src/nucleo/estado/elementos').Clave
 
 const inicio = new Date()
 const marca = String(Date.now()).slice(-8)
@@ -225,6 +228,17 @@ try {
     if (r.tipo !== 'filas' || ve(r.filas, B.ids).length) vieronAB.push(`${id}: ${r.tipo === 'filas' ? ve(r.filas, B.ids).join(',') : JSON.stringify(r)}`)
   }
   afirmar(`7 las ${BUENAS_DE_M2.length} consultas de M2 corren desde A y ninguna trae un id de B`, validasDeA === BUENAS_DE_M2.length && vieronAB.length === 0, vieronAB)
+
+  console.log('\n=== 7 bis. Un Negocio sin pedidos no recibe la falsa alarma ===')
+  const [vacio] = await db.insert(esquema.negocios).values({ nombre: `Consultas vacío ${marca}`, codigo: `CONSV${marca}` }).returning()
+  negociosDeConsultas.push(vacio.id)
+  const estadoVacio = await leerEstado(marcar.negocio(vacio.id))
+  const conVentana = (sql: string) => ({ tipo: 'seccion', nombre: 'Prueba', queQuiereVer: 'x', consulta: { sql, enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'filas', columnas: [{ columna: 'numero', titulo: 'Número' }] } } }) as unknown as ElementoDelPanel
+  const VACIA = 'select p.numero from pedidos p, hoy h where p.dia_local > h.hoy_local - 30'
+  const enElVacio = await pintarUna(estadoVacio, 'seccion:prueba' as Clave, conVentana(VACIA))
+  afirmar('7 bis sin pedidos, una consulta con hoy sale vacía y sin resultado_vacio_con_datos', enElVacio.resultado.tipo === 'filas' && enElVacio.total === 0 && !enElVacio.advertencias.some((a) => a.tipo === 'resultado_vacio_con_datos'), enElVacio)
+  const vaciaConDatos = await pintarUna(estadoA, 'seccion:prueba' as Clave, conVentana(`select p.numero from pedidos p, hoy h where p.dia_local = '1999-01-01'::date`))
+  afirmar('7 bis control: con pedidos, la misma forma vacía sí avisa, con la cuenta exacta de sus pedidos', vaciaConDatos.advertencias.some((a) => a.tipo === 'resultado_vacio_con_datos' && a.filasEnLasFuentes === A.pedidos), vaciaConDatos.advertencias)
 
   console.log('\n=== 8. La base frena el ataque de #8 y los escapes, por la conexión real ===')
   const firmaA = await firmaDe(A.id)
