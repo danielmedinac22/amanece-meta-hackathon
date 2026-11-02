@@ -11,6 +11,10 @@ DO $$ BEGIN
 	END IF;
 END $$;--> statement-breakpoint
 ALTER ROLE amanece_consultas NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;--> statement-breakpoint
+-- Lo que vale aunque alguien use su URL sin el lote. RESET ALL vuelve a estos valores, no a cero.
+ALTER ROLE amanece_consultas SET default_transaction_read_only = on;--> statement-breakpoint
+ALTER ROLE amanece_consultas SET statement_timeout = '2s';--> statement-breakpoint
+ALTER ROLE amanece_consultas SET search_path = '';--> statement-breakpoint
 
 -- 2. El dueño no se vuelve amanece_consultas: el lote entra con su propia URL. Queda la fila de ADMIN que Postgres 16+ le
 --    da a quien crea un rol; lo que cuenta es que pg_has_role(dueño, rol, 'SET') y 'USAGE' den falso.
@@ -75,11 +79,6 @@ CREATE POLICY consultas_del_negocio ON public.mensajes_cliente AS PERMISSIVE FOR
 ALTER TABLE public.capacidades_faltantes ADD COLUMN IF NOT EXISTS tipo text DEFAULT 'anterior' NOT NULL;--> statement-breakpoint
 ALTER TABLE public.capacidades_faltantes ADD COLUMN IF NOT EXISTS clave_de_agrupacion text DEFAULT 'anterior' NOT NULL;--> statement-breakpoint
 ALTER TABLE public.capacidades_faltantes ADD COLUMN IF NOT EXISTS detalle jsonb;--> statement-breakpoint
-ALTER TABLE public.capacidades_faltantes ADD COLUMN IF NOT EXISTS propuesta_id uuid;--> statement-breakpoint
-DO $$ BEGIN
-	ALTER TABLE public.capacidades_faltantes ADD CONSTRAINT capacidades_faltantes_propuesta_id_propuestas_id_fk FOREIGN KEY (propuesta_id) REFERENCES public.propuestas(id) ON DELETE set null ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS capacidades_faltantes_clave ON public.capacidades_faltantes USING btree (clave_de_agrupacion, creado);--> statement-breakpoint
 
 -- El texto de antes era `claveDeAgrupacion(m)` o `claveDeAgrupacion(m): detalle`. Solo toca filas todavía 'anterior' cuyo

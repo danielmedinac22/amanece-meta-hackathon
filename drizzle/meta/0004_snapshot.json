@@ -260,12 +260,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "propuesta_id": {
-          "name": "propuesta_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "creado": {
           "name": "creado",
           "type": "timestamp with time zone",
@@ -309,19 +303,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "capacidades_faltantes_propuesta_id_propuestas_id_fk": {
-          "name": "capacidades_faltantes_propuesta_id_propuestas_id_fk",
-          "tableFrom": "capacidades_faltantes",
-          "tableTo": "propuestas",
-          "columnsFrom": [
-            "propuesta_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

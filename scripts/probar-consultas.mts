@@ -102,6 +102,20 @@ try {
   const rls = (await q.query(`select relname as tabla, relrowsecurity as activa, relforcerowsecurity as forzada from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'`)) as { tabla: string; activa: boolean; forzada: boolean }[]
   afirmar('2 RLS: activa justo en las tablas leídas y en ninguna forzada', igual(rls.filter((r) => r.activa).map((r) => r.tabla), conPolitica) && rls.every((r) => !r.forzada), rls.filter((r) => r.activa || r.forzada))
 
+  const [{ rolconfig }] = (await q.query(`select rolconfig from pg_roles where rolname = 'amanece_consultas'`)) as { rolconfig: string[] | null }[]
+  afirmar('2 rol: solo lectura, tope y search_path vacío los pone el rol', igual(rolconfig ?? [], ['default_transaction_read_only=on', 'statement_timeout=2s', 'search_path=""']), rolconfig)
+  const directa = new Pool({ connectionString: urlDelRol.replace('-pooler', '') })
+  try {
+    const sesion = await directa.connect()
+    const { rows: [fijado] } = await sesion.query(`select current_setting('default_transaction_read_only') as lectura, current_setting('statement_timeout') as tope, current_setting('search_path') as ruta`)
+    const crear = await sesion.query('create temp table de_prueba (i int)').then(() => 'la creó', (e: { code?: string }) => e.code)
+    sesion.release()
+    afirmar('2 rol: una sesión nueva sin el lote nace de solo lectura, con tope y sin search_path', fijado.lectura === 'on' && fijado.tope === '2s' && fijado.ruta === '""', fijado)
+    afirmar('2 rol: una sesión nueva sin el lote no crea una tabla temporal (25006)', crear === '25006', crear)
+  } finally {
+    await directa.end()
+  }
+
   console.log('\n=== 2 bis. La migración corre dos veces y deja lo mismo ===')
   const huella = async () => {
     const [h] = (await q.query(

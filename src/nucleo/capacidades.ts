@@ -4,7 +4,7 @@
 import { sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { DelEquipo } from '@/lib/equipo'
-import { marcar, type CapacidadFaltanteId, type NegocioId, type PropuestaId } from './identidad'
+import { marcar, type CapacidadFaltanteId, type NegocioId } from './identidad'
 import type { Cuando, Efecto } from './estado/elementos'
 import type { ErrorDeConsulta, NombreDeFuente } from './consultas/tipos'
 import { explicar } from './consultas/validar'
@@ -79,11 +79,11 @@ export function motivoEnTexto(m: MotivoDeFaltante): string {
   return d ? `${claveDeAgrupacion(m)}: ${d}` : claveDeAgrupacion(m)
 }
 
-/** Escribe las palabras del Dueño, el motivo tipado, su clave y el texto de antes. `propuesta`, si la hubo. */
-export async function registrarFaltante(negocio: NegocioId, palabrasDelDueno: string, motivo: MotivoDeFaltante, propuesta: PropuestaId | null = null): Promise<CapacidadFaltanteId> {
+/** Escribe las palabras del Dueño, el motivo tipado, su clave y el texto de antes. */
+export async function registrarFaltante(negocio: NegocioId, palabrasDelDueno: string, motivo: MotivoDeFaltante): Promise<CapacidadFaltanteId> {
   const [fila] = await db
     .insert(esquema.capacidadesFaltantes)
-    .values({ negocioId: negocio, pedido: palabrasDelDueno, motivo: motivoEnTexto(motivo), tipo: motivo.tipo, claveDeAgrupacion: claveDeAgrupacion(motivo), detalle: motivo, propuestaId: propuesta })
+    .values({ negocioId: negocio, pedido: palabrasDelDueno, motivo: motivoEnTexto(motivo), tipo: motivo.tipo, claveDeAgrupacion: claveDeAgrupacion(motivo), detalle: motivo })
     .returning({ id: esquema.capacidadesFaltantes.id })
   return marcar.capacidadFaltante(fila.id)
 }

@@ -275,7 +275,6 @@ export const capacidadesFaltantes = pgTable(
     tipo: text('tipo', { enum: TIPOS_DE_MOTIVO }).notNull().default('anterior'),
     claveDeAgrupacion: text('clave_de_agrupacion').notNull().default('anterior'),
     detalle: jsonb('detalle').$type<MotivoDeFaltante>(),
-    propuestaId: uuid('propuesta_id').references(() => propuestas.id, { onDelete: 'set null' }),
     creado: creado(),
   },
   (t) => [
