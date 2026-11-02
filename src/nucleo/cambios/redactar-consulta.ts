@@ -44,6 +44,7 @@ export type PedidoDeConsulta<S extends TipoDeSalida> = {
 export type ConsultaRedactada<S extends TipoDeSalida> =
   | { readonly tipo: 'lista'; readonly consulta: ConsultaGuardada<S>; readonly validada: ConsultaValidada; readonly gasto: Gasto }
   | { readonly tipo: 'faltante'; readonly motivo: Extract<MotivoDeFaltante, { tipo: 'no_se_puede' | 'sin_converger' }>; readonly gasto: Gasto }
+  /** La conexión falta o la base no atendió: no es culpa del pedido, no se reintenta y no deja una Capacidad faltante. */
   | { readonly tipo: 'sin_configurar'; readonly gasto: Gasto }
 
 /** Un intento del modelo. `cortada`: la respuesta no llegó entera (`finish_reason: length`) o no tenía la forma. */
@@ -118,7 +119,7 @@ export async function redactarConsulta<S extends TipoDeSalida>(estado: EstadoDel
     if (s.decision === 'no_se_puede') return { tipo: 'faltante', motivo: { tipo: 'no_se_puede', fuente: s.faltaEn, falta: s.falta.trim() || pedido.queQuiereVer }, gasto }
     const validada = await validarConsulta(s.sql, pedido.salida)
     const corrida = esErrorDeConsulta(validada) ? null : await ejecutar(estado, validada)
-    if (corrida?.tipo === 'sin_configurar') return { tipo: 'sin_configurar', gasto }
+    if (corrida?.tipo === 'sin_configurar' || corrida?.tipo === 'no_disponible') return { tipo: 'sin_configurar', gasto }
     const error = esErrorDeConsulta(validada) ? validada : corrida?.tipo === 'error' ? corrida.error : null
     ultimoSql = s.sql
     if (error || esErrorDeConsulta(validada)) {

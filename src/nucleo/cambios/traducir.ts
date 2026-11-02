@@ -98,7 +98,7 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
         const base = { nombre: q.nombre.trim(), queQuiereVer: q.queQuiereVer }
         const r = await redactarConsulta(estado, { ...base, salida: q.salida, anterior: consultaAnterior }, redactor)
         gasto = r.gasto
-        if (r.tipo === 'sin_configurar') return corregir(invalido('quiere', 'Hoy no se pueden armar Secciones ni Indicadores por un problema de configuración nuestro, no por lo que pidió'))
+        if (r.tipo === 'sin_configurar') return corregir(invalido('quiere', 'Hoy no se pueden armar Secciones ni Indicadores por un problema nuestro, no por lo que pidió'))
         if (r.tipo === 'faltante') return { tipo: 'faltante', motivo: r.motivo, gasto }
         // `que` y `salida` van juntos en QuiereDelPanel: una seccion siempre trae una consulta de filas.
         const despues = { tipo: q.que, ...base, consulta: r.consulta } as Elemento

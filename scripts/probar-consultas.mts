@@ -4,7 +4,10 @@
  *
  *   pnpm tsx scripts/probar-consultas.mts
  */
-import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { config } from 'dotenv'
 import { neon, Pool } from '@neondatabase/serverless'
 import { afirmar, terminar } from './afirmar.mjs'
@@ -14,7 +17,7 @@ config({ path: '.env.local', quiet: true })
 const { TIPOS_DE_MOTIVO } = await import('../src/db/esquema')
 const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = await import('../src/nucleo/consultas/catalogo')
 const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
-const { armarLote, ejecutar, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
+const { armarLote, ejecutar, esNoDisponible, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
 const { pintarUna } = await import('../src/nucleo/panel')
 const { redactarConsulta } = await import('../src/nucleo/cambios/redactar-consulta')
 const { traducir } = await import('../src/nucleo/cambios/traducir')
@@ -329,6 +332,104 @@ try {
     afirmar('6 el redactor vuelve sin_configurar y no gasta ningún intento', redactada.tipo === 'sin_configurar' && redactada.gasto.llamadas === 0 && llamadas === 0, { redactada, llamadas })
     const traducida = await traducir(estado, [{ tipo: 'panel', que: 'indicador', nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', reemplaza: null }], motor)
     afirmar('6 la propuesta no se vuelve Capacidad faltante: vuelve a corregir', 'tipo' in traducida && traducida.tipo === 'corregir' && llamadas === 0, traducida)
+
+    console.log('\n=== 6 bis. Una URL que no parsea: sin_configurar, y su texto no se loguea ===')
+    const SECRETO = 'clave_de_mentira'
+    const escuchar = async <T,>(f: () => Promise<T>): Promise<{ r: T; logueado: string }> => {
+      const lineas: unknown[][] = []
+      const originales = { log: console.log, warn: console.warn, error: console.error }
+      for (const m of ['log', 'warn', 'error'] as const) console[m] = (...a: unknown[]) => void lineas.push(a)
+      try {
+        return { r: await f(), logueado: lineas.map((l) => l.map((x) => (x instanceof Error ? `${x.message} ${x.stack}` : String(x))).join(' ')).join('\n') }
+      } finally {
+        Object.assign(console, originales)
+      }
+    }
+    const MALFORMADAS = [`"postgres://amanece_consultas:${SECRETO}@host.tld/db"`, `postgres://amanece_consultas:${SECRETO}@host con espacio/db`, `postgres://amanece_consultas:${SECRETO}@`, `mysql://amanece_consultas:${SECRETO}@host.tld/db`, `postgres://${SECRETO}@host.tld/db`, SECRETO]
+    for (const url of MALFORMADAS) {
+      process.env.DATABASE_URL_CONSULTAS = url
+      const { r, logueado } = await escuchar(async () => {
+        const corrida = await ejecutar(estado, validada)
+        const pintada = await pintarUna(estado, 'indicador:prueba' as Clave, elemento)
+        const redactada = await redactarConsulta(estado, { nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', anterior: null }, motor)
+        return { corrida, pintada, redactada }
+      })
+      const todo = JSON.stringify(r) + logueado
+      afirmar(`6 bis ${url.slice(0, 12)}…: sin_configurar en ejecutar, el Panel y el redactor, sin gastar intentos`, r.corrida.tipo === 'sin_configurar' && r.pintada.resultado.tipo === 'no_se_pudo_calcular' && r.pintada.resultado.porQue === 'sin_configurar' && r.redactada.tipo === 'sin_configurar' && r.redactada.gasto.llamadas === 0, r)
+      afirmar(`6 bis ${url.slice(0, 12)}…: el texto de la URL no aparece en lo logueado ni en lo devuelto`, logueado.length > 0 && !todo.includes(SECRETO), logueado.slice(0, 200))
+    }
+
+    console.log('\n=== 6 ter. La base no atiende: no_disponible, una llamada y ninguna fila ===')
+    const cuantasFaltantes = async () => ((await q.query('select count(*)::int as n from capacidades_faltantes where negocio_id = $1', [ladera.id])) as { n: number }[])[0].n
+    const faltantesAntes = await cuantasFaltantes()
+    let llamadasDeLaBuena = 0
+    const motorBueno = async () => {
+      llamadasDeLaBuena++
+      return { salida: { decision: 'consulta' as const, sql: sqlDeUna, enPalabras: 'Los pedidos', ventana: 'no_aplica' as const, supuestos: [], unidad: 'cantidad' as const, nombreDeLaUnidad: 'pedidos', titulos: [], faltaEn: 'ninguna' as const, falta: '' }, uso: { inputTokens: 0, outputTokens: 0 } }
+    }
+    const sinServicio = async (nombre: string, url: string, codigos: readonly string[]) => {
+      process.env.DATABASE_URL_CONSULTAS = url
+      llamadasDeLaBuena = 0
+      const { r, logueado } = await escuchar(async () => {
+        const corrida = await ejecutar(estado, validada)
+        const pintada = await pintarUna(estado, 'indicador:prueba' as Clave, elemento)
+        const traducida = await traducir(estado, [{ tipo: 'panel', que: 'indicador', nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', reemplaza: null }], motorBueno)
+        return { corrida, pintada, traducida }
+      })
+      afirmar(`6 ter ${nombre}: ejecutar da no_disponible con ${codigos.join(' o ')}`, r.corrida.tipo === 'no_disponible' && codigos.includes(r.corrida.codigo), r.corrida)
+      afirmar(`6 ter ${nombre}: el Panel dice no_disponible y loguea su clave y su código`, r.pintada.resultado.tipo === 'no_se_pudo_calcular' && r.pintada.resultado.porQue === 'no_disponible' && logueado.includes('indicador:prueba') && codigos.some((c) => logueado.includes(c)), { resultado: r.pintada.resultado, logueado })
+      afirmar(`6 ter ${nombre}: el redactor corta en la primera llamada y la propuesta vuelve a corregir`, llamadasDeLaBuena === 1 && 'tipo' in r.traducida && r.traducida.tipo === 'corregir', { llamadasDeLaBuena, traducida: r.traducida })
+      const contrasena = new URL(url).password
+      afirmar(`6 ter ${nombre}: la contraseña no aparece en lo logueado ni en lo devuelto`, !`${JSON.stringify(r)}${logueado}`.includes(contrasena), logueado.slice(0, 200))
+    }
+    const conOtraClave = new URL(quitada!)
+    conOtraClave.password = SECRETO
+    await sinServicio('contraseña mala', conOtraClave.href, ['sin_codigo'])
+    await sinServicio('host que no responde', `postgres://amanece_consultas:${SECRETO}@localhost:1/db`, ['sin_codigo'])
+    afirmar('6 ter ninguno de esos dejó una Capacidad faltante', (await cuantasFaltantes()) === faltantesAntes)
+
+    const fetchReal = globalThis.fetch
+    globalThis.fetch = ((url: string, init?: RequestInit) =>
+      String(url).includes('.invalid') ? new Promise((_, rechazar) => init?.signal?.addEventListener('abort', () => rechazar(init.signal?.reason))) : fetchReal(url, init)) as typeof fetch
+    process.env.DATABASE_URL_CONSULTAS = `postgres://amanece_consultas:${SECRETO}@colgado.invalid/db`
+    const colgada = await Promise.race([ejecutar(estado, validada), new Promise<'sigue colgada'>((listo) => setTimeout(() => listo('sigue colgada'), 8000))])
+    globalThis.fetch = fetchReal
+    afirmar('6 ter una petición colgada se corta sola en unos 5 s y da no_disponible', colgada !== 'sigue colgada' && colgada.tipo === 'no_disponible' && colgada.ms > 4500 && colgada.ms < 7000, colgada)
+
+    process.env.DATABASE_URL_CONSULTAS = quitada
+    const conIdRoto = { ...estado, identidad: { ...estado.identidad, id: 'no-es-un-uuid' } } as typeof estado
+    const sinFirma = await ejecutar(conIdRoto, validada)
+    afirmar('6 ter una falla de firmaDe da no_disponible y no llega al lote', sinFirma.tipo === 'no_disponible' && sinFirma.codigo === '22P02', sinFirma)
+    const nula = firmaDe(null as unknown as string)
+    const firmaNula = await nula.then(() => 'la aceptó', (e: Error) => e.message)
+    const otraNula = firmaDe(null as unknown as string)
+    await otraNula.catch(() => undefined)
+    afirmar('6 ter una firma null lanza y no queda guardada', firmaNula === 'firmar_consulta no devolvió una firma' && otraNula !== nula, firmaNula)
+    const CLASES: [string, { code?: string; message: string }, boolean][] = [
+      ['sin code', { message: 'fetch failed' }, true],
+      ['ECONNRESET no es un SQLSTATE', { code: 'ECONNRESET', message: 'x' }, true],
+      ['08006', { code: '08006', message: 'x' }, true],
+      ['28P01', { code: '28P01', message: 'x' }, true],
+      ['3D000', { code: '3D000', message: 'x' }, true],
+      ['53300', { code: '53300', message: 'x' }, true],
+      ['57P01', { code: '57P01', message: 'x' }, true],
+      ['42501', { code: '42501', message: 'consulta sin firma valida' }, true],
+      ['42883 de consultas_negocio', { code: '42883', message: 'function public.consultas_negocio() does not exist' }, true],
+      ['42883 de hmac', { code: '42883', message: 'function public.hmac(bytea, bytea, unknown) does not exist' }, true],
+      ['42P01 de la llave', { code: '42P01', message: 'relation "public.llave_de_consultas" does not exist' }, true],
+      ['42883 de la consulta', { code: '42883', message: 'function round(text) does not exist' }, false],
+      ['42P01 de la consulta', { code: '42P01', message: 'relation "llave_de_consultas" does not exist' }, false],
+      ['57014, el tope de la consulta', { code: '57014', message: 'x' }, false],
+      ['22012', { code: '22012', message: 'x' }, false],
+    ]
+    for (const [nombre, e, espera] of CLASES) afirmar(`6 ter ${nombre}: ${espera ? 'no_disponible' : 'error de la consulta'}`, esNoDisponible(Object.assign(new Error(e.message), e)) === espera)
+
+    const carpeta = mkdtempSync(join(tmpdir(), 'rol-de-consultas-'))
+    const envRoto = join(carpeta, '.env')
+    writeFileSync(envRoto, `DATABASE_URL="postgres://dueno:${SECRETO}@host con espacio/db"\n`)
+    const rolRoto = spawnSync('tsx', [new URL('./rol-de-consultas.mts', import.meta.url).pathname, envRoto], { encoding: 'utf8' })
+    rmSync(carpeta, { recursive: true })
+    afirmar('6 ter rol-de-consultas con un DATABASE_URL malformado sale con 1 y no imprime la contraseña del dueño', rolRoto.status === 1 && !`${rolRoto.stdout}${rolRoto.stderr}`.includes(SECRETO), { status: rolRoto.status, stderr: rolRoto.stderr.slice(0, 200) })
   } finally {
     process.env.DATABASE_URL_CONSULTAS = quitada
   }

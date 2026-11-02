@@ -3,7 +3,7 @@
  * Indicador y contar sus advertencias. Nunca lanza: una consulta que ya no valida o que Postgres rechaza se pinta
  * como `no_se_pudo_calcular`.
  */
-import { ejecutar, type ResultadoDeEjecutar } from './consultas/ejecutar'
+import { codigoDe, ejecutar, type ResultadoDeEjecutar } from './consultas/ejecutar'
 import type { ConsultaGuardada, ErrorDeConsulta, Filas, Supuesto, Unidad } from './consultas/tipos'
 import { esErrorDeConsulta, validarConsulta } from './consultas/validar'
 import type { EstadoDelNegocio } from './estado'
@@ -15,7 +15,7 @@ export type Advertencia =
   | { readonly tipo: 'filas_recortadas'; readonly clave: Clave; readonly total: number; readonly mostradas: number }
 
 /** Por qué una Sección o un Indicador dicen que no se pudo calcular. */
-export type PorQueNoSePudo = ErrorDeConsulta['tipo'] | 'sin_configurar'
+export type PorQueNoSePudo = ErrorDeConsulta['tipo'] | 'sin_configurar' | 'no_disponible'
 
 export type ElementoDelPanel = ElementoDe<'seccion' | 'indicador'>
 
@@ -57,7 +57,14 @@ export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: Eleme
     if (esErrorDeConsulta(validada)) return fallo(validada.tipo)
     const r = await ejecutar(estado, validada)
     if (r.tipo === 'sin_configurar') return fallo('sin_configurar')
-    if (r.tipo === 'error') return fallo(r.error.tipo)
+    if (r.tipo === 'no_disponible') {
+      console.error('[panel] no se pudo pintar', clave, r.codigo)
+      return fallo('no_disponible')
+    }
+    if (r.tipo === 'error') {
+      console.error('[panel] no se pudo pintar', clave, r.error.tipo === 'postgres' ? r.error.codigo : '42703')
+      return fallo(r.error.tipo)
+    }
     const resultado: SeccionPintada['resultado'] =
       salida.tipo === 'filas'
         ? { tipo: 'filas', filas: r.filas, columnas: salida.columnas }
@@ -66,7 +73,7 @@ export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: Eleme
           : { tipo: 'serie', puntos: r.filas.map((f) => ({ etiqueta: String(f.etiqueta ?? ''), valor: numero(f.valor) ?? 0 })), unidad: salida.unidad }
     return { ...base, total: r.total, mostradas: r.filas.length, resultado, advertencias: advertenciasDe(clave, e.consulta, r) }
   } catch (error) {
-    console.error('[panel] no se pudo pintar', clave, error)
+    console.error('[panel] no se pudo pintar', clave, codigoDe(error))
     return fallo('postgres')
   }
 }

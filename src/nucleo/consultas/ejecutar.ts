@@ -12,6 +12,8 @@ import type { ConsultaValidada, ErrorDeConsulta, Filas, NombreDeFuente } from '.
 
 export const FILAS_POR_CONSULTA = 500
 export const TOPE_DE_UNA_CONSULTA = '2s'
+/** `statement_timeout` no cubre la red: una petición colgada retendría el Panel entero. Alcanza para la consulta y el conteo. */
+const TOPE_DE_LA_PETICION_MS = 5000
 
 export type ResultadoDeEjecutar =
   | {
@@ -24,8 +26,10 @@ export type ResultadoDeEjecutar =
       readonly ms: number
     }
   | { readonly tipo: 'error'; readonly error: Extract<ErrorDeConsulta, { tipo: 'postgres' | 'dato_inexistente' }>; readonly ms: number }
-  /** Falta `DATABASE_URL_CONSULTAS`. Es de configuración, no de lo que pidió el Dueño: no es una Capacidad faltante ni un intento del redactor. */
+  /** `DATABASE_URL_CONSULTAS` falta o no parsea. Es de configuración, no de lo que pidió el Dueño: no es una Capacidad faltante ni un intento del redactor. */
   | { readonly tipo: 'sin_configurar'; readonly ms: 0 }
+  /** La base no atendió: red, contraseña, `0004` sin aplicar o la firma. Tampoco es culpa de lo que pidió el Dueño. `codigo` es el SQLSTATE o `SIN_CODIGO`, nunca un mensaje. */
+  | { readonly tipo: 'no_disponible'; readonly codigo: string; readonly ms: number }
 
 /** Una sentencia del lote, como dato: `probar-aislamiento` lo lee y lo muta. */
 export type Sentencia = { readonly texto: string; readonly parametros: readonly unknown[] }
@@ -42,19 +46,42 @@ const firmas = new Map<string, Promise<string>>()
 export function firmaDe(negocio: string): Promise<string> {
   const ya = firmas.get(negocio)
   if (ya) return ya
-  const firma = db.execute(sql`SELECT public.firmar_consulta(${negocio}::uuid) AS firma`).then((r) => (r.rows[0] as { firma: string }).firma)
+  const pedida = db.execute(sql`SELECT public.firmar_consulta(${negocio}::uuid) AS firma`).then((r) => {
+    const firma = (r.rows[0] as { firma: string | null } | undefined)?.firma
+    if (!firma) throw new Error('firmar_consulta no devolvió una firma')
+    return firma
+  })
+  const tope = new Promise<never>((_, rechazar) => setTimeout(() => rechazar(new Error('la firma tardó demasiado')), TOPE_DE_LA_PETICION_MS).unref())
+  const firma = Promise.race([pedida, tope])
   firmas.set(negocio, firma)
   firma.catch(() => firmas.delete(negocio))
   return firma
 }
 
-export const hayConexionDeConsultas = () => Boolean(process.env.DATABASE_URL_CONSULTAS)
+/**
+ * El cliente del lote, o null si la variable falta o no tiene la forma que pide el driver. `neon` no lanza al
+ * construirse: lanzaría al correr, con la URL y su contraseña en el mensaje. Nunca cae a la conexión del dueño.
+ */
+function conexionDeConsultas() {
+  const url = process.env.DATABASE_URL_CONSULTAS
+  try {
+    if (!url) throw new Error('falta')
+    const { protocol, username, password, hostname, pathname } = new URL(url)
+    if (!/^postgres(ql)?:$/.test(protocol) || !username || !password || !hostname || pathname.length < 2) throw new Error('no parsea')
+    return neon(url)
+  } catch {
+    console.error('[consultas] DATABASE_URL_CONSULTAS falta o no es una URL de Postgres: no corre ninguna consulta')
+    return null
+  }
+}
+
+export const hayConexionDeConsultas = () => conexionDeConsultas() !== null
 
 /**
  * Puro. El lote entero, en orden. `RESET ALL` y `RESET ROLE` primero, porque una petición HTTP a Neon hereda lo que
  * otra fijó sin `LOCAL` (80 de 120 lotes en #28; 0 con el `RESET`). Después el `search_path` vacío (el prólogo
- * califica `public.`), el Negocio y su firma con `is_local = true`, el tope, la consulta envuelta y el conteo de las
- * fuentes que usa.
+ * califica `public.`), el Negocio, su firma y su zona con `is_local = true`, el tope, la consulta envuelta y el conteo
+ * de las fuentes que usa.
  */
 export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada, firma: string): readonly Sentencia[] {
   const parametros = parametrosDelPrologo(estado)
@@ -64,7 +91,7 @@ export function armarLote(estado: EstadoDelNegocio, consulta: ConsultaValidada, 
     { texto: 'RESET ALL', parametros: [] },
     { texto: 'RESET ROLE', parametros: [] },
     { texto: "SET LOCAL search_path = ''", parametros: [] },
-    { texto: "SELECT set_config('app.negocio_id', $1, true), set_config('app.firma', $2, true)", parametros: [estado.identidad.id, firma] },
+    { texto: "SELECT set_config('app.negocio_id', $1, true), set_config('app.firma', $2, true), set_config('TimeZone', $3, true)", parametros: [estado.identidad.id, firma, estado.identidad.zonaHoraria] },
     { texto: `SET LOCAL statement_timeout = '${TOPE_DE_UNA_CONSULTA}'`, parametros: [] },
     { texto: `WITH ${prologo()}\nSELECT to_jsonb(q) AS fila, count(*) OVER () AS total FROM (\n${consulta.sql}\n) AS q ${orden} LIMIT ${FILAS_POR_CONSULTA}`, parametros },
     { texto: `WITH ${prologo()}\nSELECT jsonb_build_object(${conteos}) AS por_fuente`, parametros },
@@ -88,8 +115,32 @@ const CLASES: Partial<Record<string, string>> = {
   '42803': 'una columna tiene que ir en GROUP BY o dentro de un agregado',
   '42702': 'una columna es ambigua: califícala con su fuente',
   '42601': 'hay un error de sintaxis',
-  '42501': 'no tiene permiso',
   '25006': 'solo se lee',
+}
+
+export const SIN_CODIGO = 'sin_codigo'
+
+/**
+ * El SQLSTATE de un error, también el que drizzle envuelve en `cause`. Un error de red no lo trae, ni una contraseña
+ * mala por HTTP (medido: `code` vacío), y su mensaje puede traer la URL: lo único que se loguea es esto.
+ */
+export function codigoDe(e: unknown): string {
+  const codigo = typeof e === 'object' && e !== null ? ((e as { code?: unknown }).code ?? (e as { cause?: { code?: unknown } }).cause?.code) : null
+  return typeof codigo === 'string' && /^[0-9A-Z]{5}$/.test(codigo) ? codigo : SIN_CODIGO
+}
+
+const CLASES_SIN_SERVICIO = /^(08|28|3D|53|57P)/
+const DEL_PUENTE = /public\.(consultas_negocio|firmar_consulta|hmac|llave_de_consultas)/
+
+/**
+ * Puro. La base no atendió, y no hay nada que el redactor pueda corregir en su SQL: sin SQLSTATE, sin conexión o
+ * sin autenticar, o falta el puente de `0004`. Un 42501 siempre es esto: lo validado solo llega a columnas con GRANT,
+ * así que solo puede ser la firma o una migración a medias.
+ */
+export function esNoDisponible(e: unknown): boolean {
+  const codigo = codigoDe(e)
+  if (codigo === SIN_CODIGO || codigo === '42501' || CLASES_SIN_SERVICIO.test(codigo)) return true
+  return (codigo === '42883' || codigo === '42P01') && DEL_PUENTE.test(e instanceof Error ? e.message : '')
 }
 
 /**
@@ -98,7 +149,7 @@ const CLASES: Partial<Record<string, string>> = {
  * comillas que ya estaban en su propio SQL. Un 42703 es un `dato_inexistente` con los campos de las fuentes que usa.
  */
 export function sanear(e: unknown, consulta: ConsultaValidada): Extract<ErrorDeConsulta, { tipo: 'postgres' | 'dato_inexistente' }> {
-  const codigo = typeof e === 'object' && e !== null && typeof (e as { code?: unknown }).code === 'string' ? (e as { code: string }).code : 'desconocido'
+  const codigo = codigoDe(e)
   const crudo = e instanceof Error ? e.message : ''
   const sql = consulta.sql.toLowerCase()
   const nombres = [...crudo.matchAll(/"([^"]{1,63})"/g)].map((m) => m[1]).filter((n) => new RegExp(`\\b${n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(sql))
@@ -107,23 +158,28 @@ export function sanear(e: unknown, consulta: ConsultaValidada): Extract<ErrorDeC
   return { tipo: 'postgres', codigo, mensaje: `${clase} (SQLSTATE ${codigo})${nombres.length ? `; nombres: ${[...new Set(nombres)].join(', ')}` : ''}` }
 }
 
-/** Una petición HTTP, una transacción de solo lectura. Un error de Postgres vuelve saneado, sin filas. */
+/** Una petición HTTP con su tope, una transacción de solo lectura. Un error de Postgres vuelve saneado, sin filas. */
 export async function ejecutar(estado: EstadoDelNegocio, consulta: ConsultaValidada): Promise<ResultadoDeEjecutar> {
-  const url = process.env.DATABASE_URL_CONSULTAS
-  if (!url) {
-    console.error('[consultas] falta DATABASE_URL_CONSULTAS: no corre ninguna consulta')
-    return { tipo: 'sin_configurar', ms: 0 }
-  }
-  const q = neon(url)
+  const q = conexionDeConsultas()
+  if (!q) return { tipo: 'sin_configurar', ms: 0 }
+  const negocio = estado.identidad.id
   const inicio = performance.now()
+  const ms = () => performance.now() - inicio
+  let firma: string
   try {
-    const lote = armarLote(estado, consulta, await firmaDe(estado.identidad.id))
-    const r = (await q.transaction((t) => lote.map((s) => t.query(s.texto, [...s.parametros])), { readOnly: true })) as unknown as Record<string, unknown>[][]
+    firma = await firmaDe(negocio)
+  } catch (e) {
+    return { tipo: 'no_disponible', codigo: codigoDe(e), ms: ms() }
+  }
+  try {
+    const lote = armarLote(estado, consulta, firma)
+    const r = (await q.transaction((t) => lote.map((s) => t.query(s.texto, [...s.parametros])), { readOnly: true, fetchOptions: { signal: AbortSignal.timeout(TOPE_DE_LA_PETICION_MS) } })) as unknown as Record<string, unknown>[][]
     const filas = r[PREAMBULO] as { fila: Record<string, string | number | boolean | null>; total: string | number }[]
     const [conteo] = r[PREAMBULO + 1] as { por_fuente: Record<string, string | number> }[]
     const filasPorFuente = Object.fromEntries(Object.entries(conteo?.por_fuente ?? {}).map(([f, n]) => [f, Number(n)]))
-    return { tipo: 'filas', filas: filas.map((f) => f.fila), total: Number(filas[0]?.total ?? 0), filasPorFuente, ms: performance.now() - inicio }
+    return { tipo: 'filas', filas: filas.map((f) => f.fila), total: Number(filas[0]?.total ?? 0), filasPorFuente, ms: ms() }
   } catch (e) {
-    return { tipo: 'error', error: sanear(e, consulta), ms: performance.now() - inicio }
+    if (codigoDe(e) === '42501') firmas.delete(negocio)
+    return esNoDisponible(e) ? { tipo: 'no_disponible', codigo: codigoDe(e), ms: ms() } : { tipo: 'error', error: sanear(e, consulta), ms: ms() }
   }
 }

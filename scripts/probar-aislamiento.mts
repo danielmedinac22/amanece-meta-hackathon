@@ -255,7 +255,7 @@ try {
   afirmar('8 el ataque de #8 como sentencia aparte falla con 42501', es42501(aparte), aparte)
   const conLasCte = await correrLote(hastaLaConsulta(armarLote(estadoA, cruda(`select p.id from pedidos p, (select set_config('app.negocio_id', '${B.id}', true)) s`), firmaA)))
   afirmar('8 el ataque de #8 sobre las CTE no trae ninguna fila de B', !conLasCte.ok || ve(conLasCte.filas, B.ids).length === 0, conLasCte)
-  const fijar = (negocio: string, firma: string) => preambulo.map((x) => (x.texto.includes('set_config') ? { ...x, parametros: [negocio, firma] } : x))
+  const fijar = (negocio: string, firma: string) => preambulo.map((x) => (x.texto.includes('set_config') ? { ...x, parametros: [negocio, firma, 'America/Bogota'] } : x))
   const firmaAjena = await correrLote([...fijar(B.id, firmaA), ...crudas(['select id from public.pedidos'])])
   afirmar('8 la firma de A con el app.negocio_id de B falla con 42501', es42501(firmaAjena), firmaAjena)
   const firmaPropia = await correrLote([...fijar(B.id, firmaB), ...crudas(['select id from public.pedidos'])])
@@ -264,7 +264,12 @@ try {
   const quienCorre = await ejecutar(estadoA, cruda('select current_user::text as usuario from hoy'))
   afirmar('8 ejecutar corre como amanece_consultas, no en sesión del dueño', quienCorre.tipo === 'filas' && quienCorre.filas[0]?.usuario === 'amanece_consultas', quienCorre)
   const porEjecutar = await ejecutar(estadoA, cruda(ataqueEnElSelect))
-  afirmar('8 el ataque de #8 por ejecutar vuelve como error 42501 y sin filas', porEjecutar.tipo === 'error' && porEjecutar.error.tipo === 'postgres' && porEjecutar.error.codigo === '42501', porEjecutar)
+  afirmar('8 el ataque de #8 por ejecutar vuelve como no_disponible con 42501 y sin filas', porEjecutar.tipo === 'no_disponible' && porEjecutar.codigo === '42501', porEjecutar)
+  const firmaGuardada = firmaDe(A.id)
+  await ejecutar(estadoA, cruda(ataqueEnElSelect))
+  afirmar('8 un 42501 borra la firma guardada: la siguiente se vuelve a pedir', firmaDe(A.id) !== firmaGuardada)
+  const zona = await ejecutar(estadoA, cruda("select current_setting('TimeZone') as zona from hoy"))
+  afirmar('8 el lote corre en la zona del Negocio', zona.tipo === 'filas' && zona.filas[0]?.zona === estadoA.identidad.zonaHoraria, zona)
 
   console.log('\n=== 8 bis. El validador es el segundo anillo: rechaza esos mismos textos ===')
   for (const [nombre, texto] of [['el ataque de #8', ataqueDe8(B.id)], ...variantesDelAtaque(B.id)] as const) {
