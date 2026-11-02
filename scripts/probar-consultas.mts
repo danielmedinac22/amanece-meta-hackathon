@@ -1,6 +1,6 @@
 /**
  * El SQL acotado sin modelo: el catálogo contra la base en los dos sentidos, el rol y sus políticas, y el validador.
- * Lo único que escribe es la migración 0004, que corre dos veces para ver que deja lo mismo.
+ * No deja nada: la migración 0004 corre dos veces dentro de una transacción con ROLLBACK, para ver que deja lo mismo.
  *
  *   pnpm tsx scripts/probar-consultas.mts
  */
@@ -123,34 +123,45 @@ try {
   }
 
   console.log('\n=== 2 bis. La migración corre dos veces y deja lo mismo ===')
-  const huella = async () => {
-    const [h] = (await q.query(
+  const huella = async (leer: (texto: string) => Promise<Record<string, unknown>[]>) => {
+    const [h] = await leer(
       `select
         (select to_jsonb(r) from (select rolcanlogin, rolbypassrls, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolconfig from pg_roles where rolname = 'amanece_consultas') r) as rol,
         (select jsonb_agg(m order by m.roleid, m.member, m.grantor) from (select roleid::regrole::text, member::regrole::text, grantor::regrole::text, admin_option, inherit_option, set_option from pg_auth_members where roleid = 'amanece_consultas'::regrole or member = 'amanece_consultas'::regrole) m) as miembros,
         (select jsonb_agg(p order by p.tablename) from (select tablename, roles::text, cmd, qual from pg_policies where schemaname = 'public') p) as politicas,
         (select jsonb_agg(f order by f.proname) from (select proname, prosecdef, provolatile, proconfig, proacl::text from pg_proc where pronamespace = 'public'::regnamespace and proname in ('consultas_negocio', 'firmar_consulta')) f) as funciones,
         (select jsonb_agg(c order by c.table_name, c.column_name) from (select table_name, column_name from information_schema.column_privileges where grantee = 'amanece_consultas') c) as columnas,
+        (select jsonb_agg(c.column_name order by c.column_name) from information_schema.columns c where c.table_schema = 'public' and c.table_name = 'capacidades_faltantes') as de_capacidades,
+        (select jsonb_agg(c.conname order by c.conname) from pg_constraint c where c.conrelid = 'public.capacidades_faltantes'::regclass) as restricciones,
         (select count(*)::int from public.llave_de_consultas) as filas_de_la_llave,
         (select encode(public.digest(clave, 'sha256'), 'hex') from public.llave_de_consultas) as llave`,
     )
     const { llave, ...resto } = h
     return { llave, resto: JSON.stringify(resto) }
   }
-  const correrMigracion = async () => {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL })
-    try {
-      await pool.query(readFileSync(new URL('../drizzle/0004_consultas.sql', import.meta.url), 'utf8'))
-    } finally {
-      await pool.end()
-    }
+  const conElDueno = (texto: string) => q.query(texto) as Promise<Record<string, unknown>[]>
+  const antes = await huella(conElDueno)
+  const migracion = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL })
+  const transaccion = await migracion.connect()
+  const enLaTransaccion = async (texto: string) => (await transaccion.query(texto)).rows as Record<string, unknown>[]
+  let unaVez: Awaited<ReturnType<typeof huella>>
+  let dosVeces: Awaited<ReturnType<typeof huella>>
+  try {
+    await transaccion.query('BEGIN')
+    const textoDeLaMigracion = readFileSync(new URL('../drizzle/0004_consultas.sql', import.meta.url), 'utf8')
+    await transaccion.query(textoDeLaMigracion)
+    unaVez = await huella(enLaTransaccion)
+    await transaccion.query(textoDeLaMigracion)
+    dosVeces = await huella(enLaTransaccion)
+  } finally {
+    await transaccion.query('ROLLBACK').catch(() => undefined)
+    transaccion.release()
+    await migracion.end()
   }
-  const antes = await huella()
-  await correrMigracion()
-  const unaVez = await huella()
-  await correrMigracion()
-  const dosVeces = await huella()
-  afirmar('2 bis: dos corridas dejan igual el rol, sus miembros, las políticas, las funciones y los GRANT', antes.resto === unaVez.resto && unaVez.resto === dosVeces.resto, { antes: antes.resto, dosVeces: dosVeces.resto })
+  const despues = await huella(conElDueno)
+  afirmar('2 bis: dos corridas dejan igual el rol y su configuración, sus miembros, las políticas, las funciones, los GRANT y capacidades_faltantes', antes.resto === unaVez.resto && unaVez.resto === dosVeces.resto, { antes: antes.resto, dosVeces: dosVeces.resto })
+  afirmar('2 bis: el ROLLBACK no deja nada', despues.resto === antes.resto && despues.llave === antes.llave, despues.resto)
+  afirmar('2 bis: propuesta_id ya no está en capacidades_faltantes', !JSON.parse(dosVeces.resto).de_capacidades.includes('propuesta_id') && !dosVeces.resto.includes('capacidades_faltantes_propuesta_id'), dosVeces.resto)
   afirmar('2 bis: la llave sigue siendo una sola y la misma', antes.llave === dosVeces.llave && JSON.parse(dosVeces.resto).filas_de_la_llave === 1)
   afirmar('2 bis: el rol sigue con LOGIN', JSON.parse(dosVeces.resto).rol?.rolcanlogin === true, dosVeces.resto)
   const [{ sigue }] = (await comoRol.query('select current_user as sigue')) as { sigue: string }[]
@@ -312,17 +323,6 @@ try {
   const contada = await correr('select count(*) as valor from pedidos', 'numero')
   afirmar('5 un count(*) sin columnas cuenta igual las filas de su fuente', contada.tipo === 'filas' && (contada.filasPorFuente.pedidos ?? 0) > 0, contada)
 
-  console.log('\n=== 5 bis. El lote armado, parseado otra vez ===')
-  const { loadModule, parseSync } = await import('libpg-query')
-  await loadModule()
-  const afueraDe = (texto: string) => {
-    const [sentencia] = parseSync(texto).stmts ?? []
-    return (sentencia?.stmt as { SelectStmt?: { sortClause?: { SortBy?: { node?: Record<string, unknown> } }[]; limitCount?: unknown; limitOffset?: unknown } } | undefined)?.SelectStmt
-  }
-  const consultaDelLote = (consulta: Parameters<typeof armarLote>[1]) => armarLote(estado, consulta, 'f'.repeat(64))[PREAMBULO].texto
-  const sana = (texto: string) => {
-    const a = afueraDe(texto)
-    return Boolean(a?.limitCount) && !a?.limitOffset && (a?.sortClause ?? []).every((s) => Object.keys(s.SortBy?.node ?? {}).join() === 'ColumnRef')
   console.log('\n=== 5 quáter. Lo que ve el Dueño ===')
   const delPanel = (tipo: 'numero' | 'serie', sql: string) => ({ tipo: 'indicador', nombre: 'Prueba', queQuiereVer: 'x', consulta: { sql, enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo, unidad: { tipo: 'cantidad', nombre: 'pedidos' } } } }) as unknown as ElementoDelPanel
   const pintar = (e: ElementoDelPanel) => pintarUna(estado, 'indicador:prueba' as Clave, e)
@@ -364,6 +364,17 @@ try {
   const unIndicador = delPanel('numero', 'x')
   afirmar('5 quáter "Indicador nuevo", "Sección nueva", y sin doble espacio al cambiar', palabrasDe(null, unIndicador).startsWith('Indicador nuevo «') && palabrasDeSeccion(null, unIndicador).startsWith('Sección nueva «') && palabrasDe(unIndicador, unIndicador).startsWith('Indicador «'), palabrasDe(unIndicador, unIndicador))
 
+  console.log('\n=== 5 bis. El lote armado, parseado otra vez ===')
+  const { loadModule, parseSync } = await import('libpg-query')
+  await loadModule()
+  const afueraDe = (texto: string) => {
+    const [sentencia] = parseSync(texto).stmts ?? []
+    return (sentencia?.stmt as { SelectStmt?: { sortClause?: { SortBy?: { node?: Record<string, unknown> } }[]; limitCount?: unknown; limitOffset?: unknown } } | undefined)?.SelectStmt
+  }
+  const consultaDelLote = (consulta: Parameters<typeof armarLote>[1]) => armarLote(estado, consulta, 'f'.repeat(64))[PREAMBULO].texto
+  const sana = (texto: string) => {
+    const a = afueraDe(texto)
+    return Boolean(a?.limitCount) && !a?.limitOffset && (a?.sortClause ?? []).every((s) => Object.keys(s.SortBy?.node ?? {}).join() === 'ColumnRef')
   }
   for (const [id, salida, sql] of BUENAS_DE_M2) {
     const v = await valida(sql, salida)
@@ -393,6 +404,8 @@ try {
     afirmar('6 el redactor vuelve sin_configurar y no gasta ningún intento', redactada.tipo === 'sin_configurar' && redactada.gasto.llamadas === 0 && llamadas === 0, { redactada, llamadas })
     const traducida = await traducir(estado, [{ tipo: 'panel', que: 'indicador', nombre: 'Pedidos', queQuiereVer: 'cuántos pedidos', salida: 'numero', reemplaza: null }], motor)
     afirmar('6 la propuesta no se vuelve Capacidad faltante: vuelve a corregir', 'tipo' in traducida && traducida.tipo === 'corregir' && llamadas === 0, traducida)
+    const ensayada = await ensayarPanel(estado, { elementos: [{ clave: 'indicador:prueba' as Clave, base: 'nueva', despues: elemento }], filas: [] }, [])
+    afirmar('6 un fallo en el ensayo va a las advertencias, no solo a las líneas', (ensayada.advertencias ?? []).some((a) => a.includes('«Pedidos»') && a.includes('No pude calcularlo')), ensayada)
 
     console.log('\n=== 6 bis. Una URL que no parsea: sin_configurar, y su texto no se loguea ===')
     const SECRETO = 'clave_de_mentira'
@@ -404,8 +417,6 @@ try {
         return { r: await f(), logueado: lineas.map((l) => l.map((x) => (x instanceof Error ? `${x.message} ${x.stack}` : String(x))).join(' ')).join('\n') }
       } finally {
         Object.assign(console, originales)
-    const ensayada = await ensayarPanel(estado, { elementos: [{ clave: 'indicador:prueba' as Clave, base: 'nueva', despues: elemento }], filas: [] }, [])
-    afirmar('6 un fallo en el ensayo va a las advertencias, no solo a las líneas', (ensayada.advertencias ?? []).some((a) => a.includes('«Pedidos»') && a.includes('No pude calcularlo')), ensayada)
       }
     }
     const MALFORMADAS = [`"postgres://amanece_consultas:${SECRETO}@host.tld/db"`, `postgres://amanece_consultas:${SECRETO}@host con espacio/db`, `postgres://amanece_consultas:${SECRETO}@`, `mysql://amanece_consultas:${SECRETO}@host.tld/db`, `postgres://${SECRETO}@host.tld/db`, SECRETO]

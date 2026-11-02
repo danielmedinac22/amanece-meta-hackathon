@@ -355,14 +355,34 @@ try {
   for (let i = 0; i < VECES; i++) await comoRol.query(contagio.texto, [...contagio.parametros])
   const vistas = await Promise.all(Array.from({ length: VECES }, () => correrLote([...sinSetConfig, sonda])))
   afirmar(`10 con RESET ALL, ninguna de ${VECES} sondas ve el Negocio ni la firma que fijó sin LOCAL otra petición`, vistas.every((r) => r.ok && !r.filas[0]?.negocio && r.filas[0]?.hay_firma === false), vistas.find((r) => !r.ok || r.filas[0]?.negocio || r.filas[0]?.hay_firma))
-  // Las sondas de arriba confirman su RESET ALL y limpian lo que tocan: el control necesita contagiar otra vez.
-  await Promise.all(Array.from({ length: VECES }, () => comoRol.query(contagio.texto, [...contagio.parametros])))
-  const sinReset = await Promise.all(Array.from({ length: VECES }, () => correrLote([...sinSetConfig.filter((x) => x.texto !== 'RESET ALL'), sonda])))
-  const contagiadas = sinReset.filter((r) => r.ok && r.filas[0]?.negocio === B.id).length
-  afirmar(`10 control: sin RESET ALL, alguna de ${VECES} sondas ve el Negocio que fijó otra petición (hoy ${contagiadas}; 80 de 120 en #28)`, contagiadas > 0, contagiadas)
+  // Las sondas de arriba confirman su RESET ALL y limpian lo que tocan: el control necesita contagiar otra vez. Hasta 3 rondas: una vez dio 0 de 60 y 38 en la siguiente corrida.
+  let contagiadas = 0
+  for (let ronda = 0; ronda < 3 && contagiadas === 0; ronda++) {
+    await Promise.all(Array.from({ length: VECES }, () => comoRol.query(contagio.texto, [...contagio.parametros])))
+    const sinReset = await Promise.all(Array.from({ length: VECES }, () => correrLote([...sinSetConfig.filter((x) => x.texto !== 'RESET ALL'), sonda])))
+    contagiadas = sinReset.filter((r) => r.ok && r.filas[0]?.negocio === B.id).length
+  }
+  afirmar(`10 control: sin RESET ALL, en hasta 3 rondas, alguna de ${VECES} sondas ve el Negocio que fijó otra petición (hoy ${contagiadas}; 80 de 120 en #28)`, contagiadas > 0, contagiadas)
   const reales = await Promise.all(Array.from({ length: 20 }, () => ejecutar(estadoA, listado)))
   afirmar('10 ejecutar después de esas peticiones: 20 de 20 traen solo los pedidos de A', reales.every((r) => r.tipo === 'filas' && r.total === A.pedidos && ve(r.filas, B.ids).length === 0), reales.find((r) => r.tipo !== 'filas' || r.total !== A.pedidos))
   for (let i = 0; i < VECES; i++) await comoRol.query('RESET ALL')
+
+  console.log('\n=== 11. El límite de la base hasta #12: se mide, no se exige ===')
+  const crudoDelCatalogo = async (texto: string) => correrLote([...preambulo, ...crudas([texto])])
+  const clases = await crudoDelCatalogo('select count(*)::int as n from pg_class')
+  const actividad = await crudoDelCatalogo('select count(*)::int as n from pg_stat_activity')
+  console.log(`  medido: pg_class crudo en el lote: ${clases.ok ? `${clases.filas[0]?.n} filas` : clases.codigo}; pg_stat_activity crudo en el lote: ${actividad.ok ? `${actividad.filas[0]?.n} filas` : actividad.codigo}`)
+  const marcaDelLote = `marca_de_otro_lote_${marca}`
+  const lento = correrLote([...preambulo, ...crudas([`select pg_sleep(1.5), '${marcaDelLote}' as etiqueta, current_setting('app.firma') <> '' as con_firma`])])
+  const vistas11: string[] = []
+  for (let i = 0; i < 8; i++) {
+    await new Promise((listo) => setTimeout(listo, 150))
+    const otra = await correrLote(crudas([`select query from pg_stat_activity where query like '%${marcaDelLote}%' and query not like '%pg_stat_activity%'`]))
+    if (otra.ok) vistas11.push(...otra.filas.map((f) => String(f.query)))
+  }
+  const delLento = await lento
+  console.log(`  medido: pg_stat_activity en otra petición del mismo rol ${vistas11.length ? `SÍ muestra el SQL de otro lote (${vistas11.length} de 8 miradas), con sus literales` : 'NO muestra el SQL de otro lote (0 de 8 miradas)'}; el lote lento ${delLento.ok ? 'terminó bien' : `falló con ${delLento.codigo}`}`)
+  afirmar('11 la firma y el Negocio del lote no se ven en pg_stat_activity: van como parámetros', vistas11.every((t) => !t.includes(firmaA) && !t.includes(A.id)), vistas11.slice(0, 1))
 } catch (e) {
   afirmar('probar-aislamiento terminó sin error inesperado', false, e)
 } finally {
