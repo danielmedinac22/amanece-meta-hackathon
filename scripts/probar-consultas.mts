@@ -279,6 +279,7 @@ try {
     ['B1 pg_settings', 'select pg_settings.name as name, pg_settings.setting as setting from pg_settings pg_settings', /^pg_settings/],
     ['B1 una CTE fuera de alcance', 'select x.relname as relname from (with pg_class as (select 1 as n from hoy) select n from pg_class) y, pg_class x', /pg_class/],
     ['una CTE llamada pg_algo', 'with pg_algo as (select hoy_local as x from hoy) select x from pg_algo', /pg_algo/],
+    ['una CTE llamada pg_algo que nadie lee', 'with pg_algo as (select hoy_local as x from hoy) select id from pedidos', /pg_algo/],
   ]
   for (const [nombre, sql, que] of CATALOGO_DE_POSTGRES) await rechazaPor(nombre, sql, 'no_permitido', que)
   await rechazaPor('A2 llave_de_consultas con su propio alias', 'select count(*) as valor from llave_de_consultas as llave_de_consultas', 'dato_inexistente', /^llave_de_consultas$/, 'numero')
