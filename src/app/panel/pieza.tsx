@@ -1,7 +1,16 @@
 /** Pinta una Sección o un Indicador ya calculados. La consulta da los datos; la forma de pintarlos es fija. */
 import { advertenciaEnPalabras, conUnidad, type SeccionPintada } from '@/nucleo/panel'
 
-const formato = (v: unknown) => (typeof v === 'number' ? v.toLocaleString('es-CO') : v === null || v === undefined ? '—' : String(v))
+/** `to_jsonb` da el instante ya en la zona del Negocio, porque el lote fija `TimeZone`: solo se recorta. */
+const INSTANTE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/
+
+function formato(v: unknown): string {
+  if (typeof v === 'number') return v.toLocaleString('es-CO')
+  if (typeof v === 'boolean') return v ? 'Sí' : 'No'
+  if (v === null || v === undefined) return '—'
+  const instante = INSTANTE.exec(String(v))
+  return instante ? `${instante[1]} ${instante[2]}` : String(v)
+}
 
 function Advertencias({ p }: { p: SeccionPintada }) {
   if (!p.advertencias.length) return null

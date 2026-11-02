@@ -19,7 +19,7 @@ const { COLUMNAS, FUENTES, grantsDeConsultas, NOMBRES_DE_FUENTE, prologo } = awa
 const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nucleo/consultas/validar')
 const { armarLote, ejecutar, esNoDisponible, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
 const { pintarUna, vaPorTiempo } = await import('../src/nucleo/panel')
-const { Indicador } = await import('../src/app/panel/pieza')
+const { Indicador, Seccion } = await import('../src/app/panel/pieza')
 const { renderToStaticMarkup } = await import('react-dom/server')
 const { claveDeAgrupacion } = await import('../src/nucleo/capacidades')
 const { ensayarPanel } = await import('../src/nucleo/cambios/ensayar')
@@ -356,6 +356,9 @@ try {
   afirmar('5 quáter lo pintado: una serie por tiempo lleva la cifra grande con el último punto', /text-3xl[^>]*>1\.029</.test(htmlPorDia), htmlPorDia.slice(0, 300))
   const htmlRanking = htmlDe(pintadaSerie([punto('Café 500 g', 40), punto('Té verde', 3)], false))
   afirmar('5 quáter lo pintado: un ranking muestra el nombre del producto y no lleva cifra grande', htmlRanking.includes('>Café 500 g<') && htmlRanking.includes('>Té verde<') && !htmlRanking.includes('text-3xl'), htmlRanking.slice(0, 300))
+  const pintadaFilas: SeccionPintada = { clave: 'seccion:prueba' as Clave, tipo: 'seccion', nombre: 'Prueba', enPalabras: 'x', total: 1, mostradas: 1, advertencias: [], resultado: { tipo: 'filas', filas: [{ creado: '2026-10-26T22:50:18.505254-05:00', listo: true, nombre: 'T-shirt 2T' }], columnas: [{ columna: 'creado', titulo: 'Creado' }, { columna: 'listo', titulo: 'Listo' }, { columna: 'nombre', titulo: 'Nombre' }] } }
+  const htmlFilas = renderToStaticMarkup(Seccion({ p: pintadaFilas }))
+  afirmar('5 quáter lo pintado: un instante sale legible, un booleano en palabras y un texto queda igual', htmlFilas.includes('>2026-10-26 22:50<') && htmlFilas.includes('>Sí<') && htmlFilas.includes('>T-shirt 2T<'), htmlFilas.slice(0, 500))
   const errorDe = (fuente: string) => ({ tipo: 'sin_converger' as const, ultimoError: { tipo: 'dato_inexistente' as const, fuente, campo: 'celular_de_maria', hay: [] } })
   const clavesDeDato = ['pedidos', 'pedidos, hoy', 'hoy, pedidos'].map((f) => claveDeAgrupacion(errorDe(f)))
   afirmar('5 quáter dato_inexistente: un mismo pedido cae en un solo grupo, sin texto del modelo', clavesDeDato.every((c) => c === 'dato:pedidos'), clavesDeDato)
