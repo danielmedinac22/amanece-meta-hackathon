@@ -1,8 +1,11 @@
 import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from 'ai'
-import type { esquema } from '@/db'
-import { crearAgenteDelDueno, parteDeDatosParaElModelo } from '@/agentes/dueno'
+import { and, eq, inArray } from 'drizzle-orm'
+import { db, esquema } from '@/db'
+import { crearAgenteDelDueno, parteDeDatosParaElModelo, type SalidaDeProponer } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
 import { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
+import { historial, type EstadoDePropuesta, type TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { ContextoDelDueno } from '@/nucleo/identidad'
 import { registrarTurno } from '@/negocio/medir'
 
 /** Cuántos mensajes del Hilo ve el modelo en cada turno. */
@@ -26,15 +29,17 @@ export function mensajeDelDueno(crudo: unknown): UIMessage | null {
  * su respuesta al terminar. El turno queda medido con `registrarTurno`.
  */
 export async function responderEnElHilo({
+  ctx,
   negocio,
   dueno,
   mensaje,
 }: {
+  ctx: ContextoDelDueno
   negocio: typeof esquema.negocios.$inferSelect
   dueno: typeof esquema.duenos.$inferSelect
   mensaje: UIMessage
 }) {
-  const { system, tools } = crearAgenteDelDueno({ negocio, dueno })
+  const { system, tools } = crearAgenteDelDueno(ctx, { negocio, dueno })
   await guardarEnElHilo(negocio.id, dueno.id, 'dueno', mensaje)
   const historial = await leerHilo(dueno.id, MENSAJES_QUE_VE_EL_MODELO)
 
@@ -66,4 +71,38 @@ export async function responderEnElHilo({
       },
     }),
   })
+}
+
+/** Lo que pinta una tarjeta guardada en el Hilo. Lo arma el servidor; la tarjeta no consulta nada por su cuenta. */
+export type EstadoDeTarjeta = {
+  readonly estado: EstadoDePropuesta
+  readonly accion: 'aplicar' | 'enviar'
+  /** El nombre del Dueño que tocó el botón; null si la aplicó la política o no se aplicó. */
+  readonly aprobadaPor: string | null
+}
+
+/**
+ * El Hilo y el estado vivo de cada tarjeta que trae. Las filas del Hilo no se editan: lo guardado es la tarjeta
+ * estática y su estado se lee aquí, al pintar el Panel y en cada consulta del Hilo.
+ */
+export async function leerHiloConTarjetas(ctx: ContextoDelDueno): Promise<{ mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }> {
+  const mensajes = await leerHilo(ctx.dueno)
+  const entradas = await historial(ctx, { propuestas: tarjetasDe(mensajes).map((t) => t.propuesta) })
+  const ids = [...new Set(entradas.map((e) => e.aprobadoPor).filter((id) => id !== null))]
+  const duenos = ids.length ? await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(and(eq(esquema.duenos.negocioId, ctx.negocio), inArray(esquema.duenos.id, ids))) : []
+  const tarjetas = Object.fromEntries(
+    entradas.map((e) => [e.propuesta, { estado: e.estado, accion: e.accion, aprobadaPor: e.aprobadoPor ? duenos.find((d) => d.id === e.aprobadoPor)?.nombre || 'un Dueño' : null } satisfies EstadoDeTarjeta]),
+  )
+  return { mensajes, tarjetas }
+}
+
+/** Las dos partes que traen una tarjeta, las mismas que pinta `hilo.tsx`: la salida de `tool-proponer` y `data-tarjeta` (el aviso de un Caso). */
+export function tarjetasDe(mensajes: readonly UIMessage[]): TarjetaDeAprobacion[] {
+  return mensajes.flatMap((m) =>
+    m.parts.flatMap((p) => {
+      if (p.type === 'data-tarjeta') return [p.data as TarjetaDeAprobacion]
+      const t = p.type === 'tool-proponer' && p.state === 'output-available' ? (p.output as SalidaDeProponer).tarjeta : null
+      return t ? [t] : []
+    }),
+  )
 }

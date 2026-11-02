@@ -1,10 +1,10 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
-import type { UIMessage } from 'ai'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { piezasActivas } from '@/negocio/cambios'
+import { leerHiloConTarjetas } from '@/negocio/dueno-chat'
 import { duenoActual } from '@/negocio/sesion'
 import { Hilo } from './hilo'
 import { Indicador, Seccion } from './pieza'
@@ -15,11 +15,8 @@ export const maxDuration = 60
 export default async function Panel() {
   const sesion = await duenoActual()
   if (!sesion) redirect('/entrar')
-  const { dueno, negocio } = sesion
-
-  const mensajes = dueno
-    ? await db.select().from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.duenoId, dueno.id)).orderBy(asc(esquema.mensajesDueno.creado))
-    : []
+  const { negocio, ctx } = sesion
+  const hilo = ctx ? await leerHiloConTarjetas(ctx) : { mensajes: [], tarjetas: {} }
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-7xl flex-col px-4 py-4 sm:px-6">
@@ -38,7 +35,7 @@ export default async function Panel() {
       <div className="mt-4 grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <section className="flex min-h-[60vh] flex-col rounded-3xl border border-borde bg-fondo p-4 lg:min-h-0">
           <h2 className="mb-3 text-sm font-medium text-suave">Tu agente</h2>
-          <Hilo inicial={mensajes.map((m) => m.mensaje as UIMessage)} estado={negocio?.estado ?? null} />
+          <Hilo inicial={hilo.mensajes} tarjetas={hilo.tarjetas} estado={negocio?.estado ?? null} />
         </section>
 
         <section className="min-h-0 overflow-y-auto pb-8">

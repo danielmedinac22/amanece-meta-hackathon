@@ -195,6 +195,9 @@ async function intentarReclamo(i: IntencionDeEnvio, hechos: HechosDeEnvio, telef
   return guardada ? { tipo: 'ya_estaba', resultado: resultadoGuardado(guardada) } : null
 }
 
+/** El error de una fila `por_enviar` que otro intento reclamó y todavía está enviando. */
+export const EN_CURSO = 'en curso'
+
 function resultadoGuardado(f: {
   readonly estado: 'por_enviar' | 'enviado' | 'simulado' | 'no_salio'
   readonly wamid: string | null
@@ -210,7 +213,7 @@ function resultadoGuardado(f: {
       // `no_salio` solo se escribe con un veredicto `no_sale`, y el CHECK de la tabla le exige motivo.
       return { tipo: 'no_salio', motivo: f.motivo! }
     case 'por_enviar':
-      return { tipo: 'por_enviar', error: f.error ?? 'en curso' }
+      return { tipo: 'por_enviar', error: f.error ?? EN_CURSO }
   }
 }
 

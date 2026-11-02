@@ -20,7 +20,7 @@ export type DatosDeIntencion = {
   | {
       readonly clase: 'resolucion_de_caso'
       readonly destinatario: AlCliente
-      /** `null` solo desde `enviarAlCliente`, que no sabe de qué Caso viene. */
+      /** Siempre viene desde `aprobar`. Sigue admitiendo `null` para no cambiar la clave de las filas ya guardadas. */
       readonly caso: CasoId | null
     }
   | { readonly clase: 'aviso_del_nucleo'; readonly destinatario: Destinatario; readonly enRespuestaA: Wamid }
@@ -67,13 +67,21 @@ export const APLICA_A = {
 
 export const VENTANA_MS = 24 * 60 * 60 * 1000
 
+/**
+ * La misma cuenta para la regla y para `aprobar`, que la hace cumplir en una respuesta a un Caso aunque la compuerta
+ * observe: frena antes de marcar el Caso resuelto, así no queda resuelto sin respuesta.
+ */
+export function fueraDeVentana(ultimoEntrante: Instante | null, ahora: Instante): boolean {
+  return ultimoEntrante === null || Date.parse(ahora) - Date.parse(ultimoEntrante) > VENTANA_MS
+}
+
 /** Cada regla dice solo si frena: su motivo es su clave, así una regla no frena con el motivo de otra. */
 export const REGLAS_DE_LA_COMPUERTA = {
   emergencia: (_i, h) => h.emergenciaGlobal || h.negocio?.emergencia === true,
   negocio_en_sombra: (_i, h) => h.negocio?.modo === 'en_sombra',
   numero_no_permitido: (_i, h) => !h.numeroPermitido,
   destinatario_de_otro_negocio: (i, h) => i.destinatario.tipo === 'cliente' && h.cliente?.negocio !== i.destinatario.negocio,
-  fuera_de_ventana: (_i, h) => h.ultimoEntrante === null || Date.parse(h.ahora) - Date.parse(h.ultimoEntrante) > VENTANA_MS,
+  fuera_de_ventana: (_i, h) => fueraDeVentana(h.ultimoEntrante, h.ahora),
   una_respuesta_por_mensaje: (_i, h) => h.respuestasAlMismoMensaje > 0,
 } as const satisfies { readonly [M in MotivoDeSilencio]: (i: DatosDeIntencion, h: HechosDeEnvio) => boolean }
 

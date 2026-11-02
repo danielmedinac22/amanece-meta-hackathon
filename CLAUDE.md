@@ -21,11 +21,12 @@ Se aplica lo de la fila que corresponde y, además, lo de **Siempre**.
 
 Las **piezas compartidas** son lo que tocan todos los Negocios a la vez:
 
-- La salida: `src/nucleo/salida/`. `despachar` es la única salida, `decidir` la compuerta y `kapso.ts` el único `fetch` a Kapso, con `ENVIO_SIMULADO`. `enviarAlCliente` en `src/negocio/whatsapp.ts` queda hasta la demo encima de `despachar`.
+- La salida: `src/nucleo/salida/`. `despachar` es la única salida, `decidir` la compuerta y `kapso.ts` el único `fetch` a Kapso, con `ENVIO_SIMULADO`.
 - La entrada: `src/nucleo/entrada.ts` (el webhook, la ficha `(CODIGO)` y quién es cada teléfono) y `src/app/api/kapso/webhook/route.ts`.
 - El estado de un Negocio: `src/nucleo/estado/escribir.ts`, su único escritor. Llega el 31-oct y hoy no existe.
 - La puerta del Negocio: `src/negocio/sesion.ts`. El Negocio sale de la sesión y nunca entra como parámetro.
-- Los permisos del Agente del dueño: las herramientas de `src/agentes/dueno.ts`, qué existe y qué pide aprobación.
+- Las propuestas: `src/nucleo/cambios/` (`proponer`, `aprobar`, `descartar`, `historial`) y `src/db/pool.ts`, la única transacción interactiva. `puente.ts` es lo único que llama al `aplicarCambio` viejo, y se borra el 31-oct.
+- Los permisos del Agente del dueño: las herramientas de `src/agentes/dueno.ts`, qué existe. El modelo propone; aplicar, revertir y responder un Caso son el botón del Dueño.
 - El generador de Cambios y su aplicación: `src/agentes/generador.ts` y `src/negocio/cambios.ts`.
 - El intérprete aislado: `src/lib/aislado.ts`.
 - El esquema: `src/db/esquema.ts` y `drizzle/`.

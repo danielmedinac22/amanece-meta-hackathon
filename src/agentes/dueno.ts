@@ -1,24 +1,27 @@
 import { tool, type ToolSet } from 'ai'
-import { and, desc, eq, ne } from 'drizzle-orm'
+import { and, desc, eq, inArray, ne } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
+import { descartar, ESQUEMA_DEL_PEDIDO, historial, proponer, type TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { ContextoDelDueno } from '@/nucleo/identidad'
 import { NOMBRE_TEMPORAL } from '@/negocio/alta'
-import { aplicarCambio, listarCambios, proponerConocimiento, proponerPieza, proponerRegla, reglasActivas, revertirCambio, type Cambio } from '@/negocio/cambios'
+import { reglasActivas } from '@/negocio/cambios'
 import { aplicarParcheDeConocimiento, guardarProductos, leerNegocio } from '@/negocio/dueno-catalogo'
 
 type Negocio = typeof esquema.negocios.$inferSelect
 type Dueno = typeof esquema.duenos.$inferSelect
 
+/** Lo que guarda el Hilo de `proponer`: la tarjeta la pinta la web y al modelo solo le llega `resumen`. */
+export type SalidaDeProponer = { readonly resumen: string; readonly tarjeta: TarjetaDeAprobacion | null }
+
 /**
  * El Agente del dueño de un Negocio: `{ system, tools }` para `streamText`. Cada herramienta se cierra
- * sobre el `negocio.id` de la sesión; ninguna recibe un Negocio del modelo, así que no hay cómo tocar otro.
+ * sobre el `ctx` de la sesión; ninguna recibe un Negocio del modelo, así que no hay cómo tocar otro. Lee y
+ * propone: aplicar, revertir y responder un Caso son el botón del Dueño.
  */
-export function crearAgenteDelDueno({ negocio, dueno }: { negocio: Negocio; dueno: Dueno }) {
-  const negocioId = negocio.id
-  const duenoId = dueno.id
-  /** Los Cambios que se propusieron en este turno: el Dueño todavía no pudo decir que sí a ninguno. */
-  const propuestosEnEsteTurno = new Set<string>()
+export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: { negocio: Negocio; dueno: Dueno }) {
+  const negocioId = ctx.negocio
 
   /** Un error de una herramienta le llega al modelo como resultado, para que se lo explique al Dueño. */
   async function seguro<T>(trabajo: () => Promise<T>): Promise<T | { ok: false; error: string }> {
@@ -128,118 +131,42 @@ export function crearAgenteDelDueno({ negocio, dueno }: { negocio: Negocio; duen
       }),
   })
 
-  // --- Con el Negocio abierto: los Cambios ---------------------------------------------------------
+  // --- Con el Negocio abierto: proponer -------------------------------------------------------------
 
-  /**
-   * Lo que el modelo (y el Hilo) ve de un Cambio propuesto: sin código. `vistaPrevia` solo va cuando hay
-   * algo que pintar: antes y después de una regla, o el resultado de una pieza.
-   */
-  function resumirPropuesta(cambio: Cambio) {
-    propuestosEnEsteTurno.add(cambio.id)
-    const vista = (cambio.vistaPrevia ?? {}) as Record<string, unknown>
-    const propuesta = cambio.propuesta as { nombre?: string; vista?: unknown }
-    const medida = { tokensEntrada: cambio.tokensEntrada, tokensSalida: cambio.tokensSalida, costoUsd: cambio.costoUsd, msHastaPropuesta: cambio.msHastaPropuesta }
-    if (cambio.estado === 'descartado') return { ok: false as const, cambioId: cambio.id, error: String(vista.error ?? 'No se pudo preparar el Cambio') }
-
-    const base = { ok: true as const, cambioId: cambio.id, tipo: cambio.tipo, resumen: cambio.resumen, medida }
-    const siguiente = 'Cuéntale al Dueño el resultado con palabras sencillas y pregúntale si lo aplicas. No lo apliques todavía.'
-    if (cambio.tipo === 'conocimiento') return { ...base, cambios: vista.cambios, siguiente }
-    if (cambio.tipo === 'regla') {
-      if (typeof vista.antes !== 'string') return { ...base, regla: cambio.resumen, aviso: String(vista.error ?? 'No pude probar la regla'), siguiente }
-      return { ...base, vistaPrevia: vista, siguiente }
-    }
-    return { ...base, nombre: propuesta.nombre, vista: propuesta.vista ?? null, vistaPrevia: vista, siguiente }
-  }
-
-  const proponerReglaTool = tool({
+  const proponerTool = tool({
     description:
-      'Propone una regla para el agente de clientes y la prueba sin aplicarla: simula la respuesta a una pregunta de prueba una vez sin la regla y otra con ella. Devuelve el antes y el después.',
-    inputSchema: z.object({
-      pedido: z.string().describe('Lo que pidió el Dueño, en sus palabras'),
-      textoDeLaRegla: z.string().describe('La regla como instrucción clara para el agente de clientes, por ejemplo "Si preguntan por envíos a otra ciudad, no prometas fecha de entrega y abre un Caso"'),
-      preguntaDePrueba: z.string().describe('Un mensaje realista que un Cliente escribiría y que muestre la diferencia que hace la regla'),
-      reemplazaLaRegla: z.string().optional().describe('El id de una regla activa (de ver_negocio) si esta nueva la reemplaza'),
-    }),
-    execute: ({ pedido, textoDeLaRegla, preguntaDePrueba, reemplazaLaRegla }) =>
-      seguro(async () => resumirPropuesta(await proponerRegla(negocioId, duenoId, pedido, textoDeLaRegla, preguntaDePrueba, reemplazaLaRegla))),
+      'Prepara lo que el Dueño te pidió: una regla, datos o productos, una Sección o un Indicador del Panel, deshacer algo que ya se aplicó, o la respuesta a un Caso que él te dictó. Úsala solo cuando el Dueño lo pida; nunca por tu cuenta. Tú no aplicas nada: lo que llega a los clientes queda en una tarjeta que el Dueño aprueba con un botón; lo del Panel queda de una.',
+    inputSchema: ESQUEMA_DEL_PEDIDO,
+    execute: async (pedido): Promise<SalidaDeProponer> => {
+      try {
+        const r = await proponer(ctx, { ...pedido, origen: 'hilo' })
+        return { resumen: r.resumen, tarjeta: r.tarjeta }
+      } catch (e) {
+        console.error('[dueno] proponer falló', e)
+        return { resumen: 'No pude prepararlo por un problema técnico. Díselo al Dueño con palabras sencillas.', tarjeta: null }
+      }
+    },
+    toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
   })
 
-  const proponerConocimientoTool = tool({
+  const descartarPropuesta = tool({
+    description: 'Descarta una propuesta que todavía espera el botón, cuando el Dueño dice que ya no la quiere. No aplica nada.',
+    inputSchema: z.object({ propuesta: z.string().describe('El id: aparece como [Propuesta id] en el Hilo, o sale de listar_propuestas') }),
+    execute: ({ propuesta }) =>
+      seguro(async () => ((await descartar(ctx, propuesta)).tipo === 'descartada' ? 'Descartada.' : 'Esa propuesta ya no estaba esperando: no hice nada.')),
+  })
+
+  const listarPropuestas = tool({
     description:
-      'Propone cambiar datos del Negocio (horario, envíos, pagos, tono, preguntas frecuentes) o su catálogo (productos nuevos, precios, desactivar). Devuelve qué cambia, sin aplicarlo. Los ids de productos salen de ver_negocio.',
-    inputSchema: z.object({
-      pedido: z.string().describe('Lo que pidió el Dueño, en sus palabras'),
-      conocimiento: z
-        .object({
-          descripcion: z.string().optional(),
-          ciudad: z.string().optional(),
-          horario: z.string().optional(),
-          envios: z.string().optional(),
-          pagos: z.string().optional(),
-          tono: z.string().optional(),
-          preguntasNuevas: z.array(preguntaFrecuente).optional(),
-        })
-        .optional(),
-      productos: z
-        .object({
-          agregar: z.array(z.object({ nombre: z.string(), descripcion: z.string().optional(), precio: z.number().int().positive() })).optional(),
-          editar: z
-            .array(z.object({ id: z.string(), nombre: z.string().optional(), descripcion: z.string().optional(), precio: z.number().int().positive().optional(), activo: z.boolean().optional() }))
-            .optional(),
-          desactivar: z.array(z.string()).optional().describe('Ids de productos que dejan de venderse'),
-        })
-        .optional(),
-    }),
-    execute: ({ pedido, conocimiento, productos }) => seguro(async () => resumirPropuesta(await proponerConocimiento(negocioId, duenoId, pedido, conocimiento ?? {}, productos ?? {}))),
-  })
-
-  const nombreDeLaPieza = z.string().describe('Un nombre corto para el Panel, por ejemplo "Pedidos con novedad". Si ya existe una pieza con ese nombre, esta es una nueva versión de ella')
-
-  const proponerSeccionTool = tool({
-    description:
-      'Propone una Sección del Panel: una tabla o tarjetas con filas de los datos del Negocio (pedidos, clientes, casos...). Genera el código, lo corre sobre los datos reales y devuelve cómo se ve, sin aplicarlo.',
-    inputSchema: z.object({ pedido: z.string().describe('Lo que quiere ver el Dueño, en sus palabras'), nombre: nombreDeLaPieza }),
-    execute: ({ pedido, nombre }) => seguro(async () => resumirPropuesta(await proponerPieza(negocioId, duenoId, pedido, 'seccion', nombre))),
-  })
-
-  const proponerIndicadorTool = tool({
-    description:
-      'Propone un Indicador del Panel: un número o una serie (por ejemplo por día) calculada con los datos del Negocio. Genera el código, lo corre sobre los datos reales y devuelve el resultado, sin aplicarlo.',
-    inputSchema: z.object({ pedido: z.string().describe('Lo que quiere medir el Dueño, en sus palabras'), nombre: nombreDeLaPieza }),
-    execute: ({ pedido, nombre }) => seguro(async () => resumirPropuesta(await proponerPieza(negocioId, duenoId, pedido, 'indicador', nombre))),
-  })
-
-  const aplicarCambioTool = tool({
-    description:
-      'Aplica un Cambio que ya se propuso y se le mostró al Dueño. Solo después de que el Dueño diga que sí a esa propuesta en la conversación; nunca en el mismo turno en que la propones.',
-    inputSchema: z.object({ cambioId: z.string() }),
-    execute: ({ cambioId }) =>
-      seguro(async () => {
-        if (propuestosEnEsteTurno.has(cambioId)) {
-          throw new Error('Ese Cambio lo propusiste en este mismo turno. Muéstrale el resultado al Dueño y espera a que diga que sí antes de aplicarlo.')
-        }
-        const cambio = await aplicarCambio(negocioId, cambioId)
-        return { ok: true as const, cambioId: cambio.id, tipo: cambio.tipo, resumen: cambio.resumen, msHastaAplicado: cambio.msHastaAplicado }
-      }),
-  })
-
-  const revertirCambioTool = tool({
-    description: 'Vuelve atrás un Cambio aplicado: la versión anterior de la regla, la pieza o el conocimiento. Lo que una regla ya hizo con Clientes no se deshace.',
-    inputSchema: z.object({ cambioId: z.string() }),
-    execute: ({ cambioId }) =>
-      seguro(async () => {
-        const cambio = await revertirCambio(negocioId, cambioId)
-        return { ok: true as const, cambioId: cambio.id, tipo: cambio.tipo, resumen: cambio.resumen }
-      }),
-  })
-
-  const listarCambiosTool = tool({
-    description: 'Lista los Cambios más recientes del Negocio con su estado (propuesto, aplicado, descartado, revertido) e id.',
+      'Lista lo que se pidió en este Negocio, de todos sus Dueños: qué cambia, si espera el botón, se aplicó, se revirtió, venció o se descartó, y quién lo pidió y lo aprobó. Úsala para saber qué pasó con una tarjeta o para encontrar qué deshacer.',
     inputSchema: z.object({}),
     execute: () =>
       seguro(async () => {
-        const cambios = await listarCambios(negocioId)
-        return cambios.map((c) => ({ id: c.id, tipo: c.tipo, resumen: c.resumen, estado: c.estado, creado: c.creado.toISOString() }))
+        const entradas = await historial(ctx, { limite: 15 })
+        const ids = [...new Set(entradas.flatMap((e) => [e.pedidoPor, e.aprobadoPor]).filter((id) => id !== null))]
+        const duenos = ids.length ? await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(and(eq(esquema.duenos.negocioId, negocioId), inArray(esquema.duenos.id, ids))) : []
+        const nombre = (id: string | null) => (id ? duenos.find((d) => d.id === id)?.nombre || 'un Dueño' : null)
+        return entradas.map((e) => ({ id: e.propuesta, lineas: e.lineas, estado: e.estado, pedidaPor: nombre(e.pedidoPor), aprobadaPor: nombre(e.aprobadoPor), cuando: e.cuando }))
       }),
   })
 
@@ -271,41 +198,6 @@ export function crearAgenteDelDueno({ negocio, dueno }: { negocio: Negocio; duen
       }),
   })
 
-  const resolverCaso = tool({
-    description:
-      'Resuelve un Caso: le manda la respuesta al Cliente por WhatsApp y lo cierra. Solo después de que el Dueño aprobó la respuesta (la propuesta tuya o la que él dicte). El texto se manda tal cual.',
-    inputSchema: z.object({
-      casoId: z.string().describe('El id del Caso: aparece como [Caso id] en el aviso, o sale de listar_casos'),
-      respuestaAlCliente: z.string().min(1).describe('El mensaje exacto para el Cliente'),
-      resolucion: z.string().describe('Qué se hizo, en una frase, para el historial'),
-      elDuenoAprobo: z.literal(true).describe('Solo true si el Dueño ya dijo que sí a esta respuesta'),
-    }),
-    execute: ({ casoId, respuestaAlCliente, resolucion }) =>
-      seguro(async () => {
-        const [caso] = await db
-          .select()
-          .from(esquema.casos)
-          .where(and(eq(esquema.casos.id, casoId), eq(esquema.casos.negocioId, negocioId), ne(esquema.casos.estado, 'resuelto')))
-        if (!caso) throw new Error('No encontré ese Caso sin resolver en este Negocio')
-        if (!caso.clienteId) throw new Error('Ese Caso no tiene un Cliente al que escribirle')
-        // Se importa aquí: el envío vive en el lado del Agente de clientes.
-        const { enviarAlCliente, ErrorDeEnvio } = await import('@/negocio/whatsapp')
-        try {
-          await enviarAlCliente(caso.clienteId, respuestaAlCliente)
-        } catch (e) {
-          if (e instanceof ErrorDeEnvio && e.codigo === 'fuera_de_ventana') {
-            return { ok: false as const, motivo: 'fuera_de_ventana', error: 'Pasaron más de 24 horas desde el último mensaje del Cliente. WhatsApp no deja escribirle hasta que él escriba de nuevo. El Caso sigue abierto.' }
-          }
-          throw e
-        }
-        await db
-          .update(esquema.casos)
-          .set({ estado: 'resuelto', resolucion, resuelto: new Date() })
-          .where(and(eq(esquema.casos.id, caso.id), eq(esquema.casos.negocioId, negocioId)))
-        return { ok: true as const, casoId: caso.id }
-      }),
-  })
-
   const tools: ToolSet =
     negocio.estado === 'armando'
       ? {
@@ -317,24 +209,31 @@ export function crearAgenteDelDueno({ negocio, dueno }: { negocio: Negocio; duen
         }
       : {
           ver_negocio: verNegocio,
-          proponer_regla: proponerReglaTool,
-          proponer_conocimiento: proponerConocimientoTool,
-          proponer_seccion: proponerSeccionTool,
-          proponer_indicador: proponerIndicadorTool,
-          aplicar_cambio: aplicarCambioTool,
-          revertir_cambio: revertirCambioTool,
-          listar_cambios: listarCambiosTool,
+          proponer: proponerTool,
+          descartar_propuesta: descartarPropuesta,
+          listar_propuestas: listarPropuestas,
           listar_casos: listarCasos,
-          resolver_caso: resolverCaso,
           registrar_capacidad_faltante: registrarCapacidadFaltante,
         }
 
   return { system: instrucciones(negocio, dueno), tools }
 }
 
-/** El aviso de un Caso lleva su id en una parte de datos; así lo ve el modelo. */
+/**
+ * Las partes de datos del Hilo, como las ve el modelo: el id del Caso o de la propuesta, nunca la huella. Así
+ * puede proponer otra respuesta al Caso o descartar y revertir sin listar.
+ */
 export function parteDeDatosParaElModelo(parte: { type: string; data: unknown }) {
-  if (parte.type === 'data-caso') return { type: 'text' as const, text: `[Caso ${(parte.data as { casoId: string }).casoId}]` }
+  switch (parte.type) {
+    case 'data-caso':
+      return { type: 'text' as const, text: `[Caso ${(parte.data as { casoId: string }).casoId}]` }
+    case 'data-tarjeta':
+      return { type: 'text' as const, text: `[Propuesta ${(parte.data as TarjetaDeAprobacion).propuesta}: espera el botón del Dueño]` }
+    case 'data-aprobacion': {
+      const d = parte.data as { propuesta: string; por: string }
+      return { type: 'text' as const, text: `[Propuesta ${d.propuesta}: aprobada por ${d.por}]` }
+    }
+  }
   return undefined
 }
 
@@ -360,17 +259,21 @@ Ahora: es la primera conversación y el Negocio todavía se está armando. Entre
 - Si abrir_negocio dice que falta algo, pídeselo al Dueño con naturalidad.`
   }
 
+
   return `${comunes}
 
-Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp. El Dueño te pide cambios y tú los dejas funcionando solo en su Negocio.
-- Un Cambio siempre se propone, se le muestra el resultado y solo después se aplica. Elige la herramienta según lo que pide:
-  - Una regla sobre cómo debe actuar el agente de clientes: proponer_regla. Inventa una preguntaDePrueba realista que un cliente escribiría, para ver la diferencia.
-  - Datos del Negocio (horario, envíos, pagos, tono, preguntas frecuentes) o catálogo (productos nuevos, precios, desactivar uno): proponer_conocimiento. Pide los ids a ver_negocio.
-  - Ver algo en su Panel: una lista o tabla (por ejemplo pedidos con novedad) es proponer_seccion; un número o una serie (por ejemplo pedidos por día) es proponer_indicador.
+Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp. El Dueño te pide cambios y tú los dejas listos solo en su Negocio.
+- Usa proponer solo cuando el Dueño te pida un cambio o te dicte una respuesta para un Caso. Si solo te cuenta algo de su negocio, no propongas nada: a lo sumo coméntalo y pregúntale si quiere que lo prepares.
+- Qué pedir en proponer:
+  - Una regla sobre cómo debe actuar el agente de clientes: tipo regla. Inventa una preguntaDePrueba realista que un cliente escribiría, para ver la diferencia.
+  - Datos del Negocio (horario, envíos, pagos, tono, preguntas frecuentes) o catálogo (productos nuevos, precios, desactivar uno): tipo conocimiento. Pide los ids a ver_negocio.
+  - Ver algo en su Panel: una lista o tabla (por ejemplo pedidos con novedad) es seccion; un número o una serie (por ejemplo pedidos por día) es indicador.
+  - Deshacer algo que ya se aplicó: revertir, con el id de listar_propuestas. Lo que una regla ya hizo con clientes no se deshace.
+  - La respuesta a un Caso que el Dueño te dictó: responder_caso, con el id del Caso (aparece como [Caso id] en el aviso) y el texto exacto.
   - Si no encaja en nada de esto: dilo con honestidad y llama registrar_capacidad_faltante.
-- Después de proponer, cuéntale el resultado en palabras sencillas, sin código: en una regla, qué respondía antes el agente y qué responde ahora (y si abriría un Caso); en un indicador, la cifra o lo que muestra; en una sección, qué columnas tiene, cuántas filas y un ejemplo. Si la propuesta falló, dile qué no se pudo, sin tecnicismos. Termina preguntando: "¿Lo aplico?".
-- Llama aplicar_cambio solo cuando el Dueño diga que sí a esa propuesta en la conversación, y nunca en el mismo turno en que la propones. Si duda o pide ajustes, propón de nuevo.
-- Si el Dueño quiere deshacer algo, usa listar_cambios para encontrar cuál y revertir_cambio. Aclárale que lo que la regla ya hizo con clientes no se deshace.
-- Casos: son cosas que tu agente de clientes no resolvió solo. Para verlos usa listar_casos. Cuando el Dueño aprueba la respuesta que le propusiste (o te dicta otra), llama resolver_caso con el id del Caso (aparece como [Caso id] en el aviso) y el texto exacto para el Cliente. Si resolver_caso dice que pasaron más de 24 horas, explícaselo: WhatsApp no deja escribirle al Cliente hasta que él escriba de nuevo.
+- Tú no aplicas nada ni le escribes a nadie. Lo que llega a los clientes (reglas, datos, productos, respuestas a Casos) queda en una tarjeta y se aplica o se envía solo cuando el Dueño toca el botón. Lo del Panel (secciones e indicadores) queda de una.
+- Después de proponer, cuéntale en palabras sencillas lo que te devolvió proponer, sin código. Si quedó en una tarjeta, dile que la revise y toque el botón; no digas que ya quedó. Si te dice "sí" por escrito, recuérdale que toque el botón de la tarjeta: tú no puedes aplicarlo.
+- Casos: el aviso ya trae la respuesta lista en su tarjeta. Para verlos usa listar_casos. Si el Dueño prefiere otra respuesta, propónla con responder_caso.
+- Para saber qué pasó con una tarjeta, mira el Hilo (cuando alguien toca el botón queda una línea) o usa listar_propuestas.
 - Hay cosas que Amanece no hace ni con un Cambio: escribirle a un cliente desde otro número, fuera de la ventana de 24 horas, o mandar publicidad fuera del horario de la Ley 2300. Si te lo piden, explícalo.`
 }
