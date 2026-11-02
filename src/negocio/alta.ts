@@ -34,7 +34,7 @@ async function buscarDueno(usuarioId: string) {
 }
 
 export const SALUDO_INICIAL =
-  '¡Hola! Soy tu Agente en Amanece. Voy a ayudarte a dejar tu negocio listo para que tus clientes te escriban por WhatsApp y los atienda sin que estés pendiente.\n\nPara empezar: ¿cómo se llama tu negocio y qué vendes?'
+  '¡Hola! Soy tu Agente en Amanece. Voy a dejar tu negocio listo para que tus clientes te escriban por WhatsApp y los atienda sin que estés pendiente.\n\nPara empezar: ¿ya tienes tu negocio publicado en algún lado, como una página o un Instagram? Pásame el enlace y lo leo. Si no tienes, cuéntame cómo se llama tu negocio y qué vendes.'
 
 /**
  * Da de alta al usuario que entra por primera vez: crea su Negocio (`armando`, con nombre temporal y un

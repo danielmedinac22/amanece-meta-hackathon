@@ -11,15 +11,19 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-aislado'],
   ['probar-modelo'],
   ['probar-revisar'],
+  ['probar-leer-enlace'],
   ['probar-elementos'],
   ['probar-migracion'],
   ['probar-reglas'],
+  ['probar-lectura'],
   ['probar-salida'],
   ['probar-entrada'],
   ['probar-clientes', '--pedido'],
   ['probar-aislamiento'],
   ['probar-aprobar'],
   ['probar-dueno'],
+  ['probar-primera'],
+  ['probar-vista-previa'],
 ]
 
 const fallaron: string[] = []

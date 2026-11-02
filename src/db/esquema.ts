@@ -86,6 +86,7 @@ export const mensajesCliente = pgTable(
 export type ItemDePedido = { productoId: string; nombre: string; cantidad: number; precio: number }
 
 export const ESTADOS_DE_PEDIDO = ['pendiente', 'confirmado', 'enviado', 'entregado', 'novedad', 'cancelado'] as const
+export type EstadoDePedido = (typeof ESTADOS_DE_PEDIDO)[number]
 
 export const pedidos = pgTable(
   'pedidos',
@@ -181,7 +182,7 @@ export const propuestas = pgTable(
     palabrasDelDueno: text('palabras_del_dueno').notNull(),
     /** `null`: la propuso el núcleo, como la respuesta que trae el aviso de un Caso. */
     pedidoPor: uuid('pedido_por').references(() => duenos.id, { onDelete: 'set null' }),
-    origen: text('origen', { enum: ['hilo', 'panel'] }).notNull().default('hilo'),
+    origen: text('origen', { enum: ['hilo', 'panel', 'lectura'] }).notNull().default('hilo'),
     escritura: jsonb('escritura').$type<Escritura>().notNull().default({ elementos: [], filas: [] }),
     actos: jsonb('actos').$type<readonly Acto[]>().notNull().default([]),
     huella: text('huella').notNull(),

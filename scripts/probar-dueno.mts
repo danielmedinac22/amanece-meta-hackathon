@@ -24,7 +24,7 @@ const { correrAislado } = await import('../src/lib/aislado')
 const cambios = await import('../src/negocio/cambios')
 const { altaDeDueno } = await import('../src/negocio/alta')
 const { datosDelNegocio } = await import('../src/negocio/datos')
-const { leerHilo } = await import('../src/negocio/dueno-hilo')
+const { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
 const { mensajeDelDueno, responderEnElHilo, tarjetasDe } = await import('../src/negocio/dueno-chat')
 const { crearAgenteDelDueno, parteDeDatosParaElModelo } = await import('../src/agentes/dueno')
 const { aprobar, proponer, guardarEnElAlta, abrirEnElAlta } = await import('../src/nucleo/cambios')
@@ -266,7 +266,8 @@ try {
       }),
     ])
     const conLaNueva = await reglasDe()
-    console.log('Reglas vigentes tras aplicar:', conLaNueva.map((v) => el.reglaEnPalabras(v.elemento)))
+    const estadoTras = await leerEstado(N)
+    console.log('Reglas vigentes tras aplicar:', conLaNueva.map((v) => el.reglaEnPalabras(v.elemento, estadoTras)))
     afirmar('4 regla: tras aplicar aparece entre las reglas vigentes', conLaNueva.length === reglasAntes + 1 && conLaNueva.some((v) => v.origen.tipo === 'propuesta' && v.origen.propuesta === regla), conLaNueva)
     await aplicar(ctx, 'Quita esa regla', [{ tipo: 'revertir', propuesta: regla }])
     const reglasTras = await reglasDe()
@@ -424,6 +425,25 @@ try {
       afirmar('8 regla: el botón la aplica y queda entre las reglas vigentes', r.tipo === 'aplicado' && (await reglasDe()) === reglasAntes + 1, r)
     }
 
+    titulo('8b. La regla de Manizales, cuando pedido, propuesta por el Agente del dueño')
+    const deManizales = async () => (await leerEstado(N)).vigentes('regla').filter((v) => v.elemento.cuando.tipo === 'pedido').length
+    const deManizalesAntes = await deManizales()
+    const pide = await turno(negocio.id, dueno.id, 'Cuando un pedido sea para fuera de Manizales, ábreme un Caso y no le prometas fecha de entrega al cliente.')
+    const mensajesDeLaRegla = tarjetasDe([pide]).length ? [pide] : [pide, await turno(negocio.id, dueno.id, 'Sí, prepáralo así.')]
+    const tarjetaDePedido = tarjetasDe(mensajesDeLaRegla).at(-1)
+    const [filaDePedido] = tarjetaDePedido ? await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, tarjetaDePedido.propuesta)) : []
+    const reglaPropuesta = filaDePedido?.escritura.elementos.find((c) => c.despues?.tipo === 'regla')?.despues
+    console.log('Regla propuesta:', JSON.stringify(reglaPropuesta), '\nVista previa:', JSON.stringify(filaDePedido?.vistaPrevia))
+    afirmar(
+      '8b regla de pedido: espera el botón, es cuando pedido con abrir_caso y trae la vista previa de conversaciones',
+      filaDePedido?.estado === 'espera_al_dueno' && reglaPropuesta?.tipo === 'regla' && reglaPropuesta.cuando.tipo === 'pedido' && reglaPropuesta.efectos.some((e) => e.tipo === 'abrir_caso') && (filaDePedido.vistaPrevia.conversaciones?.ensayos.length ?? 0) > 0,
+      { estado: filaDePedido?.estado, reglaPropuesta, herramientas: mensajesDeLaRegla.flatMap(herramientasDe) },
+    )
+    if (tarjetaDePedido) {
+      const r = await aprobar(ctx, tarjetaDePedido.propuesta, tarjetaDePedido.huella)
+      afirmar('8b regla de pedido: el botón la aplica y queda vigente', r.tipo === 'aplicado' && (await deManizales()) === deManizalesAntes + 1, r)
+    }
+
     const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
     await turno(negocio.id, dueno.id, '¿Me puedes mandar una factura electrónica a cada cliente?')
     const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
@@ -478,17 +498,18 @@ try {
     afirmar('9b: sin nombre ni producto no abre, y dice qué falta', !sinNada.abierto && sinNada.falta.length === 2, sinNada)
     const { tools: deRosa } = crearAgenteDelDueno(ctxOtro, { negocio: otro, dueno: duenoOtro })
     const guardarConocimiento = (entrada: Record<string, string>) =>
-      (deRosa.guardar_conocimiento as unknown as { execute: (e: unknown, o: unknown) => Promise<{ ok: boolean; nota?: string }> }).execute(entrada, { toolCallId: 'prueba', messages: [] })
+      (deRosa.guardar_conocimiento as unknown as { execute: (e: unknown, o: unknown) => Promise<{ resumen: string }> }).execute(entrada, { toolCallId: 'prueba', messages: [] })
     const conMalTono = await guardarConocimiento({ ciudad: 'Medellín', tono: 'Decimos que la arepa cura la gastritis' })
     const trasMalTono = await leerEstado(marcar.negocio(otro.id))
-    afirmar('9b tono: uno que no puede llegar a un Cliente se omite y se dice, y la ciudad se guarda', conMalTono.ok && (conMalTono.nota ?? '').includes('tono') && valorDelDato(trasMalTono, 'ciudad') === 'Medellín' && trasMalTono.vigentes('voz').length === 0, conMalTono)
+    afirmar('9b tono: uno que no puede llegar a un Cliente se omite y se dice, y la ciudad se guarda', conMalTono.resumen.includes('tono') && valorDelDato(trasMalTono, 'ciudad') === 'Medellín' && trasMalTono.vigentes('voz').length === 0, conMalTono)
     await guardarConocimiento({ tono: `Cercanos, nunca de usted. ${'Hablamos sencillo. '.repeat(30)}` })
     const [vozDeRosa] = (await leerEstado(marcar.negocio(otro.id))).vigentes('voz')
     afirmar('9b tono: uno largo se corta al largo del estilo y "nunca de usted" tutea', vozDeRosa?.elemento.estilo.length === el.LARGO_DEL_ESTILO && vozDeRosa.elemento.trato === 'tu', vozDeRosa)
+    await guardarEnElHilo(otro.id, duenoOtro.id, 'dueno', mensajeDelDuenoEnTexto('Se llama Arepas de Rosa y la arepa de choclo vale 6000')!)
     const guardado = await guardarEnElAlta(ctxOtro, { nombre: 'Arepas de Rosa', rubro: 'arepas', quiere: [poner({ tipo: 'producto', nombre: 'Arepa de choclo', descripcion: '', precio: el.comoMonto(6000), activo: true }), poner({ tipo: 'dato', campo: 'ciudad', valor: 'Medellín' })] })
     const abre = await abrirEnElAlta(ctxOtro)
     const [abierto] = await db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(eq(esquema.negocios.id, otro.id))
-    afirmar('9b: con nombre y un producto abre, y el horario, los envíos y los pagos solo avisan', 'guardado' in guardado && abre.abierto && abierto.estado === 'listo' && abre.avisos.includes('el horario') && !abre.avisos.includes('la ciudad'), { guardado, abre })
+    afirmar('9b: con nombre y un producto abre, y el horario, los envíos y los pagos solo avisan', 'guardado' in guardado && abre.abierto && abierto.estado === 'listo' && abre.avisos.some((f) => f.que === 'horario') && !abre.avisos.some((f) => f.que === 'ciudad'), { guardado, abre })
     const tarde = await guardarEnElAlta(ctxOtro, { nombre: null, rubro: null, quiere: [poner({ tipo: 'dato', campo: 'horario', valor: '8 a 5' })] })
     afirmar('9b: abierto, la entrevista ya no escribe', 'problemas' in tarde && tarde.problemas[0]?.tipo === 'solo_mientras_se_arma', tarde)
     const arequipesActivos = arequipes.filter((p) => p.activo)

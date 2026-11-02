@@ -30,6 +30,7 @@ console.info = (...args: unknown[]) => {
 const { db, esquema } = await import('../src/db')
 const { turno, entornoDeEnsayo } = await import('../src/nucleo/clientes/turno')
 const { puertoDeLaBase } = await import('../src/nucleo/clientes/acciones')
+const { cotizar } = await import('../src/nucleo/precios/cotizar')
 const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { proponer, aprobar } = await import('../src/nucleo/cambios')
@@ -233,6 +234,25 @@ try {
     afirmar('pedido: los precios y el total salen de los productos Elemento', delMolino !== undefined && delMolino.total === totalDelCatalogo, { delMolino, totalDelCatalogo })
     const casosNuevos = casos.filter((c) => !casosPrevios.has(c.id))
     afirmar('Caso: pedir hablar con una persona deja un Caso sin resolver de Camila', casosNuevos.length > 0, casos)
+
+    console.log('\n=== 3b. El Caso de un pedido guarda su pedido y solo se reusa con ese pedido ===')
+    const puerto = puertoDeLaBase(estado, marcar.cliente(camila.id))
+    const [producto] = estado.vigentes('producto').filter((v) => v.elemento.activo)
+    const crear = async (cantidad: number) => {
+      const borrador = { items: [{ producto: producto.clave, cantidad }], ciudad: 'Pereira' }
+      const cotizacion = cotizar(borrador, estado)
+      if ('noCubre' in cotizacion) throw new Error(cotizacion.noCubre)
+      const r = await puerto.crear_pedido({ pedido: borrador, direccion: 'Calle 10', cotizacion })
+      if ('negado' in r) throw new Error(r.negado)
+      return r.numero
+    }
+    const [uno, dos] = [await crear(7), await crear(8)]
+    const titulo = `Pedido fuera de Manizales (prueba ${base})`
+    const a = await puerto.abrir_caso({ titulo, detalle: 'primero', pedido: uno, reusar: true })
+    const b = await puerto.abrir_caso({ titulo, detalle: 'otra vez', pedido: uno, reusar: true })
+    const c = await puerto.abrir_caso({ titulo, detalle: 'otro pedido', pedido: dos, reusar: true })
+    const filas = await db.select({ id: esquema.casos.id, pedido: esquema.pedidos.numero, detalle: esquema.casos.detalle }).from(esquema.casos).leftJoin(esquema.pedidos, eq(esquema.pedidos.id, esquema.casos.pedidoId)).where(eq(esquema.casos.titulo, titulo))
+    afirmar('3b: el mismo pedido reusa su Caso y otro pedido abre otro, cada uno con su pedido', a.nuevo && !b.nuevo && b.caso === a.caso && c.nuevo && c.caso !== a.caso && filas.length === 2 && filas.find((f) => f.id === a.caso)?.pedido === uno && filas.find((f) => f.id === c.caso)?.pedido === dos, { a, b, c, filas })
   }
 
   console.log('\n=== 4. Con la regla de no prometer plazos, lo que sale no promete plazos ===')

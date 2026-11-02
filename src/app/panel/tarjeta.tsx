@@ -4,6 +4,9 @@ import { useState } from 'react'
 import type { ResultadoDeAprobar, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 
+const VERBO = { aplicar: 'Aplicar', enviar: 'Enviar', confirmar: 'Están bien y no falta ninguno' } as const satisfies Record<TarjetaDeAprobacion['accion'], string>
+const HECHA = { Aplicar: 'Aplicada', Enviar: 'Enviada', 'Están bien y no falta ninguno': 'Confirmada' } as const satisfies Record<(typeof VERBO)[keyof typeof VERBO], string>
+
 type Respuesta = ResultadoDeAprobar | { readonly tipo: 'descartada' } | { readonly tipo: 'error'; readonly mensaje: string }
 
 /** Una propuesta dentro del Hilo: sus líneas y el botón. Después de un clic muestra lo que respondió la ruta. */
@@ -14,7 +17,7 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
   // Recién llegada en el stream todavía no tiene estado: se deja tocar si no venció, y la ruta decide.
   const [vigente] = useState(() => Date.parse(tarjeta.vence) > Date.now())
   const esperando = (!respuesta || respuesta.tipo === 'error') && (estado ? estado.estado === 'espera_al_dueno' : vigente)
-  const verbo = tarjeta.accion === 'enviar' ? 'Enviar' : 'Aplicar'
+  const verbo = VERBO[tarjeta.accion]
 
   async function tocar(accion: 'aprobar' | 'descartar') {
     setEnCurso(true)
@@ -36,6 +39,11 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
 
   return (
     <div className="mt-2 rounded-xl border border-borde bg-tarjeta p-3 text-sm">
+      {(tarjeta.advertencias ?? []).map((a, i) => (
+        <p key={`a${i}`} className="mb-2 rounded-lg bg-amber-50 px-2 py-1 text-amber-900">
+          {a}
+        </p>
+      ))}
       {tarjeta.lineas.map((l, i) => (
         <p key={i} className="whitespace-pre-wrap">
           {l}
@@ -59,8 +67,8 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
 }
 
 /** Lo que dice la tarjeta cuando ya no espera: primero lo que acaba de pasar con este clic, después lo guardado. */
-function textoDelEstado(verbo: 'Aplicar' | 'Enviar', estado: EstadoDeTarjeta | undefined, r: Respuesta | null): string {
-  const hecha = verbo === 'Enviar' ? 'Enviada' : 'Aplicada'
+function textoDelEstado(verbo: keyof typeof HECHA, estado: EstadoDeTarjeta | undefined, r: Respuesta | null): string {
+  const hecha = HECHA[verbo]
   switch (r?.tipo) {
     case 'aplicado':
       // Si el envío no salió como debía, el desenlace que armó el núcleo lo dice.

@@ -15,7 +15,8 @@ process.env.ENVIO_SIMULADO = '1'
 
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
-const { leerEstado, EstadoIlegible } = await import('../src/nucleo/estado')
+const { armarEstado, leerEstado, EstadoIlegible } = await import('../src/nucleo/estado')
+const { queFaltaParaAbrir } = await import('../src/nucleo/cambios')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { cotizar } = await import('../src/nucleo/precios/cotizar')
@@ -44,9 +45,9 @@ const foto = async (negocio: NegocioId) => {
   return JSON.stringify({ version: e.version, todos: e.todos() })
 }
 const horario = (valor: string): Elemento => ({ tipo: 'dato', campo: 'horario', valor })
-const regla = (cuando: Extract<Elemento, { tipo: 'regla' }>['cuando'], efectos: Extract<Elemento, { tipo: 'regla' }>['efectos']): Elemento => ({
+const regla = (cuando: Extract<Elemento, { tipo: 'regla' }>['cuando'], efectos: Extract<Elemento, { tipo: 'regla' }>['efectos'], nombre = 'Regla de prueba'): Elemento => ({
   tipo: 'regla',
-  nombre: 'Regla de prueba',
+  nombre,
   cuando,
   efectos,
   escenarios: { activan: [{ mensajeDelCliente: '¿Cuándo llega?', momento: null, pedido: null, esperado: { hace: ['abrir_caso'], noHace: [] } }], noActivan: [] },
@@ -129,10 +130,10 @@ try {
 
   console.log('\n=== E9. escribir no deja entrar lo que hoy nada hace cumplir ===')
   const antesDeE9 = await filasDe(A)
-  const conPedido = regla({ tipo: 'pedido', condicion: { tipo: 'total_desde', monto: monto(100000) } }, [{ tipo: 'abrir_caso', titulo: 'Pedido grande' }])
+  const pasarConPedido = regla({ tipo: 'pedido', condicion: { tipo: 'ciudad_fuera_de', ciudades: ['Manizales'] } }, [{ tipo: 'pasar_al_dueno', avisoAlCliente: 'Ya le aviso a Ana.' }])
   const conNoVender = regla({ tipo: 'siempre' }, [{ tipo: 'no_vender', explicacionAlCliente: 'Hoy no vendemos' }])
   const conTema = regla({ tipo: 'tema', tema: 'envíos' }, [{ tipo: 'abrir_caso', titulo: 'Envíos' }])
-  for (const [nombre, r] of [['cuando: pedido', conPedido], ['efecto no_vender', conNoVender], ['cuando: tema', conTema]] as const) {
+  for (const [nombre, r] of [['cuando: pedido y pasar_al_dueno, que se cumpliría antes de saberse', pasarConPedido], ['efecto no_vender', conNoVender], ['cuando: tema', conTema]] as const) {
     const intento = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: r }])
     afirmar(`E9: una regla con ${nombre} no se escribe: invalida`, intento.tipo === 'invalida', intento)
   }
@@ -145,6 +146,10 @@ try {
   afirmar('E9: nada de lo invalido dejó filas', (await filasDe(A)) === antesDeE9)
   const permitida = await escribirEn(A, [{ clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'siempre' }, [{ tipo: 'no_prometer', que: 'plazo' }]) }])
   afirmar('E9: una regla siempre con no_prometer sí se escribe', permitida.tipo === 'escrito' && (await filasDe(A)) === antesDeE9 + 1, permitida)
+  const deManizales = await escribirEn(A, [
+    { clave: el.claveNueva('regla'), base: 'nueva', despues: regla({ tipo: 'pedido', condicion: { tipo: 'ciudad_fuera_de', ciudades: ['Manizales'] } }, [{ tipo: 'abrir_caso', titulo: 'Pedido fuera de Manizales' }, { tipo: 'no_prometer', que: 'plazo' }], 'Fuera de Manizales') },
+  ])
+  afirmar('E9: la regla de Manizales, cuando pedido con abrir_caso y no_prometer, sí se escribe', deManizales.tipo === 'escrito', deManizales)
 
   console.log('\n=== E10. La validación corre dentro de la transacción, después del FOR UPDATE ===')
   const torta = (): CambioDeElemento => ({ clave: el.claveNueva('producto'), base: 'nueva', despues: { tipo: 'producto', nombre: 'Torta', descripcion: '', precio: monto(30000), activo: true } })
@@ -167,6 +172,23 @@ try {
   const [fila] = await db.select({ contenido: esquema.elementos.contenido }).from(esquema.elementos).where(and(eq(esquema.elementos.negocioId, A), eq(esquema.elementos.clave, crudo)))
   afirmar('E11: se guarda el Elemento parseado, con sus valores por defecto', conDefectos.tipo === 'escrito' && (fila?.contenido as { descripcion?: string })?.descripcion === '' && (fila?.contenido as { activo?: boolean })?.activo === true, fila)
 
+  console.log('\n=== queFaltaParaAbrir ===')
+  {
+    const identidad = { id: marcar.negocio('00000000-0000-4000-8000-0000000000f1'), nombre: 'Café Trigo', rubro: 'café', codigo: 'FALTA', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'armando' } as const
+    const estadoCon = (...elementos: [string, Elemento][]) =>
+      armarEstado(identidad, version(1), elementos.map(([c, e]) => ({ clave: clave(c), version: version(1), origen: { tipo: 'entrevista' as const }, elemento: e }) as never))
+    const molido: Elemento = { tipo: 'producto', nombre: 'Molido 500 g', descripcion: '', precio: monto(32000), activo: true }
+    const sinProductos = queFaltaParaAbrir(estadoCon(), null)
+    afirmar('abrir: sin productos bloquea producto_con_precio, sin nada en la tarjeta', sinProductos.bloquea.some((f) => f.que === 'producto_con_precio' && !f.enLaTarjeta), sinProductos)
+    const pendiente = { elementos: [{ clave: el.claveNueva('producto'), base: 'nueva' as const, despues: molido }], filas: [] }
+    const conTarjeta = queFaltaParaAbrir(estadoCon(), pendiente)
+    afirmar('abrir: un producto que espera en la tarjeta sigue bloqueando, con enLaTarjeta', conTarjeta.bloquea.some((f) => f.que === 'producto_con_precio' && f.enLaTarjeta), conTarjeta)
+    const todoElPais = queFaltaParaAbrir(estadoCon(['producto:1', molido], ['dato:envios', { tipo: 'dato', campo: 'envios', valor: 'Enviamos a todo el país' }]), null)
+    afirmar('abrir: «Enviamos a todo el país» avisa envios_sin_detalle y no bloquea', todoElPais.bloquea.length === 0 && todoElPais.avisa.some((f) => f.que === 'envios_sin_detalle'), todoElPais)
+    const conDetalle = queFaltaParaAbrir(estadoCon(['producto:1', molido], ['dato:envios', { tipo: 'dato', campo: 'envios', valor: 'A todo el país, de 2 a 4 días hábiles; el envío cuesta $12.000' }]), null)
+    afirmar('abrir: con costo y plazo los envíos no avisan; ciudad, pagos y horario solo avisan', conDetalle.bloquea.length === 0 && JSON.stringify(conDetalle.avisa.map((f) => f.que)) === JSON.stringify(['ciudad', 'pagos', 'horario']), conDetalle)
+  }
+
   console.log('\n=== cotizar ===')
   const cafe = el.claveDeProducto.deId('00000000-0000-4000-8000-0000000000a1')
   const molino = el.claveDeProducto.deId('00000000-0000-4000-8000-0000000000a2')
@@ -180,6 +202,14 @@ try {
   afirmar('cotizar: un producto que no se vende no cubre', 'noCubre' in cotizar({ items: [{ producto: molino, cantidad: 1 }], ciudad: 'Pasto' }, eB))
   afirmar('cotizar: una clave que no existe no cubre', 'noCubre' in cotizar({ items: [{ producto: clave('producto:nada'), cantidad: 1 }], ciudad: 'Pasto' }, eB))
   afirmar('claveDeProducto: ida y vuelta al id de pedidos.items', el.claveDeProducto.aId(cafe) === '00000000-0000-4000-8000-0000000000a1')
+
+  console.log('\n=== Las líneas concuerdan con su etiqueta ===')
+  {
+    const vacio = armarEstado({ id: marcar.negocio('00000000-0000-4000-8000-0000000000f3'), nombre: 'X', rubro: 'x', codigo: 'X', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'atendiendo' }, version(1), [])
+    const regla: Elemento = { tipo: 'regla', nombre: 'Sin fechas', cuando: { tipo: 'siempre' }, efectos: [{ tipo: 'no_prometer', que: 'plazo' }], escenarios: { activan: [{ mensajeDelCliente: '¿Cuándo llega?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] } }
+    const lineas = [el.describirCambio(null, regla, vacio), el.describirCambio(null, { tipo: 'dato', campo: 'ciudad', valor: 'Manizales' }, vacio), el.describirCambio(null, { tipo: 'dato', campo: 'envios', valor: 'A todo el país' }, vacio)]
+    afirmar('«Regla nueva», «Ciudad nueva» y «Envíos nuevos»', lineas[0].startsWith('Regla nueva:') && lineas[1].startsWith('Ciudad nueva:') && lineas[2].startsWith('Envíos nuevos:'), lineas)
+  }
 
   console.log('\n=== E8. Importaciones ===')
   const archivos = (dir: string): string[] =>

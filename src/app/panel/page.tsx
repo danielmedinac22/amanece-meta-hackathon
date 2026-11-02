@@ -125,7 +125,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
           <p className="font-medium">Reglas de tu agente de clientes</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
             {reglas.map((r) => (
-              <li key={r.clave}>{reglaEnPalabras(r.elemento)}</li>
+              <li key={r.clave}>{reglaEnPalabras(r.elemento, estado)}</li>
             ))}
           </ol>
         </div>

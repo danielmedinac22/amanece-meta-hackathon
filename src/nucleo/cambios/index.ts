@@ -9,15 +9,13 @@
  * Una propuesta deja una `Escritura` de Elementos que `aprobar` escribe con `escribir(tx, …)` dentro del mismo
  * reclamo. Sección e Indicador siguen por `./puente.ts` hasta el 2-nov, solos en su propuesta.
  */
-import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
-import { canonico } from '@/lib/canonico'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { ESCRITURA_VACIA, leerEstado, type Escritura } from '../estado'
+import { ESCRITURA_VACIA, leerEstado, type Escritura, type EstadoVigente } from '../estado'
 import { comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto } from '../estado/escribir'
 import {
@@ -28,12 +26,15 @@ import {
   type ContextoDelDueno,
   type DuenoId,
   type Instante,
-  type Marca,
   type NegocioId,
   type PropuestaId,
 } from '../identidad'
 import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDeEnvio } from '../salida'
 import { fueraDeVentana } from '../salida/compuerta'
+import type { Motores } from '../clientes/turno'
+import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
+import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
+import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import { ESQUEMAS_DEL_PUENTE, escribirLoViejo, proponerLoViejo, revertirLoViejo, vincular, type QuiereDelPuente } from './puente'
 import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuierePoner } from './traducir'
@@ -42,14 +43,13 @@ export type { Problema } from '../estado/elementos'
 export type { MotivoDeFaltante } from '../capacidades'
 export type { Acto, QuierePoner } from './traducir'
 export type { ClaveEnConflicto } from '../estado/escribir'
-export { abrirEnElAlta, guardarEnElAlta } from './alta'
-export { queFaltaParaAbrir } from './politica'
+export { abrirEnElAlta, guardarEnElAlta, type ResultadoDelAlta } from './alta'
+export { queFaltaParaAbrir, type Falta } from './politica'
+export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
+export type { Ensayo, LoQuePaso, Muestra, VistaPreviaDeConversaciones, VistaPreviaGuardada } from './ensayar'
+export { armarLectura, buscarProducto, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
-
-export type Huella = Marca<string, 'Huella'>
-
-export const VIGENCIA_DE_UNA_PROPUESTA_HORAS = 24
 
 /** Lo de una propuesta se aplica junto o no se aplica. Una Sección o un Indicador van solos. */
 const MAXIMO_DE_QUIERE = 10
@@ -125,32 +125,19 @@ export const ESQUEMA_DEL_PEDIDO = z.object({
     .describe('Lo que el Dueño pidió: se aplica todo junto o nada'),
 })
 
-export type PedidoDelDueno = {
-  readonly palabrasDelDueno: string
-  readonly quiere: readonly [Quiere, ...Quiere[]]
-  /** `panel`: el Dueño editó con su mano; su clic es la aprobación. Hoy nadie lo produce. */
-  readonly origen: 'hilo' | 'panel'
-}
+/**
+ * `panel`: el Dueño editó con su mano; su clic es la aprobación. Hoy nadie lo produce. `lectura` la arma solo
+ * `proponerLectura`: el modelo no tiene esquema para ella.
+ */
+export type PedidoDelDueno =
+  | { readonly origen: 'hilo' | 'panel'; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
+  | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuierePoner, ...QuierePoner[]] }
 
 // ══ Lo que vuelve ═══════════════════════════════════════════════════════════════════════════════
 
 export type Gasto = { readonly llamadas: number; readonly usd: number; readonly ms: number }
 
-export type VistaPrevia = { readonly lineas: readonly string[] }
-/** Solo líneas. Las de una regla traen la respuesta ensayada del agente a una pregunta de prueba, nunca texto de un Cliente. */
-export type VistaPreviaGuardada = VistaPrevia
-
-/**
- * El botón. En la web, una tarjeta; en la semana 5, el botón de WhatsApp `aprobar:<propuesta>:<huella>`. `accion` es
- * el verbo del botón (desvío de `tipos.ts`): una tarjeta recién llegada en el stream todavía no tiene historial.
- */
-export type TarjetaDeAprobacion = {
-  readonly propuesta: PropuestaId
-  readonly huella: Huella
-  readonly vence: Instante
-  readonly lineas: readonly string[]
-  readonly accion: 'aplicar' | 'enviar'
-}
+export type VistaPrevia = VistaPreviaGuardada
 
 /** Quien llama no ramifica: lee `resumen` y pinta `tarjeta` si la hay. `desenlace` es para las pruebas. */
 export type ResultadoDeProponer = { readonly resumen: string; readonly gasto: Gasto } & (
@@ -189,7 +176,7 @@ export type EntradaDeHistorial = {
   readonly aprobadoPor: DuenoId | null
   readonly estado: EstadoDePropuesta
   /** El verbo del botón: lo pinta la tarjeta y lo necesitará el botón de WhatsApp. */
-  readonly accion: 'aplicar' | 'enviar'
+  readonly accion: TarjetaDeAprobacion['accion']
   readonly cuando: Instante
 }
 
@@ -212,9 +199,9 @@ const instanteDe = (d: Date | null) => (d ? marcar.instante(d) : null)
 
 // ══ Proponer ════════════════════════════════════════════════════════════════════════════════════
 
-/** Un pedido del Dueño desde su Hilo. El Negocio sale de `ctx`, nunca del modelo. */
-export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno): Promise<ResultadoDeProponer> {
-  return proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, pedido)
+/** Un pedido del Dueño desde su Hilo. El Negocio sale de `ctx`, nunca del modelo. `motores` solo lo cambian los `probar`. */
+export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
+  return proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, pedido, motores)
 }
 
 /**
@@ -230,6 +217,26 @@ export async function proponerRespuestaAlCaso(caso: string, texto: string): Prom
   )
 }
 
+/**
+ * La tarjeta de lo leído de un enlace: espera el botón aunque el Negocio se esté armando. Pasa por `traducir` ítem por
+ * ítem (lo que no cabe o no pasa `revisarTextoDelDueno` se cae y se cuenta) y lo que queda va en una sola propuesta,
+ * que descarta la lectura pendiente anterior. Si esa propuesta no se arma, `noSeArmo` dice por qué: lo leído no se
+ * vuelve «nada nuevo».
+ */
+export async function proponerLectura(
+  ctx: ContextoDelDueno,
+  lectura: Lectura,
+): Promise<{ readonly tarjeta: TarjetaDeAprobacion | null; readonly leidos: number; readonly descartados: number; readonly noSeArmo: string | null }> {
+  const estado = await leerEstado(ctx.negocio)
+  const quedan: QuierePoner[] = []
+  for (const q of lectura.quiere) if (!('tipo' in (await traducir(estado, [q])))) quedan.push(q)
+  const descartados = lectura.descartados + lectura.quiere.length - quedan.length
+  const [primero, ...resto] = quedan
+  if (!primero) return { tarjeta: null, leidos: 0, descartados, noSeArmo: null }
+  const r = await proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, { origen: 'lectura', fuente: lectura.fuente, quiere: [primero, ...resto] })
+  return { tarjeta: r.tarjeta, leidos: quedan.length, descartados, noSeArmo: r.tarjeta ? null : r.resumen }
+}
+
 type Quien = { readonly negocio: NegocioId; readonly pedidoPor: DuenoId | null }
 
 type Traducida = {
@@ -243,39 +250,33 @@ type Traducida = {
   readonly actos: readonly Acto[]
   /** La versión del Negocio que vio quien propuso: entra en la huella. */
   readonly version: VersionDelNegocio | null
+  /** Lo que leyó `traducir`; `null` en una pieza del puente. */
+  readonly estado: EstadoVigente | null
+  /** Las del ensayo: el código las escribe y van arriba de la tarjeta y primero en el resumen. */
+  readonly advertencias: readonly string[]
 }
 
 type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capacidad_faltante' }>
 
 const esDelPuente = (q: Quiere): q is QuiereDelPuente => q.tipo === 'seccion' || q.tipo === 'indicador'
 
-async function proponerComo(quien: Quien, pedido: PedidoDelDueno): Promise<ResultadoDeProponer> {
-  if (pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
+async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores): Promise<ResultadoDeProponer> {
+  if (pedido.origen !== 'lectura' && pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
   if (pedido.quiere.some(esDelPuente) && pedido.quiere.length > 1) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Una Sección o un Indicador van solos, en su propia propuesta' }])
-  const t = await traducirPedido(quien, pedido)
-  if ('desenlace' in t) return t
+  const traducida = await traducirPedido(quien, pedido)
+  if ('desenlace' in traducida) return traducida
 
-  const id = marcar.propuesta(randomUUID())
-  const huella = huellaDe({ negocio: quien.negocio, cambio: t.cambio, revierte: t.revierte, actos: t.actos, escritura: t.escritura, version: t.version })
-  const vence = new Date(Date.now() + VIGENCIA_DE_UNA_PROPUESTA_HORAS * 3600_000)
-  const vistaPrevia: VistaPrevia = { lineas: t.lineas }
-  await db.batch([
-    db.insert(esquema.propuestas).values({
-      id,
-      negocioId: quien.negocio,
-      palabrasDelDueno: pedido.palabrasDelDueno,
-      pedidoPor: quien.pedidoPor,
-      origen: pedido.origen,
-      escritura: t.escritura,
-      actos: t.actos,
-      revierte: t.revierte,
-      huella,
-      vence,
-      vistaPrevia,
-    }),
-    ...reemplazadas(quien.negocio, id, t),
-    ...(t.cambio ? [vincular(t.cambio, id)] : []),
-  ])
+  const ensayo =
+    traducida.estado && traducida.escritura.elementos.length && pedido.origen !== 'lectura'
+      ? await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
+      : { guardada: { lineas: traducida.lineas, advertencias: [], conversaciones: null }, gasto: SIN_GASTO }
+  const vistaPrevia: VistaPrevia = ensayo.guardada
+  const t: Traducida = { ...traducida, lineas: vistaPrevia.lineas, advertencias: vistaPrevia.advertencias ?? [], gasto: sumarGasto(traducida.gasto, ensayo.gasto) }
+  const palabrasDelDueno = pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno
+  const { valores, tarjeta } = filaNueva({ negocio: quien.negocio, palabrasDelDueno, pedidoPor: quien.pedidoPor, origen: pedido.origen, escritura: t.escritura, actos: t.actos, revierte: t.revierte, cambio: t.cambio, version: t.version, vistaPrevia })
+  const id = tarjeta.propuesta
+  const huella = tarjeta.huella
+  await db.batch([db.insert(esquema.propuestas).values(valores), ...reemplazadas(quien.negocio, id, pedido.origen, t), ...(t.cambio ? [vincular(t.cambio, id)] : [])])
 
   // Con actos nunca se aplica sin el botón; lo demás lo decide la política con el modo leído dentro del reclamo.
   if (!t.actos.length) {
@@ -290,7 +291,6 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno): Promise<Resul
       console.error('[cambios] la política no pudo aplicarla; queda con tarjeta', id, e)
     }
   }
-  const tarjeta: TarjetaDeAprobacion = { propuesta: id, huella, vence: marcar.instante(vence), lineas: t.lineas, accion: t.actos.length ? 'enviar' : 'aplicar' }
   return { desenlace: 'espera_al_dueno', propuesta: id, tarjeta, vistaPrevia, gasto: t.gasto, resumen: armarResumen('espera_al_dueno', id, t) }
 }
 
@@ -300,27 +300,29 @@ const descartarSinBoton = (id: PropuestaId) =>
     .set({ estado: 'descartada' })
     .where(and(eq(esquema.propuestas.id, id), eq(esquema.propuestas.estado, 'espera_al_dueno')))
 
-/** Una respuesta pendiente por Caso y una reversión pendiente por propuesta: la nueva deja descartada a la vieja. */
-function reemplazadas(negocio: NegocioId, nueva: PropuestaId, t: Traducida) {
+/** Una respuesta pendiente por Caso, una reversión pendiente por propuesta y una lectura por Negocio: la nueva deja descartada a la vieja. */
+function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelPedido, t: Traducida) {
   const pendientes = and(eq(esquema.propuestas.negocioId, negocio), eq(esquema.propuestas.estado, 'espera_al_dueno'), ne(esquema.propuestas.id, nueva))
   const descartar = (cuales: ReturnType<typeof and>) => db.update(esquema.propuestas).set({ estado: 'descartada' }).where(and(pendientes, cuales))
   const [acto] = t.actos
   if (acto) return [descartar(sql`${esquema.propuestas.actos} @> ${JSON.stringify([{ caso: acto.caso }])}::jsonb`)]
   if (t.revierte) return [descartar(eq(esquema.propuestas.revierte, t.revierte))]
+  if (origen === 'lectura') return [descartar(eq(esquema.propuestas.origen, 'lectura'))]
   return []
 }
 
-const SIN_PIEZA = { cambio: null, gasto: SIN_GASTO } as const
+const SIN_PIEZA = { cambio: null, gasto: SIN_GASTO, advertencias: [] } as const
+const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
 async function traducirPedido(quien: Quien, pedido: PedidoDelDueno): Promise<Traducida | SinPropuesta> {
   const [q] = pedido.quiere
-  if (esDelPuente(q)) return traducirPieza(quien, pedido.palabrasDelDueno, q)
+  if (esDelPuente(q) && pedido.origen !== 'lectura') return traducirPieza(quien, pedido.palabrasDelDueno, q)
   if (q.tipo === 'revertir' && (await esDelPuenteLaPropuesta(quien.negocio, q.propuesta))) return traducirReversionVieja(quien.negocio, q.propuesta)
   const estado = await leerEstado(quien.negocio)
   const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[])
-  if (!('tipo' in t)) return { ...t, ...SIN_PIEZA, version: estado.version }
+  if (!('tipo' in t)) return { ...t, ...SIN_PIEZA, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
   if (t.tipo === 'corregir') return corregir(t.problemas)
-  return faltante(quien.negocio, pedido.palabrasDelDueno, t.motivo, SIN_GASTO)
+  return faltante(quien.negocio, pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno, t.motivo, SIN_GASTO)
 }
 
 async function faltante(negocio: NegocioId, palabras: string, motivo: MotivoDeFaltante, gasto: Gasto): Promise<SinPropuesta> {
@@ -331,7 +333,7 @@ async function faltante(negocio: NegocioId, palabras: string, motivo: MotivoDeFa
 
 async function traducirPieza(quien: Quien, palabras: string, q: QuiereDelPuente): Promise<Traducida | SinPropuesta> {
   const r = await proponerLoViejo(quien, q)
-  if (r.tipo === 'listo') return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: r.cambio, revierte: null, actos: [], version: null }
+  if (r.tipo === 'listo') return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: r.cambio, revierte: null, actos: [], version: null, estado: null, advertencias: [] }
   return faltante(quien.negocio, palabras, { tipo: 'sin_converger', ultimoError: r.ultimoError }, r.gasto)
 }
 
@@ -355,7 +357,7 @@ async function traducirReversionVieja(negocio: NegocioId, propuesta: PropuestaId
   if (p.revierte) return invalida('Deshacer una reversión no se puede: para volver a tenerlo, pídelo de nuevo')
   const r = await revertirLoViejo(negocio, { propuesta, lineas: p.vistaPrevia.lineas })
   if (r.tipo === 'corregir') return corregir(r.problemas)
-  return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: null, revierte: propuesta, actos: [], version: null }
+  return { alcance: r.alcance, lineas: r.lineas, gasto: r.gasto, escritura: ESCRITURA_VACIA, cambio: null, revierte: propuesta, actos: [], version: null, estado: null, advertencias: [] }
 }
 
 function corregir(problemas: readonly Problema[]): SinPropuesta {
@@ -381,27 +383,13 @@ export function problemaEnPalabras(p: Problema): string {
   }
 }
 
-/**
- * sha256 del contenido canónico (claves ordenadas). Ata el botón a exactamente lo que se mostró: la fila no se edita
- * después de insertarse. Sin azar: el mismo texto para el mismo Caso da la misma clave de salida y no sale dos veces.
- */
-function huellaDe(contenido: {
-  readonly negocio: NegocioId
-  readonly cambio: string | null
-  readonly revierte: PropuestaId | null
-  readonly actos: readonly Acto[]
-  readonly escritura: Escritura
-  readonly version: VersionDelNegocio | null
-}): Huella {
-  return createHash('sha256').update(canonico(contenido)).digest('hex') as Huella
-}
-
 /** Lo único que ve el modelo, sin la huella. El id va para que pueda descartarla sin listar. */
 function armarResumen(desenlace: 'espera_al_dueno' | 'aplicado', id: PropuestaId, t: Traducida): string {
   const lineas = t.lineas.map((l) => `- ${l}`).join('\n')
   if (desenlace === 'aplicado') return `Ya quedó aplicado, sin botón porque solo lo ve el Dueño [Propuesta ${id}]:\n${lineas}`
   const boton = t.actos.length ? 'Enviar' : 'Aplicar'
-  return `Quedó lista la tarjeta [Propuesta ${id}]:\n${lineas}\nSe ${t.actos.length ? 'envía' : 'aplica'} solo cuando el Dueño toque ${boton} en la tarjeta. No digas que ya quedó ni le pidas que te diga que sí.`
+  const avisos = t.advertencias.length ? `Advertencias del ensayo, cuéntaselas al Dueño:\n${t.advertencias.map((a) => `- ${a}`).join('\n')}\n` : ''
+  return `${avisos}Quedó lista la tarjeta [Propuesta ${id}]:\n${lineas}\nSe ${t.actos.length ? 'envía' : 'aplica'} solo cuando el Dueño toque ${boton} en la tarjeta. No digas que ya quedó ni le pidas que te diga que sí.`
 }
 
 // ══ Aprobar ═════════════════════════════════════════════════════════════════════════════════════
@@ -437,7 +425,7 @@ type Reclamo =
   | { readonly tipo: 'sigue_esperando' }
 
 /** Lo que la política pasa para aplicar sin el botón. El botón pasa null. */
-type SinBoton = { readonly alcance: Alcance; readonly origen: 'hilo' | 'panel' }
+type SinBoton = { readonly alcance: Alcance; readonly origen: OrigenDelPedido }
 
 /** `avisar`: este clic es el que deja la línea del desenlace en los Hilos. El doble clic no. */
 type Aplicada = { readonly tipo: 'aplicado'; readonly fila: FilaDePropuesta; readonly envio: ResultadoDeEnvio | null; readonly avisar: boolean }
@@ -616,6 +604,7 @@ async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio
   const [quien] = f.aprobadoPor ? await db.select({ nombre: esquema.duenos.nombre }).from(esquema.duenos).where(eq(esquema.duenos.id, f.aprobadoPor)) : []
   const por = quien?.nombre || 'Un Dueño'
   const [acto] = f.actos
+  if (f.origen === 'lectura') return { por, texto: confirmadaEnPalabras(por, f.palabrasDelDueno) }
   if (!acto) return { por, texto: `${por} aplicó: ${f.vistaPrevia.lineas[0] ?? 'el Cambio'}` }
   const [cliente] = await db
     .select({ nombre: esquema.clientes.nombre })
@@ -678,7 +667,7 @@ export async function historial(ctx: ContextoDelDueno, filtro: { readonly limite
     pedidoPor: f.pedidoPor ? marcar.dueno(f.pedidoPor) : null,
     aprobadoPor: f.aprobadoPor ? marcar.dueno(f.aprobadoPor) : null,
     estado: estadoDe(f, revertida, cuando),
-    accion: f.actos.some((acto) => acto.tipo === 'responder_caso') ? 'enviar' : 'aplicar',
+    accion: accionDe(f.origen, f.actos),
     cuando: marcar.instante(f.creado),
   }))
 }

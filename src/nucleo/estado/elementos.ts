@@ -88,7 +88,7 @@ export const DONDE_SE_CUMPLE = {
  * algo en `no` no se escribe: `traducir` la deja como Capacidad faltante y `escribir` la rechaza.
  */
 export const SE_CUMPLE_HOY = {
-  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'no' },
+  cuando: { siempre: 'si', tema: 'no', fuera_de_horario: 'no', pedido: 'si' },
   efecto: { pasar_al_dueno: 'si', abrir_caso: 'si', no_prometer: 'si', no_decir: 'si', pedir_dato: 'no', no_vender: 'no' },
 } as const satisfies {
   readonly cuando: Record<Cuando['tipo'], 'si' | 'no'>
@@ -97,10 +97,7 @@ export const SE_CUMPLE_HOY = {
 
 export const LARGO_DEL_ESTILO = 300
 
-/**
- * Con solo `siempre`, pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje, hasta en un
- * "hola": esperan a que exista una condición que se cumpla hoy (`tema`, `fuera_de_horario`, `pedido`).
- */
+/** Con `siempre`, pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje, hasta en un "hola". */
 const ESPERAN_UNA_CONDICION: readonly Efecto['tipo'][] = ['pasar_al_dueno', 'abrir_caso']
 
 export type Elemento =
@@ -122,7 +119,12 @@ export type ElementoDe<T extends TipoDeElemento> = Extract<Elemento, { tipo: T }
 export type EntradaDe<T extends TipoDeElemento> = Omit<ElementoDe<T>, 'tipo'>
 
 export type Alcance = 'clientes' | 'panel'
-export type ProfundidadDeVistaPrevia = 'describir' | 'cotizar' | 'panel' | 'conversaciones'
+/**
+ * `cotizar` y `panel` salen hasta que un tipo los use: `precio` (semanas 3-4) vuelve con `cotizar` sobre los últimos
+ * pedidos, y Sección e Indicador con `panel` el 2-nov. Un `producto` que cambia de precio se describe: no recalcula
+ * pedidos guardados.
+ */
+export type ProfundidadDeVistaPrevia = 'describir' | 'conversaciones'
 
 export const VISTA_PREVIA = {
   regla: 'conversaciones',
@@ -155,7 +157,7 @@ export type DefinicionDeElemento<T extends TipoDeElemento> = {
   textos(e: ElementoDe<T>): readonly { readonly campo: string; readonly texto: string }[]
   /** Determinista, sin modelo. Corre al proponer y otra vez al aprobar. `clave` es la del propio Elemento. */
   validar(e: ElementoDe<T>, clave: Clave, estado: Vigentes): readonly Problema[]
-  describir(antes: ElementoDe<T> | null, despues: ElementoDe<T> | null): string
+  describir(antes: ElementoDe<T> | null, despues: ElementoDe<T> | null, estado: Vigentes): string
 }
 
 export function normalizar(texto: string): string {
@@ -322,7 +324,7 @@ const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_in
 
 const QUE_NO_PROMETER_EN_PALABRAS = { plazo: 'fechas ni plazos de entrega', descuento: 'descuentos', disponibilidad: 'disponibilidad' } as const satisfies Record<QueNoPrometer, string>
 
-function cuandoEnPalabras(c: Cuando): string {
+function cuandoEnPalabras(c: Cuando, estado: Vigentes): string {
   switch (c.tipo) {
     case 'siempre':
       return 'siempre'
@@ -331,7 +333,44 @@ function cuandoEnPalabras(c: Cuando): string {
     case 'fuera_de_horario':
       return 'fuera del horario de atención'
     case 'pedido':
-      return 'según el pedido'
+      return condicionEnPalabras(c.condicion, estado)
+  }
+}
+
+const productoEnPalabras = (clave: Clave, estado: Vigentes) => estado.vigentes('producto').find((v) => v.clave === clave)?.elemento.nombre ?? 'un producto que ya no está en el catálogo'
+
+/** `incluye` nombra el producto: el Dueño no conoce las claves. */
+export function condicionEnPalabras(c: CondicionDePedido, estado: Vigentes): string {
+  switch (c.tipo) {
+    case 'ciudad_fuera_de':
+      return `cuando el pedido es para fuera de ${c.ciudades.join(', ')}`
+    case 'total_desde':
+      return `cuando el pedido suma ${pesos(c.monto)} o más`
+    case 'incluye':
+      return `cuando el pedido incluye ${productoEnPalabras(c.producto, estado)}`
+  }
+}
+
+/** Lo que una condición de pedido necesita saber: el borrador y el total que calculó `cotizar`, o un pedido guardado. */
+export type PedidoParaReglas = { readonly borrador: BorradorDePedido; readonly total: Monto }
+
+/** Pura. La ciudad como se compara: el primer tramo, antes de una coma, un guion o un paréntesis, normalizado. «Manizales, Caldas» es «manizales». */
+export const ciudadDe = (texto: string) => normalizar(texto.split(/[,(\-–—]/)[0])
+
+/**
+ * Pura. La única evaluación de una `CondicionDePedido`. La ciudad se compara por igualdad con `ciudadDe`: «Calima» no
+ * está en Cali. Una ciudad vacía no está fuera de ninguna: `crear_pedido` no la deja pasar.
+ */
+export function seCumpleLaCondicion(c: CondicionDePedido, p: PedidoParaReglas): boolean {
+  switch (c.tipo) {
+    case 'ciudad_fuera_de': {
+      const ciudad = ciudadDe(p.borrador.ciudad)
+      return ciudad !== '' && !c.ciudades.some((x) => ciudadDe(x) === ciudad)
+    }
+    case 'total_desde':
+      return p.total >= c.monto
+    case 'incluye':
+      return p.borrador.items.some((i) => i.producto === c.producto)
   }
 }
 
@@ -352,17 +391,19 @@ function efectoEnPalabras(e: Efecto): string {
   }
 }
 
-export function reglaEnPalabras(r: ElementoDe<'regla'>): string {
-  return `${r.nombre}: ${cuandoEnPalabras(r.cuando)}, tu agente de clientes ${r.efectos.map(efectoEnPalabras).join(' y ')}`
+export function reglaEnPalabras(r: ElementoDe<'regla'>, estado: Vigentes): string {
+  return `${r.nombre}: ${cuandoEnPalabras(r.cuando, estado)}, tu agente de clientes ${r.efectos.map(efectoEnPalabras).join(' y ')}`
 }
 
 const vozEnPalabras = (v: ElementoDe<'voz'>) => `${v.estilo} (trata de ${v.trato}, hasta ${v.emojisPorMensaje} emoji por mensaje)`
 
 export const ETIQUETA_DEL_DATO = { descripcion: 'Descripción', ciudad: 'Ciudad', horario: 'Horario', envios: 'Envíos', pagos: 'Pagos' } as const satisfies Record<CampoDeConocimiento, string>
 
-function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => string, etiqueta: string): string {
+const NUEVO_DEL_DATO = { descripcion: 'nueva', ciudad: 'nueva', horario: 'nuevo', envios: 'nuevos', pagos: 'nuevos' } as const satisfies Record<CampoDeConocimiento, string>
+
+function cambio<T>(antes: T | null, despues: T | null, enPalabras: (x: T) => string, etiqueta: string, nuevo = 'nuevo'): string {
   if (antes && despues) return `${etiqueta}: «${enPalabras(antes)}» → «${enPalabras(despues)}»`
-  if (despues) return `${etiqueta} nuevo: «${enPalabras(despues)}»`
+  if (despues) return `${etiqueta} ${nuevo}: «${enPalabras(despues)}»`
   if (antes) return `Quitar ${etiqueta.toLowerCase()}: «${enPalabras(antes)}»`
   return etiqueta
 }
@@ -397,7 +438,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
         problemas.push(
           invalido(
             'efectos',
-            'Hoy una regla que vale siempre solo puede no prometer (plazos, descuentos o disponibilidad) o no decir frases: pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje. Eso necesita saber cuándo (un tema, el horario o el pedido): propónla con esa condición y queda anotada para el equipo de Amanece',
+            'Una regla que vale siempre solo puede no prometer (plazos, descuentos o disponibilidad) o no decir frases: pasarle la conversación al Dueño o abrirle un Caso pasaría en cada mensaje. Para abrir un Caso, ponle una condición de pedido (ciudad_fuera_de, total_desde o incluye)',
           ),
         )
       }
@@ -408,7 +449,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
       }
       return problemas
     },
-    describir: (antes, despues) => cambio(antes, despues, reglaEnPalabras, 'Regla'),
+    describir: (antes, despues, estado) => cambio(antes, despues, (r) => reglaEnPalabras(r, estado), 'Regla', 'nueva'),
   },
   voz: {
     contrato: 1,
@@ -428,7 +469,10 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
     referencias: () => [],
     textos: (d) => [{ campo: d.campo, texto: d.valor }],
     validar: (d) => (d.valor.trim() ? [] : [invalido(d.campo, 'El dato no puede quedar vacío: para borrarlo, quítalo')]),
-    describir: (antes, despues) => cambio(antes, despues, (d) => d.valor, ETIQUETA_DEL_DATO[(despues ?? antes)?.campo ?? 'descripcion']),
+    describir: (antes, despues) => {
+      const campo = (despues ?? antes)?.campo ?? 'descripcion'
+      return cambio(antes, despues, (d) => d.valor, ETIQUETA_DEL_DATO[campo], NUEVO_DEL_DATO[campo])
+    },
   },
   pregunta: {
     contrato: 1,
@@ -442,7 +486,7 @@ export const DEFINICIONES: { readonly [T in TipoDeElemento]: DefinicionDeElement
       const repetida = estado.vigentes('pregunta').find((v) => v.clave !== clave && normalizar(v.elemento.pregunta) === normalizar(p.pregunta))
       return repetida ? [invalido('pregunta', `Esa pregunta ya existe: para cambiarla, usa reemplaza con la clave ${repetida.clave}`)] : []
     },
-    describir: (antes, despues) => cambio(antes, despues, (p) => `${p.pregunta} ${p.respuesta}`, 'Pregunta frecuente'),
+    describir: (antes, despues) => cambio(antes, despues, (p) => `${p.pregunta} ${p.respuesta}`, 'Pregunta frecuente', 'nueva'),
   },
   producto: {
     contrato: 1,
@@ -485,10 +529,10 @@ export function definicionDe(tipo: TipoDeElemento): DefinicionDeElemento<TipoDeE
 }
 
 /** Lo que vale ahora, sin "nuevo": para contarle al Dueño qué dejó otro. */
-export function describirVigente(e: Elemento): string {
+export function describirVigente(e: Elemento, estado: Vigentes): string {
   switch (e.tipo) {
     case 'regla':
-      return `Regla ${reglaEnPalabras(e)}`
+      return `Regla ${reglaEnPalabras(e, estado)}`
     case 'voz':
       return `Cómo habla tu agente: «${vozEnPalabras(e)}»`
     case 'dato':
@@ -500,9 +544,9 @@ export function describirVigente(e: Elemento): string {
   }
 }
 
-export function describirCambio(antes: Elemento | null, despues: Elemento | null): string {
+export function describirCambio(antes: Elemento | null, despues: Elemento | null, estado: Vigentes): string {
   const tipo = (despues ?? antes)?.tipo
-  return tipo ? definicionDe(tipo).describir(antes, despues) : ''
+  return tipo ? definicionDe(tipo).describir(antes, despues, estado) : ''
 }
 
 type Es<A extends true> = A
@@ -516,7 +560,7 @@ type _DatoSoloSeDescribe = Es<(typeof VISTA_PREVIA)['dato'] extends 'describir' 
 type _EsquemaDaElementos = Es<[z.output<typeof ESQUEMA_DE_ELEMENTO>] extends [Elemento] ? true : false>
 type Apagados<T> = { [K in keyof T]: T[K] extends 'no' ? K : never }[keyof T]
 type Atrasados = Apagados<(typeof SE_CUMPLE_HOY)['cuando']> | Apagados<(typeof SE_CUMPLE_HOY)['efecto']>
-type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedido' | 'pedir_dato' | 'no_vender'
+type DelPlanB = 'tema' | 'fuera_de_horario' | 'pedir_dato' | 'no_vender'
 /** Encender uno de estos exige su compilador en `clientes/reglas.ts` y tocar esta línea. */
 type _AtrasadosSonLosDelPlanB = Es<[Atrasados] extends [DelPlanB] ? ([DelPlanB] extends [Atrasados] ? true : false) : false>
 export type ComprobacionesDeElementos = [

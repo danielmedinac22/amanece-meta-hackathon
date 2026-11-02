@@ -1,12 +1,13 @@
-import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from 'ai'
+import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type ToolSet, type UIMessage } from 'ai'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { crearAgenteDelDueno, parteDeDatosParaElModelo, type SalidaDeProponer } from '@/agentes/dueno'
+import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
 import { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
 import { historial, type EstadoDePropuesta, type TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { ContextoDelDueno } from '@/nucleo/identidad'
 import { registrarTurno } from '@/negocio/medir'
+import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 
 /** Cuántos mensajes del Hilo ve el modelo en cada turno. */
 const MENSAJES_QUE_VE_EL_MODELO = 40
@@ -24,6 +25,11 @@ export function mensajeDelDueno(crudo: unknown): UIMessage | null {
   return mensajeDelDuenoEnTexto(texto)
 }
 
+/** El Hilo como lo ve el modelo: cada salida de herramienta pasa por el `toModelOutput` de su definición, también la de otro modo. */
+export function mensajesParaElModelo(hilo: UIMessage[], agente: { readonly todas: ToolSet }) {
+  return convertToModelMessages(hilo, { tools: agente.todas, convertDataPart: parteDeDatosParaElModelo, ignoreIncompleteToolCalls: true })
+}
+
 /**
  * Un turno del Hilo: guarda el mensaje del Dueño, corre al Agente del dueño con hasta 8 pasos y guarda
  * su respuesta al terminar. El turno queda medido con `registrarTurno`.
@@ -33,22 +39,25 @@ export async function responderEnElHilo({
   negocio,
   dueno,
   mensaje,
+  puertos,
 }: {
   ctx: ContextoDelDueno
   negocio: typeof esquema.negocios.$inferSelect
   dueno: typeof esquema.duenos.$inferSelect
   mensaje: UIMessage
+  /** Solo los `probar` los cambian: la página de guion con el modelo real. */
+  puertos?: PuertosDelDueno
 }) {
-  const { system, tools } = crearAgenteDelDueno(ctx, { negocio, dueno })
+  const agente = crearAgenteDelDueno(ctx, { negocio, dueno }, puertos)
   await guardarEnElHilo(negocio.id, dueno.id, 'dueno', mensaje)
   const historial = await leerHilo(dueno.id, MENSAJES_QUE_VE_EL_MODELO)
 
   const inicio = Date.now()
   const resultado = streamText({
     model: modelo,
-    instructions: system,
-    messages: await convertToModelMessages(historial, { tools, convertDataPart: parteDeDatosParaElModelo, ignoreIncompleteToolCalls: true }),
-    tools,
+    instructions: agente.system,
+    messages: await mensajesParaElModelo(historial, agente),
+    tools: agente.tools,
     stopWhen: isStepCount(8),
     onEnd: async ({ totalUsage }) => {
       await registrarTurno('dueno', negocio.id, totalUsage, Date.now() - inicio).catch((e) => console.warn('No se pudo registrar el turno del Agente del dueño', e))
@@ -76,7 +85,7 @@ export async function responderEnElHilo({
 /** Lo que pinta una tarjeta guardada en el Hilo. Lo arma el servidor; la tarjeta no consulta nada por su cuenta. */
 export type EstadoDeTarjeta = {
   readonly estado: EstadoDePropuesta
-  readonly accion: 'aplicar' | 'enviar'
+  readonly accion: TarjetaDeAprobacion['accion']
   /** El nombre del Dueño que tocó el botón; null si la aplicó la política o no se aplicó. */
   readonly aprobadaPor: string | null
 }
@@ -96,13 +105,6 @@ export async function leerHiloConTarjetas(ctx: ContextoDelDueno): Promise<{ mens
   return { mensajes, tarjetas }
 }
 
-/** Las dos partes que traen una tarjeta, las mismas que pinta `hilo.tsx`: la salida de `tool-proponer` y `data-tarjeta` (el aviso de un Caso). */
 export function tarjetasDe(mensajes: readonly UIMessage[]): TarjetaDeAprobacion[] {
-  return mensajes.flatMap((m) =>
-    m.parts.flatMap((p) => {
-      if (p.type === 'data-tarjeta') return [p.data as TarjetaDeAprobacion]
-      const t = p.type === 'tool-proponer' && p.state === 'output-available' ? (p.output as SalidaDeProponer).tarjeta : null
-      return t ? [t] : []
-    }),
-  )
+  return mensajes.flatMap((m) => m.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []))
 }
