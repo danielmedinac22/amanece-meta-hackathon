@@ -159,6 +159,8 @@ try {
 
   if (quiero('cambios')) {
     const ctx = ctxDe(negocio.id, dueno.id)
+    // Una corrida cortada antes de `limpiar` deja sus Elementos: con el mismo nombre, la siguiente chocaría con ellos.
+    const corrida = String(Date.now()).slice(-6)
     const salida = (sql: string, extra: Partial<SalidaDelRedactor> = {}): SalidaDelRedactor => ({
       decision: 'consulta',
       sql,
@@ -194,56 +196,56 @@ try {
     const vistaDe = async (r: Awaited<ReturnType<typeof proponer>>) => ('propuesta' in r ? (await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, r.propuesta)))[0]?.vistaPrevia : undefined)
 
     titulo('1. Indicador con una consulta fija: queda aplicado sin botón y el Panel da la misma cifra')
-    const r1 = await pedirNumero('Confirmados (prueba 1)', guion([salida('select count(*) as valor from pedidos where cuenta_como_venta')]))
+    const r1 = await pedirNumero(`Confirmados (prueba 1 ${corrida})`, guion([salida('select count(*) as valor from pedidos where cuenta_como_venta')]))
     const [verdad1] = (await db.execute(sql`select count(*)::int as n from pedidos where negocio_id = ${negocio.id} and estado in ('confirmado', 'enviado', 'entregado', 'novedad')`)).rows as { n: number }[]
-    const p1 = await pintadaDe('Confirmados (prueba 1)')
+    const p1 = await pintadaDe(`Confirmados (prueba 1 ${corrida})`)
     afirmar('1: queda aplicado sin botón', r1.desenlace === 'aplicado', r1.resumen)
     afirmar('1: la línea de la tarjeta trae la cifra de hoy', 'vistaPrevia' in r1 && r1.vistaPrevia.lineas.some((l) => l.includes(`hoy: ${verdad1.n.toLocaleString('es-CO')} pedidos`)), 'vistaPrevia' in r1 ? r1.vistaPrevia.lineas : r1)
     afirmar('1: pintarPanel da la misma cifra que la base', p1?.resultado.tipo === 'numero' && p1.resultado.valor === verdad1.n, { p1, verdad: verdad1.n })
     const deshecho = 'propuesta' in r1 ? await proponer(ctx, { palabrasDelDueno: 'Quita ese indicador', origen: 'hilo', quiere: [{ tipo: 'revertir', propuesta: r1.propuesta }] }) : null
-    afirmar('1: revertirlo también va sin botón y lo saca del Panel', deshecho?.desenlace === 'aplicado' && !(await pintadaDe('Confirmados (prueba 1)')), deshecho?.resumen)
+    afirmar('1: revertirlo también va sin botón y lo saca del Panel', deshecho?.desenlace === 'aplicado' && !(await pintadaDe(`Confirmados (prueba 1 ${corrida})`)), deshecho?.resumen)
 
     titulo('2. Sección con una consulta fija')
-    const r2 = await pedirSeccion('Con novedad (prueba 2)', guion([salida("select numero, ciudad from pedidos where estado = 'novedad' order by numero", { titulos: [{ columna: 'numero', titulo: 'Pedido' }] })]))
+    const r2 = await pedirSeccion(`Con novedad (prueba 2 ${corrida})`, guion([salida("select numero, ciudad from pedidos where estado = 'novedad' order by numero", { titulos: [{ columna: 'numero', titulo: 'Pedido' }] })]))
     const [verdad2] = (await db.execute(sql`select count(*)::int as n from pedidos where negocio_id = ${negocio.id} and estado = 'novedad'`)).rows as { n: number }[]
-    const p2 = await pintadaDe('Con novedad (prueba 2)')
+    const p2 = await pintadaDe(`Con novedad (prueba 2 ${corrida})`)
     afirmar('2: queda aplicada sin botón y la línea dice cuántas filas', r2.desenlace === 'aplicado' && r2.vistaPrevia.lineas.some((l) => l.includes(`hoy: ${verdad2.n} fila`)), 'vistaPrevia' in r2 ? r2.vistaPrevia.lineas : r2)
     afirmar('2: pintarPanel trae esas filas con el título que puso el redactor', p2?.resultado.tipo === 'filas' && p2.total === verdad2.n && p2.resultado.columnas[0]?.titulo === 'Pedido' && p2.resultado.columnas[1]?.titulo === 'ciudad', p2)
 
     titulo('3. 600 filas: filas_recortadas al proponer y otra vez al pintar')
-    const r3 = await pedirSeccion('Seiscientas (prueba 3)', guion([salida('select n as numero from hoy, generate_series(1, 600) as g(n)')]))
+    const r3 = await pedirSeccion(`Seiscientas (prueba 3 ${corrida})`, guion([salida('select n as numero from hoy, generate_series(1, 600) as g(n)')]))
     const recorte = (a: readonly { tipo: string }[] | undefined) => a?.find((x) => x.tipo === 'filas_recortadas') as { total: number; mostradas: number } | undefined
-    const p3 = await pintadaDe('Seiscientas (prueba 3)')
+    const p3 = await pintadaDe(`Seiscientas (prueba 3 ${corrida})`)
     afirmar('3: la vista previa guarda filas_recortadas con 600 y 500', recorte((await vistaDe(r3))?.panel?.[0]?.advertencias)?.total === 600 && recorte((await vistaDe(r3))?.panel?.[0]?.advertencias)?.mostradas === 500, (await vistaDe(r3))?.panel)
     afirmar('3: pintarPanel también la trae, con 500 filas mostradas', recorte(p3?.advertencias)?.total === 600 && p3?.mostradas === 500 && p3.total === 600, p3 && { total: p3.total, mostradas: p3.mostradas, advertencias: p3.advertencias })
 
     titulo('4. La ventana por defecto es la primera advertencia')
-    const r4 = await pedirNumero('Ventas sin periodo (prueba 4)', guion([salida('select sum(total) as valor from pedidos, hoy where cuenta_como_venta and dia_local > hoy.hoy_local - 30', { ventana: 'por_defecto', unidad: 'dinero' })]))
-    const p4 = await pintadaDe('Ventas sin periodo (prueba 4)')
+    const r4 = await pedirNumero(`Ventas sin periodo (prueba 4 ${corrida})`, guion([salida('select sum(total) as valor from pedidos, hoy where cuenta_como_venta and dia_local > hoy.hoy_local - 30', { ventana: 'por_defecto', unidad: 'dinero' })]))
+    const p4 = await pintadaDe(`Ventas sin periodo (prueba 4 ${corrida})`)
     afirmar('4: la primera advertencia, al proponer y al pintar, es el supuesto de la ventana', 'vistaPrevia' in r4 && r4.vistaPrevia.advertencias?.[0] === VENTANA_POR_DEFECTO.supuesto && p4?.advertencias[0]?.tipo === 'supuesto', { r4: 'vistaPrevia' in r4 ? r4.vistaPrevia.advertencias : r4, p4: p4?.advertencias })
 
     titulo('5. Un día sin pedidos en un Negocio con pedidos: resultado_vacio_con_datos')
-    const r5 = await pedirSeccion('Un día vacío (prueba 5)', guion([salida("select numero from pedidos where dia_local = '1999-01-01'::date")]))
-    const p5 = await pintadaDe('Un día vacío (prueba 5)')
+    const r5 = await pedirSeccion(`Un día vacío (prueba 5 ${corrida})`, guion([salida("select numero from pedidos where dia_local = '1999-01-01'::date")]))
+    const p5 = await pintadaDe(`Un día vacío (prueba 5 ${corrida})`)
     afirmar('5: la vista previa y el Panel avisan que salió vacío habiendo datos', (await vistaDe(r5))?.panel?.[0]?.advertencias.some((a) => a.tipo === 'resultado_vacio_con_datos') === true && p5?.advertencias.some((a) => a.tipo === 'resultado_vacio_con_datos') === true, p5?.advertencias)
 
     titulo('6. Lo que se guarda de la vista previa no trae nombres de Clientes')
     const nombres = (await db.select({ nombre: esquema.clientes.nombre }).from(esquema.clientes).where(eq(esquema.clientes.negocioId, negocio.id))).map((c) => c.nombre).filter((n) => n.trim().length > 2)
-    const r6 = await pedirSeccion('Mis clientes (prueba 6)', guion([salida('select nombre, creado from clientes order by creado desc')]))
+    const r6 = await pedirSeccion(`Mis clientes (prueba 6 ${corrida})`, guion([salida('select nombre, creado from clientes order by creado desc')]))
     const guardada6 = JSON.stringify(await vistaDe(r6))
     afirmar('6: propuestas.vista_previa no contiene ningún nombre de Cliente', r6.desenlace === 'aplicado' && nombres.length > 0 && !nombres.some((n) => guardada6.includes(n)), { nombres: nombres.length, guardada6: guardada6.slice(0, 300) })
 
     titulo('7. Una consulta guardada que ya no valida: no_se_pudo_calcular y el Panel no se cae')
     const rota = el.claveNueva('indicador')
-    const indicadorRoto = { tipo: 'indicador', nombre: 'Roto (prueba 7)', queQuiereVer: 'x', consulta: { sql: 'select now() as valor', enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'numero', unidad: { tipo: 'dinero' } } } } as unknown as Elemento
+    const indicadorRoto = { tipo: 'indicador', nombre: `Roto (prueba 7 ${corrida})`, queQuiereVer: 'x', consulta: { sql: 'select now() as valor', enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'numero', unidad: { tipo: 'dinero' } } } } as unknown as Elemento
     await conTransaccion((tx) => escribir(tx, N, { tipo: 'entrevista' }, { elementos: [{ clave: rota, base: 'nueva', despues: indicadorRoto }], filas: [] }))
     const conRota = await pintarPanel(await leerEstado(N))
-    afirmar('7: la rota sale como no_se_pudo_calcular y las demás se pintan', conRota.find((p) => p.clave === rota)?.resultado.tipo === 'no_se_pudo_calcular' && conRota.some((p) => p.nombre === 'Con novedad (prueba 2)' && p.resultado.tipo === 'filas'), conRota.map((p) => [p.nombre, p.resultado.tipo]))
+    afirmar('7: la rota sale como no_se_pudo_calcular y las demás se pintan', conRota.find((p) => p.clave === rota)?.resultado.tipo === 'no_se_pudo_calcular' && conRota.some((p) => p.nombre === `Con novedad (prueba 2 ${corrida})` && p.resultado.tipo === 'filas'), conRota.map((p) => [p.nombre, p.resultado.tipo]))
 
     titulo('3b. El error vuelve al redactor: dos consultas malas y una buena')
     const g3b = guion([salida("select count(*) as valor from pedidos p, (select set_config('app.negocio_id', 'x', true)) s"), salida('select telefono as etiqueta, count(*) as valor from clientes group by 1'), salida(BUENA)])
-    const r3b = await pedirIndicador('Confirmados por día (prueba 3b)', g3b)
-    const vigente3b = (await leerEstado(N)).vigentes('indicador').find((v) => v.elemento.nombre === 'Confirmados por día (prueba 3b)')
+    const r3b = await pedirIndicador(`Confirmados por día (prueba 3b ${corrida})`, g3b)
+    const vigente3b = (await leerEstado(N)).vigentes('indicador').find((v) => v.elemento.nombre === `Confirmados por día (prueba 3b ${corrida})`)
     afirmar('3b: el redactor corrió exactamente 3 veces', g3b.prompts.length === 3, g3b.prompts.length)
     afirmar('3b: el 2.º intento recibió la consulta anterior y por qué no sirvió', g3b.prompts[1]?.includes('set_config') && g3b.prompts[1].includes('No se permite set_config()'), g3b.prompts[1]?.slice(-400))
     afirmar('3b: el 3.º intento recibió el dato que no existe y los campos que sí', g3b.prompts[2]?.includes('telefono no existe') && g3b.prompts[2].includes('Campos:'), g3b.prompts[2]?.slice(-400))
@@ -251,7 +253,7 @@ try {
 
     titulo('3c. El redactor declina: Capacidad faltante con motivo tipado')
     const g3c = guion([salida('', { decision: 'no_se_puede', faltaEn: 'pedidos', falta: 'la fecha de entrega' })])
-    const r3c = await pedirIndicador('Días hasta la entrega (prueba 3c)', g3c)
+    const r3c = await pedirIndicador(`Días hasta la entrega (prueba 3c ${corrida})`, g3c)
     const fila3c = r3c.desenlace === 'capacidad_faltante' ? await faltanteDe(r3c.capacidadFaltante) : undefined
     afirmar('3c: termina en una Capacidad faltante no_se_puede:pedidos, sin Elemento', r3c.desenlace === 'capacidad_faltante' && fila3c?.tipo === 'no_se_puede' && fila3c.claveDeAgrupacion === 'no_se_puede:pedidos' && (fila3c.detalle as { falta?: string })?.falta === 'la fecha de entrega' && !(await leerEstado(N)).vigentes('indicador').some((v) => v.elemento.nombre.includes('3c')), fila3c)
 
@@ -269,13 +271,13 @@ try {
     titulo('3d. Tres consultas malas: sin_converger con el tipo del último error')
     const mala = salida('select now() as etiqueta, count(*) as valor from pedidos group by 1')
     const g3d = guion([mala, mala, mala])
-    const r3d = await pedirIndicador('Nunca converge (prueba 3d)', g3d)
+    const r3d = await pedirIndicador(`Nunca converge (prueba 3d ${corrida})`, g3d)
     const fila3d = r3d.desenlace === 'capacidad_faltante' ? await faltanteDe(r3d.capacidadFaltante) : undefined
     afirmar('3d: tres intentos y una Capacidad faltante sin_converger:no_permitido', g3d.prompts.length === 3 && fila3d?.tipo === 'sin_converger' && fila3d.claveDeAgrupacion === 'sin_converger:no_permitido', fila3d)
 
     titulo('3e. Una respuesta cortada cuenta como intento')
     const g3e = guion(['cortada', 'cortada', salida(BUENA)])
-    const r3e = await pedirIndicador('Confirmados (prueba 3e)', g3e)
+    const r3e = await pedirIndicador(`Confirmados (prueba 3e ${corrida})`, g3e)
     afirmar('3e: dos cortadas y la tercera sirve: 3 intentos y queda aplicado', g3e.prompts.length === 3 && r3e.desenlace === 'aplicado' && g3e.prompts[1].includes('se cortó'), { intentos: g3e.prompts.length, desenlace: r3e.desenlace })
 
     titulo('4. Regla: no prometer fechas, por Elementos')
