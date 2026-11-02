@@ -12,7 +12,9 @@ import type { PgTable } from 'drizzle-orm/pg-core'
 
 config({ path: '.env.local', quiet: true })
 const { db, esquema } = await import('../src/db')
-type Conocimiento = import('../src/db/esquema').Conocimiento
+const { marcar } = await import('../src/nucleo/identidad')
+const { elementosDeLasTablasViejas, pasarAElementos } = await import('./a-elementos.mjs')
+type Conocimiento = import('./a-elementos.mjs').Conocimiento
 type ItemDePedido = import('../src/db/esquema').ItemDePedido
 
 const DIA = 24 * 60 * 60 * 1000
@@ -229,10 +231,10 @@ async function sembrar(n: NegocioSemilla) {
 
   const [negocio] = await db
     .insert(esquema.negocios)
-    .values({ codigo: n.codigo, nombre: n.nombre, rubro: n.rubro, conocimiento: n.conocimiento, estado: 'listo' })
+    .values({ codigo: n.codigo, nombre: n.nombre, rubro: n.rubro, estado: 'listo' })
     .onConflictDoUpdate({
       target: esquema.negocios.codigo,
-      set: excluidas(esquema.negocios, ['nombre', 'rubro', 'conocimiento', 'estado']),
+      set: excluidas(esquema.negocios, ['nombre', 'rubro', 'estado']),
     })
     .returning()
 
@@ -246,13 +248,8 @@ async function sembrar(n: NegocioSemilla) {
     peso: p.peso,
     unico: p.unico ?? false,
   }))
-  await db
-    .insert(esquema.productos)
-    .values(productos.map((p) => ({ id: p.id, negocioId: p.negocioId, nombre: p.nombre, descripcion: p.descripcion, precio: p.precio, activo: p.activo })))
-    .onConflictDoUpdate({
-      target: esquema.productos.id,
-      set: excluidas(esquema.productos, ['nombre', 'descripcion', 'precio', 'activo']),
-    })
+  // El conocimiento y el catálogo entran como Elementos por el mismo camino que la migración: corrido otra vez, no escribe nada.
+  const pasada = await pasarAElementos(marcar.negocio(negocio.id), elementosDeLasTablasViejas(n.conocimiento, productos).deseados)
 
   // Los pedidos, del más viejo al más nuevo, para que el número crezca con el tiempo.
   const fechas = Array.from({ length: n.pedidos }, () => AHORA - r() * n.dias * DIA).sort((a, b) => a - b)
@@ -371,7 +368,7 @@ async function sembrar(n: NegocioSemilla) {
   }
 
   const porEstado = pedidos.reduce<Record<string, number>>((acc, p) => ({ ...acc, [p.estado!]: (acc[p.estado!] ?? 0) + 1 }), {})
-  console.log(`${n.nombre} (${n.codigo}): ${productos.length} productos, ${clientes.length} Clientes, ${pedidos.length} pedidos, ${casos.length} Casos`)
+  console.log(`${n.nombre} (${n.codigo}): ${productos.length} productos, ${clientes.length} Clientes, ${pedidos.length} pedidos, ${casos.length} Casos; ${pasada.escritas.length} Elementos escritos, versión ${pasada.version}`)
   console.log('  pedidos por estado:', porEstado)
 }
 

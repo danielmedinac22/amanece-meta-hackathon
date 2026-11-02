@@ -1,7 +1,7 @@
 /**
  * Prueba el lado del Dueño contra la base real y el modelo real, sin mandar nada por WhatsApp:
- * Cambios (indicador, sección, regla, conocimiento), aislamiento, aviso de un Caso y conversaciones
- * con el Agente del dueño. Usa el Negocio sembrado Café Ladera; si no existe, crea PRUEBA-DUENO.
+ * Cambios (indicador, sección, regla, datos y productos), aislamiento, aviso de un Caso y conversaciones
+ * con el Agente del dueño. Usa el Negocio sembrado Café Ladera.
  * Todo lo que crea lo borra al final, también si falla. Cada caso se afirma contra lo que quedó en la base o
  * lo que se habría enviado, nunca contra el texto del modelo, y el script sale con 1 si alguno falla.
  *
@@ -11,7 +11,7 @@
  */
 import { config } from 'dotenv'
 import { convertToModelMessages } from 'ai'
-import { and, eq, gte, inArray, like, sql } from 'drizzle-orm'
+import { and, eq, gt, gte, inArray, sql } from 'drizzle-orm'
 import { afirmar, capturarEnvios, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -27,8 +27,12 @@ const { datosDelNegocio } = await import('../src/negocio/datos')
 const { leerHilo } = await import('../src/negocio/dueno-hilo')
 const { mensajeDelDueno, responderEnElHilo, tarjetasDe } = await import('../src/negocio/dueno-chat')
 const { crearAgenteDelDueno, parteDeDatosParaElModelo } = await import('../src/agentes/dueno')
-const { aprobar } = await import('../src/nucleo/cambios')
+const { aprobar, proponer, guardarEnElAlta, abrirEnElAlta } = await import('../src/nucleo/cambios')
 const { marcar } = await import('../src/nucleo/identidad')
+const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
+const el = await import('../src/nucleo/estado/elementos')
+type Elemento = import('../src/nucleo/estado/elementos').Elemento
+type Ctx = import('../src/nucleo/identidad').ContextoDelDueno
 const { traerCasoAlDueno } = await import('../src/agentes/avisos')
 
 const inicioDeLaPrueba = new Date()
@@ -54,6 +58,7 @@ const creadosDuenos: string[] = []
 const creadosCasos: string[] = []
 const creadosClientes: string[] = []
 let negocioDeLaPrueba: string | undefined
+let versionAlEmpezar: number | undefined
 
 /** El otro Negocio sembrado, para probar que uno no ve ni toca lo del otro. */
 async function negocioAjeno(codigoDelPropio: string) {
@@ -63,30 +68,19 @@ async function negocioAjeno(codigoDelPropio: string) {
 
 async function negocioDePrueba() {
   const [ladera] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.codigo, 'LADERA'))
-  if (ladera) return ladera
-  console.log('No hay Café Ladera sembrado: creo PRUEBA-DUENO.')
-  const [negocio] = await db
-    .insert(esquema.negocios)
-    .values({ nombre: 'Negocio de prueba', codigo: 'PRUEBA-DUENO', estado: 'listo', conocimiento: { descripcion: 'Café', ciudad: 'Manizales', horario: 'Lunes a sábado 8 a 6', envios: 'Todo el país', pagos: 'Transferencia', tono: 'Cercano', preguntas: [] } })
-    .returning()
-  creadosNegocios.push(negocio.id)
-  const [producto] = await db.insert(esquema.productos).values({ negocioId: negocio.id, nombre: 'Café 500 g', precio: 38000 }).returning()
-  const [cliente] = await db.insert(esquema.clientes).values({ negocioId: negocio.id, telefono: '570000000001', nombre: 'Cliente de prueba' }).returning()
-  const estados = ['confirmado', 'entregado', 'novedad', 'pendiente', 'cancelado', 'enviado'] as const
-  await db.insert(esquema.pedidos).values(
-    Array.from({ length: 30 }, (_, i) => ({
-      negocioId: negocio.id,
-      clienteId: cliente.id,
-      numero: i + 1,
-      items: [{ productoId: producto.id, nombre: producto.nombre, cantidad: 1 + (i % 3), precio: producto.precio }],
-      total: producto.precio * (1 + (i % 3)),
-      ciudad: i % 4 === 0 ? 'Bogotá' : 'Manizales',
-      estado: estados[i % estados.length],
-      creado: new Date(Date.now() - (i % 14) * 86400000 - i * 3600000),
-    })),
-  )
-  return negocio
+  if (!ladera) throw new Error('Falta sembrar Café Ladera: pnpm tsx scripts/sembrar.mts')
+  return ladera
 }
+
+async function aplicar(ctx: Ctx, palabras: string, quiere: Parameters<typeof proponer>[1]['quiere']) {
+  const p = await proponer(ctx, { palabrasDelDueno: palabras, origen: 'hilo', quiere })
+  if (p.desenlace !== 'espera_al_dueno') throw new Error(`proponer dio ${p.desenlace}: ${p.resumen}`)
+  const r = await aprobar(ctx, p.tarjeta.propuesta, p.tarjeta.huella)
+  if (r.tipo !== 'aplicado') throw new Error(`aprobar dio ${r.tipo}`)
+  return p.propuesta
+}
+
+const poner = (elemento: Elemento) => ({ tipo: 'poner' as const, elemento, reemplaza: null })
 
 async function limpiar() {
   titulo('Limpieza')
@@ -100,21 +94,20 @@ async function limpiar() {
   if (creadosCambios.length) {
     for (const c of await db.select().from(esquema.cambios).where(inArray(esquema.cambios.id, creadosCambios))) {
       if (c.estado !== 'aplicado') continue
-      await cambios.revertirCambio(c.negocioId, c.id).catch((e) => {
+      await cambios.revertirCambio(marcar.negocio(c.negocioId), c.id).catch((e) => {
         sinRevertir.push(c.id)
         afirmar(`limpieza: revirtió el Cambio ${c.id} (${c.tipo})`, false, e)
       })
     }
     const borrables = creadosCambios.filter((id) => !sinRevertir.includes(id))
-    const productosCreados = (await db.select({ anterior: esquema.cambios.anterior }).from(esquema.cambios).where(inArray(esquema.cambios.id, creadosCambios))).flatMap(
-      (c) => ((c.anterior as { productosCreados?: string[] } | null)?.productosCreados ?? []),
-    )
     if (borrables.length) {
       await db.delete(esquema.piezas).where(inArray(esquema.piezas.cambioId, borrables))
-      await db.delete(esquema.reglas).where(inArray(esquema.reglas.cambioId, borrables))
       await db.delete(esquema.cambios).where(inArray(esquema.cambios.id, borrables))
     }
-    if (productosCreados.length && !sinRevertir.length) await db.delete(esquema.productos).where(inArray(esquema.productos.id, productosCreados))
+  }
+  if (negocioDeLaPrueba && versionAlEmpezar !== undefined) {
+    await db.delete(esquema.elementos).where(and(eq(esquema.elementos.negocioId, negocioDeLaPrueba), gt(esquema.elementos.version, versionAlEmpezar)))
+    await db.update(esquema.negocios).set({ version: versionAlEmpezar }).where(eq(esquema.negocios.id, negocioDeLaPrueba))
   }
   // Las propuestas de esta corrida, también las de la respuesta a un Caso, que no tienen Cambio, y las líneas que
   // dejó su aprobación en el Hilo de cada Dueño del Negocio.
@@ -182,13 +175,15 @@ async function turno(negocioId: string, duenoId: string, texto: string) {
 try {
   const negocio = await negocioDePrueba()
   negocioDeLaPrueba = negocio.id
+  versionAlEmpezar = negocio.version
+  const N = marcar.negocio(negocio.id)
   console.log(`Negocio: ${negocio.nombre} (${negocio.codigo})`)
   const [dueno] = await db.insert(esquema.duenos).values({ negocioId: negocio.id, usuarioId: `prueba-dueno-${Date.now()}`, nombre: 'Dueño de prueba' }).returning()
   creadosDuenos.push(dueno.id)
 
   if (quiero('cambios')) {
     titulo('1. Indicador: pedidos confirmados por día en los últimos 14 días')
-    const indicador = await cambios.proponerPieza(negocio.id, dueno.id, 'Quiero ver los pedidos confirmados por día en los últimos 14 días', 'indicador', 'Pedidos confirmados por día')
+    const indicador = await cambios.proponerPieza(N, dueno.id, 'Quiero ver los pedidos confirmados por día en los últimos 14 días', 'indicador', 'Pedidos confirmados por día')
     creadosCambios.push(indicador.id)
     const pi = indicador.propuesta as { codigo: string; descripcion: string }
     console.log(`estado: ${indicador.estado}\n${pi.descripcion}\n--- código ---\n${pi.codigo}\n--- resultado aislado ---\n${json(indicador.vistaPrevia)}\n${medida(indicador)}`)
@@ -197,7 +192,7 @@ try {
     afirmar('1 indicador: midió tokens de entrada y de salida', indicador.tokensEntrada > 0 && indicador.tokensSalida > 0, medida(indicador))
 
     titulo('2. Sección: pedidos con novedad')
-    const seccion = await cambios.proponerPieza(negocio.id, dueno.id, 'Quiero una lista de los pedidos con novedad', 'seccion', 'Pedidos con novedad')
+    const seccion = await cambios.proponerPieza(N, dueno.id, 'Quiero una lista de los pedidos con novedad', 'seccion', 'Pedidos con novedad')
     creadosCambios.push(seccion.id)
     const ps = seccion.propuesta as { codigo: string; descripcion: string; vista: unknown }
     console.log(`estado: ${seccion.estado}\n${ps.descripcion}\n--- código ---\n${ps.codigo}\n--- vista ---\n${json(ps.vista)}\n--- resultado aislado ---\n${json(seccion.vistaPrevia)}\n${medida(seccion)}`)
@@ -206,8 +201,8 @@ try {
     afirmar('2 sección: midió tokens de entrada y de salida', seccion.tokensEntrada > 0 && seccion.tokensSalida > 0, medida(seccion))
 
     titulo('3. Aplicar, ver en el Panel y revertir')
-    for (const c of [indicador, seccion]) if (c.estado === 'propuesto') await cambios.aplicarCambio(negocio.id, c.id)
-    const activas = await cambios.piezasActivas(negocio.id)
+    for (const c of [indicador, seccion]) if (c.estado === 'propuesto') await cambios.aplicarCambio(N, c.id)
+    const activas = await cambios.piezasActivas(N)
     console.log(`Piezas activas tras aplicar: ${activas.map((a) => `${a.pieza.nombre} v${a.pieza.version} (${a.resultado.ok ? `ok ${a.resultado.ms} ms` : a.resultado.error})`).join(' | ')}`)
     const [aplicadoI] = await db.select().from(esquema.cambios).where(eq(esquema.cambios.id, indicador.id))
     const [aplicadoS] = await db.select().from(esquema.cambios).where(eq(esquema.cambios.id, seccion.id))
@@ -218,24 +213,24 @@ try {
 
     if (indicador.estado === 'propuesto') {
       console.log('\nNueva versión del mismo indicador (últimos 7 días):')
-      const v2 = await cambios.proponerPieza(negocio.id, dueno.id, 'Mejor solo los últimos 7 días', 'indicador', 'Pedidos confirmados por día')
+      const v2 = await cambios.proponerPieza(N, dueno.id, 'Mejor solo los últimos 7 días', 'indicador', 'Pedidos confirmados por día')
       creadosCambios.push(v2.id)
       console.log(`estado: ${v2.estado}, ${medida(v2)}`)
       afirmar('3 nueva versión: la v2 del indicador queda propuesta', v2.estado === 'propuesto', v2.vistaPrevia)
       if (v2.estado === 'propuesto') {
-        await cambios.aplicarCambio(negocio.id, v2.id)
+        await cambios.aplicarCambio(N, v2.id)
         const filas = await db.select().from(esquema.piezas).where(eq(esquema.piezas.negocioId, negocio.id))
         console.log('Versiones:', filas.filter((f) => f.cambioId && creadosCambios.includes(f.cambioId)).map((f) => `${f.nombre} v${f.version} activa=${f.activa}`).join(' | '))
         const versionDe = (todas: typeof filas, cambioId: string) => todas.find((f) => f.cambioId === cambioId)
         afirmar('3 nueva versión: al aplicar la v2 es la activa y la v1 no', versionDe(filas, v2.id)?.activa === true && versionDe(filas, v2.id)?.version === 2 && versionDe(filas, indicador.id)?.activa === false, filas.filter((f) => f.cambioId && creadosCambios.includes(f.cambioId)))
-        await cambios.revertirCambio(negocio.id, v2.id)
+        await cambios.revertirCambio(N, v2.id)
         const tras = (await db.select().from(esquema.piezas).where(eq(esquema.piezas.negocioId, negocio.id))).filter((f) => f.cambioId && creadosCambios.includes(f.cambioId))
         console.log('Tras revertir la v2:', tras.map((f) => `${f.nombre} v${f.version} activa=${f.activa}`).join(' | '))
         afirmar('3 nueva versión: al revertir la v2 vuelve a estar activa la v1', versionDe(tras, v2.id)?.activa === false && versionDe(tras, indicador.id)?.activa === true, tras)
       }
     }
-    for (const c of [indicador, seccion]) if (c.estado === 'propuesto') await cambios.revertirCambio(negocio.id, c.id)
-    const piezasTras = await cambios.piezasActivas(negocio.id)
+    for (const c of [indicador, seccion]) if (c.estado === 'propuesto') await cambios.revertirCambio(N, c.id)
+    const piezasTras = await cambios.piezasActivas(N)
     console.log(`Piezas activas tras revertir: ${piezasTras.length}`)
     afirmar('3 revertir: no queda activa ninguna pieza de esta corrida', piezasTras.every((a) => !a.pieza.cambioId || !creadosCambios.includes(a.pieza.cambioId)), piezasTras.map((a) => a.pieza))
 
@@ -243,7 +238,7 @@ try {
     const { generarPieza } = await import('../src/agentes/generador')
     const intentosVistos: ({ codigo: string; error: string } | undefined)[] = []
     const malos = ['function calcular(datos) { return { valor: datos.pedidos.filtrar(function (p) { return p.estado === "novedad" }).length } }', 'function calcular(datos) { return { total: 3 } }']
-    const reintento = await cambios.proponerPieza(negocio.id, dueno.id, 'Cuántos pedidos tienen novedad', 'indicador', 'Novedades (prueba de reintento)', async (entrada) => {
+    const reintento = await cambios.proponerPieza(N, dueno.id, 'Cuántos pedidos tienen novedad', 'indicador', 'Novedades (prueba de reintento)', async (entrada) => {
       intentosVistos.push(entrada.intentoFallido)
       if (intentosVistos.length <= malos.length) return { pieza: { descripcion: 'malo a propósito', codigo: malos[intentosVistos.length - 1], vista: null }, medida: { entrada: 0, salida: 0, costo: 0, ms: 0 } }
       return generarPieza(entrada)
@@ -257,56 +252,46 @@ try {
     afirmar('3b reintento: el 2.º y el 3.º recibieron el código y el error del intento anterior', intentosVistos.slice(1).length === 2 && intentosVistos.slice(1).every((v, i) => v?.codigo === malos[i] && v.error.length > 0), intentosVistos.slice(1))
     afirmar('3b reintento: el Cambio termina propuesto con un resultado', reintento.estado === 'propuesto' && vistaPreviaExitosa(reintento.vistaPrevia), reintento.vistaPrevia)
 
-    titulo('4. Regla: envíos fuera de Manizales')
-    const regla = await cambios.proponerRegla(
-      negocio.id,
-      dueno.id,
-      'Si preguntan por envíos fuera de Manizales, no prometas fecha de entrega y abre un Caso',
-      'Si un Cliente pregunta por envíos a una ciudad distinta de Manizales, no prometas fecha de entrega y abre un Caso para que el Dueño responda.',
-      '¿Cuánto demora un envío a Cali? ¿Me llega para el viernes?',
-    )
-    creadosCambios.push(regla.id)
-    console.log(`${json(regla.vistaPrevia)}\n${medida(regla)}`)
-    const simulada = regla.vistaPrevia as { antes?: unknown; despues?: unknown }
-    afirmar('4 regla: queda propuesta con la simulación de antes y después', regla.estado === 'propuesto' && typeof simulada.antes === 'string' && simulada.antes.length > 0 && typeof simulada.despues === 'string' && simulada.despues.length > 0, regla.vistaPrevia)
-    const reglasAntes = (await cambios.reglasActivas(negocio.id)).length
-    await cambios.aplicarCambio(negocio.id, regla.id)
-    const reglasConLaNueva = await cambios.reglasActivas(negocio.id)
-    console.log('Reglas activas tras aplicar:', reglasConLaNueva.map((r) => `v${r.version}: ${r.texto.slice(0, 60)}`))
-    afirmar('4 regla: tras aplicar aparece entre las reglas activas', reglasConLaNueva.length === reglasAntes + 1 && reglasConLaNueva.some((r) => r.cambioId === regla.id), reglasConLaNueva)
-    await cambios.revertirCambio(negocio.id, regla.id)
-    const reglasTras = await cambios.reglasActivas(negocio.id)
-    console.log('Reglas activas tras revertir:', reglasTras.length)
-    afirmar('4 regla: tras revertir ya no está y quedan las de antes', reglasTras.length === reglasAntes && reglasTras.every((r) => r.cambioId !== regla.id), reglasTras)
+    titulo('4. Regla: no prometer fechas, por Elementos')
+    const ctx = ctxDe(negocio.id, dueno.id)
+    const reglasDe = async () => (await leerEstado(N)).vigentes('regla')
+    const reglasAntes = (await reglasDe()).length
+    const regla = await aplicar(ctx, 'No prometas fechas de entrega', [
+      poner({
+        tipo: 'regla',
+        nombre: 'Sin fechas de entrega (prueba)',
+        cuando: { tipo: 'siempre' },
+        efectos: [{ tipo: 'no_prometer', que: 'plazo' }],
+        escenarios: { activan: [{ mensajeDelCliente: '¿Cuánto demora un envío a Cali?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] },
+      }),
+    ])
+    const conLaNueva = await reglasDe()
+    console.log('Reglas vigentes tras aplicar:', conLaNueva.map((v) => el.reglaEnPalabras(v.elemento)))
+    afirmar('4 regla: tras aplicar aparece entre las reglas vigentes', conLaNueva.length === reglasAntes + 1 && conLaNueva.some((v) => v.origen.tipo === 'propuesta' && v.origen.propuesta === regla), conLaNueva)
+    await aplicar(ctx, 'Quita esa regla', [{ tipo: 'revertir', propuesta: regla }])
+    const reglasTras = await reglasDe()
+    afirmar('4 regla: tras revertir ya no está y quedan las de antes', reglasTras.length === reglasAntes && reglasTras.every((v) => v.origen.tipo !== 'propuesta' || v.origen.propuesta !== regla), reglasTras)
 
-    titulo('5. Conocimiento: horario y un producto nuevo')
-    const antes = (await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocio.id)))[0].conocimiento.horario
-    const conocimiento = await cambios.proponerConocimiento(
-      negocio.id,
-      dueno.id,
-      'Ahora abrimos también los domingos y vendemos un café de prueba',
-      { horario: `${antes} y domingos de 9 a 1` },
-      { agregar: [{ nombre: 'Café de prueba 250 g', precio: 21000 }] },
-    )
-    creadosCambios.push(conocimiento.id)
-    console.log(`${json(conocimiento.vistaPrevia)}\n${medida(conocimiento)}`)
-    await cambios.aplicarCambio(negocio.id, conocimiento.id)
-    const [aplicado] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocio.id))
-    const nuevos = await db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, negocio.id), like(esquema.productos.nombre, 'Café de prueba%')))
-    console.log(`Horario aplicado: "${aplicado.conocimiento.horario}"; productos de prueba activos: ${nuevos.filter((p) => p.activo).length}`)
-    afirmar('5 conocimiento: tras aplicar el horario es el nuevo', aplicado.conocimiento.horario === `${antes} y domingos de 9 a 1`, aplicado.conocimiento.horario)
-    afirmar('5 conocimiento: tras aplicar el producto nuevo está activo con su precio', nuevos.filter((p) => p.activo).length === 1 && nuevos[0].precio === 21000, nuevos)
-    await cambios.revertirCambio(negocio.id, conocimiento.id)
-    const [revertido] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocio.id))
-    const tras = await db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, negocio.id), like(esquema.productos.nombre, 'Café de prueba%')))
-    console.log(`Tras revertir: horario "${revertido.conocimiento.horario}" (igual que antes: ${revertido.conocimiento.horario === antes}); productos de prueba activos: ${tras.filter((p) => p.activo).length}`)
-    afirmar('5 conocimiento: tras revertir el horario vuelve al de antes', revertido.conocimiento.horario === antes, revertido.conocimiento.horario)
-    afirmar('5 conocimiento: tras revertir no queda activo el producto de prueba', tras.every((p) => !p.activo), tras)
+    titulo('5. Datos y productos: horario y un producto nuevo')
+    const antes = valorDelDato(await leerEstado(N), 'horario')
+    const conocimiento = await aplicar(ctx, 'Ahora abrimos también los domingos y vendemos un café de prueba', [
+      poner({ tipo: 'dato', campo: 'horario', valor: `${antes} y domingos de 9 a 1` }),
+      poner({ tipo: 'producto', nombre: 'Café de prueba 250 g', descripcion: '', precio: el.comoMonto(21000), activo: true }),
+    ])
+    const aplicado = await leerEstado(N)
+    const nuevos = aplicado.vigentes('producto').filter((v) => v.elemento.nombre.startsWith('Café de prueba'))
+    console.log(`Horario aplicado: "${valorDelDato(aplicado, 'horario')}"; productos de prueba: ${nuevos.length}`)
+    afirmar('5 datos: tras aplicar el horario es el nuevo', valorDelDato(aplicado, 'horario') === `${antes} y domingos de 9 a 1`, valorDelDato(aplicado, 'horario'))
+    afirmar('5 datos: tras aplicar el producto nuevo está activo con su precio', nuevos.length === 1 && nuevos[0].elemento.activo && nuevos[0].elemento.precio === 21000, nuevos)
+    await aplicar(ctx, 'Deshaz eso', [{ tipo: 'revertir', propuesta: conocimiento }])
+    const revertido = await leerEstado(N)
+    afirmar('5 datos: tras revertir el horario vuelve al de antes', valorDelDato(revertido, 'horario') === antes, valorDelDato(revertido, 'horario'))
+    afirmar('5 datos: tras revertir no queda el producto de prueba', revertido.vigentes('producto').every((v) => !v.elemento.nombre.startsWith('Café de prueba')))
   }
 
   if (quiero('aislamiento')) {
     titulo('6. Aislamiento')
-    const datos = await datosDelNegocio(negocio.id)
+    const datos = await datosDelNegocio(N)
     const otroNegocio = await negocioAjeno(negocio.codigo)
     afirmar('6 aislamiento: hay otro Negocio sembrado con Clientes para compararlo', otroNegocio !== null, 'Falta sembrar TRIGO y LADERA: pnpm tsx scripts/sembrar.mts')
     const marcas = otroNegocio ? (await db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(eq(esquema.clientes.negocioId, otroNegocio.id))).map((c) => c.id) : []
@@ -349,18 +334,12 @@ try {
     const bucle = corridas.get('bucle infinito')
     afirmar('6 aislamiento: un bucle infinito se interrumpe con ok:false y en pocos segundos', bucle?.ok === false && bucle.ms < 3000, bucle)
     if (otroNegocio) {
-      // Un Cambio propuesto en este Negocio no se puede aplicar desde otro.
-      const propuesto = await cambios.proponerConocimiento(negocio.id, dueno.id, 'prueba de aislamiento', { tono: 'prueba' })
-      creadosCambios.push(propuesto.id)
-      const intento = await cambios.aplicarCambio(otroNegocio.id, propuesto.id).then(
-        () => 'SE APLICÓ (mal)',
-        (e: Error) => `rechazado: ${e.message}`,
-      )
-      console.log(`- aplicar un Cambio de ${negocio.nombre} desde ${otroNegocio.nombre}: ${intento}`)
-      const [sigue] = await db.select({ estado: esquema.cambios.estado }).from(esquema.cambios).where(eq(esquema.cambios.id, propuesto.id))
-      console.log(`  estado del Cambio después: ${sigue.estado}`)
-      afirmar('6 aislamiento: otro Negocio no puede aplicar el Cambio', intento.startsWith('rechazado'), intento)
-      afirmar('6 aislamiento: el Cambio sigue propuesto', sigue.estado === 'propuesto', sigue.estado)
+      const propuesta = await proponer(ctxDe(negocio.id, dueno.id), { palabrasDelDueno: 'prueba de aislamiento', origen: 'hilo', quiere: [poner({ tipo: 'dato', campo: 'pagos', valor: 'prueba de aislamiento' })] })
+      const intento = propuesta.tarjeta ? await aprobar(ctxDe(otroNegocio.id, dueno.id), propuesta.tarjeta.propuesta, propuesta.tarjeta.huella) : null
+      const [sigue] = propuesta.tarjeta ? await db.select({ estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.id, propuesta.tarjeta.propuesta)) : []
+      console.log(`- aprobar una propuesta de ${negocio.nombre} desde ${otroNegocio.nombre}: ${intento?.tipo}`)
+      afirmar('6 aislamiento: otro Negocio no puede aprobar la propuesta', intento?.tipo === 'no_existe', intento)
+      afirmar('6 aislamiento: la propuesta sigue esperando', sigue?.estado === 'espera_al_dueno', sigue)
     }
   }
 
@@ -382,7 +361,7 @@ try {
     creadosCasos.push(caso.id)
     const hiloAntes = (await leerHilo(dueno.id)).length
     const inicio = Date.now()
-    await traerCasoAlDueno(caso.id)
+    await traerCasoAlDueno(N, caso.id)
     console.log(`traerCasoAlDueno: ${Date.now() - inicio} ms`)
     const [conPropuesta] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, caso.id))
     afirmar('7 Caso: tras traerlo al Dueño espera su respuesta con una propuesta', conPropuesta.estado === 'esperando_dueno' && conPropuesta.propuesta.trim().length > 0, conPropuesta)
@@ -429,8 +408,9 @@ try {
     const aplicadas = (await propuestasDelDueno()).filter((p) => p.estado === 'aplicada' && p.aprobadoPor === null)
     afirmar('8 Panel: lo que solo ve el Dueño queda aplicado sin botón', aplicadas.length > 0 && tarjetasDe([panel]).length === 0, { aplicadas, herramientas: herramientasDe(panel) })
 
-    const reglasAntes = (await cambios.reglasActivas(negocio.id)).length
-    const pedida = await turno(negocio.id, dueno.id, 'Si preguntan por envíos fuera de Manizales, no prometas fecha de entrega y pásamelo a mí.')
+    const reglasDe = async () => (await leerEstado(N)).vigentes('regla').length
+    const reglasAntes = await reglasDe()
+    const pedida = await turno(negocio.id, dueno.id, 'Nunca les prometas a los clientes una fecha de entrega.')
     const [tarjeta] = tarjetasDe([pedida])
     afirmar('8 regla: queda en una tarjeta que espera el botón', tarjeta !== undefined && (await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, tarjeta.propuesta)))[0]?.estado === 'espera_al_dueno', herramientasDe(pedida))
     if (tarjeta) {
@@ -439,9 +419,9 @@ try {
       afirmar('8 regla: al modelo no le llega la huella', !loQueVeElModelo.includes(tarjeta.huella))
       await turno(negocio.id, dueno.id, 'Sí, aplícala.')
       const [sigue] = await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, tarjeta.propuesta))
-      afirmar('8 regla: decir "sí" por escrito no la aplica', sigue.estado === 'espera_al_dueno' && (await cambios.reglasActivas(negocio.id)).length === reglasAntes, sigue.estado)
+      afirmar('8 regla: decir "sí" por escrito no la aplica', sigue.estado === 'espera_al_dueno' && (await reglasDe()) === reglasAntes, sigue.estado)
       const r = await aprobar(ctx, tarjeta.propuesta, tarjeta.huella)
-      afirmar('8 regla: el botón la aplica y queda entre las reglas activas', r.tipo === 'aplicado' && (await cambios.reglasActivas(negocio.id)).length === reglasAntes + 1, r)
+      afirmar('8 regla: el botón la aplica y queda entre las reglas vigentes', r.tipo === 'aplicado' && (await reglasDe()) === reglasAntes + 1, r)
     }
 
     const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
@@ -470,7 +450,9 @@ try {
     // Ya abierto, el mismo Hilo sigue con las herramientas del modo `listo` (y los mensajes del modo `armando` en su historia).
     const precio = await turno(nuevo.id, duenoNuevo.id, 'Sube el precio del arequipe de 500 g a 19000.')
     const si = await turno(nuevo.id, duenoNuevo.id, 'Sí, aplícalo.')
-    const arequipesDe = () => db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, nuevo.id), like(esquema.productos.nombre, '%requipe%')))
+    const NUEVO = marcar.negocio(nuevo.id)
+    const productosDe = async () => (await leerEstado(NUEVO)).vigentes('producto').map((v) => v.elemento)
+    const arequipesDe = async () => (await productosDe()).filter((p) => /requipe/i.test(p.nombre))
     const antesDelBoton = (await arequipesDe()).filter((p) => p.activo)
     afirmar('9 precio: decir "sí" por escrito no cambia el precio', antesDelBoton.length > 0 && antesDelBoton.every((p) => p.precio === 18000), antesDelBoton)
     // El modelo puede preguntar antes de proponer: la tarjeta sale de cualquiera de los dos turnos.
@@ -479,13 +461,55 @@ try {
     const arequipes = await arequipesDe()
     console.log(`Precio del arequipe tras el botón: ${arequipes[0]?.precio}`)
     const [final] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, nuevo.id))
-    const productos = await db.select().from(esquema.productos).where(eq(esquema.productos.negocioId, nuevo.id))
-    console.log(`\nNegocio tras la entrevista: "${final.nombre}", estado ${final.estado}, rubro "${final.rubro}", ciudad "${final.conocimiento.ciudad}", ${productos.length} productos`)
+    const productos = await productosDe()
+    const ciudad = valorDelDato(await leerEstado(NUEVO), 'ciudad')
+    console.log(`\nNegocio tras la entrevista: "${final.nombre}", estado ${final.estado}, rubro "${final.rubro}", ciudad "${ciudad}", ${productos.length} productos`)
     afirmar('9 alta: tras la entrevista el Negocio está listo', final.estado === 'listo', final.estado)
     afirmar('9 alta: guardó al menos 2 productos', productos.length >= 2, productos.map((p) => p.nombre))
-    afirmar('9 alta: guardó la ciudad Popayán', final.conocimiento.ciudad.toLowerCase().includes('popay'), final.conocimiento.ciudad)
+    afirmar('9 alta: guardó la ciudad Popayán', ciudad.toLowerCase().includes('popay'), ciudad)
+    const deLaEntrevista = (await leerEstado(NUEVO)).todos().filter((v) => v.origen.tipo === 'entrevista')
+    afirmar('9 alta: lo de la entrevista quedó como Elementos con origen entrevista', deLaEntrevista.length >= 3, deLaEntrevista.map((v) => v.clave))
+
+    titulo('9b. Abrir en el alta: sin producto se bloquea; sin horario solo avisa')
+    const { negocio: otro, dueno: duenoOtro } = await altaDeDueno({ id: `prueba-alta-b-${Date.now()}`, name: 'Rosa', email: 'rosa@example.com' })
+    creadosNegocios.push(otro.id)
+    const ctxOtro = ctxDe(otro.id, duenoOtro.id)
+    const sinNada = await abrirEnElAlta(ctxOtro)
+    afirmar('9b: sin nombre ni producto no abre, y dice qué falta', !sinNada.abierto && sinNada.falta.length === 2, sinNada)
+    const { tools: deRosa } = crearAgenteDelDueno(ctxOtro, { negocio: otro, dueno: duenoOtro })
+    const guardarConocimiento = (entrada: Record<string, string>) =>
+      (deRosa.guardar_conocimiento as unknown as { execute: (e: unknown, o: unknown) => Promise<{ ok: boolean; nota?: string }> }).execute(entrada, { toolCallId: 'prueba', messages: [] })
+    const conMalTono = await guardarConocimiento({ ciudad: 'Medellín', tono: 'Decimos que la arepa cura la gastritis' })
+    const trasMalTono = await leerEstado(marcar.negocio(otro.id))
+    afirmar('9b tono: uno que no puede llegar a un Cliente se omite y se dice, y la ciudad se guarda', conMalTono.ok && (conMalTono.nota ?? '').includes('tono') && valorDelDato(trasMalTono, 'ciudad') === 'Medellín' && trasMalTono.vigentes('voz').length === 0, conMalTono)
+    await guardarConocimiento({ tono: `Cercanos, nunca de usted. ${'Hablamos sencillo. '.repeat(30)}` })
+    const [vozDeRosa] = (await leerEstado(marcar.negocio(otro.id))).vigentes('voz')
+    afirmar('9b tono: uno largo se corta al largo del estilo y "nunca de usted" tutea', vozDeRosa?.elemento.estilo.length === el.LARGO_DEL_ESTILO && vozDeRosa.elemento.trato === 'tu', vozDeRosa)
+    const guardado = await guardarEnElAlta(ctxOtro, { nombre: 'Arepas de Rosa', rubro: 'arepas', quiere: [poner({ tipo: 'producto', nombre: 'Arepa de choclo', descripcion: '', precio: el.comoMonto(6000), activo: true }), poner({ tipo: 'dato', campo: 'ciudad', valor: 'Medellín' })] })
+    const abre = await abrirEnElAlta(ctxOtro)
+    const [abierto] = await db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(eq(esquema.negocios.id, otro.id))
+    afirmar('9b: con nombre y un producto abre, y el horario, los envíos y los pagos solo avisan', 'guardado' in guardado && abre.abierto && abierto.estado === 'listo' && abre.avisos.includes('el horario') && !abre.avisos.includes('la ciudad'), { guardado, abre })
+    const tarde = await guardarEnElAlta(ctxOtro, { nombre: null, rubro: null, quiere: [poner({ tipo: 'dato', campo: 'horario', valor: '8 a 5' })] })
+    afirmar('9b: abierto, la entrevista ya no escribe', 'problemas' in tarde && tarde.problemas[0]?.tipo === 'solo_mientras_se_arma', tarde)
     const arequipesActivos = arequipes.filter((p) => p.activo)
     afirmar('9 precio: con el botón de la tarjeta el arequipe cuesta 19000', r?.tipo === 'aplicado' && arequipesActivos.length > 0 && arequipesActivos.every((p) => p.precio === 19000), { r, arequipes })
+  }
+
+  if (quiero('agente')) {
+    titulo('10. Una regla de horario que hoy nada cumple queda anotada, sin propuesta')
+    const propuestasAntes = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id)))
+    const versionAntes = (await leerEstado(N)).version
+    const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
+    await turno(negocio.id, dueno.id, 'Fuera de horario no contestes nada a los clientes.')
+    const propuestasDespues = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id), sql`${esquema.propuestas.estado} <> 'capacidad_faltante'`))
+    const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
+    afirmar('10 horario: queda una Capacidad faltante, sin propuesta y con la versión igual', faltantes > faltantesAntes && propuestasDespues === propuestasAntes && (await leerEstado(N)).version === versionAntes, { faltantesAntes, faltantes, propuestasAntes, propuestasDespues })
+
+    titulo('10b. "Pásamelo" queda anotado: ni regla ni propuesta')
+    const reglasAntes = (await leerEstado(N)).vigentes('regla').length
+    await turno(negocio.id, dueno.id, 'Cuando un cliente pregunte por ventas al por mayor, pásamelo a mí.')
+    const conPasar = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id), sql`${esquema.propuestas.estado} <> 'capacidad_faltante'`))
+    afirmar('10b pásamelo: queda otra Capacidad faltante, sin propuesta, sin regla y con la versión igual', (await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))) > faltantes && conPasar === propuestasAntes && (await leerEstado(N)).vigentes('regla').length === reglasAntes && (await leerEstado(N)).version === versionAntes, { conPasar, propuestasAntes })
   }
 
   const turnos = await db.select().from(esquema.turnos).where(eq(esquema.turnos.negocioId, negocio.id))

@@ -1,9 +1,12 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { piezasActivas } from '@/negocio/cambios'
+import { leerEstado, valorDelDato } from '@/nucleo/estado'
+import { reglaEnPalabras } from '@/nucleo/estado/elementos'
+import type { NegocioId } from '@/nucleo/identidad'
 import { leerHiloConTarjetas } from '@/negocio/dueno-chat'
 import { duenoActual } from '@/negocio/sesion'
 import { Hilo } from './hilo'
@@ -39,25 +42,26 @@ export default async function Panel() {
         </section>
 
         <section className="min-h-0 overflow-y-auto pb-8">
-          {negocio ? <Negocio negocio={negocio} /> : <p className="text-suave">Cuando le cuentes a tu agente de tu negocio, aquí lo vas a ver tomar forma.</p>}
+          {negocio && ctx ? <Negocio negocio={negocio} id={ctx.negocio} /> : <p className="text-suave">Cuando le cuentes a tu agente de tu negocio, aquí lo vas a ver tomar forma.</p>}
         </section>
       </div>
     </main>
   )
 }
 
-async function Negocio({ negocio }: { negocio: typeof esquema.negocios.$inferSelect }) {
-  const [piezas, casos, reglas, productos] = await Promise.all([
-    piezasActivas(negocio.id),
+async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$inferSelect; id: NegocioId }) {
+  const [estado, piezas, casos] = await Promise.all([
+    leerEstado(id),
+    piezasActivas(id),
     db
       .select()
       .from(esquema.casos)
       .where(and(eq(esquema.casos.negocioId, negocio.id), inArray(esquema.casos.estado, ['abierto', 'esperando_dueno'])))
       .orderBy(desc(esquema.casos.creado))
       .limit(10),
-    db.select().from(esquema.reglas).where(and(eq(esquema.reglas.negocioId, negocio.id), eq(esquema.reglas.activa, true))).orderBy(asc(esquema.reglas.creado)),
-    db.select().from(esquema.productos).where(and(eq(esquema.productos.negocioId, negocio.id), eq(esquema.productos.activo, true))),
   ])
+  const reglas = estado.vigentes('regla')
+  const productos = estado.vigentes('producto').filter((v) => v.elemento.activo)
   const indicadores = piezas.filter((p) => p.pieza.tipo === 'indicador')
   const secciones = piezas.filter((p) => p.pieza.tipo === 'seccion')
 
@@ -66,9 +70,9 @@ async function Negocio({ negocio }: { negocio: typeof esquema.negocios.$inferSel
       <div className="rounded-3xl border border-borde bg-tarjeta p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">{negocio.nombre}</h1>
+            <h1 className="text-2xl font-semibold">{estado.identidad.nombre}</h1>
             <p className="text-sm text-suave">
-              {[negocio.rubro, negocio.conocimiento.ciudad].filter(Boolean).join(' · ') || 'Armándose'} · {productos.length} productos
+              {[estado.identidad.rubro, valorDelDato(estado, 'ciudad')].filter(Boolean).join(' · ') || 'Armándose'} · {productos.length} productos
             </p>
           </div>
           {negocio.estado === 'listo' ? (
@@ -121,7 +125,7 @@ async function Negocio({ negocio }: { negocio: typeof esquema.negocios.$inferSel
           <p className="font-medium">Reglas de tu agente de clientes</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
             {reglas.map((r) => (
-              <li key={r.id}>{r.texto}</li>
+              <li key={r.clave}>{reglaEnPalabras(r.elemento)}</li>
             ))}
           </ol>
         </div>

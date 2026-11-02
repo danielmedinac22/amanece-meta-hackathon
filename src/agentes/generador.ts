@@ -4,6 +4,7 @@ import type { Vista } from '@/db/esquema'
 import { datosDelNegocio, FORMA_DE_LOS_DATOS, type DatosDelNegocio } from '@/negocio/datos'
 import { medidaDeUso, modeloEstructurado, type Medida } from '@/negocio/dueno-modelo'
 import { registrarTurno } from '@/negocio/medir'
+import type { NegocioId } from '@/nucleo/identidad'
 
 /**
  * Escribe el código de una Sección o de un Indicador. No lo ejecuta: eso lo hace `correrAislado` en
@@ -12,7 +13,7 @@ import { registrarTurno } from '@/negocio/medir'
 export type PiezaGenerada = { descripcion: string; codigo: string; vista: Vista | null }
 
 export type PedidoDePieza = {
-  negocioId: string
+  negocioId: NegocioId
   tipo: 'seccion' | 'indicador'
   nombre: string
   /** Lo que pidió el Dueño, en sus palabras. */

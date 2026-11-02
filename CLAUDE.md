@@ -23,13 +23,14 @@ Las **piezas compartidas** son lo que tocan todos los Negocios a la vez:
 
 - La salida: `src/nucleo/salida/`. `despachar` es la única salida, `decidir` la compuerta y `kapso.ts` el único `fetch` a Kapso, con `ENVIO_SIMULADO`.
 - La entrada: `src/nucleo/entrada.ts` (el webhook, la ficha `(CODIGO)` y quién es cada teléfono) y `src/app/api/kapso/webhook/route.ts`.
-- El estado de un Negocio: `src/nucleo/estado/escribir.ts`, su único escritor. Llega el 31-oct y hoy no existe.
+- El estado de un Negocio: `src/nucleo/estado/`. `elementos.ts` es la frontera (qué puede dejar un Cambio y qué se cumple hoy), `leerEstado` en `index.ts` el único lector, `validarEscritura` en `index.ts` la única validación de una escritura y `escribir.ts` el único escritor, que valida dentro de la transacción y solo importan `src/nucleo/cambios/` y `scripts/`. `otrosNegocios` en `index.ts` es la única consulta de los nombres de los otros Negocios.
 - La puerta del Negocio: `src/negocio/sesion.ts`. El Negocio sale de la sesión y nunca entra como parámetro.
-- Las propuestas: `src/nucleo/cambios/` (`proponer`, `aprobar`, `descartar`, `historial`) y `src/db/pool.ts`, la única transacción interactiva. `puente.ts` es lo único que llama al `aplicarCambio` viejo, y se borra el 31-oct.
+- Las propuestas: `src/nucleo/cambios/` (`proponer`, `aprobar`, `descartar`, `historial`; `traducir.ts`, el único que ramifica por `Quiere`; `alta.ts`, la entrevista) y `src/db/pool.ts`, la única transacción interactiva. `puente.ts` es lo único que llama al `aplicarCambio` viejo, solo para Sección e Indicador, y se borra el 2-nov.
+- El Agente de clientes: `src/nucleo/clientes/` (`turno.ts` compone, `reglas.ts` hace cumplir las reglas del Dueño, `acciones.ts` es el puerto). `atender.ts` es lo único que junta `turno` y `despachar`.
 - Los permisos del Agente del dueño: las herramientas de `src/agentes/dueno.ts`, qué existe. El modelo propone; aplicar, revertir y responder un Caso son el botón del Dueño.
-- El generador de Cambios y su aplicación: `src/agentes/generador.ts` y `src/negocio/cambios.ts`.
+- El generador de piezas y su aplicación, hasta el 2-nov: `src/agentes/generador.ts` y `src/negocio/cambios.ts`.
 - El intérprete aislado: `src/lib/aislado.ts`.
-- El esquema: `src/db/esquema.ts` y `drizzle/`.
+- El esquema: `src/db/esquema.ts`, `src/db/viejo.ts` (las tablas de antes, sin lector hasta el 4-nov; eslint las prohíbe en `src/`) y `drizzle/`.
 
 ## Hecho
 

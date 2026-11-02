@@ -1,6 +1,6 @@
 import { and, count, eq, max, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { marcar, modoDelNegocio, type CasoId, type Wamid } from '../identidad'
+import { marcar, type CasoId, type Wamid } from '../identidad'
 import {
   decidir,
   MODO_DE_LA_COMPUERTA,
@@ -10,12 +10,13 @@ import {
   type Destinatario,
   type HechosDeEnvio,
   type IntencionDeEnvio,
+  type IntencionEnsayada,
   type MotivoDeSilencio,
   type Veredicto,
 } from './compuerta'
 import { enviarPorKapso, numeroListo, type EnvioPorKapso } from './kapso'
 
-export type { AlCliente, Destinatario, IntencionDeEnvio, MotivoDeSilencio } from './compuerta'
+export type { AlCliente, Destinatario, IntencionDeEnvio, IntencionEnsayada, MotivoDeSilencio } from './compuerta'
 
 /** Un aviso no lleva texto libre: ni el modelo ni el Dueño escriben uno. */
 export type AvisoDelNucleo =
@@ -58,6 +59,12 @@ export const intencion = {
     }),
 } as const
 
+/** Misma forma que `intencion.respuesta`, otra marca: la usa el turno en modo ensayo y `despachar` no la acepta. */
+export const ensayo = {
+  respuesta: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly enRespuestaA: Wamid }) =>
+    ({ clase: 'respuesta', ...a, clave: `ensayo:${a.enRespuestaA}` }) as DatosDeIntencion as IntencionEnsayada,
+} as const
+
 export type ResultadoDeEnvio =
   | { readonly tipo: 'enviado'; readonly wamid: Wamid | null }
   | { readonly tipo: 'simulado' }
@@ -96,7 +103,7 @@ async function leerHechos(i: IntencionDeEnvio, ahora: Date): Promise<{ readonly 
   const enRespuestaA = i.clase === 'resolucion_de_caso' ? null : i.enRespuestaA
 
   const [negocios, clientes, entrantes, respuestas] = await db.batch([
-    db.select({ estado: esquema.negocios.estado }).from(esquema.negocios).where(negocio ? eq(esquema.negocios.id, negocio) : sql`false`),
+    db.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(negocio ? eq(esquema.negocios.id, negocio) : sql`false`),
     db
       .select({ negocio: esquema.clientes.negocioId, telefono: esquema.clientes.telefono, ultimo: esquema.clientes.ultimoMensajeEntrante })
       .from(esquema.clientes)
@@ -119,7 +126,7 @@ async function leerHechos(i: IntencionDeEnvio, ahora: Date): Promise<{ readonly 
       ahora: marcar.instante(ahora),
       emergenciaGlobal: emergencia.global,
       numeroPermitido: numeroListo(),
-      negocio: n ? { modo: modoDelNegocio(n.estado), emergencia: emergencia.delNegocio } : null,
+      negocio: n ? { modo: n.modo ?? 'armando', emergencia: emergencia.delNegocio } : null,
       cliente: c ? { negocio: marcar.negocio(c.negocio) } : null,
       ultimoEntrante: ultimo ? marcar.instante(ultimo) : null,
       respuestasAlMismoMensaje: respuestas[0]?.n ?? 0,

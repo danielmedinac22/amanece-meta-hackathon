@@ -66,11 +66,8 @@ function textoDelEstado(verbo: 'Aplicar' | 'Enviar', estado: EstadoDeTarjeta | u
       // Si el envío no salió como debía, el desenlace que armó el núcleo lo dice.
       return r.envio && r.envio.tipo !== 'simulado' && r.envio.tipo !== 'enviado' ? r.resumen : hecha
     case 'ya_no_cabe':
-      return r.problemas.some((p) => p.tipo === 'fuera_de_ventana')
-        ? 'Pasaron más de 24 horas desde que el Cliente escribió: WhatsApp no deja escribirle hasta que vuelva a escribir.'
-        : r.problemas.some((p) => p.tipo === 'caso_resuelto')
-          ? 'Ese Caso ya tiene respuesta.'
-          : 'Esto ya no se puede aplicar.'
+    case 'conflicto':
+      return r.resumen
     case 'vencido':
       return 'Venció sin aplicarse. Pídela de nuevo si todavía la quieres.'
     case 'no_existe':

@@ -31,10 +31,6 @@ export const marcar = {
 /** `en_sombra` no tiene productor a propósito: mientras la compuerta observa, un Negocio en sombra le hablaría a sus Clientes. */
 export type ModoDelNegocio = 'armando' | 'atendiendo' | 'en_sombra'
 
-export function modoDelNegocio(estado: 'armando' | 'listo'): ModoDelNegocio {
-  return estado === 'armando' ? 'armando' : 'atendiendo'
-}
-
 export type Medio = 'web' | 'whatsapp'
 
 /** Sale de la sesión o del teléfono de un Dueño registrado, nunca del modelo. */

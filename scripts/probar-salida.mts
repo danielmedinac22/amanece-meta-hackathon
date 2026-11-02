@@ -56,9 +56,9 @@ try {
   afirmar('importaciones: api.kapso.ai aparece solo en salida/kapso.ts', solo(/api\.kapso\.ai/, ['src/nucleo/salida/kapso.ts']), conTexto(/api\.kapso\.ai/))
   afirmar('importaciones: src/lib/kapso.ts ya no existe y nadie lo importa', !fuentes.some((f) => f.ruta === 'src/lib/kapso.ts') && conTexto(/@\/lib\/kapso/).length === 0, conTexto(/@\/lib\/kapso/))
   afirmar('importaciones: la línea del envío simulado solo la imprime salida/kapso.ts', solo(/envío simulado a/, ['src/nucleo/salida/kapso.ts']), conTexto(/envío simulado a/))
-  const PUEDEN_ARMAR_INTENCIONES = ['src/nucleo/cambios/index.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/entrada.ts']
+  const PUEDEN_ARMAR_INTENCIONES = ['src/nucleo/cambios/index.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/clientes/turno.ts', 'src/nucleo/entrada.ts']
   const arman = conTexto(/\bintencion\b[^\n]*from '(@\/nucleo\/salida|\.\/salida|\.\.\/salida)'/)
-  afirmar('importaciones: solo entrada, atender y aprobar arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
+  afirmar('importaciones: solo entrada, atender, el turno y aprobar arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
 
   console.log('\n=== 2. decidir ===')
   const A = marcar.negocio('00000000-0000-4000-8000-00000000000a')

@@ -3,39 +3,22 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import type { Vista } from '@/db/esquema'
-import { responderComoAgenteDeClientes } from '@/agentes/clientes'
 import { generarPieza } from '@/agentes/generador'
 import { correrAislado, type ResultadoAislado } from '@/lib/aislado'
 import { datosDelNegocio } from '@/negocio/datos'
-import {
-  aplicarParcheDeConocimiento,
-  aplicarParcheDeProductos,
-  describirParche,
-  instantaneaDeConocimiento,
-  normalizar,
-  productosQueToca,
-  restaurarConocimiento,
-  restaurarProductos,
-  type AnteriorDeConocimiento,
-  type ParcheDeConocimiento,
-  type ParcheDeProductos,
-  type Producto,
-} from '@/negocio/dueno-catalogo'
-import { MEDIDA_VACIA, medidaDeUso, sumar, type Medida } from '@/negocio/dueno-modelo'
+import { normalizar } from '@/nucleo/estado/elementos'
+import type { NegocioId } from '@/nucleo/identidad'
+import { MEDIDA_VACIA, sumar, type Medida } from '@/negocio/dueno-modelo'
 
 /**
- * El ciclo de vida de un Cambio: se propone, se ve el resultado, se aplica y, si hace falta, se revierte.
- * Toda función recibe el `negocioId` de quien llama, que lo saca de `duenoActual()` y nunca del modelo, y
- * lo usa en cada consulta: un Cambio de otro Negocio no se puede ver, aplicar ni revertir.
+ * Las piezas del Panel (Sección e Indicador) hasta el 2-nov: se proponen, se aplican y se revierten. Solo las usa
+ * `src/nucleo/cambios/puente.ts`. Toda función recibe el `negocioId` de quien llama y lo usa en cada consulta.
  */
 export type Cambio = typeof esquema.cambios.$inferSelect
 export type Pieza = typeof esquema.piezas.$inferSelect
 export type PiezaConResultado = { pieza: Pieza; resultado: ResultadoAislado }
 
-type PropuestaDeRegla = { texto: string; clave?: string; preguntaDePrueba: string }
 type PropuestaDePieza = { nombre: string; descripcion: string; codigo: string; vista: Vista | null; clave?: string }
-type PropuestaDeConocimiento = { conocimiento: ParcheDeConocimiento; productos: ParcheDeProductos }
-type AnteriorDeCambioDeConocimiento = { conocimiento: AnteriorDeConocimiento; productos: Producto[]; productosCreados: string[] }
 
 /** Intentos para que una pieza corra bien: el primero y dos correcciones con el error a la vista. */
 const INTENTOS_DE_PIEZA = 3
@@ -125,104 +108,6 @@ async function registrarCambio(valores: {
   return cambio
 }
 
-async function leerCambio(negocioId: string, cambioId: string) {
-  const [cambio] = await db.select().from(esquema.cambios).where(and(eq(esquema.cambios.id, cambioId), eq(esquema.cambios.negocioId, negocioId)))
-  return cambio ?? null
-}
-
-// --- Regla ------------------------------------------------------------------------------------------
-
-/**
- * Propone una regla y la prueba sin aplicarla: el Agente de clientes contesta `preguntaDePrueba` en
- * simulación, una vez sin la regla y otra con ella. Si `claveDeLaRegla` viene, es una nueva versión de
- * esa regla; si no, una regla nueva.
- */
-export async function proponerRegla(
-  negocioId: string,
-  duenoId: string | null,
-  pedido: string,
-  textoDeLaRegla: string,
-  preguntaDePrueba: string,
-  claveDeLaRegla?: string,
-) {
-  const inicio = Date.now()
-  let anterior: Record<string, unknown> | null = null
-  if (claveDeLaRegla) {
-    const [activa] = await db
-      .select()
-      .from(esquema.reglas)
-      .where(and(eq(esquema.reglas.negocioId, negocioId), eq(esquema.reglas.clave, claveDeLaRegla), eq(esquema.reglas.activa, true)))
-    if (!activa) throw new Error('No encontré esa regla activa en este Negocio')
-    anterior = { clave: activa.clave, version: activa.version, texto: activa.texto }
-  }
-
-  const base = { negocioId, clienteId: null, historial: [], texto: preguntaDePrueba, modo: 'simulacion' as const }
-  const [sin, con] = await Promise.allSettled([
-    responderComoAgenteDeClientes(base),
-    responderComoAgenteDeClientes({ ...base, reglasPropuestas: [textoDeLaRegla] }),
-  ])
-
-  let medida = MEDIDA_VACIA
-  for (const s of [sin, con]) if (s.status === 'fulfilled') medida = sumar(medida, medidaDeUso(s.value.uso, s.value.ms))
-
-  let vistaPrevia: Record<string, unknown>
-  if (sin.status === 'fulfilled' && con.status === 'fulfilled') {
-    vistaPrevia = {
-      preguntaDePrueba,
-      antes: sin.value.texto,
-      despues: con.value.texto,
-      herramientasAntes: sin.value.herramientas,
-      herramientasDespues: con.value.herramientas,
-      ...(anterior ? { nota: 'La regla anterior sigue activa en la simulación; al aplicar, la nueva la reemplaza.' } : {}),
-    }
-  } else {
-    // El Agente de clientes puede no estar listo o fallar: la regla se propone igual, sin simulación.
-    const motivo = (sin.status === 'rejected' ? sin.reason : con.status === 'rejected' ? con.reason : null) as unknown
-    vistaPrevia = { regla: textoDeLaRegla, error: `No pude simular la respuesta del Agente de clientes: ${motivo instanceof Error ? motivo.message : String(motivo)}` }
-  }
-
-  const propuesta: PropuestaDeRegla = { texto: textoDeLaRegla, preguntaDePrueba, ...(claveDeLaRegla ? { clave: claveDeLaRegla } : {}) }
-  return registrarCambio({ negocioId, duenoId, tipo: 'regla', pedido, resumen: textoDeLaRegla, propuesta, anterior, vistaPrevia, medida, inicio })
-}
-
-// --- Conocimiento -----------------------------------------------------------------------------------
-
-/** Propone cambiar el conocimiento del Negocio y/o su catálogo. No usa el modelo: solo muestra qué cambia. */
-export async function proponerConocimiento(
-  negocioId: string,
-  duenoId: string | null,
-  pedido: string,
-  conocimiento: ParcheDeConocimiento,
-  productos: ParcheDeProductos = {},
-) {
-  const inicio = Date.now()
-  const hayProductos = Boolean(productos.agregar?.length || productos.editar?.length || productos.desactivar?.length)
-  const hayConocimiento = Object.values(conocimiento).some((v) => v !== undefined && !(Array.isArray(v) && v.length === 0))
-  if (!hayProductos && !hayConocimiento) throw new Error('El Cambio no dice qué cambiar')
-
-  // Un id que no es de este Negocio no se puede editar: se avisa en vez de ignorarlo.
-  const previos = await productosQueToca(negocioId, productos)
-  const pedidos = [...new Set([...(productos.editar ?? []).map((e) => e.id), ...(productos.desactivar ?? [])])]
-  const ajenos = pedidos.filter((id) => !previos.some((p) => p.id === id))
-  if (ajenos.length) throw new Error(`No encontré en este Negocio los productos: ${ajenos.join(', ')}`)
-
-  const lineas = await describirParche(negocioId, conocimiento, productos)
-  const anterior: AnteriorDeCambioDeConocimiento = { conocimiento: await instantaneaDeConocimiento(negocioId, conocimiento), productos: previos, productosCreados: [] }
-  const propuesta: PropuestaDeConocimiento = { conocimiento, productos }
-  return registrarCambio({
-    negocioId,
-    duenoId,
-    tipo: 'conocimiento',
-    pedido,
-    resumen: lineas.join('; '),
-    propuesta,
-    anterior,
-    vistaPrevia: { cambios: lineas },
-    medida: MEDIDA_VACIA,
-    inicio,
-  })
-}
-
 // --- Sección e Indicador ----------------------------------------------------------------------------
 
 /** La pieza activa con ese nombre, si el Dueño está cambiando una que ya existe. */
@@ -240,7 +125,7 @@ async function piezaActivaConNombre(negocioId: string, tipo: 'seccion' | 'indica
  * `descartado` con el error, para que se vea qué se gastó.
  */
 export async function proponerPieza(
-  negocioId: string,
+  negocioId: NegocioId,
   duenoId: string | null,
   pedido: string,
   tipo: 'seccion' | 'indicador',
@@ -324,15 +209,11 @@ export async function aplicarCambio(negocioId: string, cambioId: string) {
   if (!cambio) throw new Error('No encontré ese Cambio propuesto en este Negocio')
 
   try {
-    let anterior: Record<string, unknown> | null | undefined
-    if (cambio.tipo === 'regla') await aplicarRegla(cambio)
-    else if (cambio.tipo === 'conocimiento') anterior = await aplicarConocimiento(cambio)
-    else await aplicarPieza(cambio)
-
+    await aplicarPieza(cambio)
     const [aplicado] = await db
       .update(esquema.cambios)
-      .set({ // Desde que el Dueño hizo el pedido: lo que tardó la propuesta más lo que pasó hasta que dijo que sí.
-      msHastaAplicado: (cambio.msHastaPropuesta ?? 0) + (Date.now() - cambio.creado.getTime()), ...(anterior ? { anterior } : {}) })
+      // Desde que el Dueño hizo el pedido: lo que tardó la propuesta más lo que pasó hasta que dijo que sí.
+      .set({ msHastaAplicado: (cambio.msHastaPropuesta ?? 0) + (Date.now() - cambio.creado.getTime()) })
       .where(eq(esquema.cambios.id, cambio.id))
       .returning()
     return aplicado
@@ -342,26 +223,8 @@ export async function aplicarCambio(negocioId: string, cambioId: string) {
   }
 }
 
-async function aplicarRegla(cambio: Cambio) {
-  const p = cambio.propuesta as PropuestaDeRegla
-  const [previa] = p.clave
-    ? await db
-        .select()
-        .from(esquema.reglas)
-        .where(and(eq(esquema.reglas.negocioId, cambio.negocioId), eq(esquema.reglas.clave, p.clave), eq(esquema.reglas.activa, true)))
-    : []
-  const nueva = db.insert(esquema.reglas).values({
-    negocioId: cambio.negocioId,
-    clave: p.clave ?? randomUUID(),
-    version: (previa?.version ?? 0) + 1,
-    texto: p.texto,
-    cambioId: cambio.id,
-  })
-  if (!previa) return void (await nueva)
-  await db.batch([nueva, db.update(esquema.reglas).set({ activa: false }).where(eq(esquema.reglas.id, previa.id))])
-}
-
 async function aplicarPieza(cambio: Cambio) {
+  if (cambio.tipo !== 'seccion' && cambio.tipo !== 'indicador') throw new Error('Un Cambio de regla o conocimiento ya no se aplica por aquí')
   const p = cambio.propuesta as PropuestaDePieza
   if (!p.codigo) throw new Error('El Cambio no trae código')
   const [previa] = p.clave
@@ -372,7 +235,7 @@ async function aplicarPieza(cambio: Cambio) {
     : []
   const nueva = db.insert(esquema.piezas).values({
     negocioId: cambio.negocioId,
-    tipo: cambio.tipo as 'seccion' | 'indicador',
+    tipo: cambio.tipo,
     clave: p.clave ?? randomUUID(),
     version: (previa?.version ?? 0) + 1,
     nombre: p.nombre,
@@ -385,15 +248,7 @@ async function aplicarPieza(cambio: Cambio) {
   await db.batch([nueva, db.update(esquema.piezas).set({ activa: false }).where(eq(esquema.piezas.id, previa.id))])
 }
 
-async function aplicarConocimiento(cambio: Cambio): Promise<AnteriorDeCambioDeConocimiento> {
-  const p = cambio.propuesta as PropuestaDeConocimiento
-  const conocimiento = await aplicarParcheDeConocimiento(cambio.negocioId, p.conocimiento)
-  const { anteriores, creados } = await aplicarParcheDeProductos(cambio.negocioId, p.productos)
-  // Se guarda lo que había en el momento de aplicar, que es a lo que se vuelve al revertir.
-  return { conocimiento, productos: anteriores, productosCreados: creados }
-}
-
-/** Vuelve a la versión anterior de lo que el Cambio dejó. Lo que una regla ya hizo con Clientes no se deshace. */
+/** Vuelve a la versión anterior de la pieza que dejó el Cambio. */
 export async function revertirCambio(negocioId: string, cambioId: string) {
   const [cambio] = await db
     .update(esquema.cambios)
@@ -403,14 +258,7 @@ export async function revertirCambio(negocioId: string, cambioId: string) {
   if (!cambio) throw new Error('No encontré ese Cambio aplicado en este Negocio')
 
   try {
-    if (cambio.tipo === 'regla') await revertirVersiones('reglas', cambio)
-    else if (cambio.tipo === 'conocimiento') {
-      const anterior = cambio.anterior as AnteriorDeCambioDeConocimiento | null
-      if (anterior) {
-        await restaurarConocimiento(negocioId, anterior.conocimiento)
-        await restaurarProductos(negocioId, anterior.productos, anterior.productosCreados)
-      }
-    } else await revertirVersiones('piezas', cambio)
+    await revertirVersiones(cambio)
     return cambio
   } catch (e) {
     await db.update(esquema.cambios).set({ estado: 'aplicado' }).where(eq(esquema.cambios.id, cambio.id))
@@ -419,8 +267,8 @@ export async function revertirCambio(negocioId: string, cambioId: string) {
 }
 
 /** Desactiva la versión que dejó el Cambio y reactiva la anterior de la misma `clave`. */
-async function revertirVersiones(tabla: 'reglas' | 'piezas', cambio: Cambio) {
-  const t = esquema[tabla]
+async function revertirVersiones(cambio: Cambio) {
+  const t = esquema.piezas
   const creadas = await db.select().from(t).where(and(eq(t.negocioId, cambio.negocioId), eq(t.cambioId, cambio.id)))
   for (const creada of creadas) {
     await db.update(t).set({ activa: false }).where(eq(t.id, creada.id))
@@ -435,20 +283,8 @@ async function revertirVersiones(tabla: 'reglas' | 'piezas', cambio: Cambio) {
 
 // --- Lectura ----------------------------------------------------------------------------------------
 
-export async function obtenerCambio(negocioId: string, cambioId: string) {
-  return leerCambio(negocioId, cambioId)
-}
-
-export async function reglasActivas(negocioId: string) {
-  return db
-    .select()
-    .from(esquema.reglas)
-    .where(and(eq(esquema.reglas.negocioId, negocioId), eq(esquema.reglas.activa, true)))
-    .orderBy(esquema.reglas.creado)
-}
-
 /** Corre cada pieza activa, aislada, sobre los datos del Negocio, para pintar el Panel. */
-export async function piezasActivas(negocioId: string): Promise<PiezaConResultado[]> {
+export async function piezasActivas(negocioId: NegocioId): Promise<PiezaConResultado[]> {
   const piezas = await db
     .select()
     .from(esquema.piezas)

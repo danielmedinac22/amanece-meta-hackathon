@@ -1,0 +1,230 @@
+/**
+ * Lo que el Agente de clientes puede hacer, con dos adaptadores (la base y la memoria) y la única envoltura.
+ */
+import { and, desc, eq, gt, sql } from 'drizzle-orm'
+import { db, esquema } from '@/db'
+import type { ItemDePedido } from '@/db/esquema'
+import { marcar, type CasoId, type ClienteId } from '../identidad'
+import type { EstadoDelNegocio, EstadoVigente } from '../estado'
+import { claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
+import { cotizar, type Cotizacion } from '../precios/cotizar'
+import type { ClienteDelTurno } from './turno'
+
+export type PedidoConsultado = { readonly numero: number; readonly estado: string; readonly total: Monto; readonly items: readonly string[]; readonly ciudad: string; readonly direccion: string }
+
+export interface PuertoDeAcciones {
+  buscar_productos(texto: string): Promise<readonly { readonly producto: Clave; readonly nombre: string; readonly descripcion: string; readonly precio: Monto }[]>
+  crear_pedido(e: { readonly pedido: BorradorDePedido; readonly direccion: string; readonly cotizacion: Cotizacion }): Promise<{ readonly numero: number; readonly total: Monto } | { readonly negado: string }>
+  confirmar_pedido(numero: number): Promise<{ readonly ok: true; readonly total: Monto } | { readonly ok: false; readonly porQue: string }>
+  consultar_pedido(numero: number | null): Promise<readonly PedidoConsultado[]>
+  /** Con `reusar`, suma el detalle al Caso sin resolver de este Cliente con el mismo título en vez de abrir otro. */
+  abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reusar: boolean }): Promise<{ readonly caso: CasoId | null }>
+}
+
+/** `pasar_al_dueno` es un efecto, no una acción: en un escenario se espera `abrir_caso`. */
+export type NombreDeAccion = keyof PuertoDeAcciones
+
+export type AccionHecha = { readonly nombre: NombreDeAccion; readonly detalle: string }
+
+/** El precio lo pone la envoltura con `cotizar`: el modelo no tiene por dónde dictar un total. */
+export type PuertoParaElModelo = Omit<PuertoDeAcciones, 'crear_pedido' | 'abrir_caso'> & {
+  crear_pedido(e: { readonly pedido: BorradorDePedido; readonly direccion: string }): Promise<{ readonly numero: number; readonly cotizacion: Cotizacion } | { readonly negado: string }>
+  abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null }): Promise<{ readonly caso: CasoId | null }>
+}
+
+export type Envuelto = {
+  readonly puerto: PuertoParaElModelo
+  hechas(): readonly AccionHecha[]
+  cotizaciones(): readonly Cotizacion[]
+  /** Los Casos del turno: `atender` los trae al Dueño después de responder. */
+  casosAbiertos(): readonly CasoId[]
+  /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título. Queda en `hechas()` como `abrir_caso`. */
+  abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string }): Promise<CasoId | null>
+}
+
+/** La única envoltura, igual en producción y en el ensayo: `cotizar` en `crear_pedido` y cada llamada en `hechas()`. */
+export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio): Envuelto {
+  const hechas: AccionHecha[] = []
+  const cotizaciones: Cotizacion[] = []
+  const casos: CasoId[] = []
+  const anotar = (nombre: NombreDeAccion, detalle: string) => hechas.push({ nombre, detalle })
+  const abrir = async (e: Parameters<PuertoDeAcciones['abrir_caso']>[0]) => {
+    const r = await puerto.abrir_caso(e)
+    anotar('abrir_caso', e.titulo)
+    if (r.caso && !casos.includes(r.caso)) casos.push(r.caso)
+    return r
+  }
+  return {
+    puerto: {
+      async buscar_productos(texto) {
+        anotar('buscar_productos', texto)
+        return puerto.buscar_productos(texto)
+      },
+      async crear_pedido(e) {
+        const cotizacion = cotizar(e.pedido, estado)
+        if ('noCubre' in cotizacion) {
+          anotar('crear_pedido', `negado: ${cotizacion.noCubre}`)
+          return { negado: cotizacion.noCubre }
+        }
+        const r = await puerto.crear_pedido({ ...e, cotizacion })
+        anotar('crear_pedido', 'negado' in r ? `negado: ${r.negado}` : `#${r.numero}`)
+        if ('negado' in r) return r
+        cotizaciones.push(cotizacion)
+        return { numero: r.numero, cotizacion }
+      },
+      async confirmar_pedido(numero) {
+        anotar('confirmar_pedido', `#${numero}`)
+        return puerto.confirmar_pedido(numero)
+      },
+      async consultar_pedido(numero) {
+        anotar('consultar_pedido', numero === null ? 'los últimos' : `#${numero}`)
+        return puerto.consultar_pedido(numero)
+      },
+      abrir_caso: (e) => abrir({ ...e, reusar: false }),
+    },
+    hechas: () => hechas,
+    cotizaciones: () => cotizaciones,
+    casosAbiertos: () => casos,
+    abrirCasoDelNucleo: async (e) => (await abrir({ ...e, pedido: null, reusar: true })).caso,
+  }
+}
+
+function buscarEn(estado: EstadoDelNegocio, texto: string) {
+  const palabras = normalizar(texto)
+    .split(' ')
+    .filter((p) => p.length >= 3)
+  return estado
+    .vigentes('producto')
+    .filter((v) => v.elemento.activo)
+    .map((v) => ({ v, puntos: palabras.filter((w) => normalizar(`${v.elemento.nombre} ${v.elemento.descripcion}`).includes(w)).length }))
+    .filter((x) => palabras.length === 0 || x.puntos > 0)
+    .sort((a, b) => b.puntos - a.puntos)
+    .map(({ v }) => ({ producto: v.clave, nombre: v.elemento.nombre, descripcion: v.elemento.descripcion, precio: v.elemento.precio }))
+}
+
+const huellaDeItems = (items: readonly { productoId: string; cantidad: number }[]) => JSON.stringify(items.map((i) => [i.productoId, i.cantidad]).sort())
+
+/** Solo los pedidos y Casos de este Cliente en este Negocio. Los productos salen del estado, no de la base. */
+export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): PuertoDeAcciones {
+  const negocio = estado.identidad.id
+  const deEsteCliente = and(eq(esquema.pedidos.negocioId, negocio), eq(esquema.pedidos.clienteId, cliente))
+  return {
+    buscar_productos: async (texto) => buscarEn(estado, texto),
+
+    async crear_pedido({ pedido, direccion, cotizacion }) {
+      const items: ItemDePedido[] = cotizacion.lineas.map((l) => ({ productoId: claveDeProducto.aId(l.producto), nombre: l.nombre, cantidad: l.cantidad, precio: l.precio }))
+      const [repetido] = await db
+        .select()
+        .from(esquema.pedidos)
+        .where(and(deEsteCliente, eq(esquema.pedidos.estado, 'pendiente'), eq(esquema.pedidos.total, cotizacion.total), gt(esquema.pedidos.creado, new Date(Date.now() - 15 * 60_000))))
+        .orderBy(desc(esquema.pedidos.creado))
+        .limit(1)
+      if (repetido && huellaDeItems(repetido.items) === huellaDeItems(items)) return { numero: repetido.numero, total: cotizacion.total }
+      // El número es consecutivo por Negocio; si dos pedidos chocan, el índice único lo atrapa y se reintenta.
+      for (let intento = 0; ; intento++) {
+        try {
+          const [nuevo] = await db
+            .insert(esquema.pedidos)
+            .values({
+              negocioId: negocio,
+              clienteId: cliente,
+              numero: sql`(select coalesce(max(numero), 0) + 1 from pedidos where negocio_id = ${negocio})`,
+              items,
+              total: cotizacion.total,
+              ciudad: pedido.ciudad,
+              direccion,
+              estado: 'pendiente',
+            })
+            .returning({ numero: esquema.pedidos.numero })
+          return { numero: nuevo.numero, total: cotizacion.total }
+        } catch (error) {
+          if (intento >= 2) throw error
+        }
+      }
+    },
+
+    async confirmar_pedido(numero) {
+      const donde = and(deEsteCliente, eq(esquema.pedidos.numero, numero))
+      const [confirmado] = await db
+        .update(esquema.pedidos)
+        .set({ estado: 'confirmado' })
+        .where(and(donde, eq(esquema.pedidos.estado, 'pendiente')))
+        .returning({ total: esquema.pedidos.total })
+      if (confirmado) return { ok: true, total: comoMonto(confirmado.total) }
+      const [existente] = await db.select({ estado: esquema.pedidos.estado }).from(esquema.pedidos).where(donde)
+      return { ok: false, porQue: existente ? `El pedido ya está ${existente.estado}; no se puede confirmar de nuevo.` : 'Ese pedido no existe para este Cliente.' }
+    },
+
+    async consultar_pedido(numero) {
+      const filas = await db
+        .select()
+        .from(esquema.pedidos)
+        .where(and(deEsteCliente, ...(numero !== null ? [eq(esquema.pedidos.numero, numero)] : [])))
+        .orderBy(desc(esquema.pedidos.creado))
+        .limit(numero !== null ? 1 : 3)
+      return filas.map((p) => ({ numero: p.numero, estado: p.estado, total: comoMonto(p.total), items: p.items.map((i) => `${i.cantidad} x ${i.nombre}`), ciudad: p.ciudad, direccion: p.direccion }))
+    },
+
+    async abrir_caso({ titulo, detalle, pedido, reusar }) {
+      if (reusar) {
+        const [abierto] = await db
+          .update(esquema.casos)
+          .set({ detalle: sql`${esquema.casos.detalle} || ${`\n\n${detalle}`}` })
+          .where(
+            eq(
+              esquema.casos.id,
+              sql`(select id from casos where negocio_id = ${negocio} and cliente_id = ${cliente} and titulo = ${titulo} and estado <> 'resuelto' order by creado desc limit 1)`,
+            ),
+          )
+          .returning({ id: esquema.casos.id })
+        if (abierto) return { caso: marcar.caso(abierto.id) }
+      }
+      const [delPedido] = pedido !== null ? await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(and(deEsteCliente, eq(esquema.pedidos.numero, pedido))) : []
+      const [caso] = await db
+        .insert(esquema.casos)
+        .values({ negocioId: negocio, clienteId: cliente, pedidoId: delPedido?.id ?? null, titulo, detalle })
+        .returning({ id: esquema.casos.id })
+      return { caso: marcar.caso(caso.id) }
+    },
+  }
+}
+
+export type PuertoEnMemoria = PuertoDeAcciones & {
+  readonly pedidos: readonly (PedidoConsultado & { readonly cotizacion: Cotizacion | null })[]
+  readonly casos: readonly { readonly titulo: string; readonly detalle: string }[]
+}
+
+/** El de ensayo: en memoria, encima de los datos del estado y de los pedidos del Cliente. No escribe nada. */
+export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTurno): PuertoEnMemoria {
+  const pedidos = cliente.pedidos.map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: [p.resumen], ciudad: '', direccion: '', cotizacion: null as Cotizacion | null }))
+  const casos: { titulo: string; detalle: string }[] = []
+  return {
+    pedidos,
+    casos,
+    buscar_productos: async (texto) => buscarEn(estado, texto),
+    async crear_pedido({ pedido, direccion, cotizacion }) {
+      const numero = Math.max(0, ...pedidos.map((p) => p.numero)) + 1
+      pedidos.push({ numero, estado: 'pendiente', total: cotizacion.total, items: cotizacion.lineas.map((l) => `${l.cantidad} x ${l.nombre}`), ciudad: pedido.ciudad, direccion, cotizacion })
+      return { numero, total: cotizacion.total }
+    },
+    async confirmar_pedido(numero) {
+      const i = pedidos.findIndex((p) => p.numero === numero)
+      if (i < 0) return { ok: false, porQue: 'Ese pedido no existe para este Cliente.' }
+      if (pedidos[i].estado !== 'pendiente') return { ok: false, porQue: `El pedido ya está ${pedidos[i].estado}; no se puede confirmar de nuevo.` }
+      pedidos[i] = { ...pedidos[i], estado: 'confirmado' }
+      return { ok: true, total: pedidos[i].total }
+    },
+    consultar_pedido: async (numero) => (numero === null ? pedidos.slice(-3).reverse() : pedidos.filter((p) => p.numero === numero)),
+    async abrir_caso({ titulo, detalle, reusar }) {
+      const i = reusar ? casos.findIndex((c) => c.titulo === titulo) : -1
+      if (i >= 0) casos[i] = { titulo, detalle: `${casos[i].detalle}\n\n${detalle}` }
+      else casos.push({ titulo, detalle })
+      return { caso: null }
+    },
+  }
+}
+
+type Es<A extends true> = A
+export type _PasarAlDuenoNoEsAccion = Es<'pasar_al_dueno' extends NombreDeAccion ? false : true>
+export type _EscenariosNombranLasAcciones = Es<[NombreDeAccion] extends [AccionDeEscenario] ? ([AccionDeEscenario] extends [NombreDeAccion] ? true : false) : false>
+export type _PuertoRealSoloVigente = Es<EstadoDelNegocio extends Parameters<typeof puertoDeLaBase>[0] ? false : true>
