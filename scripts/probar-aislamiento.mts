@@ -261,6 +261,11 @@ try {
   const firmaPropia = await correrLote([...fijar(B.id, firmaB), ...crudas(['select id from public.pedidos'])])
   afirmar('8 control: la firma de B con el app.negocio_id de B sí ve los pedidos de B', firmaPropia.ok && ve(firmaPropia.filas, B.ids).length === B.pedidos, firmaPropia.ok ? firmaPropia.filas.length : firmaPropia)
 
+  const quienCorre = await ejecutar(estadoA, cruda('select current_user::text as usuario from hoy'))
+  afirmar('8 ejecutar corre como amanece_consultas, no en sesión del dueño', quienCorre.tipo === 'filas' && quienCorre.filas[0]?.usuario === 'amanece_consultas', quienCorre)
+  const porEjecutar = await ejecutar(estadoA, cruda(ataqueEnElSelect))
+  afirmar('8 el ataque de #8 por ejecutar vuelve como error 42501 y sin filas', porEjecutar.tipo === 'error' && porEjecutar.error.tipo === 'postgres' && porEjecutar.error.codigo === '42501', porEjecutar)
+
   console.log('\n=== 8 bis. El validador es el segundo anillo: rechaza esos mismos textos ===')
   for (const [nombre, texto] of [['el ataque de #8', ataqueDe8(B.id)], ...variantesDelAtaque(B.id)] as const) {
     const v = await validarConsulta(texto, 'numero')
