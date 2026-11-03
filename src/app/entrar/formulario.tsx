@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
-import { useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PALABRAS_DE_ENTRADA, type MotivoDeEntrada } from './errores'
@@ -35,7 +35,10 @@ export function PantallaDeEntrada({ modoInicial, entrar, alEntrar }: { modoInici
   const textos = TEXTOS[modo]
   const registro = modo === 'registro'
 
-  async function enviar(formulario: FormData) {
+  async function enviar(evento: FormEvent<HTMLFormElement>) {
+    // Con `action`, React vacía el formulario al terminar: un error obligaría a escribir todo otra vez.
+    evento.preventDefault()
+    const formulario = new FormData(evento.currentTarget)
     setEnviando(true)
     setMotivo(null)
     const email = String(formulario.get('email'))
@@ -63,7 +66,7 @@ export function PantallaDeEntrada({ modoInicial, entrar, alEntrar }: { modoInici
         <h1 className="my-auto px-5 py-8 font-heading text-[clamp(34px,5.6vw,52px)] leading-[1.04] font-semibold tracking-tight text-balance sm:my-0 sm:px-0 sm:pt-0 sm:pb-7 sm:text-center">{textos.titulo}</h1>
         <section className="w-full rounded-t-[calc(var(--radius)*1.6)] bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-card-foreground shadow-alzada motion-safe:animate-[sube_240ms_var(--ease-entra)] sm:max-w-sm sm:rounded-[calc(var(--radius)*1.6)] sm:p-6">
           <p className="text-sm text-pretty text-muted-foreground">{textos.nota}</p>
-          <form action={enviar} className="mt-4 flex flex-col gap-3.5">
+          <form onSubmit={enviar} className="mt-4 flex flex-col gap-3.5">
             {registro && <Campo etiqueta="Tu nombre" name="nombre" autoComplete="name" />}
             <Campo etiqueta="Correo" name="email" type="email" autoComplete="email" inputMode="email" />
             <Campo etiqueta="Contraseña" name="password" type="password" minLength={8} autoComplete={registro ? 'new-password' : 'current-password'} nota={registro ? 'Mínimo 8 caracteres.' : undefined} />
