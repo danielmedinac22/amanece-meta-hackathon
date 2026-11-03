@@ -28,7 +28,7 @@ type ItemPendiente = import('../src/nucleo/estado').ItemPendiente
 
 export function retirarSinPublicar(negocio: NegocioId, opciones: { readonly deVerdad: boolean }): Promise<readonly ItemPendiente[]> {
   return conTransaccion<readonly ItemPendiente[]>(async (tx, deshacer) => {
-    await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+    await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
     const [aplicado, publicado] = [await leerAplicado(negocio, tx), await leerPublicado(negocio, tx)]
     const items = loPendiente(aplicado, publicado)
     if (!opciones.deVerdad) return deshacer(items)

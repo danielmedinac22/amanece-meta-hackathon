@@ -56,7 +56,7 @@ export async function guardarEnElAlta(
       .select({ id: esquema.negocios.id })
       .from(esquema.negocios)
       .where(and(eq(esquema.negocios.id, ctx.negocio), eq(esquema.negocios.estado, 'armando')))
-      .for('update')
+      .for('no key update')
     if (!sigue) return deshacer('abierto')
     if (Object.keys(identidad).length) await tx.update(esquema.negocios).set(identidad).where(eq(esquema.negocios.id, ctx.negocio))
     if (!t) return { tarjeta: null }

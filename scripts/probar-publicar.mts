@@ -25,7 +25,7 @@ const { abrirEnElAlta, aprobar, descartar, deshacer, leerLoPendiente, proponer, 
 const { ACCIONES, actorDelBoton } = await import('../src/nucleo/acciones')
 const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
 const { comoSeRevierte, leerAplicado, leerPublicado } = await import('../src/nucleo/estado')
-const { escribir, naceSinPublicar } = await import('../src/nucleo/estado/escribir')
+const { escribir, naceSinPublicar, sellar } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
 const { canonico } = await import('../src/lib/canonico')
@@ -634,6 +634,30 @@ const CASOS: Record<string, () => Promise<void>> = {
     const alReves = await quitarPanel(O, { deVerdad: true })
     await retirarSinPublicar(O, { deVerdad: true })
     afirmar('volver atrás: al revés, quitar-panel no ve la clave y queda viva: por eso retirar va primero', !alReves.includes(claveOtro) && (await leerAplicado(O)).vigente(claveOtro) !== null, alReves)
+  },
+
+  async candadoNoFrenaAlCliente() {
+    const N = await negocioAbierto('G')
+    const ana = await duenoDe(N, 'Ana')
+    await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const vista = (await pendienteDe(N)).huella
+    const entraUnCliente = async (sufijo: string) => {
+      const insercion = Promise.resolve(db.insert(esquema.clientes).values({ negocioId: N, telefono: `5734${marca}${sufijo}`, nombre: 'Camilo' }).returning({ id: esquema.clientes.id }))
+      const quien = await Promise.race([insercion.then(() => 'termino' as const), new Promise<'espero'>((listo) => setTimeout(() => listo('espero'), 5000))])
+      return { quien, insercion }
+    }
+    const conLaFilaTomada = (tomar: (tx: Parameters<typeof sellar>[0]) => Promise<unknown>, sufijo: string) =>
+      conTransaccion<Awaited<ReturnType<typeof entraUnCliente>>>(async (tx, abortar) => {
+        await tomar(tx)
+        return abortar(await entraUnCliente(sufijo))
+      })
+    const conPublicar = await conLaFilaTomada((tx) => sellar(tx, N, vista), '1')
+    await conPublicar.insercion
+    afirmar('candado: con un Publicar sin terminar, un Cliente nuevo entra sin esperar', conPublicar.quien === 'termino', conPublicar.quien)
+    const conAplicar = await conLaFilaTomada((tx) => escribir(tx, N, { tipo: 'propuesta', propuesta: null }, { elementos: [{ clave: PAGOS, base: el.comoVersion(1), despues: dato('pagos', 'Nequi') }], filas: [] }, null), '2')
+    await conAplicar.insercion
+    afirmar('candado: con un Aplicar sin terminar, un Cliente nuevo entra sin esperar', conAplicar.quien === 'termino', conAplicar.quien)
+    afirmar('candado: lo que no terminó no quedó', (await pendienteDe(N)).items.length === 1 && (await leerPublicado(N)).vigente(HORARIO) === null)
   },
 
   async aislamiento() {

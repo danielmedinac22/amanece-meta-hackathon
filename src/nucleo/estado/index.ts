@@ -127,7 +127,7 @@ export function armarEstado(identidad: IdentidadDelNegocio, version: VersionDelN
 
 const ultimas = esquema.elementos
 
-/** Quien lee: la base, o la transacción de quien escribe, que relee después de su `FOR UPDATE`. */
+/** Quien lee: la base, o la transacción de quien escribe, que relee después de tomar la fila del Negocio. */
 export type Lector = typeof db | Transaccion
 
 /** La última fila de cada clave del Negocio, también la que la quitó (`contenido` null). La única consulta de `elementos`. */
@@ -286,7 +286,7 @@ export function validarReversion(estado: EstadoDelNegocio, escritura: Escritura)
 
 /**
  * Pura. La única validación de una Escritura: la corre `traducir` para la tarjeta y otra vez `escribir`, dentro de la
- * transacción, contra lo que leyó después del `FOR UPDATE`. Devuelve los Elementos parseados: eso es lo que se guarda.
+ * transacción, contra lo que leyó después de tomar la fila del Negocio. Devuelve los Elementos parseados: eso es lo que se guarda.
  */
 export function validarEscritura(estado: EstadoDelNegocio, escritura: Escritura): ResultadoDeValidar {
   const problemas: Problema[] = []

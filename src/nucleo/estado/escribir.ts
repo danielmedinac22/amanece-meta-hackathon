@@ -62,7 +62,7 @@ const NO_SE_PUEDE: ComoSeRevierte = { tipo: 'no_se_puede', porQue: 'la_cambio_ot
  * una clave cambió desde la `base` que vio quien propuso, no escribe nada y devuelve `conflicto`.
  */
 export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura, revierte: LoRevertido | null): Promise<ResultadoDeEscribir> {
-  const [n] = await tx.select({ version: esquema.negocios.version, modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+  const [n] = await tx.select({ version: esquema.negocios.version, modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
   const modo = n.modo ?? 'armando'
   if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0, modo }
@@ -143,7 +143,7 @@ export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: read
  * arriba para siempre, y un freno nunca las devuelve.
  */
 export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string): Promise<ResultadoDeSellar> {
-  const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+  const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
   const aplicado = await leerAplicado(negocio, tx)
   const publicado = await leerPublicado(negocio, tx)

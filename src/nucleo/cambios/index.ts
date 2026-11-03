@@ -479,7 +479,7 @@ async function aplicarConReclamo(a: {
     if (!fila) return { tipo: 'sin_reclamo' }
     if (a.sinBoton) {
       // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
-      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('update')
+      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
       if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return deshacer({ tipo: 'sigue_esperando' })
     }
     const [acto] = fila.actos
