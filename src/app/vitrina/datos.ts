@@ -7,6 +7,7 @@ import type { LoPendiente, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Supuesto } from '@/nucleo/consultas/tipos'
 import type { Clave } from '@/nucleo/estado/elementos'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
+import type { DatosDeClientes, DatosDePedidos, FilaDeCliente, FilaDePedido } from '@/nucleo/listas'
 import type { SeccionPintada } from '@/nucleo/panel'
 
 const clave = (c: string) => c as Clave
@@ -14,7 +15,7 @@ const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Lade
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. `hoy` en `null` es Armándose. */
-export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null }
+export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null; pedidos: DatosDePedidos; clientes: DatosDeClientes }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -111,11 +112,51 @@ const HOY_FUNCIONANDO: DatosDeHoy['hoy'] = {
   ],
 }
 
+const fila = (numero: number, cliente: string, ciudad: string, items: string, total: number, hace: string): FilaDePedido => ({ id: `p-${numero}`, numero, cliente, items, ciudad, total, hace })
+const grupo = (estado: DatosDePedidos['grupos'][number]['estado'], ...filas: FilaDePedido[]) => ({ estado, cuenta: filas.length, filas })
+
+const SIN_PEDIDOS: DatosDePedidos = { cifras: { semana: { ventas: 0, pedidos: 0, clientes: 0 }, conversaciones: { total: 0, resueltas: 0 } }, grupos: [] }
+const SIN_CLIENTES: DatosDeClientes = { cuenta: 0, filas: [] }
+
+const PEDIDOS: DatosDePedidos = {
+  cifras: { semana: { ventas: 1_284_000, pedidos: 23, clientes: 31 }, conversaciones: { total: 14, resueltas: 13 } },
+  grupos: [
+    grupo('novedad', fila(37, 'Paola Andrea Vargas', 'Pasto', '2 tueste oscuro, molido 500 g', 72_000, 'ayer')),
+    grupo('pendiente', fila(41, 'Daniela Quintero', 'Pereira', '2 tueste medio, grano 500 g', 76_000, 'hace 12 min')),
+    grupo('confirmado', fila(40, 'Nicolás Aristizábal', 'Bogotá', 'Suscripción mensual', 62_000, 'hace 1 h'), fila(39, 'Andrés Felipe Gómez', 'Medellín', 'Caja regalo Ladera', 95_000, 'hace 3 h')),
+    grupo('enviado', fila(38, 'Laura Valentina Pérez', 'Cali', 'Micro lote Honey, grano 250 g', 32_000, 'ayer'), fila(34, 'Santiago Herrera', 'Barranquilla', '2 tueste medio, molido 500 g', 76_000, 'hace 2 días'), fila(33, 'Luisa Fernanda Ríos', 'Cartagena', 'Caja regalo Ladera', 95_000, 'hace 3 días')),
+    grupo('entregado', fila(36, 'Juan David Cárdenas', 'Bogotá', 'Molino manual de café', 119_000, 'hace 2 días'), fila(35, 'Mariana Ospina', 'Manizales', 'Tueste claro, grano 250 g', 24_000, 'hace 2 días'), fila(32, 'Carlos Mario Londoño', 'Medellín', 'Suscripción mensual', 62_000, 'hace 3 días'), fila(30, 'Sebastián Mejía', 'Bucaramanga', 'Tueste medio, molido 500 g', 38_000, 'hace 4 días'), fila(29, 'Daniela Quintero', 'Pereira', 'Micro lote Honey, grano 250 g', 32_000, 'hace 4 días')),
+    grupo('cancelado', fila(31, 'Felipe Mora', 'Armenia', 'Tueste claro, molido 250 g', 24_000, 'hace 3 días')),
+  ],
+}
+
+const cliente = (nombre: string, ciudad: string, pedidos: number, total: number, ultimo: string): FilaDeCliente => ({ id: nombre, nombre, ciudad, pedidos, total, ultimo })
+const CLIENTES: DatosDeClientes = {
+  cuenta: 7,
+  filas: [
+    cliente('Daniela Quintero', 'Pereira', 3, 146_000, 'hace 12 min'),
+    cliente('Andrés Felipe Gómez', 'Medellín', 5, 291_000, 'hace 3 h'),
+    cliente('Laura Valentina Pérez', 'Cali', 4, 164_000, 'ayer'),
+    cliente('Juan David Cárdenas', 'Bogotá', 4, 257_000, 'hace 2 días'),
+    cliente('Mariana Ospina', 'Manizales', 3, 98_000, 'hace 2 días'),
+    cliente('Camila Rojas', 'Bogotá', 6, 342_000, 'hace 3 días'),
+    cliente('+573000000000', '', 0, 0, 'hace 4 días'),
+  ],
+}
+
+const NOMBRE_LARGO = 'María de los Ángeles Fernanda Aristizábal Londoño de la Espriella'
+const muchasFilas = (cuenta: number, base: number) => ({
+  cuenta,
+  filas: Array.from({ length: 50 }, (_, i) => fila(base - i, i === 0 ? NOMBRE_LARGO : 'Daniela Quintero', 'San José del Guaviare', '2 tueste medio, grano 500 g + Molino manual de café + Caja regalo Ladera', 1_284_000, 'hace 12 min')),
+})
+
 export const NEGOCIO_ARMANDOSE: NegocioDeMuestra = {
   nombre: 'Café Ladera',
   detalle: 'Armándose · 0 productos',
   pendiente: NADA_PENDIENTE,
   hoy: null,
+  pedidos: SIN_PEDIDOS,
+  clientes: SIN_CLIENTES,
   indicadores: [],
   secciones: [],
   casos: [],
@@ -127,6 +168,8 @@ export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   detalle: 'Café de especialidad · Manizales · 12 productos',
   pendiente: NADA_PENDIENTE,
   hoy: { hoy: HOY_FUNCIONANDO, link: LINK, reglas: REGLAS },
+  pedidos: PEDIDOS,
+  clientes: CLIENTES,
   indicadores: [pedidosDeHoy, ventasPorDia],
   secciones: [pedidosConNovedad, fallo],
   casos: [],
@@ -152,7 +195,24 @@ const NADA_TODAVIA = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior:
 
 export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
+  pedidos: SIN_PEDIDOS,
+  clientes: SIN_CLIENTES,
   hoy: { hoy: { voz: 'tienda', recienAbierto: true, cifras: NADA_TODAVIA, ojo: [], ultimo: [] }, link: LINK, reglas: [] },
+}
+
+export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  pedidos: {
+    ...PEDIDOS,
+    grupos: [
+      { estado: 'pendiente', ...muchasFilas(312, 9_999) },
+      { estado: 'entregado', ...muchasFilas(12_480, 9_949) },
+    ],
+  },
+  clientes: {
+    cuenta: 1_204,
+    filas: Array.from({ length: 100 }, (_, i) => cliente(i === 0 ? NOMBRE_LARGO : `Cliente de muestra ${i}`, 'San José del Guaviare', 1_204, 12_840_000, 'hace 12 min')),
+  },
 }
 
 export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {

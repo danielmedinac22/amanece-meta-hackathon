@@ -161,6 +161,13 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 
 **Derivado.** Conversaciones y Clientes siguen esta densidad. Conversaciones es lista y detalle en dos columnas, y en teléfono una pantalla a la vez. Las tablas esconden columnas según el ancho, de modo que el nombre y el estado quepan sin desplazar.
 
+**Derivado.** Las definiciones viven en `src/nucleo/listas.ts` y las palabras en `listas-palabras.ts`:
+
+- **Cancelado** va al final, plegado y con el tono de Entregado.
+- **Una línea de items** escribe la cantidad solo si pasa de 1 y separa los productos con `+`, porque un nombre puede llevar coma: `2 tueste medio, grano 500 g + Molino manual`.
+- **El límite** son 50 filas por grupo y 100 Clientes, los más recientes. La cuenta siempre es la de verdad, y una línea dice cuántas ves.
+- **En Clientes**, `Pedidos` y `Total` usan `CUENTA_COMO_VENTA`. `Ciudad` es la del último pedido que dijo una, y `Último` lo más reciente entre escribir y pedir. Un Cliente sin nombre sale con su teléfono.
+
 ## Hilo: Nota
 
 **Decidido.** El agente escribe sin globo, en `--texto-hilo`. El Dueño, en un globo `--secondary` a la derecha. El trabajo del agente es un **rastro**: una línea tenue con un check, o tres puntos mientras trabaja. Encima del redactor van hasta dos sugerencias como chips.

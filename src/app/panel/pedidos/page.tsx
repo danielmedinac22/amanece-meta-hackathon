@@ -1,7 +1,8 @@
-import { duenoDelPanel } from '../leer'
-import { FaltaEstaSeccion } from '../vista'
+import { leerPedidos } from '../leer'
+import { ListaDePedidos } from '../listas'
+import { SinNegocio } from '../vista'
 
 export default async function Pedidos() {
-  await duenoDelPanel()
-  return <FaltaEstaSeccion que="tus pedidos" />
+  const datos = await leerPedidos()
+  return datos ? <ListaDePedidos {...datos} /> : <SinNegocio />
 }

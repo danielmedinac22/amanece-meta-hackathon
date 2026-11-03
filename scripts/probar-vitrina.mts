@@ -18,7 +18,7 @@ import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
-const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
+const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -37,21 +37,51 @@ const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['PC: Ocultar con una decisión esperando deja la conversación abierta', 'panel-un-caso', '1440', '--clic=Ocultar', '--ve=Una clienta preguntó'],
   ['Sidebar: Casos muestra el número de Casos abiertos', 'panel-un-caso', '1440', `--cierto=document.querySelectorAll('[data-slot=sidebar-menu-badge]').length === 1 && document.querySelector('[data-slot=sidebar-menu-badge]').textContent.trim() === '1'`],
   ['Sidebar: sin Casos abiertos no hay número', 'panel-funcionando', '1440', `--cierto=document.querySelectorAll('[data-slot=sidebar-menu-badge]').length === 0`],
-  ['Sidebar: cada Sección pinta lo suyo y dice si falta', 'panel-un-caso', '1440', '--clic=Pedidos con novedad', '--ve=Marcela Ríos', `--no-ve=Necesita tu ojo`, '--clic=Pedidos', '--ve=Esta Sección todavía falta', `--cierto=document.querySelector('h1').textContent === 'Pedidos'`, '--clic=Casos', '--ve=Casos para ti', '--clic=Tablero', '--ve=14 pedidos', '--no-ve=Casos para ti', '--clic=Inicio', '--ve=Necesita tu ojo', '--no-ve=14 pedidos'],
+  ['Sidebar: cada Sección pinta lo suyo y dice si falta', 'panel-un-caso', '1440', '--clic=Pedidos con novedad', '--ve=Marcela Ríos', `--no-ve=Necesita tu ojo`, '--clic=Pedidos', '--ve=Por confirmar', `--cierto=document.querySelector('h1').textContent === 'Pedidos'`, '--clic=Conversaciones', '--ve=Esta Sección todavía falta', '--clic=Casos', '--ve=Casos para ti', '--clic=Tablero', '--ve=14 pedidos', '--no-ve=Casos para ti', '--clic=Inicio', '--ve=Necesita tu ojo', '--no-ve=14 pedidos'],
   ['PC: Publicar vive en el encabezado del lienzo y abre su lista', 'panel-con-cambios', '1440', '--clic=Publicar', '--ve=Lo notan tus Clientes', `--ve=Vista previa`],
   ['Teléfono: Publicar va arriba y abre su lista', 'panel-con-cambios', '390', '--clic=Publicar', '--ve=Lo notan tus Clientes', `--cierto=document.querySelector('header').textContent.includes('Publicar')`],
   ['Inicio: la frase lleva sus cifras en negrita', 'panel-funcionando', '1440', '--ve=Esta semana vendiste', `--cierto=[...document.querySelectorAll('p b')].map((b) => b.textContent).join('|') === '$1.284.000|23 pedidos|13 de 14'`],
   ['Inicio: Decidir lleva a Casos sin navegar fuera', 'panel-un-caso', '1440', '--ve=Necesita tu ojo', '--clic=Decidir', '--ve=Casos para ti', '--no-ve=Necesita tu ojo'],
-  ['Inicio en teléfono: Ver el pedido se queda en Tu negocio', 'panel-un-caso', '390', '--clic=Tu negocio', '--ve=Necesita tu ojo', '--clic=Ver el pedido', '--ve=Esta Sección todavía falta'],
+  ['Inicio en teléfono: Ver el pedido se queda en Tu negocio', 'panel-un-caso', '390', '--clic=Tu negocio', '--ve=Necesita tu ojo', '--clic=Ver el pedido', '--ve=Por confirmar'],
   ['Inicio: recién abierto muestra el link y ninguna cifra', 'panel-recien-abierto', '1440', '--ve=Todavía no te ha escrito nadie.', '--no-ve=Necesita tu ojo', '--no-ve=Esta semana', `--evalua=(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: (t) => { window.copiado = t; return Promise.resolve() } } }); return 'listo' })()`, '--clic=Copiar', '--ve=Copiado', `--cierto=window.copiado.startsWith('https://wa.me/')`],
   ['Inicio: con cero ventas no dice $0 y el ojo vacío dice qué sigue', 'hoy-sin-ventas', '1440', '--ve=Esta semana todavía no tienes ventas.', '--ve=la única conversación', '--ve=Nada por ahora', '--no-ve=$0'],
   ['Inicio: una agenda no habla de ventas', 'hoy-agenda', '1440', '--ve=te escribieron', '--ve=3 de 4', '--no-ve=vendiste', '--no-ve=pedidos,'],
   ['Teléfono: pestañas, punto y cajón', 'panel-un-caso', '390', '--ve=Una clienta preguntó', '--no-ve=Necesita tu ojo', `--cierto=!document.querySelector('${PUNTO}')`, '--clic=Tu negocio', '--ve=Necesita tu ojo', '--no-ve=Una clienta preguntó', `--cierto=!!document.querySelector('${PUNTO}')`, '--clic=Menú', '--ve=Conversaciones', '--clic=Casos', '--no-ve=Conversaciones', '--ve=Casos para ti', '--clic=Tu agente', '--ve=Una clienta preguntó', `--cierto=!document.querySelector('${PUNTO}')`],
-  ['Teléfono: tocar una Sección lleva a Tu negocio', 'panel-funcionando', '390', '--clic=Menú', '--clic=Pedidos', '--ve=Esta Sección todavía falta'],
+  ['Teléfono: tocar una Sección lleva a Tu negocio', 'panel-funcionando', '390', '--clic=Menú', '--clic=Pedidos', '--ve=Por confirmar'],
   ['El corte: en 1023 son pestañas', 'panel-funcionando', '1023', `--cierto=document.querySelector('${PESTANAS}').checkVisibility()`, '--no-ve=Necesita tu ojo'],
   ['El corte: en 1024 son tres paños', 'panel-funcionando', '1024', `--cierto=!document.querySelector('${PESTANAS}').checkVisibility()`, '--ve=Necesita tu ojo', `--cierto=${ancho(HILO)} === 348`],
   ['Movimiento: los paños usan la curva de DESIGN.md', 'panel-funcionando', '1440', `--cierto=(() => { const c = getComputedStyle(document.querySelector('${ESPACIO_DEL_HILO}')); return c.transitionDuration === '0.28s' && c.transitionTimingFunction === 'cubic-bezier(0.25, 1, 0.5, 1)' })()`, `--cierto=getComputedStyle(document.querySelector('[data-slot=sidebar-gap]')).transitionTimingFunction === 'cubic-bezier(0.25, 1, 0.5, 1)'`, '--clic=Ocultar', `--cierto=getComputedStyle(document.querySelector('${HILO}')).animationName === 'sube'`],
   ['Movimiento: con prefers-reduced-motion el estado cambia y nada se mueve', 'panel-funcionando', '1440', '--menos-movimiento', `--cierto=getComputedStyle(document.querySelector('${ESPACIO_DEL_HILO}')).transitionProperty === 'none'`, `--cierto=getComputedStyle(document.querySelector('[data-slot=sidebar-gap]')).transitionProperty === 'none'`, '--clic=Ocultar', '--no-ve=Hola, soy tu agente', `--cierto=getComputedStyle(document.querySelector('${HILO}')).animationName === 'none'`],
+]
+
+const LIENZO = `document.querySelector('[data-pano=lienzo] [class*=overflow-y-auto]')`
+const ENCABEZADOS = `[...document.querySelectorAll('[data-pano=lienzo] h3, [data-pano=lienzo] summary')]`
+const TONO_DE = (i: number, token: string) => `(() => { const b = ${ENCABEZADOS}[${i}].querySelector('[data-slot=badge]'); const p = document.createElement('i'); p.style.color = 'var(${token})'; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return getComputedStyle(b).color === c })()`
+const PEGA_ARRIBA = `(() => { const l = ${LIENZO}; l.scrollTop = 700; const h = document.querySelector('[data-pano=lienzo] h3'); return l.scrollTop === 700 && Math.abs(h.getBoundingClientRect().top - l.getBoundingClientRect().top) < 1 })()`
+const SIN_DESPLAZAR = `(() => { const c = document.querySelector('[data-slot=table-container]'); return c.scrollWidth <= c.clientWidth })()`
+const NOMBRE_RECORTADO = `(() => { const t = document.querySelector('[data-slot=table-cell]'); return t.scrollWidth > t.clientWidth && getComputedStyle(t).textOverflow === 'ellipsis' })()`
+
+const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
+  ['Pedidos: los grupos van en el orden del diseño, con su cuenta y cancelado al final', 'pedidos-lista', '1440', `--cierto=${ENCABEZADOS}.map((h) => h.textContent.trim().replace(/\\s+/g, ' ')).join('|') === 'Con novedad 1|Por confirmar 1|Confirmado 2|Enviado 3|Entregado 5|Cancelado 1'`],
+  ['Pedidos: el resumen lleva las cifras de arriba', 'pedidos-lista', '1440', '--ve=$1.284.000', '--ve=14 conversaciones hoy', '--ve=13 resueltas sin ti'],
+  ['Pedidos: las etiquetas llevan su tono', 'pedidos-lista', '1440', `--cierto=${TONO_DE(0, '--ojo')}`, `--cierto=${TONO_DE(1, '--foreground')}`, `--cierto=${TONO_DE(2, '--bien')}`, `--cierto=${TONO_DE(3, '--muted-foreground')}`, `--cierto=${TONO_DE(4, '--muted-foreground')}`, `--cierto=${TONO_DE(5, '--muted-foreground')}`],
+  ['Pedidos en oscuro: las etiquetas llevan su tono', 'pedidos-lista', '1440', '--oscuro', `--cierto=${TONO_DE(0, '--ojo')}`, `--cierto=${TONO_DE(2, '--bien')}`],
+  ['Pedidos: lo cancelado se ve plegado y se abre', 'pedidos-lista', '1440', '--no-ve=Felipe Mora', '--clic=Cancelado', '--ve=Felipe Mora'],
+  ['Pedidos en PC: número, ciudad y tiempo a la vista', 'pedidos-lista', '1440', '--ve=#41', '--ve=Pereira', '--ve=hace 12 min', `--cierto=getComputedStyle([...document.querySelectorAll('[data-pano=lienzo] li span')].find((s) => s.textContent === '$76.000')).fontVariantNumeric === 'tabular-nums'`],
+  ['Pedidos en teléfono: se esconden número, ciudad y tiempo', 'pedidos-lista', '390', '--ve=Daniela Quintero', '--ve=$76.000', '--no-ve=#41', '--no-ve=Pereira', '--no-ve=hace 12 min'],
+  ['Pedidos en PC angosto: el lienzo manda, no la ventana', 'pedidos-lista', '1024', '--ve=$76.000', '--no-ve=#41', '--no-ve=Pereira'],
+  ['Pedidos en PC: el encabezado pega arriba del lienzo', 'pedidos-muchos', '1440', `--cierto=${PEGA_ARRIBA}`],
+  ['Pedidos en teléfono: el encabezado pega arriba del lienzo', 'pedidos-muchos', '390', `--cierto=${PEGA_ARRIBA}`],
+  ['Pedidos: con más filas que el límite dice cuántas ves', 'pedidos-muchos', '320', '--ve=Ves los 50 más recientes de 312.', '--ve=Ves los 50 más recientes de 12.480.'],
+  ['Pedidos: filas largas caben en PC angosto', 'pedidos-muchos', '1024'],
+  ['Pedidos: sin pedidos dice qué sigue y ninguna cifra', 'pedidos-vacios', '1440', '--ve=Todavía no tienes pedidos', '--no-ve=esta semana'],
+  ['Clientes en PC: todas las columnas', 'clientes-tabla', '1440', '--ve=Pereira', '--ve=hace 12 min', '--ve=$146.000', `--cierto=${SIN_DESPLAZAR}`],
+  ['Clientes en teléfono: nombre y cifras sin desplazar, sin ciudad ni último', 'clientes-tabla', '390', '--ve=Daniela Quintero', '--ve=$146.000', '--no-ve=Pereira', '--no-ve=hace 12 min', `--cierto=${SIN_DESPLAZAR}`],
+  ['Clientes: las cifras de la tabla no bailan', 'clientes-tabla', '1440', `--cierto=[...document.querySelectorAll('td.text-right')].filter((c) => /^[$\\d]/.test(c.textContent)).every((c) => getComputedStyle(c).fontVariantNumeric === 'tabular-nums')`],
+  ['Clientes: un nombre largo se recorta en 320 sin desplazar', 'clientes-muchos', '320', `--cierto=${SIN_DESPLAZAR}`, `--cierto=${NOMBRE_RECORTADO}`, '--ve=Ves los 100 más recientes de 1.204.'],
+  ['Clientes: un nombre largo se recorta en PC angosto', 'clientes-muchos', '1024', `--cierto=${SIN_DESPLAZAR}`, `--cierto=${NOMBRE_RECORTADO}`],
+  ['Clientes: un nombre largo no empuja la tabla en PC', 'clientes-muchos', '1440', `--cierto=${SIN_DESPLAZAR}`, `--cierto=${NOMBRE_RECORTADO}`],
+  ['Clientes: sin Clientes dice qué sigue', 'clientes-vacios', '1440', '--ve=Todavía no te ha escrito nadie'],
 ]
 
 const CARD_CASO = 'document.getElementById("tarjeta-p-caso")'
@@ -201,7 +231,7 @@ try {
     }
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DEL_HILO]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_HILO]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

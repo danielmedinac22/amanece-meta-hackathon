@@ -7,6 +7,7 @@ import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import { leerHoy } from '@/nucleo/hoy'
+import { leerClientes as clientesDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
 import { pintarPanel, pintarUna } from '@/nucleo/panel'
 import { duenoActual } from '@/negocio/sesion'
 import type { DatosDeHoy } from './inicio-hoy'
@@ -85,6 +86,16 @@ export async function leerInicio(): Promise<Inicio | null> {
       reglas,
     },
   }
+}
+
+export async function leerPedidos() {
+  const leido = await negocioDelPanel()
+  return leido && pedidosDe(leido.id, leido.negocio.zonaHoraria)
+}
+
+export async function leerClientes() {
+  const leido = await negocioDelPanel()
+  return leido && clientesDe(leido.id, leido.negocio.zonaHoraria)
 }
 
 export async function leerIndicadores() {
