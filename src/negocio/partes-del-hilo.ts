@@ -17,15 +17,21 @@ export function tarjetaDeLaParte(parte: UIMessage['parts'][number]): TarjetaDeAp
   return tarjeta && typeof tarjeta === 'object' && 'propuesta' in tarjeta ? tarjeta : null
 }
 
-/**
- * La tarjeta más reciente que espera al Dueño, o null. Deshacer no cuenta: es de algo que ya pasó. Una recién
- * llegada en el stream todavía no tiene estado y cuenta si no venció, igual que en la tarjeta.
- */
-export function decisionQueEspera(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>, ahora = Date.now()): string | null {
+/** Deshacer no cuenta: es de algo que ya pasó. Una recién llegada en el stream todavía no tiene estado y cuenta si no venció, igual que en la tarjeta. */
+function tarjetasQueEsperan(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>, ahora: number): TarjetaDeAprobacion[] {
   const tarjetas = mensajes.flatMap((m) => m.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []))
-  const abiertas = tarjetas.filter((t) => {
+  return tarjetas.filter((t) => {
     const estado = estados[t.propuesta]
     return t.accion !== 'deshacer' && (estado ? estado.estado === 'espera_al_dueno' : Date.parse(t.vence) > ahora)
   })
-  return abiertas.at(-1)?.propuesta ?? null
+}
+
+/** La tarjeta más reciente que espera al Dueño, o null. */
+export function decisionQueEspera(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>, ahora = Date.now()): string | null {
+  return tarjetasQueEsperan(mensajes, estados, ahora).at(-1)?.propuesta ?? null
+}
+
+/** Las que esperan, la más urgente primero: antes lo que un Cliente está esperando y después lo que vence antes. */
+export function decisionesEnEspera(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>, ahora = Date.now()): TarjetaDeAprobacion[] {
+  return tarjetasQueEsperan(mensajes, estados, ahora).toSorted((a, b) => Number(b.accion === 'enviar') - Number(a.accion === 'enviar') || Date.parse(a.vence) - Date.parse(b.vence))
 }
