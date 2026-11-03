@@ -12,6 +12,7 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { pedirPublicar } from '../src/app/panel/tocar-publicar'
 import { tocarTarjeta } from '../src/app/panel/tocar-tarjeta'
 import { decisionesEnEspera, decisionQueEspera } from '../src/negocio/partes-del-hilo'
 import { afirmar, terminar } from './afirmar.mjs'
@@ -19,6 +20,7 @@ import { afirmar, terminar } from './afirmar.mjs'
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
+const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -67,6 +69,33 @@ const NOMBRE_RECORTADO = `(() => { const t = document.querySelector('[data-slot=
 const BARRA = (n: number) => `document.querySelector('[data-pano=lienzo] ol[aria-label="Pedidos por día"] li:nth-child(${n})')`
 const COLUMNA = (titulo: string) => `[...document.querySelectorAll('[data-pano=lienzo] th')].find((h) => h.textContent === '${titulo}')`
 const ESCENAS_DE_320 = ['tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo']
+
+const VENTANA_DE_PUBLICAR = '[data-slot=popover-content]'
+/** El botón de abajo de la lista, no el que la abre: los dos dicen Publicar. */
+const TOCAR_PUBLICAR = `--cierto=(() => { const b = [...document.querySelectorAll('${VENTANA_DE_PUBLICAR} button')].find((x) => x.textContent.trim() === 'Publicar'); if (!b) return false; b.click(); return true })()`
+const PUNTEADOS = (n: number) => `--cierto=document.querySelectorAll('[data-pano=lienzo] .border-dashed').length === ${n}`
+const HASTA_PUBLICADO = [TOCAR_PUBLICAR, '--espera=300', '--ve=Publicando', '--espera=3000', '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Atendiendo', '--no-ve=Vista previa']
+
+const RECORRIDOS_DE_PUBLICAR: typeof RECORRIDOS = [
+  ['Publicar, PC: un Indicador en la vista previa hasta Publicado', 'publicar-indicador', '1440', '--ve=Vista previa', '--ve=Deshacer', PUNTEADOS(1), '--clic=Publicar', '--ve=Solo lo ven tú y tu equipo', ...HASTA_PUBLICADO, '--ve=Lucía publicó: Indicador nuevo', '--ve=Publicada', '--no-ve=Deshacer', PUNTEADOS(0), `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
+  ['Publicar, teléfono: arriba, y el lienzo cambia con él', 'publicar-indicador', '390', `--cierto=document.querySelector('header').textContent.includes('Publicar')`, '--clic=Tu negocio', '--ve=Vista previa', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, PUNTEADOS(0)],
+  ['Publicar: en el Tablero el Indicador se queda, ya sin puntear', 'publicar-indicador-tablero', '1440', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, PUNTEADOS(0), `--cierto=document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
+  ['Publicar: encima de Pedidos sale al publicarlo', 'publicar-indicador-pedidos', '1440', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
+  ['Publicar: una regla, de Aplicar a Publicada', 'publicar-regla', '1440', '--ve=Publicado', '--ve=Atendiendo', '--clic=Aplicar', '--ve=Aplicada', '--ve=Vista previa', '--ve=Queda en la vista previa', '--clic=Publicar', '--ve=Lo notan tus Clientes', ...HASTA_PUBLICADO, '--ve=Lucía publicó: Regla nueva', '--ve=Publicada'],
+  ['Publicar, teléfono: una regla, de Aplicar a Publicada', 'publicar-regla', '390', '--clic=Aplicar', '--ve=Aplicada', '--clic=Publicar', '--ve=Lo notan tus Clientes', TOCAR_PUBLICAR, '--espera=3000', '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Publicada', '--clic=Tu negocio', '--ve=Atendiendo'],
+  ['Publicar: Descartar una regla no deja nada sin publicar', 'publicar-regla', '1440', '--clic=Descartar', '--ve=Descartada', '--ve=Atendiendo', '--no-ve=Vista previa'],
+  ['Publicar: Deshacer deja todo como estaba', 'publicar-indicador', '1440', '--clic=Deshacer', '--ve=Deshecha', '--ve=Atendiendo', '--no-ve=Vista previa', PUNTEADOS(0)],
+  ['Publicar: sin movimiento, el estado cambia igual', 'publicar-indicador', '1440', '--menos-movimiento', '--clic=Publicar', ...HASTA_PUBLICADO, '--ve=Publicada'],
+  ['Publicar: el único link es el de WhatsApp, con copiar y abrir', 'panel-con-cambios', '1440', '--clic=Publicar', '--ve=Tus Clientes te escriben aquí', '--no-ve=amanece.co', '--no-ve=Tu Panel', `--cierto=(() => { const a = document.querySelectorAll('${VENTANA_DE_PUBLICAR} a'); return a.length === 1 && a[0].href.startsWith('https://wa.me/') && a[0].target === '_blank' })()`, `--cierto=(() => { navigator.clipboard.writeText = async (t) => { window.copiado = t }; return true })()`, '--clic=Copiar Tus Clientes', `--cierto=window.copiado.startsWith('https://wa.me/') && window.copiado.includes('%20') && !!document.querySelector('[aria-label=Copiado]')`, `--ve=wa.me/000000000000?text=(LADERA) Hola Café Ladera`],
+  ['Publicar: sin nada pendiente dice que está todo', 'panel-funcionando', '1440', '--ve=Publicado', '--ve=Atendiendo', '--clic=Publicado', '--ve=Todo está en tu link. No hay nada sin publicar.', '--no-ve=Sin publicar'],
+  ['Publicar: la lista pone primero lo que notan los Clientes', 'panel-con-cambios', '1440', '--clic=Publicar', `--cierto=(() => { const t = document.querySelector('${VENTANA_DE_PUBLICAR} ul').innerText; return t.indexOf('Lo notan tus Clientes') < t.indexOf('Solo lo ven tú y tu equipo') })()`],
+  ['Publicar: si otro Dueño aplicó algo, no publica y vuelve la lista nueva', 'publicar-otro-dueno', '1440', '--clic=Publicar', TOCAR_PUBLICAR, '--espera=1500', '--ve=Alguien aplicó algo más', '--ve=Aplicada por Julián', '--ve=Vista previa', ...HASTA_PUBLICADO, '--no-ve=Alguien aplicó'],
+  ['Publicar: si falla lo dice, y se vuelve a tocar', 'publicar-falla', '1440', '--clic=Publicar', TOCAR_PUBLICAR, '--espera=1500', '--ve=No pude publicar. Vuelve a tocar el botón en un momento.', '--ve=Vista previa', ...HASTA_PUBLICADO, '--no-ve=No pude publicar'],
+  ['Publicar: una lista larga no se sale de la pantalla del teléfono', 'publicar-muchos', '390', '--clic=Publicar', `--cierto=(() => { const r = document.querySelector('${VENTANA_DE_PUBLICAR}').getBoundingClientRect(); return r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth })()`, `--cierto=(() => { const u = document.querySelector('${VENTANA_DE_PUBLICAR} ul'); return u.scrollHeight > u.clientHeight })()`],
+  ['Publicar: la primera Sección entra al sidebar con su animación y se ve punteada', 'publicar-seccion', '1440', `--no-ve=Tus secciones`, `--cierto=(() => { new MutationObserver(() => { const e = [...document.querySelectorAll('[data-sidebar=menu-item],[data-slot=sidebar-menu-item]')].find((x) => x.textContent.includes('Pedidos por ciudad')); if (e && window.entrada === undefined) window.entrada = e.style.opacity }).observe(document.body, { childList: true, subtree: true }); return true })()`, '--espera=3200', '--ve=Tus secciones', `--cierto=window.entrada === '0'`, '--ve=Vista previa', '--clic=Pedidos por ciudad', PUNTEADOS(1)],
+  ['Publicar: una Sección sin publicar se ve punteada en su ruta', 'publicar-seccion-sin-publicar', '1440', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, PUNTEADOS(0)],
+  ['Constancias: lo publicado dice Publicada y ya no ofrece Deshacer', 'hilo-constancias', '1440', '--ve=Publicada', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => b.textContent.trim() === 'Deshacer')`],
+]
 
 const RECORRIDOS_DEL_TABLERO: typeof RECORRIDOS = [
   ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=Pedidos por estado', '--ve=Pedidos recientes', '--no-ve=De dónde llegan'],
@@ -206,7 +235,7 @@ function nombres(carpeta: string): string[] {
 console.log('\nqué tarjeta espera al Dueño')
 {
   const tarjeta = (propuesta: string, accion: string, vence = '2099-01-01T00:00:00Z') => ({ id: propuesta, role: 'assistant', parts: [{ type: 'data-tarjeta', data: { propuesta, accion, vence } }] }) as never
-  const espera = { estado: 'espera_al_dueno', accion: 'enviar', aprobadaPor: null, asunto: null } as const
+  const espera = { estado: 'espera_al_dueno', accion: 'enviar', aprobadaPor: null, asunto: null, publicada: false } as const
   afirmar('Sin tarjetas no hay decisión', decisionQueEspera([], {}) === null)
   afirmar('La que espera al Dueño cuenta', decisionQueEspera([tarjeta('a', 'enviar')], { a: espera }) === 'a')
   afirmar('Una ya aplicada no cuenta', decisionQueEspera([tarjeta('a', 'aplicar')], { a: { ...espera, estado: 'aplicada' } }) === null)
@@ -237,6 +266,16 @@ console.log('\nuna tarjeta sigue pasando por sus rutas')
     throw new Error('sin red')
   }) as typeof fetch
   afirmar('Sin red el error vuelve a la tarjeta', (await tocarTarjeta(tarjeta, 'aprobar')).tipo === 'error')
+  afirmar('Sin red el error vuelve a Publicar', (await pedirPublicar('h1')).tipo === 'error')
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    llamadas.push({ url, init })
+    return new Response(JSON.stringify({ error: 'No pude publicar. Vuelve a tocar el botón en un momento.' }), { status: 500 })
+  }) as typeof fetch
+  const fallida = await pedirPublicar('h1')
+  const deLaRuta = llamadas.at(-1)!
+  afirmar('Publicar: POST a su ruta con la huella', deLaRuta.url === '/api/publicar' && deLaRuta.init.method === 'POST' && deLaRuta.init.body === JSON.stringify({ huella: 'h1' }), deLaRuta)
+  afirmar('Publicar: la ruta existe', existsSync(join(RAIZ, 'src/app/api/publicar/route.ts')))
+  afirmar('Publicar: el error de la ruta llega con su texto', fallida.tipo === 'error' && fallida.mensaje.startsWith('No pude publicar'), fallida)
   globalThis.fetch = original
 }
 
@@ -247,7 +286,7 @@ try {
   const html = await indice.text()
   afirmar('dev: /vitrina da 200', indice.status === 200, { estado: indice.status, servidor: desarrollo.salida() })
   const ids = [...html.matchAll(/href="\/vitrina\/([\w-]+)"/g)].map((m) => m[1])
-  afirmar('dev: el índice enlaza las escenas esperadas', ESCENAS_ESPERADAS.every((id) => ids.includes(id)), ids)
+  afirmar('dev: el índice enlaza las escenas esperadas', [...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR].every((id) => ids.includes(id)), ids)
 
   for (const id of new Set([...ids, ...ESCENAS_ESPERADAS])) {
     const r = await ver(`${desarrollo.base}/vitrina/${id}`)
@@ -278,7 +317,7 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

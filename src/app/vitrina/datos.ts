@@ -2,9 +2,10 @@
 import type { UIMessage } from 'ai'
 import type { DatosDeHoy } from '@/app/panel/inicio-hoy'
 import type { DatosDelNegocio } from '@/app/panel/vista'
+import type { GuionDePublicar } from './hilo-de-muestra'
 import type { CasoResuelto, DatosDeCasos } from '@/negocio/casos'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import type { LoPendiente, TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { ItemDeLoPendiente, LoPendiente, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Supuesto } from '@/nucleo/consultas/tipos'
 import type { Clave } from '@/nucleo/estado/elementos'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
@@ -17,7 +18,7 @@ const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Lade
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. `hoy` en `null` es Armándose. */
-export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null; tablero: DatosDelTablero | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy | null; tablero: DatosDelTablero | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -447,8 +448,8 @@ export const HILO_CON_UN_CASO: UIMessage[] = [
   mensaje('c3', 'assistant', texto('Una clienta preguntó por un envío y necesita tu OK.'), { type: 'data-tarjeta', data: CASO }),
 ]
 
-const estadoDe = (estado: EstadoDeTarjeta['estado'], accion: TarjetaDeAprobacion['accion'], asunto: EstadoDeTarjeta['asunto'], aprobadaPor: string | null = null): EstadoDeTarjeta => ({ estado, accion, aprobadaPor, asunto })
-const ES_REGLA = { tipo: 'elemento', que: 'regla' } as const
+const estadoDe = (estado: EstadoDeTarjeta['estado'], accion: TarjetaDeAprobacion['accion'], asunto: EstadoDeTarjeta['asunto'], aprobadaPor: string | null = null, publicada = false): EstadoDeTarjeta => ({ estado, accion, aprobadaPor, asunto, publicada })
+const ES_REGLA = { tipo: 'elemento', que: 'regla', clave: null } as const
 const CASO_DE_MARCELA = { tipo: 'caso', titulo: 'Quiere saber cuánto cuesta un envío', pedido: 31, cliente: 'Marcela Ríos', escribio: '¿Cuánto cuesta enviar a Cali?', respuesta: 'El envío a Cali cuesta $12.000 y llega en 3 días hábiles.' } as const
 
 export const TARJETAS_CON_UN_CASO: Record<string, EstadoDeTarjeta> = {
@@ -463,6 +464,8 @@ export const HILO_CONSTANCIAS: UIMessage[] = [
   mensaje('k0', 'assistant', texto('Así queda cada tarjeta cuando ya se resolvió.')),
   mensaje('k1', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-enviada', 'enviar', ['Responderle a Camila Rojas: «Hola Camila, te la repongo sin costo.»']) }),
   mensaje('k2', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-aplicada', 'aplicar', ['Si el pedido pasa de $150.000, el envío es gratis']) }),
+  mensaje('k2b', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-publicada', 'aplicar', ['Si el pedido pasa de $150.000, el envío es gratis']) }),
+  mensaje('k2c', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-indicador-publicado', 'deshacer', ['Indicador nuevo «Pedidos de hoy»: Cuenta los pedidos creados hoy.']) }),
   mensaje('k3', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-revertida', 'aplicar', ['Ticket promedio por ciudad']) }),
   mensaje('k4', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-descartada', 'aplicar', ['Devoluciones del mes']) }),
   mensaje('k5', 'assistant', { type: 'data-tarjeta', data: VENCIDA }),
@@ -472,8 +475,10 @@ export const HILO_CONSTANCIAS: UIMessage[] = [
 export const TARJETAS_CONSTANCIAS: Record<string, EstadoDeTarjeta> = {
   'c-enviada': estadoDe('aplicada', 'enviar', { tipo: 'caso', titulo: 'La bolsa llegó rota', pedido: 31, cliente: 'Camila Rojas', escribio: 'Una de las bolsas llegó abierta y con café regado dentro de la caja.', respuesta: 'Hola Camila, te la repongo sin costo.' }, 'Lucía'),
   'c-aplicada': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Julián'),
-  'c-revertida': estadoDe('revertida', 'aplicar', { tipo: 'elemento', que: 'indicador' }, 'Julián'),
-  'c-descartada': estadoDe('descartada', 'aplicar', { tipo: 'elemento', que: 'seccion' }),
+  'c-publicada': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Julián', true),
+  'c-indicador-publicado': estadoDe('aplicada', 'deshacer', { tipo: 'elemento', que: 'indicador', clave: null }, 'Julián', true),
+  'c-revertida': estadoDe('revertida', 'aplicar', { tipo: 'elemento', que: 'indicador', clave: null }, 'Julián'),
+  'c-descartada': estadoDe('descartada', 'aplicar', { tipo: 'elemento', que: 'seccion', clave: null }),
   'c-vencida': estadoDe('vencida', 'aplicar', ES_REGLA),
 }
 
@@ -534,4 +539,90 @@ export const NEGOCIO_CASOS_SIN_BOTON: NegocioDeMuestra = {
     cuentaDeResueltos: 1,
     resueltos: [{ id: 's-4', titulo: 'La bolsa llegó rota', resolucion: 'Hola Camila, te la repongo sin costo.', hace: 'hace 3 h', noSalio: true }],
   },
+}
+
+const INDICADOR_NUEVO: SeccionPintada = {
+  clave: clave('pedidos-confirmados-por-dia'),
+  tipo: 'indicador',
+  nombre: 'Pedidos confirmados por día',
+  enPalabras: 'Cuenta los pedidos confirmados de cada día de esta semana.',
+  total: 6,
+  mostradas: 6,
+  resultado: {
+    tipo: 'serie',
+    porTiempo: true,
+    unidad: { tipo: 'cantidad', nombre: 'pedidos' },
+    puntos: [
+      { etiqueta: '2026-10-28', valor: 4 },
+      { etiqueta: '2026-10-29', valor: 7 },
+      { etiqueta: '2026-10-30', valor: 5 },
+      { etiqueta: '2026-10-31', valor: 9 },
+      { etiqueta: '2026-11-01', valor: 3 },
+      { etiqueta: '2026-11-02', valor: 5 },
+    ],
+  },
+  advertencias: [],
+}
+const ITEM_INDICADOR: ItemDeLoPendiente = { clave: INDICADOR_NUEVO.clave, linea: `Indicador nuevo «${INDICADOR_NUEVO.nombre}»: ${INDICADOR_NUEVO.enPalabras}`, loNotan: 'equipo', aplicadoPor: 'Lucía' }
+const ITEM_REGLA: ItemDeLoPendiente = { clave: clave('regla:envio-gratis'), linea: 'Regla nueva: «Si el pedido pasa de $150.000, el envío es gratis»', loNotan: 'clientes', aplicadoPor: 'Lucía' }
+const conPendiente = (items: ItemDeLoPendiente[]): LoPendiente => ({ huella: 'vitrina-publicar' as Huella, items })
+const ES_INDICADOR = { tipo: 'elemento', que: 'indicador', clave: INDICADOR_NUEVO.clave } as const
+
+const TARJETA_INDICADOR = tarjeta('p-indicador', 'deshacer', [ITEM_INDICADOR.linea])
+export const HILO_UN_INDICADOR: UIMessage[] = [
+  mensaje('i1', 'user', texto('Quiero ver los pedidos confirmados por día')),
+  mensaje('i2', 'assistant', texto('Ya lo puse en tu vista previa, con tus pedidos de esta semana. Cuando te guste, tócale Publicar.'), conTarjeta('proponer', TARJETA_INDICADOR)),
+]
+export const TARJETAS_UN_INDICADOR: Record<string, EstadoDeTarjeta> = { 'p-indicador': estadoDe('aplicada', 'deshacer', ES_INDICADOR, 'Lucía') }
+export const GUION_UN_INDICADOR: GuionDePublicar = { cambios: { 'p-indicador': ITEM_INDICADOR } }
+export const NEGOCIO_UN_INDICADOR: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  indicadores: [...NEGOCIO_FUNCIONANDO.indicadores, INDICADOR_NUEVO],
+  nuevos: [INDICADOR_NUEVO],
+  pendiente: conPendiente([ITEM_INDICADOR]),
+}
+
+const OTRO_CAMBIO: ItemDeLoPendiente = { clave: clave('dato:horario'), linea: 'Horario: «De 8 a 6» → «De 9 a 6»', loNotan: 'clientes', aplicadoPor: 'Julián' }
+export const GUION_OTRO_DUENO: GuionDePublicar = { ...GUION_UN_INDICADOR, respuestas: [{ tipo: 'cambio', pendiente: conPendiente([OTRO_CAMBIO, ITEM_INDICADOR]) }] }
+export const GUION_FALLA: GuionDePublicar = { ...GUION_UN_INDICADOR, respuestas: [{ tipo: 'error', mensaje: 'No pude publicar. Vuelve a tocar el botón en un momento.' }] }
+
+const TARJETA_REGLA_NUEVA = tarjeta('p-envio-gratis', 'aplicar', [ITEM_REGLA.linea])
+export const HILO_UNA_REGLA: UIMessage[] = [
+  mensaje('r1', 'user', texto('Si el pedido pasa de $150.000, el envío es gratis')),
+  mensaje('r2', 'assistant', texto('Así le respondería a un Cliente. No le escribí a nadie.'), conTarjeta('proponer', TARJETA_REGLA_NUEVA)),
+]
+export const TARJETAS_UNA_REGLA: Record<string, EstadoDeTarjeta> = { 'p-envio-gratis': estadoDe('espera_al_dueno', 'aplicar', ES_REGLA) }
+export const GUION_UNA_REGLA: GuionDePublicar = { cambios: { 'p-envio-gratis': ITEM_REGLA } }
+
+const SECCION_QUE_LLEGA: SeccionPintada = { ...NEGOCIO_FUNCIONANDO.secciones[0], clave: clave('pedidos-por-ciudad'), nombre: 'Pedidos por ciudad', enPalabras: 'Lista los pedidos de esta semana con su ciudad.', advertencias: [] }
+const ITEM_SECCION: ItemDeLoPendiente = { clave: SECCION_QUE_LLEGA.clave, linea: `Sección nueva «${SECCION_QUE_LLEGA.nombre}»: ${SECCION_QUE_LLEGA.enPalabras}`, loNotan: 'equipo', aplicadoPor: 'Lucía' }
+const TARJETA_SECCION = tarjeta('p-seccion', 'deshacer', [ITEM_SECCION.linea])
+export const GUION_LLEGA_UNA_SECCION: { seccion: SeccionPintada; guion: GuionDePublicar } = {
+  seccion: SECCION_QUE_LLEGA,
+  guion: {
+    cambios: { 'p-seccion': ITEM_SECCION },
+    llega: {
+      mensaje: mensaje('s1', 'assistant', texto('Ya la puse en tu vista previa. Cuando te guste, tócale Publicar.'), conTarjeta('proponer', TARJETA_SECCION)),
+      seccion: { clave: SECCION_QUE_LLEGA.clave, nombre: SECCION_QUE_LLEGA.nombre },
+      item: ITEM_SECCION,
+      estado: { 'p-seccion': estadoDe('aplicada', 'deshacer', { tipo: 'elemento', que: 'seccion', clave: SECCION_QUE_LLEGA.clave }, 'Lucía') },
+    },
+  },
+}
+
+export const NEGOCIO_SECCION_SIN_PUBLICAR: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  pendiente: conPendiente([{ clave: clave('pedidos-con-novedad'), linea: 'Sección nueva «Pedidos con novedad»: Lista los pedidos con novedad.', loNotan: 'equipo', aplicadoPor: 'Lucía' }]),
+}
+
+export const NEGOCIO_MUCHOS_CAMBIOS: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  pendiente: conPendiente(
+    Array.from({ length: 14 }, (_, i) => ({
+      clave: clave(`cambio-${i}`),
+      linea: i % 2 ? `Regla nueva: «Si un pedido es para fuera de Manizales y pasa de $150.000, ábreme un Caso, no prometas fecha y dile al Cliente que le confirmo el envío antes de las 6 de la tarde (${i})»` : `Indicador nuevo «Pedidos confirmados por ciudad ${i}»: Cuenta los pedidos confirmados de cada ciudad.`,
+      loNotan: i % 2 ? ('clientes' as const) : ('equipo' as const),
+      aplicadoPor: i % 3 ? 'María Fernanda Quintero Londoño' : null,
+    })),
+  ),
 }

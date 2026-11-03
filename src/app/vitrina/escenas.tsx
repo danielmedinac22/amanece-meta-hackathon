@@ -8,8 +8,9 @@ import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { Componentes } from './componentes'
-import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision } from './hilo-de-muestra'
+import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
+import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
 import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_ARMANDOSE, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
@@ -24,7 +25,7 @@ function operacionDe(datos: NegocioDeMuestra | null) {
       ciudad: 'Manizales',
       casosAbiertos: datos.casos.length,
       propias: datos.secciones.map((s) => ({ clave: s.clave, nombre: s.nombre })),
-      publicar: datos.hoy ? datos.pendiente : null,
+      publicar: datos.hoy ? { ...datos.pendiente, link: datos.hoy.link, nuevos: datos.nuevos ?? [] } : null,
     },
   }
 }
@@ -50,6 +51,18 @@ function panel(datos: NegocioDeMuestra | null, estado: 'armando' | 'listo' | nul
 /** En teléfono también abre el lienzo, donde vive la lista. */
 const enLaSeccion = (datos: NegocioDeMuestra, rutaInicial: string) => panel(datos, 'listo', [], {}, { rutaInicial, inicial: { pestana: 'negocio' } })
 
+/** Publicar de punta a punta: la tarjeta, el botón y el lienzo cambian juntos, como con la base de verdad. */
+function publicando(datos: NegocioDeMuestra, mensajes: UIMessage[], tarjetas: Record<string, EstadoDeTarjeta>, guion: GuionDePublicar, rutaInicial = '/panel') {
+  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={paginasDe(datos)} tarjetas={tarjetas} guion={guion} rutaInicial={rutaInicial} hilo={<HiloDeMuestra messages={mensajes} estado="listo" />} />
+}
+
+function llegaUnaSeccion() {
+  const { seccion } = GUION_LLEGA_UNA_SECCION
+  // Sin Secciones todavía: la primera trae su grupo con ella, y también tiene que entrar con animación.
+  const sinSecciones = { ...NEGOCIO_FUNCIONANDO, secciones: [] }
+  return <MarcoDeMuestra datos={operacionDe(sinSecciones)} paginas={{ ...paginasDe(sinSecciones), [rutaDePropia(seccion.clave)]: <VistaDeUnaSeccion p={seccion} /> }} guion={GUION_LLEGA_UNA_SECCION.guion} hilo={<HiloDeMuestra messages={[]} estado="listo" />} />
+}
+
 function llegaUnaDecision() {
   const antes = HILO_CON_UN_CASO.slice(0, -1)
   return <MarcoDeMuestra datos={operacionDe(NEGOCIO_CON_UN_CASO)} paginas={paginasDe(NEGOCIO_CON_UN_CASO)} inicial={{ lugar: 'caja' }} tarjetas={TARJETAS_CON_UN_CASO} hilo={<HiloQueRecibeUnaDecision messages={antes} llega={HILO_CON_UN_CASO.at(-1)!} estado="listo" />} />
@@ -62,6 +75,15 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'panel-funcionando', titulo: 'Panel de un Negocio funcionando', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo') },
   { id: 'panel-un-caso', titulo: 'Panel con un Caso esperando al Dueño', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO) },
   { id: 'panel-con-cambios', titulo: 'Panel con cambios sin publicar', pinta: () => panel(NEGOCIO_CON_CAMBIOS, 'listo') },
+  { id: 'publicar-indicador', titulo: 'Publicar: un Indicador en la vista previa, hasta Publicado', pinta: () => publicando(NEGOCIO_UN_INDICADOR, HILO_UN_INDICADOR, TARJETAS_UN_INDICADOR, GUION_UN_INDICADOR) },
+  { id: 'publicar-indicador-tablero', titulo: 'Publicar: el Indicador en su lugar, el Tablero', pinta: () => publicando(NEGOCIO_UN_INDICADOR, HILO_UN_INDICADOR, TARJETAS_UN_INDICADOR, GUION_UN_INDICADOR, '/panel/tablero') },
+  { id: 'publicar-indicador-pedidos', titulo: 'Publicar: el Indicador encima de Pedidos', pinta: () => publicando(NEGOCIO_UN_INDICADOR, HILO_UN_INDICADOR, TARJETAS_UN_INDICADOR, GUION_UN_INDICADOR, '/panel/pedidos') },
+  { id: 'publicar-regla', titulo: 'Publicar: una regla por aplicar, hasta Publicada', pinta: () => publicando(NEGOCIO_FUNCIONANDO, HILO_UNA_REGLA, TARJETAS_UNA_REGLA, GUION_UNA_REGLA) },
+  { id: 'publicar-seccion', titulo: 'Publicar: llega una Sección y entra al sidebar', pinta: llegaUnaSeccion },
+  { id: 'publicar-seccion-sin-publicar', titulo: 'Publicar: una Sección propia todavía sin publicar', pinta: () => publicando(NEGOCIO_SECCION_SIN_PUBLICAR, [], {}, {}, rutaDePropia('pedidos-con-novedad')) },
+  { id: 'publicar-otro-dueno', titulo: 'Publicar: otro Dueño aplicó algo más', pinta: () => publicando(NEGOCIO_UN_INDICADOR, HILO_UN_INDICADOR, TARJETAS_UN_INDICADOR, GUION_OTRO_DUENO) },
+  { id: 'publicar-falla', titulo: 'Publicar: no se pudo, y se vuelve a tocar', pinta: () => publicando(NEGOCIO_UN_INDICADOR, HILO_UN_INDICADOR, TARJETAS_UN_INDICADOR, GUION_FALLA) },
+  { id: 'publicar-muchos', titulo: 'Publicar: muchos cambios y líneas largas', pinta: () => publicando(NEGOCIO_MUCHOS_CAMBIOS, [], {}, {}) },
   { id: 'panel-recien-abierto', titulo: 'Inicio: recién abierto, nadie ha escrito', pinta: () => panel(NEGOCIO_RECIEN_ABIERTO, 'listo') },
   { id: 'hoy-sin-ventas', titulo: 'Inicio: una semana sin ventas y nada que mirar', pinta: () => panel(NEGOCIO_SIN_VENTAS, 'listo') },
   { id: 'hoy-agenda', titulo: 'Inicio: un Negocio de citas', pinta: () => panel(NEGOCIO_AGENDA, 'listo') },
