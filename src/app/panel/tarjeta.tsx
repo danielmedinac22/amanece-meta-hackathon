@@ -159,7 +159,7 @@ function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: Est
 }
 
 /** Una propuesta en el Hilo o en Casos. Después de un clic muestra lo que respondió la ruta. `ancla` es solo del Hilo: la misma tarjeta puede estar en los dos a la vez. */
-export function Tarjeta({ tarjeta, estado, posicion = null, ancla, alTocar, alCambiar }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; ancla?: string; alTocar: TocarTarjeta; alCambiar: () => void }) {
+export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, alTocar, alCambiar }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; ancla?: string; etiqueta?: string; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const [enCurso, setEnCurso] = useState(false)
   const [respuesta, setRespuesta] = useState<RespuestaDeTarjeta | null>(null)
 
@@ -184,7 +184,7 @@ export function Tarjeta({ tarjeta, estado, posicion = null, ancla, alTocar, alCa
   return (
     <Decision
       ancla={ancla}
-      etiqueta={etiquetaDe(tarjeta, estado)}
+      etiqueta={etiqueta ?? etiquetaDe(tarjeta, estado)}
       constancia={etiquetaDe(tarjeta, estado, 'constancia')}
       icono={tarjeta.accion === 'enviar' ? <Warning weight="fill" className="size-3.5 shrink-0 text-ojo" /> : <Eye weight="fill" className="size-3.5 shrink-0" />}
       posicion={posicion}

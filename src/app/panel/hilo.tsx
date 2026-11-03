@@ -10,7 +10,8 @@ import { tocarTarjeta } from './tocar-tarjeta'
 
 type HiloLeido = { mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }
 
-export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; estado: 'armando' | 'listo' | null }) {
+/** La conexión del Hilo: `useChat`, el sondeo y lo que pasa después de un clic. `alTerminar` es lo que hace al acabar un turno; por defecto, volver a leer el Panel. */
+export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; alTerminar?: (mensaje: UIMessage) => void }) {
   const router = useRouter()
   const [estados, setEstados] = useState(tarjetas)
   // El layout vuelve a leer con cada `router.refresh`: una decisión tomada en Casos llega sin esperar el sondeo.
@@ -22,7 +23,7 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
   const { messages, sendMessage, setMessages, status, error } = useChat({
     messages: inicial,
     transport: new DefaultChatTransport({ api: '/api/dueno/chat' }),
-    onFinish: () => router.refresh(),
+    onFinish: ({ message }) => (alTerminar ? alTerminar(message) : router.refresh()),
   })
   const ocupado = status === 'submitted' || status === 'streaming'
 
@@ -56,5 +57,10 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
     router.refresh()
   }, [releer, router])
 
-  return <VistaDelHilo messages={messages} estados={estados} estado={estado} status={status} error={error} alEnviar={(contenido) => sendMessage({ text: contenido })} alTocar={tocarTarjeta} alCambiar={alCambiar} />
+  return { messages, estados, status, error, ocupado, alEnviar: (contenido: string) => void sendMessage({ text: contenido }), alCambiar }
+}
+
+export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; estado: 'armando' | 'listo' | null }) {
+  const { messages, estados, status, error, alEnviar, alCambiar } = useHilo({ inicial, tarjetas })
+  return <VistaDelHilo messages={messages} estados={estados} estado={estado} status={status} error={error} alEnviar={alEnviar} alTocar={tocarTarjeta} alCambiar={alCambiar} />
 }
