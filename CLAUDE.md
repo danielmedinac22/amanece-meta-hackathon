@@ -4,6 +4,8 @@
 
 Toda sesión que escribe código en este repo corre `/pstack:poteto-mode`. El vocabulario (Negocio, Dueño, Cliente, Cambio, Caso, Sección, Indicador) es el de `docs/diseno.md` y se usa tal cual.
 
+`DESIGN.md` manda en pantallas, componentes, color, texto de interfaz y animación: léelo antes de tocar cualquiera.
+
 ## Qué se decide aquí y qué no
 
 Este repo decide **cómo** se construye. El **qué** y el **porqué** se deciden en el mapa privado de Amanece (`danielmedinac22/amanece`, issue "Mapa de Amanece"). Cuando una pregunta es de producto o de arquitectura, abre un ticket en el mapa y sigue con lo demás. El trabajo llega como issues de `danielmedinac22/amanece` con la etiqueta `ready-for-agent`. El PR enlaza su issue. Si al construir ves que una decisión del mapa no se sostiene, abre un ticket `wayfinder:grilling` en el mapa con lo que encontraste y construye según la decisión vigente hasta que cierre.
