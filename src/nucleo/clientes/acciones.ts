@@ -46,6 +46,41 @@ export type Envuelto = {
   abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reglas: readonly string[] }): Promise<CasoId | null>
 }
 
+const YA_NO_TE_TOCA = 'El Dueño tomó esta conversación: no hagas nada más.'
+
+/**
+ * Tras una toma, un turno viejo no crea, confirma ni abre nada. Revisa y luego escribe, así que un efecto puede entrar
+ * milisegundos después de la toma: `hizoAlgo` lo cuenta y la línea del Hilo lo dice.
+ */
+export function conCerca(p: PuertoDeAcciones, sigue: () => Promise<boolean>): { readonly puerto: PuertoDeAcciones; hizoAlgo(): boolean } {
+  let hizo = false
+  return {
+    hizoAlgo: () => hizo,
+    puerto: {
+      buscar_productos: (t) => p.buscar_productos(t),
+      consultar_pedido: (n) => p.consultar_pedido(n),
+      async crear_pedido(e) {
+        if (!(await sigue())) return { negado: YA_NO_TE_TOCA }
+        const r = await p.crear_pedido(e)
+        hizo ||= !('negado' in r)
+        return r
+      },
+      async confirmar_pedido(n) {
+        if (!(await sigue())) return { ok: false, porQue: YA_NO_TE_TOCA }
+        const r = await p.confirmar_pedido(n)
+        hizo ||= r.ok
+        return r
+      },
+      async abrir_caso(e) {
+        if (!(await sigue())) return { caso: null, nuevo: false }
+        const r = await p.abrir_caso(e)
+        hizo ||= r.caso !== null
+        return r
+      },
+    },
+  }
+}
+
 const SIN_CIUDAD = 'Falta la ciudad de entrega: pregúntasela al Cliente antes de crear el pedido.'
 
 /**

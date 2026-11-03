@@ -1,6 +1,8 @@
+import { after } from 'next/server'
 import { altaDeDueno } from '@/negocio/alta'
 import { leerHiloConTarjetas, mensajeDelDueno, responderEnElHilo } from '@/negocio/dueno-chat'
 import { contextoDe, duenoActual } from '@/negocio/sesion'
+import { soltarVencidas } from '@/nucleo/clientes/atender'
 
 // Un turno puede generar y probar código varias veces.
 export const maxDuration = 300
@@ -17,6 +19,8 @@ async function sesionDelDueno() {
 export async function GET() {
   const sesion = await sesionDelDueno()
   if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
+  // No hay cron: el sondeo del Hilo es el reloj que cobra una toma vencida mientras haya un Panel abierto.
+  after(() => soltarVencidas(sesion.ctx.negocio, 5).catch((e) => console.error('[hilo] no pude soltar las tomas vencidas', e)))
   return Response.json(await leerHiloConTarjetas(sesion.ctx))
 }
 
