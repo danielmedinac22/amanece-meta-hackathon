@@ -1,6 +1,7 @@
 import { desc, sql } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 import { db, esquema } from '@/db'
 import { esDelEquipo } from '@/lib/equipo'
 import { faltantesPorMotivo } from '@/nucleo/capacidades'
@@ -45,28 +46,28 @@ export default async function Medicion() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8">
-      <Link href="/panel" className="text-sm text-suave hover:text-tinta">
+      <Button variant="ghost" render={<Link href="/panel" />} nativeButton={false}>
         ← Panel
-      </Link>
-      <h1 className="mt-4 text-3xl font-semibold">Medición</h1>
-      <p className="mt-2 text-suave">Tokens, costo y latencia reales con Muse Spark.</p>
+      </Button>
+      <h1 className="mt-4 font-heading text-3xl font-semibold">Medición</h1>
+      <p className="mt-2 text-muted-foreground">Tokens, costo y latencia reales con Muse Spark.</p>
 
-      <h2 className="mt-8 font-medium">Por agente</h2>
+      <h2 className="mt-8 font-heading font-medium">Por agente</h2>
       <Tabla
         columnas={['Agente', 'Turnos', 'Latencia media', 'Tokens de entrada', 'Tokens de salida', 'Costo total']}
         filas={porAgente.map((f) => [f.agente, f.turnos, seg(f.ms), f.entrada, f.salida, usd(f.costo)])}
       />
 
-      <h2 className="mt-8 font-medium">Capacidad faltante por motivo</h2>
+      <h2 className="mt-8 font-heading font-medium">Capacidad faltante por motivo</h2>
       <Tabla columnas={['Motivo', 'Veces', 'Negocios', 'La última']} filas={faltantes.map((f) => [f.clave, f.veces, f.negocios, fecha(f.ultima)])} />
 
-      <h2 className="mt-8 font-medium">Por tipo de Cambio, antes del 2-nov</h2>
+      <h2 className="mt-8 font-heading font-medium">Por tipo de Cambio, antes del 2-nov</h2>
       <Tabla
         columnas={['Tipo', 'Propuestos', 'Aplicados', 'Costo medio', 'Hasta la vista previa']}
         filas={porTipo.map((f) => [f.tipo, f.cambios, f.aplicados, usd(f.costo), seg(f.msPropuesta)])}
       />
 
-      <h2 className="mt-8 font-medium">Últimos Cambios, antes del 2-nov</h2>
+      <h2 className="mt-8 font-heading font-medium">Últimos Cambios, antes del 2-nov</h2>
       <Tabla
         columnas={['Tipo', 'Estado', 'Costo', 'Hasta la vista previa', 'Hasta aplicado']}
         filas={recientes.map((c) => [c.tipo, c.estado, usd(c.costoUsd), seg(c.msHastaPropuesta), seg(c.msHastaAplicado)])}
@@ -77,17 +78,17 @@ export default async function Medicion() {
 
 function Tabla({ columnas, filas }: { columnas: string[]; filas: (string | number)[][] }) {
   return (
-    <div className="mt-2 overflow-x-auto rounded-2xl border border-borde bg-tarjeta">
+    <div className="mt-2 overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full text-left text-sm">
-        <thead className="text-suave">
+        <thead className="text-muted-foreground">
           <tr>{columnas.map((c) => <th key={c} className="px-3 py-2 font-normal">{c}</th>)}</tr>
         </thead>
         <tbody>
           {filas.length === 0 ? (
-            <tr><td className="px-3 py-3 text-suave" colSpan={columnas.length}>Todavía no hay datos.</td></tr>
+            <tr><td className="px-3 py-3 text-muted-foreground" colSpan={columnas.length}>Todavía no hay datos.</td></tr>
           ) : (
             filas.map((f, i) => (
-              <tr key={i} className="border-t border-borde">
+              <tr key={i} className="border-t border-border">
                 {f.map((v, j) => <td key={j} className="px-3 py-2">{v}</td>)}
               </tr>
             ))

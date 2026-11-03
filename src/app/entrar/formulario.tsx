@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth/cliente'
 
 export function FormularioDeEntrada() {
@@ -35,22 +37,22 @@ export function FormularioDeEntrada() {
 
   return (
     <div>
-      <Link href="/" className="text-lg font-semibold tracking-tight">
-        <span className="text-sol">●</span> Amanece
+      <Link href="/" className="font-heading text-lg font-semibold tracking-tight">
+        <span className="text-primary">●</span> Amanece
       </Link>
-      <h1 className="mt-8 text-2xl font-semibold">{registro ? 'Arma tu negocio' : 'Entra a tu negocio'}</h1>
+      <h1 className="mt-8 font-heading text-2xl font-semibold">{registro ? 'Arma tu negocio' : 'Entra a tu negocio'}</h1>
       <form action={enviar} className="mt-6 flex flex-col gap-3">
-        {registro && <input name="nombre" placeholder="Tu nombre" required className="rounded-xl border border-borde bg-tarjeta px-4 py-3" />}
-        <input name="email" type="email" placeholder="Correo" required className="rounded-xl border border-borde bg-tarjeta px-4 py-3" />
-        <input name="password" type="password" placeholder="Contraseña" minLength={8} required className="rounded-xl border border-borde bg-tarjeta px-4 py-3" />
-        {error && <p className="text-sm text-red-700">{error}</p>}
-        <button disabled={enviando} className="mt-2 rounded-full bg-sol px-6 py-3 font-medium text-white disabled:opacity-60">
+        {registro && <Input name="nombre" placeholder="Tu nombre" required className="h-11 bg-card px-4" />}
+        <Input name="email" type="email" placeholder="Correo" required className="h-11 bg-card px-4" />
+        <Input name="password" type="password" placeholder="Contraseña" minLength={8} required className="h-11 bg-card px-4" />
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <Button type="submit" size="lg" disabled={enviando} className="mt-2 h-11 text-base">
           {enviando ? 'Un momento…' : registro ? 'Crear cuenta' : 'Entrar'}
-        </button>
+        </Button>
       </form>
-      <button onClick={() => setRegistro(!registro)} className="mt-4 text-sm text-suave hover:text-tinta">
+      <Button type="button" variant="ghost" onClick={() => setRegistro(!registro)} className="mt-4 text-muted-foreground">
         {registro ? '¿Ya tienes cuenta? Entra' : '¿Primera vez? Arma tu negocio'}
-      </button>
+      </Button>
     </div>
   )
 }

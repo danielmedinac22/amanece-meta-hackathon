@@ -4,6 +4,8 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { Tarjeta } from './tarjeta'
@@ -84,14 +86,14 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
         {messages.length === 0 && (
-          <div className="rounded-2xl bg-tarjeta p-4 text-sm">
+          <div className="rounded-lg bg-card p-4 text-sm">
             Hola, soy tu agente. Trabajo para tu negocio todo el día. Si ya lo tienes publicado en una página o en Instagram,
             pégame el enlace y lo leo. Si no, cuéntame cómo se llama y qué vendes.
           </div>
         )}
         {messages.map((m) => (
           <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : ''}>
-            <div className={m.role === 'user' ? 'max-w-[85%] rounded-2xl bg-sol px-4 py-2.5 text-white' : 'max-w-full'}>
+            <div className={m.role === 'user' ? 'max-w-[85%] rounded-lg bg-primary px-4 py-2.5 text-primary-foreground' : 'max-w-full'}>
               {m.parts.map((parte, i) => {
                 if (parte.type === 'text') return <p key={i} className="whitespace-pre-wrap leading-relaxed">{parte.text}</p>
                 const t = tarjetaDeLaParte(parte)
@@ -100,8 +102,8 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
                   const p = parte as { state: string }
                   return (
                     <div key={i} className="my-2">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-borde bg-tarjeta px-3 py-1 text-xs text-suave">
-                        <span className={p.state === 'output-available' ? 'text-verde' : p.state === 'output-error' ? 'text-red-700' : 'animate-pulse text-sol'}>●</span>
+                      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+                        <span className={p.state === 'output-available' ? 'text-bien' : p.state === 'output-error' ? 'text-destructive' : 'animate-pulse text-ojo'}>●</span>
                         {ETIQUETAS[herramienta] ?? herramienta}
                       </span>
                       {t && <Tarjeta tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} />}
@@ -113,16 +115,16 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
             </div>
           </div>
         ))}
-        {status === 'submitted' && <p className="animate-pulse text-sm text-suave">Pensando…</p>}
-        {error && <p className="text-sm text-red-700">Algo falló. Intenta de nuevo.</p>}
+        {status === 'submitted' && <p className="animate-pulse text-sm text-muted-foreground">Pensando…</p>}
+        {error && <p className="text-sm text-destructive">Algo falló. Intenta de nuevo.</p>}
         <div ref={final} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {sugerencias.map((s) => (
-          <button key={s} onClick={() => enviar(s)} disabled={ocupado} className="rounded-full border border-borde bg-tarjeta px-3 py-1 text-xs text-suave hover:border-sol disabled:opacity-50">
+          <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto rounded-full bg-card px-3 py-1 font-normal whitespace-normal text-muted-foreground">
             {s}
-          </button>
+          </Button>
         ))}
       </div>
       <form
@@ -132,15 +134,10 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
         }}
         className="mt-3 flex gap-2"
       >
-        <input
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="Escríbele a tu agente…"
-          className="flex-1 rounded-full border border-borde bg-tarjeta px-4 py-3"
-        />
-        <button disabled={ocupado || !texto.trim()} className="rounded-full bg-sol px-5 font-medium text-white disabled:opacity-50">
+        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a tu agente…" className="h-11 flex-1 rounded-full bg-card px-4" />
+        <Button type="submit" disabled={ocupado || !texto.trim()} className="h-11 rounded-full px-5">
           Enviar
-        </button>
+        </Button>
       </form>
     </div>
   )

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Bricolage_Grotesque, Hanken_Grotesk } from 'next/font/google'
+import { Movimiento } from './movimiento'
 import './globals.css'
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
+const hanken = Hanken_Grotesk({ variable: '--fuente', subsets: ['latin'] })
+const bricolage = Bricolage_Grotesque({ variable: '--fuente-titulo', subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Amanece',
@@ -12,8 +13,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+    <html lang="es" className={`${hanken.variable} ${bricolage.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col font-sans">
+        <Movimiento>{children}</Movimiento>
+      </body>
     </html>
   )
 }
