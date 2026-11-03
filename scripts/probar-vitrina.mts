@@ -95,6 +95,12 @@ try {
   const funcionando = await (await ver(`${desarrollo.base}/vitrina/panel-funcionando`)).text()
   afirmar('dev: panel-funcionando pinta el Negocio de prueba', funcionando.includes('Café Ladera') && funcionando.includes('Pedidos de hoy'))
 
+  const noExiste = await ver(`${desarrollo.base}/vitrina/no-hay-esta`)
+  afirmar('dev: una escena que no existe da 404', noExiste.status === 404, noExiste.status)
+
+  const panel = await ver(`${desarrollo.base}/panel`)
+  afirmar('dev: /panel sin sesión redirige a /entrar', [302, 307].includes(panel.status) && (panel.headers.get('location') ?? '').includes('/entrar'), { estado: panel.status, destino: panel.headers.get('location') })
+
   // Teléfono y PC valen igual: ninguna escena se desborda a lo ancho a ninguno de los dos anchos.
   const captura = join(mkdtempSync(join(tmpdir(), 'vitrina-')), 'escena.png')
   for (const id of new Set([...ids, ...ESCENAS_ESPERADAS])) {
@@ -103,12 +109,6 @@ try {
       afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
     }
   }
-
-  const noExiste = await ver(`${desarrollo.base}/vitrina/no-hay-esta`)
-  afirmar('dev: una escena que no existe da 404', noExiste.status === 404, noExiste.status)
-
-  const panel = await ver(`${desarrollo.base}/panel`)
-  afirmar('dev: /panel sin sesión redirige a /entrar', [302, 307].includes(panel.status) && (panel.headers.get('location') ?? '').includes('/entrar'), { estado: panel.status, destino: panel.headers.get('location') })
   desarrollo.parar()
 
   console.log('\nbuild')
