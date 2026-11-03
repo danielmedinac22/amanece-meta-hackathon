@@ -6,7 +6,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { config } from 'dotenv'
-import { and, eq, like } from 'drizzle-orm'
+import { and, asc, eq, like } from 'drizzle-orm'
 import { afirmar, capturarEnvios, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -72,7 +72,7 @@ const fila = async (id: string) => (await db.select().from(esquema.clientes).whe
 const delAgente = async (id: string) => db.select().from(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.clienteId, id), eq(esquema.mensajesCliente.rol, 'agente')))
 const delDueno = async (id: string) => db.select().from(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.clienteId, id), eq(esquema.mensajesCliente.rol, 'dueno')))
 const salientes = async (id: string) => db.select().from(esquema.mensajesSalientes).where(eq(esquema.mensajesSalientes.clienteId, id))
-const hilo = async (dueno: string) => db.select().from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.duenoId, dueno))
+const hilo = async (dueno: string) => db.select().from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.duenoId, dueno)).orderBy(asc(esquema.mensajesDueno.creado))
 const venceYa = (id: string) => db.update(esquema.clientes).set({ tomadaHasta: new Date(Date.now() - 1000) }).where(eq(esquema.clientes.id, id))
 const sinDespues = () => {
   throw new Error('no había nada que contestar')
@@ -209,14 +209,15 @@ try {
   console.log('\n=== La cerca, en la base y esperando el candado ===')
   {
     const c = await clienteNuevo(N.id)
-    const w = marcar.wamid(`wamid.TOMA.${marca}.cerca`)
-    const f = { negocioId: N.id, clienteId: marcar.cliente(c.id), telefono: c.telefono, clase: 'respuesta', enRespuestaA: w, veredicto: 'sale', motivo: null } as const
+    const w = `wamid.TOMA.${marca}.cerca`
+    const f = { negocioId: N.id, clienteId: marcar.cliente(c.id), telefono: c.telefono, clase: 'respuesta', veredicto: 'sale', motivo: null } as const
+    const conClave = (i: number) => ({ clave: `prueba:${w}:${i}`, enRespuestaA: marcar.wamid(`${w}.${i}`) })
     const agente = { tipo: 'agente', vez: marcar.vez(0), debida: false } as const
     await tomar(N.a.ctx, c.id)
-    afirmar('cerca: con una vez vieja no entra, aunque nadie haya leído antes', (await reclamarConCerca({ ...f, clave: `prueba:${w}:1` }, agente)).length === 0)
+    afirmar('cerca: con una vez vieja no entra, aunque nadie haya leído antes', (await reclamarConCerca({ ...f, ...conClave(1) }, agente)).length === 0)
     await devolver(N.a.ctx, c.id, 1, () => {})
-    afirmar('cerca: tampoco con la toma ya devuelta', (await reclamarConCerca({ ...f, clave: `prueba:${w}:2` }, agente)).length === 0)
-    afirmar('cerca: con su vez sí entra', (await reclamarConCerca({ ...f, clave: `prueba:${w}:3` }, { ...agente, vez: marcar.vez(1) })).length === 1)
+    afirmar('cerca: tampoco con la toma ya devuelta', (await reclamarConCerca({ ...f, ...conClave(2) }, agente)).length === 0)
+    afirmar('cerca: con su vez sí entra', (await reclamarConCerca({ ...f, ...conClave(3) }, { ...agente, vez: marcar.vez(1) })).length === 1)
 
     // El reclamo llega mientras otra transacción ya subió la vez y no ha confirmado: tiene que esperarla y no entrar.
     const d = await clienteNuevo(N.id)
@@ -225,7 +226,7 @@ try {
     let antesDelCommit = true
     await conTransaccion(async (tx) => {
       await tx.update(esquema.clientes).set({ vecesTomada: 1 }).where(eq(esquema.clientes.id, d.id))
-      reclamo = reclamarConCerca({ ...f, clienteId: marcar.cliente(d.id), telefono: d.telefono, clave: `prueba:${w}:4` }, agente)
+      reclamo = reclamarConCerca({ ...f, clienteId: marcar.cliente(d.id), telefono: d.telefono, ...conClave(4) }, agente)
       void reclamo.then(() => (termino = true))
       await new Promise((listo) => setTimeout(listo, 1500))
       antesDelCommit = termino
