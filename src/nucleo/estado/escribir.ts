@@ -5,7 +5,7 @@ import { and, eq, inArray, or } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId } from '../identidad'
-import { comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
+import { alcanceDeLaClave, comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
 import {
   elementoDe,
   historiaParaRevertir,
@@ -34,7 +34,7 @@ export type ClaveEnConflicto = {
 }
 
 export type ResultadoDeEscribir =
-  /** `deUna`: cuántas filas les llegan a los Clientes sin pasar por Publicar. */
+  /** `deUna`: cuántas filas de alcance `clientes` les llegan sin pasar por Publicar. Un freno del Panel no es una. */
   | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio; readonly deUna: number; readonly modo: ModoDelNegocio }
   | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
   /** No cabe en el estado de ahora (`validarEscritura`): quien llama hace ROLLBACK. */
@@ -98,7 +98,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   }
 
   // El clic se dio para otra acción: lo que iba a salir de la vista previa ahora les llegaría a los Clientes.
-  if (revierte?.soloVistaPrevia.some((clave) => comoDe(clave)?.tipo === 'frena')) return { tipo: 'invalida', problemas: [{ tipo: 'ya_se_publico' }] }
+  if (revierte?.soloVistaPrevia.some((clave) => comoDe(clave)?.tipo === 'frena' && alcanceDeLaClave(clave) === 'clientes')) return { tipo: 'invalida', problemas: [{ tipo: 'ya_se_publico' }] }
 
   const v = revierte ? validarReversion(estado, escritura) : validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') return v
@@ -131,7 +131,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
     }),
   )
   await tx.update(esquema.negocios).set({ version }).where(eq(esquema.negocios.id, negocio))
-  return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' ? filas.filter((c) => !nace(c)).length : 0, modo }
+  return { tipo: 'escrito', version: comoVersion(version), deUna: deFreno.filter((c) => alcanceDeLaClave(c.clave) === 'clientes').length, modo }
 }
 
 export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: readonly ItemPendiente[] } | { readonly tipo: 'sin_nada' } | { readonly tipo: 'cambio' }

@@ -202,7 +202,7 @@ async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promis
     lineas.unshift(`Deshacer: ${describirCambio(frena ? h.fila : (vigente?.elemento ?? null), h.antes, estado)}`)
     if (!frena) soloVistaPrevia.push(clave)
     if (!atendiendo || h.como.tipo !== 'frena') continue
-    if (!advertencias.includes(SIN_PUBLICAR_DE_UNA)) advertencias.push(SIN_PUBLICAR_DE_UNA)
+    if (alcanceDeLaClave(clave) === 'clientes' && !advertencias.includes(SIN_PUBLICAR_DE_UNA)) advertencias.push(SIN_PUBLICAR_DE_UNA)
     if (h.como.pierde) advertencias.push(`También se va de tu vista previa lo que tenías sin publicar sobre esto: ${describirCambio(h.fila, h.como.pierde.hoy, estado)}`)
   }
   if (!cambios.length) return no('Todo lo de esa propuesta ya lo cambió otra después')

@@ -543,6 +543,26 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('Deshacer lo publicado: sale también de lo publicado, sin Publicar', d.tipo === 'deshecho' && (await leerPublicado(N)).vigente(clave) === null && (await leerAplicado(N)).vigente(clave) === null, d)
   },
 
+  async panelNoLlegaALosClientes() {
+    const N = await negocioAbierto('P')
+    const ana = await duenoDe(N, 'Ana')
+    const creado = await pedirIndicador(ana, `Confirmados ${marca}`)
+    if (creado.desenlace !== 'aplicado') throw new Error(creado.resumen)
+    await publicarTodo(ana)
+    const clave = (await leerPublicado(N)).vigentes('indicador')[0].clave
+    const [fila] = await db.select({ version: esquema.propuestas.version }).from(esquema.propuestas).where(eq(esquema.propuestas.id, creado.propuesta))
+
+    const conPromesa = await conTransaccion<Awaited<ReturnType<typeof escribir>>>((tx, abortar) =>
+      escribir(tx, N, { tipo: 'propuesta', propuesta: null }, { elementos: [{ clave, base: el.comoVersion(fila.version!), despues: null }], filas: [] }, { version: el.comoVersion(fila.version!), soloVistaPrevia: [clave] }).then(abortar),
+    )
+    afirmar('Panel: un freno no cuenta como llegado a los Clientes, ni choca con lo que prometió la tarjeta', conPromesa.tipo === 'escrito' && conPromesa.deUna === 0, conPromesa)
+
+    const r = await pedir(ana, { tipo: 'revertir', propuesta: creado.propuesta })
+    afirmar('Panel: revertir un Indicador publicado sale sin botón y no avisa a los Clientes', r.desenlace === 'aplicado' && !r.vistaPrevia.advertencias?.some((a) => a.includes('de una')), r)
+    afirmar('Panel: lo que responde no dice que les llegó a los Clientes', !/les llegó|les llega/i.test(r.resumen), r.resumen)
+    afirmar('Panel: el Indicador sí sale de lo publicado', (await leerPublicado(N)).vigente(clave) === null && (await leerAplicado(N)).vigente(clave) === null)
+  },
+
   async botonDescartar() {
     const N = await negocioAbierto('X')
     const ana = await duenoDe(N, 'Ana')
