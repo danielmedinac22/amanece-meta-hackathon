@@ -15,13 +15,14 @@ import { fileURLToPath } from 'node:url'
 import { pedirPublicar } from '../src/app/panel/tocar-publicar'
 import { tocarTarjeta } from '../src/app/panel/tocar-tarjeta'
 import { decisionesEnEspera, decisionQueEspera } from '../src/negocio/partes-del-hilo'
+import { EMPIEZA_A_CORREGIR } from '../src/nucleo/armado-paso'
 import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
-const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
+const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-corregida', 'hilo-lectura-espera', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
 const ESCENAS_DE_ALBA = ['alba', 'alba-al-armado']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion', '/panel/pedidos/un-pedido', '/panel/clientes/un-cliente']
 
@@ -262,10 +263,18 @@ const TITULAR = (texto: string) => `--cierto=document.querySelector('h1').textCo
 /** Cuadro a cuadro: un vistazo a una hora fija depende de lo cargada que esté la máquina. */
 const MUESTREAR_EL_CIELO = `--evalua=(() => { window.cielo = []; const m = () => { const e = document.querySelector('.cielo'); if (e) { const c = getComputedStyle(e); window.cielo.push([Number(c.opacity), new DOMMatrix(c.transform).m42]); requestAnimationFrame(m) } }; m(); return 'listo' })()`
 
+const REDACTOR_EMPEZADO = [`--cierto=document.activeElement === document.querySelector('textarea') && document.activeElement.value === ${JSON.stringify(EMPIEZA_A_CORREGIR)} && document.activeElement.selectionStart === ${EMPIEZA_A_CORREGIR.length}`]
+
 const RECORRIDOS_DEL_ARMADO: typeof RECORRIDOS = [
   ['Armado: recién entrado, todo falta y Tu Panel va en gris', 'panel-vacio', '1440', TITULAR('Cuéntame de tu negocio.'), '--ve=Hola, soy tu agente', FILA('Nombre', 'Falta'), '--no-ve=$0'],
   ['Armado: leyendo dice qué lee y no tiene temporizador que lo saque del paso', 'armado-leyendo', '1440', TITULAR('Estoy leyendo tu negocio.'), '--ve=Leyendo cafeladera.com', '--espera=4000', TITULAR('Estoy leyendo tu negocio.')],
   ['Armado: lo leído no se marca hasta tocar el botón, y al tocarlo se marca', 'armado-confirmar', '1440', TITULAR('¿Están bien estos productos?'), '--ve=Lo que encontré · 8 productos', FILA('Productos', 'Por confirmar'), FILA('Envíos', 'Por confirmar'), '--ve=Por confirmar', '--clic=Están bien y no falta ninguno', '--espera=500', FILA('Productos', 'Lo sé'), FILA('Envíos', 'Lo sé'), FILA('Nombre', 'Lo sé'), TITULAR('Solo me falta una cosa.'), '--ve=Confirmada'],
+  ['Corregir: lleva al redactor, con el foco y el mensaje empezado, sin formulario ni cifras de la tarjeta', 'armado-confirmar', '1440', '--clic=Corregir', ...REDACTOR_EMPEZADO, FILA('Productos', 'Por confirmar'), '--escribe=el tueste claro vale 26.000', '--clic=Enviar', `--ve=${EMPIEZA_A_CORREGIR}el tueste claro vale 26.000`],
+  ['Corregir: en teléfono también llega al redactor', 'armado-confirmar', '390', '--clic=Corregir', ...REDACTOR_EMPEZADO],
+  ['Corregir: la tarjeta nueva dice lo corregido, termina en Confirmada, y la vieja queda atrás', 'armado-corregida', '1440', TITULAR('¿Están bien estos productos?'), '--ve=Corrigió lo que leyó', '--no-ve=Tueste claro, grano 250 g', '--ve=Lo que encontré · 7 productos', '--clic=Ver lo anterior', '--ve=Descartada', '--clic=Están bien y no falta ninguno', '--espera=500', '--ve=Confirmada', FILA('Productos', 'Lo sé')],
+  ['Corregir: con el Negocio abierto, la misma tarjeta llega al redactor del Hilo', 'hilo-lectura-espera', '1440', '--clic=Corregir', ...REDACTOR_EMPEZADO],
+  ['Corregir: con el Negocio abierto, en teléfono', 'hilo-lectura-espera', '390', '--clic=Corregir', ...REDACTOR_EMPEZADO],
+  ['Corregir: solo en lo leído, una regla o un Caso no lo ofrecen', 'panel-un-caso', '1440', '--ve=Enviar', '--no-ve=Corregir'],
   ['Armado: el cobro se responde con un botón, y el paso sale de lo que se sabe', 'armado-cobro', '1440', TITULAR('Solo me falta una cosa.'), FILA('Cómo cobras', 'Falta'), '--clic=1Contra entrega', '--espera=500', TITULAR('Café Ladera puede abrir.'), FILA('Cómo cobras', 'Lo sé'), '--ve=Mis clientes me pagan contra entrega.'],
   ['Armado: el cobro también se responde con el número', 'armado-cobro', '1440', `--evalua=(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: '2' })); return 'listo' })()`, '--espera=500', '--ve=Mis clientes me pagan por transferencia.'],
   ['Armado: el cobro se puede dejar para después, y sigue sin marcarse', 'armado-cobro', '1440', '--clic=Te lo digo después', '--espera=500', TITULAR('Café Ladera puede abrir.'), FILA('Cómo cobras', 'Falta')],

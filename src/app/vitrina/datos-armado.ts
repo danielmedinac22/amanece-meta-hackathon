@@ -3,6 +3,7 @@ import type { UIMessage } from 'ai'
 import type { DatoQueSe, DatosDelArmado, FilaQueYaSe } from '@/nucleo/armado'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { EMPIEZA_A_CORREGIR } from '@/nucleo/armado-paso'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
 import { PARTE_DE_PLANTILLA, PARTIDAS, type IdDePlantilla } from '@/nucleo/plantillas'
 
@@ -60,7 +61,18 @@ export const HILO_CONFIRMAR: UIMessage[] = [
 ]
 export const TARJETAS_CONFIRMAR: Record<string, EstadoDeTarjeta> = { 'p-lectura': { estado: 'espera_al_dueno', accion: 'confirmar', aprobadaPor: null, asunto: null, publicada: false } }
 
+/** El Dueño dijo en palabras que un producto ya no va: la tarjeta se rearmó sin él. */
+const LO_LEIDO_CORREGIDO: TarjetaDeAprobacion = { ...LO_LEIDO, propuesta: 'p-lectura-corregida' as PropuestaId, huella: 'huella-corregida' as Huella, lineas: ['Tueste medio, grano 500 g: $38.000', 'Tueste medio, molido 500 g: $38.000', 'Micro lote Honey, grano 250 g: $32.000', 'Y 4 más'] }
+export const ARMADO_CORREGIDA: DatosDelArmado = { ...ARMADO_CONFIRMAR, lectura: { productos: 7 }, productos: ARMADO_CONFIRMAR.productos.filter((p) => !p.nombre.startsWith('Tueste claro')) }
+export const HILO_CORREGIDA: UIMessage[] = [
+  ...HILO_CONFIRMAR,
+  mensaje('c3', 'user', texto(`${EMPIEZA_A_CORREGIR}el tueste claro ya no lo vendo`)),
+  mensaje('c4', 'assistant', { type: 'tool-corregir_tarjeta', toolCallId: 'llamada-corregir', state: 'output-available', input: { quitar: ['tueste claro'] }, output: { resumen: 'Quité', tarjeta: LO_LEIDO_CORREGIDO } }, texto('Listo, ya no está. Revisa lo demás y toca el botón.')),
+]
+export const TARJETAS_CORREGIDA: Record<string, EstadoDeTarjeta> = { 'p-lectura': { ...TARJETAS_CONFIRMAR['p-lectura'], estado: 'descartada' }, 'p-lectura-corregida': TARJETAS_CONFIRMAR['p-lectura'] }
+
 export const ARMADO_COBRO: DatosDelArmado = { ...TODO_DICHO, filas: filas({ ...SABIDO, Tono: 'De tú, con cariño' }) }
+export const ARMADO_COBRO_CORREGIDO: DatosDelArmado = { ...ARMADO_COBRO, filas: filas({ ...SABIDO, Tono: 'De tú, con cariño', Productos: '7 con precio' }), productos: ARMADO_COBRO.productos.filter((p) => !p.nombre.startsWith('Tueste claro')) }
 export const HILO_COBRO: UIMessage[] = [mensaje('p1', 'user', texto('Hablo de tú, con cariño.')), mensaje('p2', 'assistant', texto('Listo. Y tus clientes, ¿cómo te pagan?'))]
 
 export const ARMADO_COBRO_CON_MAS_FALTANTES: DatosDelArmado = { ...TODO_DICHO, filas: filas({ Nombre: 'Café Ladera', Productos: '8 con precio' }) }

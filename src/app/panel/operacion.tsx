@@ -121,7 +121,9 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
               </Button>
             </div>
             <div className="min-h-0 flex-1 p-3 fijo:pt-0 flotante:p-0">
-              <HiloEnLaOperacion.Provider value={hiloEnLaOperacion}>{hilo}</HiloEnLaOperacion.Provider>
+              <HiloEnLaOperacion.Provider value={hiloEnLaOperacion}>
+                <EscribirleAlAgente.Provider value={escribirleAlAgente}>{hilo}</EscribirleAlAgente.Provider>
+              </HiloEnLaOperacion.Provider>
             </div>
           </section>
 
