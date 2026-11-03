@@ -9,7 +9,7 @@ import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
 import type { SeccionPintada } from '@/nucleo/panel'
 
 const clave = (c: string) => c as Clave
-const LINK = 'https://wa.me/573000000000?text=Hola%20Caf%C3%A9%20Ladera%20LADERA'
+const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 const pedidosDeHoy: SeccionPintada = {

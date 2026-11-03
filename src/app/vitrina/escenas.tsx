@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
-import { Hilo } from '@/app/panel/hilo'
 import { MarcoDelPanel, SinNegocio, VistaDelNegocio, type DatosDelNegocio } from '@/app/panel/vista'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { Componentes } from './componentes'
+import { HiloDeMuestra } from './hilo-de-muestra'
 import { HILO_ARMANDOSE, HILO_CON_UN_CASO, NEGOCIO_ARMANDOSE, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, TARJETAS_CON_UN_CASO } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 
 function panel(datos: DatosDelNegocio | null, estado: 'armando' | 'listo' | null, mensajes: UIMessage[] = [], tarjetas: Record<string, EstadoDeTarjeta> = {}) {
   return (
-    <MarcoDelPanel nombreDelNegocio={datos?.nombre ?? null} equipo={false} hilo={<Hilo inicial={mensajes} tarjetas={tarjetas} estado={estado} />}>
+    <MarcoDelPanel nombreDelNegocio={datos?.nombre ?? null} equipo={false} hilo={<HiloDeMuestra messages={mensajes} estados={tarjetas} estado={estado} />}>
       {datos ? <VistaDelNegocio datos={datos} /> : <SinNegocio />}
     </MarcoDelPanel>
   )

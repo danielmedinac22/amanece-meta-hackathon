@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 
 export default function Portada() {
@@ -9,9 +9,9 @@ export default function Portada() {
         <span className="font-heading text-lg font-semibold tracking-tight">
           <span className="text-primary">●</span> Amanece
         </span>
-        <Button variant="ghost" render={<Link href="/entrar" />} nativeButton={false}>
+        <Link href="/entrar" className={buttonVariants({ variant: 'ghost' })}>
           Entrar
-        </Button>
+        </Link>
       </header>
 
       <section className="mt-16 max-w-3xl sm:mt-24">
@@ -23,12 +23,12 @@ export default function Portada() {
           resuelto y deja funcionando en tu negocio cada cosa que le pides: una regla, una sección o un indicador.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
-          <Button size="lg" className="h-11 px-5 text-base" render={<Link href="/entrar?modo=registro" />} nativeButton={false}>
+          <Link href="/entrar?modo=registro" className={buttonVariants({ size: 'lg', className: 'h-11 px-5 text-base' })}>
             Arma tu negocio gratis
-          </Button>
-          <Button variant="outline" size="lg" className="h-11 px-5 text-base" render={<a href={linkDeWhatsapp('Café Ladera', 'LADERA')} />} nativeButton={false}>
+          </Link>
+          <a href={linkDeWhatsapp('Café Ladera', 'LADERA')} className={buttonVariants({ variant: 'outline', size: 'lg', className: 'h-11 px-5 text-base' })}>
             Escríbele a Café Ladera por WhatsApp
-          </Button>
+          </a>
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import type { LoPendiente } from '@/nucleo/cambios'
 import type { SeccionPintada } from '@/nucleo/panel'
 import { Fallo, Indicador, Seccion } from './pieza'
@@ -66,9 +66,9 @@ export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-3 py-1 text-xs ${pendiente.items.length ? 'bg-ojo-suave text-ojo' : 'border border-border text-bien'}`}>{pendiente.items.length ? 'Vista previa' : 'Atendiendo'}</span>
               <BotonPublicar pendiente={pendiente} />
-              <Button variant={pendiente.items.length ? 'outline' : 'default'} render={<a href={link} target="_blank" />} nativeButton={false}>
+              <a href={link} target="_blank" className={buttonVariants({ variant: pendiente.items.length ? 'outline' : 'default' })}>
                 Escríbele por WhatsApp
-              </Button>
+              </a>
             </div>
           ) : (
             <span className="rounded-full bg-ojo-suave px-3 py-1 text-xs text-ojo">Armándose</span>

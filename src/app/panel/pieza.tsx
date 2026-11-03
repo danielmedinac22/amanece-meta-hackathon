@@ -1,5 +1,6 @@
 /** Pinta una Sección o un Indicador ya calculados. La consulta da los datos; la forma de pintarlos es fija. */
-import { advertenciaEnPalabras, conUnidad, type SeccionPintada } from '@/nucleo/panel'
+import type { SeccionPintada } from '@/nucleo/panel'
+import { advertenciaEnPalabras, conUnidad } from '@/nucleo/panel-palabras'
 
 /** `to_jsonb` da el instante ya en la zona del Negocio, porque el lote fija `TimeZone`: solo se recorta. */
 const INSTANTE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/

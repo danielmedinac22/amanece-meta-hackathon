@@ -14,7 +14,8 @@ import type { ClienteId, Marca, Wamid } from '../identidad'
 import type { AccionHecha } from '../clientes/acciones'
 import { entornoDeEnsayo, MOTORES, pedidoDelCliente, turno, type ClienteDelTurno, type Conversacion, type Motores, type TurnoDeConversacion } from '../clientes/turno'
 import type { Revision } from '../salida/revisar'
-import { advertenciaEnPalabras, conUnidad, pintarUna, type Advertencia, type ElementoDelPanel, type PorQueNoSePudo } from '../panel'
+import { advertenciaEnPalabras, conUnidad } from '../panel-palabras'
+import { pintarUna, type Advertencia, type ElementoDelPanel, type PorQueNoSePudo } from '../panel'
 
 export type MensajeDeClienteId = Marca<string, 'MensajeDeClienteId'>
 

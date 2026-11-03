@@ -1,7 +1,8 @@
 /**
- * La vitrina existe solo en `next dev` y no deja rastro en un build. Corre los tres servidores de verdad:
- * build + start (404 en /vitrina) y dev sin base de datos ni sesión (la vitrina pinta sin leer nada y /panel sigue
- * pidiendo entrar). Tarda unos minutos por el build.
+ * La vitrina existe solo en `next dev` y no deja rastro en un build. Corre los tres servidores de verdad: dev sin base
+ * de datos ni sesión (la vitrina pinta sin leer nada y /panel sigue pidiendo entrar) y build + start (404 en /vitrina).
+ * Primero dev porque `next dev` toma un candado por carpeta: con otro `pnpm dev` abierto falla enseguida, no tras el
+ * build. Ciérralo antes de correr esto. Tarda unos minutos por el build.
  *
  *   pnpm tsx scripts/probar-vitrina.mts
  */
@@ -15,7 +16,6 @@ import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
-const SIN_BASE = 'postgres://nadie:x@127.0.0.1:1/nada'
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'componentes']
 
 const hijos = new Set<ChildProcess>()
@@ -79,27 +79,8 @@ function nombres(carpeta: string): string[] {
 }
 
 try {
-  console.log('\nbuild')
-  const build = spawnSync(process.execPath, [NEXT, 'build'], { cwd: RAIZ, encoding: 'utf8', timeout: 540_000 })
-  afirmar('next build termina bien', build.status === 0, `${build.stdout}\n${build.stderr}`.slice(-2000))
-
-  const manifiesto = JSON.parse(readFileSync(join(RAIZ, '.next/app-path-routes-manifest.json'), 'utf8')) as Record<string, string>
-  const rutas = Object.entries(manifiesto).flat()
-  afirmar('El build publica /panel', rutas.includes('/panel'), rutas)
-  afirmar('El build no publica ninguna ruta de la vitrina', !rutas.some((r) => r.includes('vitrina')), rutas)
-  const nombresDelServidor = nombres(join(RAIZ, '.next/server/app'))
-  afirmar('Nada bajo .next/server/app se llama vitrina', !nombresDelServidor.some((n) => n.includes('vitrina')), nombresDelServidor.filter((n) => n.includes('vitrina')))
-
-  console.log('\nnext start')
-  const produccion = await servir('start')
-  for (const ruta of ['/vitrina', '/vitrina/componentes']) {
-    const r = await ver(`${produccion.base}${ruta}`)
-    afirmar(`start: ${ruta} da 404`, r.status === 404, r.status)
-  }
-  produccion.parar()
-
   console.log('\nnext dev, sin base de datos ni sesión')
-  const desarrollo = await servir('dev', { DATABASE_URL: SIN_BASE, DATABASE_URL_UNPOOLED: SIN_BASE, DATABASE_URL_CONSULTAS: SIN_BASE })
+  const desarrollo = await servir('dev', { DATABASE_URL: '', DATABASE_URL_UNPOOLED: '', DATABASE_URL_CONSULTAS: '' })
   const indice = await ver(`${desarrollo.base}/vitrina`)
   const html = await indice.text()
   afirmar('dev: /vitrina da 200', indice.status === 200, { estado: indice.status, servidor: desarrollo.salida() })
@@ -129,8 +110,31 @@ try {
   const panel = await ver(`${desarrollo.base}/panel`)
   afirmar('dev: /panel sin sesión redirige a /entrar', [302, 307].includes(panel.status) && (panel.headers.get('location') ?? '').includes('/entrar'), { estado: panel.status, destino: panel.headers.get('location') })
   desarrollo.parar()
+
+  console.log('\nbuild')
+  const build = spawnSync(process.execPath, [NEXT, 'build'], { cwd: RAIZ, encoding: 'utf8', timeout: 540_000 })
+  afirmar('next build termina bien', build.status === 0, `${build.stdout}\n${build.stderr}`.slice(-2000))
+
+  const manifiesto = JSON.parse(readFileSync(join(RAIZ, '.next/app-path-routes-manifest.json'), 'utf8')) as Record<string, string>
+  const rutas = Object.entries(manifiesto).flat()
+  afirmar('El build publica /panel', rutas.includes('/panel'), rutas)
+  afirmar('El build no publica ninguna ruta de la vitrina', !rutas.some((r) => r.includes('vitrina')), rutas)
+  const nombresDelServidor = nombres(join(RAIZ, '.next/server/app'))
+  afirmar('Nada bajo .next/server/app se llama vitrina', !nombresDelServidor.some((n) => n.includes('vitrina')), nombresDelServidor.filter((n) => n.includes('vitrina')))
+
+  const conDatosDePrueba = spawnSync('grep', ['-rl', 'Marcela Ríos', join(RAIZ, '.next/server'), join(RAIZ, '.next/static')], { encoding: 'utf8' }).stdout.trim()
+  afirmar('Los datos inventados no salen en el build', conDatosDePrueba === '', conDatosDePrueba)
+
+  console.log('\nnext start')
+  const produccion = await servir('start')
+  for (const ruta of ['/vitrina', '/vitrina/componentes']) {
+    const r = await ver(`${produccion.base}${ruta}`)
+    afirmar(`start: ${ruta} da 404`, r.status === 404, r.status)
+  }
+  produccion.parar()
+
 } catch (error) {
-  afirmar('La prueba de la vitrina corrió completa', false, error)
+  afirmar('La prueba de la vitrina corrió completa', false, error instanceof Error ? `${error.message} ${String(error.cause ?? '')}` : error)
 } finally {
   matarHijos()
 }

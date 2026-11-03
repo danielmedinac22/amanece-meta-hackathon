@@ -1,7 +1,7 @@
 import { desc, sql } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { db, esquema } from '@/db'
 import { esDelEquipo } from '@/lib/equipo'
 import { faltantesPorMotivo } from '@/nucleo/capacidades'
@@ -46,9 +46,9 @@ export default async function Medicion() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8">
-      <Button variant="ghost" render={<Link href="/panel" />} nativeButton={false}>
+      <Link href="/panel" className={buttonVariants({ variant: 'ghost' })}>
         ← Panel
-      </Button>
+      </Link>
       <h1 className="mt-4 font-heading text-3xl font-semibold">Medición</h1>
       <p className="mt-2 text-muted-foreground">Tokens, costo y latencia reales con Muse Spark.</p>
 
