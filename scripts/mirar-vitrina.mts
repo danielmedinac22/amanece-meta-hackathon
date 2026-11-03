@@ -1,6 +1,6 @@
 /**
- * Captura una escena de la vitrina en Chrome sin ventana, en el modo y el ancho que se pidan, y avisa si la página se
- * desborda a lo ancho. Necesita `pnpm dev` corriendo.
+ * Captura una escena de la vitrina en Chrome sin ventana, en el modo y el ancho que se pidan, y sale con 1 si la
+ * página se desborda a lo ancho. `--clic=texto` toca un botón antes de capturar. Necesita `pnpm dev` corriendo.
  *
  *   pnpm tsx scripts/mirar-vitrina.mts panel-un-caso /tmp/caso.png 390 844 --oscuro
  */
@@ -49,7 +49,15 @@ try {
   await espera(2500)
 
   const medida = (await cdp('Runtime.evaluate', { expression: 'document.documentElement.scrollWidth - window.innerWidth', returnByValue: true })) as unknown as { result: { value: number } }
-  if (medida.result.value > 0) console.error(`Se desborda ${medida.result.value} px a lo ancho`)
+  if (medida.result.value > 0) {
+    console.error(`Se desborda ${medida.result.value} px a lo ancho`)
+    process.exitCode = 1
+  }
+  for (const clic of banderas.filter((b) => b.startsWith('--clic=')).map((b) => b.slice(7))) {
+    const buscar = `[...document.querySelectorAll('button,summary,a,[role=tab]')].find((x) => x.textContent.trim().startsWith(${JSON.stringify(clic)}))?.click()`
+    await cdp('Runtime.evaluate', { expression: buscar })
+    await espera(600)
+  }
   const { data } = (await cdp('Page.captureScreenshot', { format: 'png' })) as unknown as { data: string }
   writeFileSync(salida, Buffer.from(data, 'base64'))
   console.log('Guardada', salida)

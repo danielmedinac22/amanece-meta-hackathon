@@ -66,7 +66,7 @@ export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-3 py-1 text-xs ${pendiente.items.length ? 'bg-ojo-suave text-ojo' : 'border border-border text-bien'}`}>{pendiente.items.length ? 'Vista previa' : 'Atendiendo'}</span>
               <BotonPublicar pendiente={pendiente} />
-              <Button render={<a href={link} target="_blank" />} nativeButton={false}>
+              <Button variant={pendiente.items.length ? 'outline' : 'default'} render={<a href={link} target="_blank" />} nativeButton={false}>
                 Escríbele por WhatsApp
               </Button>
             </div>

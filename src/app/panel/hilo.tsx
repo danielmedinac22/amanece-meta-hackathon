@@ -122,7 +122,7 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
 
       <div className="mt-3 flex flex-wrap gap-2">
         {sugerencias.map((s) => (
-          <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto rounded-full bg-card px-3 py-1 font-normal whitespace-normal text-muted-foreground">
+          <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto max-w-full shrink rounded-full bg-card px-3 py-1 text-left font-normal whitespace-normal text-muted-foreground">
             {s}
           </Button>
         ))}

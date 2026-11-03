@@ -6,8 +6,9 @@
  *   pnpm tsx scripts/probar-vitrina.mts
  */
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
-import { readdirSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:net'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afirmar, terminar } from './afirmar.mjs'
@@ -112,6 +113,15 @@ try {
 
   const funcionando = await (await ver(`${desarrollo.base}/vitrina/panel-funcionando`)).text()
   afirmar('dev: panel-funcionando pinta el Negocio de prueba', funcionando.includes('Café Ladera') && funcionando.includes('Pedidos de hoy'))
+
+  // Teléfono y PC valen igual: ninguna escena se desborda a lo ancho a ninguno de los dos anchos.
+  const captura = join(mkdtempSync(join(tmpdir(), 'vitrina-')), 'escena.png')
+  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS])) {
+    for (const [ancho, alto] of [['390', '844'], ['1440', '900']]) {
+      const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), id, captura, ancho, alto], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
+      afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
+    }
+  }
 
   const noExiste = await ver(`${desarrollo.base}/vitrina/no-hay-esta`)
   afirmar('dev: una escena que no existe da 404', noExiste.status === 404, noExiste.status)
