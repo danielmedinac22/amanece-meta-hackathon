@@ -56,15 +56,20 @@ try {
   afirmar('importaciones: api.kapso.ai aparece solo en salida/kapso.ts', solo(/api\.kapso\.ai/, ['src/nucleo/salida/kapso.ts']), conTexto(/api\.kapso\.ai/))
   afirmar('importaciones: src/lib/kapso.ts ya no existe y nadie lo importa', !fuentes.some((f) => f.ruta === 'src/lib/kapso.ts') && conTexto(/@\/lib\/kapso/).length === 0, conTexto(/@\/lib\/kapso/))
   afirmar('importaciones: la línea del envío simulado solo la imprime salida/kapso.ts', solo(/envío simulado a/, ['src/nucleo/salida/kapso.ts']), conTexto(/envío simulado a/))
-  const PUEDEN_ARMAR_INTENCIONES = ['src/nucleo/cambios/index.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/clientes/turno.ts', 'src/nucleo/entrada.ts']
+  const PUEDEN_ARMAR_INTENCIONES = ['src/nucleo/cambios/index.ts', 'src/nucleo/clientes/atender.ts', 'src/nucleo/clientes/toma.ts', 'src/nucleo/clientes/turno.ts', 'src/nucleo/entrada.ts']
   const arman = conTexto(/\bintencion\b[^\n]*from '(@\/nucleo\/salida|\.\/salida|\.\.\/salida)'/)
-  afirmar('importaciones: solo entrada, atender, el turno y aprobar arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
+  afirmar('importaciones: solo entrada, atender, la toma, el turno y aprobar arman intenciones', arman.length > 0 && arman.every((r) => PUEDEN_ARMAR_INTENCIONES.includes(r)), arman)
+  afirmar('importaciones: el tiempo de una toma solo lo nombran el esquema y salida/atencion.ts', solo(/tomadaHasta|tomada_hasta/, ['src/db/esquema.ts', 'src/nucleo/salida/atencion.ts']), conTexto(/tomadaHasta|tomada_hasta/))
 
   console.log('\n=== 2. decidir ===')
   const A = marcar.negocio('00000000-0000-4000-8000-00000000000a')
   const B = marcar.negocio('00000000-0000-4000-8000-00000000000b')
   const CAMILA = marcar.cliente('00000000-0000-4000-8000-0000000000c1')
   const W = marcar.wamid('wamid.TABLA.1')
+  const LUCIA = marcar.dueno('00000000-0000-4000-8000-0000000000d1')
+  const ANA = marcar.dueno('00000000-0000-4000-8000-0000000000d2')
+  const VEZ = marcar.vez(3)
+  const delAgente = { tipo: 'agente', vez: VEZ, debida: false } as const
   const ahora = new Date('2026-10-28T15:00:00Z')
   const haceHoras = (h: number) => marcar.instante(new Date(ahora.getTime() - h * 3600_000))
 
@@ -73,7 +78,7 @@ try {
     emergenciaGlobal: false,
     numeroPermitido: true,
     negocio: { modo: 'atendiendo', emergencia: false },
-    cliente: { negocio: A },
+    cliente: { negocio: A, vez: VEZ, tiene: null },
     ultimoEntrante: haceHoras(1),
     respuestasAlMismoMensaje: 0,
   }
@@ -81,10 +86,12 @@ try {
   const sinNegocio = { tipo: 'telefono', telefono: '573000000999', negocio: null } as const
   const intencionDe = (clase: IntencionDeEnvio['clase'], destinatario: Destinatario = alCliente) =>
     (clase === 'respuesta'
-      ? { clase, destinatario: alCliente, texto: 't', clave: 'k', enRespuestaA: W }
+      ? { clase, destinatario: alCliente, texto: 't', clave: 'k', enRespuestaA: W, habla: delAgente }
       : clase === 'resolucion_de_caso'
         ? { clase, destinatario: alCliente, texto: 't', clave: 'k', caso: null }
-        : { clase, destinatario, texto: 't', clave: 'k', enRespuestaA: W }) as IntencionDeEnvio
+        : clase === 'del_dueno'
+          ? { clase, destinatario: alCliente, texto: 't', clave: 'k', visto: null, habla: { tipo: 'dueno', vez: VEZ, dueno: LUCIA } }
+          : { clase, destinatario, texto: 't', clave: 'k', enRespuestaA: W, ...(destinatario.tipo === 'cliente' ? { habla: delAgente } : {}) }) as IntencionDeEnvio
 
   const CLASES = ['respuesta', 'resolucion_de_caso', 'aviso_del_nucleo'] as const
   const masDe24h = marcar.instante(new Date(ahora.getTime() - 24 * 3600_000 - 1000))
@@ -99,9 +106,9 @@ try {
     { caso: 'emergencia del Negocio', clase: 'resolucion_de_caso', hechos: { negocio: { modo: 'atendiendo', emergencia: true } }, esperado: 'emergencia' },
     ...CLASES.map((clase): Fila => ({ caso: 'un Negocio en sombra no le habla a nadie', clase, hechos: { negocio: { modo: 'en_sombra', emergencia: false } }, esperado: 'negocio_en_sombra' })),
     { caso: 'sin número de Amanece', clase: 'respuesta', hechos: { numeroPermitido: false }, esperado: 'numero_no_permitido' },
-    { caso: 'el Cliente es de otro Negocio', clase: 'respuesta', hechos: { cliente: { negocio: B } }, esperado: 'destinatario_de_otro_negocio' },
-    { caso: 'el Cliente es de otro Negocio', clase: 'resolucion_de_caso', hechos: { cliente: { negocio: B } }, esperado: 'destinatario_de_otro_negocio' },
-    { caso: 'a un aviso no le aplica otro Negocio', clase: 'aviso_del_nucleo', hechos: { cliente: { negocio: B } }, esperado: 'sale' },
+    { caso: 'el Cliente es de otro Negocio', clase: 'respuesta', hechos: { cliente: { negocio: B, vez: VEZ, tiene: null } }, esperado: 'destinatario_de_otro_negocio' },
+    { caso: 'el Cliente es de otro Negocio', clase: 'resolucion_de_caso', hechos: { cliente: { negocio: B, vez: VEZ, tiene: null } }, esperado: 'destinatario_de_otro_negocio' },
+    { caso: 'a un aviso no le aplica otro Negocio', clase: 'aviso_del_nucleo', hechos: { cliente: { negocio: B, vez: VEZ, tiene: null } }, esperado: 'sale' },
     { caso: 'el Cliente no existe', clase: 'respuesta', hechos: { cliente: null }, esperado: 'destinatario_de_otro_negocio' },
     { caso: 'ventana: 24 h justas todavía sale', clase: 'respuesta', hechos: { ultimoEntrante: haceHoras(24) }, esperado: 'sale' },
     ...CLASES.map((clase): Fila => ({ caso: 'ventana: 24 h y un segundo', clase, hechos: { ultimoEntrante: masDe24h }, esperado: 'fuera_de_ventana' })),
@@ -109,10 +116,24 @@ try {
     { caso: 'segunda respuesta al mismo mensaje', clase: 'respuesta', hechos: { respuestasAlMismoMensaje: 1 }, esperado: 'una_respuesta_por_mensaje' },
     { caso: 'aviso después de una respuesta al mismo mensaje', clase: 'aviso_del_nucleo', hechos: { respuestasAlMismoMensaje: 1 }, esperado: 'una_respuesta_por_mensaje' },
     { caso: 'una resolución no responde a un mensaje', clase: 'resolucion_de_caso', hechos: { respuestasAlMismoMensaje: 3 }, esperado: 'sale' },
-    { caso: 'orden: todo mal, gana emergencia', clase: 'respuesta', hechos: { emergenciaGlobal: true, numeroPermitido: false, negocio: { modo: 'en_sombra', emergencia: true }, cliente: { negocio: B }, ultimoEntrante: null, respuestasAlMismoMensaje: 2 }, esperado: 'emergencia' },
+    { caso: 'orden: todo mal, gana emergencia', clase: 'respuesta', hechos: { emergenciaGlobal: true, numeroPermitido: false, negocio: { modo: 'en_sombra', emergencia: true }, cliente: { negocio: B, vez: VEZ, tiene: null }, ultimoEntrante: null, respuestasAlMismoMensaje: 2 }, esperado: 'emergencia' },
     { caso: 'orden: sombra antes que número', clase: 'respuesta', hechos: { negocio: { modo: 'en_sombra', emergencia: false }, numeroPermitido: false }, esperado: 'negocio_en_sombra' },
-    { caso: 'orden: otro Negocio antes que ventana', clase: 'respuesta', hechos: { cliente: { negocio: B }, ultimoEntrante: null }, esperado: 'destinatario_de_otro_negocio' },
+    { caso: 'orden: otro Negocio antes que ventana', clase: 'respuesta', hechos: { cliente: { negocio: B, vez: VEZ, tiene: null }, ultimoEntrante: null }, esperado: 'destinatario_de_otro_negocio' },
     { caso: 'orden: ventana antes que una respuesta por mensaje', clase: 'respuesta', hechos: { ultimoEntrante: null, respuestasAlMismoMensaje: 1 }, esperado: 'fuera_de_ventana' },
+    { caso: 'el turno empezó con otra vez', clase: 'respuesta', hechos: { cliente: { negocio: A, vez: marcar.vez(4), tiene: null } }, esperado: 'no_le_toca' },
+    { caso: 'la disculpa de un turno con otra vez', clase: 'aviso_del_nucleo', hechos: { cliente: { negocio: A, vez: marcar.vez(4), tiene: LUCIA } }, esperado: 'no_le_toca' },
+    { caso: 'aprobar un Caso sigue saliendo con la conversación tomada', clase: 'resolucion_de_caso', hechos: { cliente: { negocio: A, vez: marcar.vez(4), tiene: LUCIA } }, esperado: 'sale' },
+    { caso: 'orden: la toma le gana a una emergencia que observa', clase: 'respuesta', hechos: { emergenciaGlobal: true, cliente: { negocio: A, vez: marcar.vez(4), tiene: LUCIA } }, esperado: 'no_le_toca' },
+    { caso: 'la tiene y escribe', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: LUCIA } }, esperado: 'sale' },
+    { caso: 'nadie la tiene', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: null } }, esperado: 'no_le_toca' },
+    { caso: 'la tiene otro Dueño', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: ANA } }, esperado: 'no_le_toca' },
+    { caso: 'la devolvió y la tomó de nuevo', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: marcar.vez(4), tiene: LUCIA } }, esperado: 'no_le_toca' },
+    { caso: 'ventana: 24 h y un segundo', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: LUCIA }, ultimoEntrante: masDe24h }, esperado: 'fuera_de_ventana' },
+    { caso: 'emergencia', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: LUCIA }, emergenciaGlobal: true }, esperado: 'emergencia' },
+    { caso: 'un Negocio en sombra', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: LUCIA }, negocio: { modo: 'en_sombra', emergencia: false } }, esperado: 'negocio_en_sombra' },
+    { caso: 'sin número de Amanece', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: LUCIA }, numeroPermitido: false }, esperado: 'numero_no_permitido' },
+    { caso: 'el Cliente es de otro Negocio', clase: 'del_dueno', hechos: { cliente: { negocio: B, vez: VEZ, tiene: LUCIA } }, esperado: 'destinatario_de_otro_negocio' },
+    { caso: 'no cuenta como la respuesta de un mensaje', clase: 'del_dueno', hechos: { cliente: { negocio: A, vez: VEZ, tiene: LUCIA }, respuestasAlMismoMensaje: 2 }, esperado: 'sale' },
   ]
   for (const f of TABLA) {
     const v = decidir(intencionDe(f.clase, f.destinatario), { ...enOrden, ...f.hechos })
@@ -122,9 +143,16 @@ try {
 
   console.log('\n=== 3. seCumple y emergenciaDe ===')
   const noSale = (motivo: MotivoDeSilencio) => ({ tipo: 'no_sale', motivo }) as const
-  afirmar('seCumple: un sale nunca frena', !seCumple({ tipo: 'sale' }, 'observa') && !seCumple({ tipo: 'sale' }, 'hace_cumplir'))
-  afirmar('seCumple observa: ningún no_sale frena', ORDEN_DE_LA_COMPUERTA.every((m) => !seCumple(noSale(m), 'observa')))
-  afirmar('seCumple hace_cumplir: todo no_sale frena', ORDEN_DE_LA_COMPUERTA.every((m) => seCumple(noSale(m), 'hace_cumplir')))
+  const respuestaDeHoy = intencionDe('respuesta')
+  const delDueno = intencionDe('del_dueno')
+  const debida = { ...respuestaDeHoy, habla: { ...delAgente, debida: true } } as IntencionDeEnvio
+  const deHoy = ORDEN_DE_LA_COMPUERTA.filter((m) => m !== 'no_le_toca')
+  afirmar('seCumple: un sale nunca frena', [respuestaDeHoy, delDueno, debida].every((i) => !seCumple({ tipo: 'sale' }, i, 'observa') && !seCumple({ tipo: 'sale' }, i, 'hace_cumplir')))
+  afirmar('seCumple observa: ningún motivo de antes frena lo de antes', deHoy.every((m) => (['respuesta', 'resolucion_de_caso', 'aviso_del_nucleo'] as const).every((c) => !seCumple(noSale(m), intencionDe(c), 'observa'))))
+  afirmar('seCumple hace_cumplir: todo no_sale frena', ORDEN_DE_LA_COMPUERTA.every((m) => seCumple(noSale(m), respuestaDeHoy, 'hace_cumplir')))
+  afirmar('seCumple observa: la toma frena de verdad', seCumple(noSale('no_le_toca'), respuestaDeHoy, 'observa') && seCumple(noSale('no_le_toca'), intencionDe('aviso_del_nucleo'), 'observa'))
+  afirmar('seCumple observa: lo que escribe el Dueño frena con cualquier motivo', ORDEN_DE_LA_COMPUERTA.every((m) => seCumple(noSale(m), delDueno, 'observa')))
+  afirmar('seCumple observa: el turno de lo debido frena con cualquier motivo', ORDEN_DE_LA_COMPUERTA.every((m) => seCumple(noSale(m), debida, 'observa')))
   const emergencias = [emergenciaDe(undefined, A), emergenciaDe('*', null), emergenciaDe(` ${B} ,x`, B), emergenciaDe(B, A)]
   afirmar(
     'emergenciaDe: vacía no frena; * frena todo; por id frena solo ese Negocio',
@@ -133,6 +161,7 @@ try {
   )
 
   const observa = MODO_DE_LA_COMPUERTA === 'observa'
+  const VEZ_CERO = { tipo: 'agente', vez: marcar.vez(0), debida: false } as const
   console.log(`\n=== 4. despachar contra Neon (compuerta: ${MODO_DE_LA_COMPUERTA}, envío simulado) ===`)
   const [ladera] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.codigo, 'LADERA'))
   const [trigo] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.codigo, 'TRIGO'))
@@ -188,7 +217,7 @@ try {
   )
 
   const largo = `Respuesta de prueba ${'larga '.repeat(900)}fin`
-  const respuesta = intencion.respuesta({ destinatario: aEnVentana, texto: largo, enRespuestaA: w('d') })
+  const respuesta = intencion.respuesta({ destinatario: aEnVentana, texto: largo, enRespuestaA: w('d'), habla: VEZ_CERO })
   desde = envios.length
   const r4 = await despacharAnotada(respuesta)
   const salidos4 = enviosA(telEnVentana, desde)
@@ -203,7 +232,7 @@ try {
     fila4,
   )
 
-  const disculpa = intencion.aviso({ destinatario: aEnVentana, aviso: { cual: 'falla_tecnica' }, enRespuestaA: w('d') })
+  const disculpa = intencion.aviso({ destinatario: aEnVentana, aviso: { cual: 'falla_tecnica' }, enRespuestaA: w('d'), habla: VEZ_CERO })
   desde = envios.length
   const r5 = await despacharAnotada(disculpa)
   const fila5 = await filaDe(disculpa.clave)
@@ -212,15 +241,15 @@ try {
 
   desde = envios.length
   const aLaVez = [
-    intencion.respuesta({ destinatario: aEnVentana, texto: 'Respuesta a la vez', enRespuestaA: w('f') }),
-    intencion.aviso({ destinatario: aEnVentana, aviso: { cual: 'falla_tecnica' }, enRespuestaA: w('f') }),
+    intencion.respuesta({ destinatario: aEnVentana, texto: 'Respuesta a la vez', enRespuestaA: w('f'), habla: VEZ_CERO }),
+    intencion.aviso({ destinatario: aEnVentana, aviso: { cual: 'falla_tecnica' }, enRespuestaA: w('f'), habla: VEZ_CERO }),
   ]
   await Promise.all(aLaVez.map(despacharAnotada))
   const filasF = await db.select().from(esquema.mensajesSalientes).where(eq(esquema.mensajesSalientes.enRespuestaA, w('f')))
   afirmar('despachar: respuesta y aviso al mismo mensaje a la vez dejan una sola fila sale', filasF.length === 2 && filasF.filter((f) => f.veredicto === 'sale').length === 1, filasF.map((f) => [f.clase, f.veredicto, f.motivo]))
   afirmar(`despachar: de esos dos salen ${observa ? 2 : 1}`, enviosA(telEnVentana, desde).length === (observa ? 2 : 1), enviosA(telEnVentana, desde))
 
-  const aDestiempo = intencion.respuesta({ destinatario: aVencido, texto: 'Esto llega fuera de la ventana', enRespuestaA: w('g') })
+  const aDestiempo = intencion.respuesta({ destinatario: aVencido, texto: 'Esto llega fuera de la ventana', enRespuestaA: w('g'), habla: VEZ_CERO })
   desde = envios.length
   const r6 = await despacharAnotada(aDestiempo)
   const fila6 = await filaDe(aDestiempo.clave)
@@ -234,7 +263,7 @@ try {
     { r6, agentes6 },
   )
 
-  const fantasma = intencion.respuesta({ destinatario: { tipo: 'cliente', negocio: LADERA, cliente: marcar.cliente(randomUUID()) }, texto: 'A nadie', enRespuestaA: w('h') })
+  const fantasma = intencion.respuesta({ destinatario: { tipo: 'cliente', negocio: LADERA, cliente: marcar.cliente(randomUUID()) }, texto: 'A nadie', enRespuestaA: w('h'), habla: VEZ_CERO })
   desde = envios.length
   const r7 = await despacharAnotada(fantasma)
   const fila7 = await filaDe(fantasma.clave)
@@ -242,7 +271,7 @@ try {
   afirmar('despachar: su fila queda no_salio, sin teléfono ni Cliente', fila7?.estado === 'no_salio' && fila7.telefono === null && fila7.clienteId === null && fila7.motivo === 'destinatario_de_otro_negocio', fila7)
 
   process.env.SALIDA_EN_EMERGENCIA = '*'
-  const enEmergencia = intencion.respuesta({ destinatario: aEnVentana, texto: 'En emergencia', enRespuestaA: w('i') })
+  const enEmergencia = intencion.respuesta({ destinatario: aEnVentana, texto: 'En emergencia', enRespuestaA: w('i'), habla: VEZ_CERO })
   desde = envios.length
   const r8 = await despacharAnotada(enEmergencia).finally(() => delete process.env.SALIDA_EN_EMERGENCIA)
   const fila8 = await filaDe(enEmergencia.clave)
@@ -292,7 +321,7 @@ try {
       else process.env.KAPSO_PHONE_NUMBER_ID = numero
     }
   }
-  const caida = intencion.respuesta({ destinatario: aEnVentana, texto: 'Con Kapso caído', enRespuestaA: w('k') })
+  const caida = intencion.respuesta({ destinatario: aEnVentana, texto: 'Con Kapso caído', enRespuestaA: w('k'), habla: VEZ_CERO })
   const agentesAntesDeLaCaida = (await agentesDe(enVentana.id)).length
   const erroresAntes = errores.length
   const r10 = await conKapsoCaido(() => despacharAnotada(caida))

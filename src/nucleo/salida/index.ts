@@ -1,13 +1,16 @@
 import { and, count, eq, max, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import { marcar, type CasoId, type Wamid } from '../identidad'
+import { marcar, type CasoId, type DuenoId, type VezDeToma, type Wamid } from '../identidad'
+import { QUIEN_LA_TIENE, reclamarConCerca, saldarConMensajeDelDueno } from './atencion'
 import {
   decidir,
+  hablaDe,
   MODO_DE_LA_COMPUERTA,
   seCumple,
   type AlCliente,
+  type AlTelefono,
   type DatosDeIntencion,
-  type Destinatario,
+  type DelAgente,
   type HechosDeEnvio,
   type IntencionDeEnvio,
   type IntencionEnsayada,
@@ -16,7 +19,7 @@ import {
 } from './compuerta'
 import { enviarPorKapso, numeroListo, type EnvioPorKapso } from './kapso'
 
-export type { AlCliente, Destinatario, IntencionDeEnvio, IntencionEnsayada, MotivoDeSilencio } from './compuerta'
+export type { AlCliente, DelAgente, Destinatario, IntencionDeEnvio, IntencionEnsayada, MotivoDeSilencio } from './compuerta'
 export { fueRechazado } from './kapso'
 
 /** Un aviso no lleva texto libre: ni el modelo ni el Dueño escriben uno. */
@@ -43,26 +46,31 @@ const conMarca = (d: DatosDeIntencion) => d as IntencionDeEnvio
 
 /** La única forma de tener una `IntencionDeEnvio`. Cada constructor arma la clave: quien llama nunca la escribe. */
 export const intencion = {
-  respuesta: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly enRespuestaA: Wamid }) =>
+  respuesta: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly enRespuestaA: Wamid; readonly habla: DelAgente }) =>
     conMarca({ clase: 'respuesta', ...a, clave: `respuesta:${a.enRespuestaA}` }),
 
   /** `vez` distingue un intento de otro: con la misma `vez`, otro clic no duplica. */
   resolucionDeCaso: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly caso: CasoId | null; readonly vez: string }) =>
     conMarca({ clase: 'resolucion_de_caso', destinatario: a.destinatario, texto: a.texto, caso: a.caso, clave: `caso:${a.caso ?? 'sin_caso'}:${a.vez}` }),
 
-  aviso: (a: { readonly destinatario: Destinatario; readonly aviso: AvisoDelNucleo; readonly enRespuestaA: Wamid }) =>
+  /** Un aviso a un Cliente lleva la vez del turno, porque también se calla si otro tomó la conversación. */
+  aviso: (a: { readonly aviso: AvisoDelNucleo; readonly enRespuestaA: Wamid } & ({ readonly destinatario: AlCliente; readonly habla: DelAgente } | { readonly destinatario: AlTelefono })) =>
     conMarca({
       clase: 'aviso_del_nucleo',
-      destinatario: a.destinatario,
+      ...('habla' in a ? { destinatario: a.destinatario, habla: a.habla } : { destinatario: a.destinatario }),
       enRespuestaA: a.enRespuestaA,
       texto: textoDelAviso(a.aviso),
       clave: `aviso:${a.aviso.cual}:${a.enRespuestaA}`,
     }),
+
+  /** `intento` lo genera la pantalla: con el mismo, otro clic no duplica. */
+  delDueno: (a: { readonly destinatario: AlCliente; readonly dueno: DuenoId; readonly vez: VezDeToma; readonly texto: string; readonly visto: Wamid | null; readonly intento: string }) =>
+    conMarca({ clase: 'del_dueno', destinatario: a.destinatario, texto: a.texto, visto: a.visto, habla: { tipo: 'dueno', vez: a.vez, dueno: a.dueno }, clave: `dueno:${a.destinatario.cliente}:${a.intento}` }),
 } as const
 
 /** Misma forma que `intencion.respuesta`, otra marca: la usa el turno en modo ensayo y `despachar` no la acepta. */
 export const ensayo = {
-  respuesta: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly enRespuestaA: Wamid }) =>
+  respuesta: (a: { readonly destinatario: AlCliente; readonly texto: string; readonly enRespuestaA: Wamid; readonly habla: DelAgente }) =>
     ({ clase: 'respuesta', ...a, clave: `ensayo:${a.enRespuestaA}` }) as DatosDeIntencion as IntencionEnsayada,
 } as const
 
@@ -96,17 +104,19 @@ export async function despachar(i: IntencionDeEnvio): Promise<ResultadoDeEnvio> 
   }
 }
 
+const enRespuestaADe = (i: DatosDeIntencion): Wamid | null => ('enRespuestaA' in i ? i.enRespuestaA : null)
+
 /** Un solo lote: `neon-http` no tiene transacciones interactivas. `telefono` es `null` solo si el Cliente no existe. */
 async function leerHechos(i: IntencionDeEnvio, ahora: Date): Promise<{ readonly hechos: HechosDeEnvio; readonly telefono: string | null }> {
   const { negocio } = i.destinatario
   const cliente = i.destinatario.tipo === 'cliente' ? i.destinatario.cliente : null
   const telefonoDado = i.destinatario.tipo === 'telefono' ? i.destinatario.telefono : null
-  const enRespuestaA = i.clase === 'resolucion_de_caso' ? null : i.enRespuestaA
+  const enRespuestaA = enRespuestaADe(i)
 
   const [negocios, clientes, entrantes, respuestas] = await db.batch([
     db.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(negocio ? eq(esquema.negocios.id, negocio) : sql`false`),
     db
-      .select({ negocio: esquema.clientes.negocioId, telefono: esquema.clientes.telefono, ultimo: esquema.clientes.ultimoMensajeEntrante })
+      .select({ negocio: esquema.clientes.negocioId, telefono: esquema.clientes.telefono, ultimo: esquema.clientes.ultimoMensajeEntrante, vez: esquema.clientes.vecesTomada, tiene: QUIEN_LA_TIENE })
       .from(esquema.clientes)
       .where(cliente ? eq(esquema.clientes.id, cliente) : sql`false`),
     db
@@ -128,7 +138,7 @@ async function leerHechos(i: IntencionDeEnvio, ahora: Date): Promise<{ readonly 
       emergenciaGlobal: emergencia.global,
       numeroPermitido: numeroListo(),
       negocio: n ? { modo: n.modo ?? 'armando', emergencia: emergencia.delNegocio } : null,
-      cliente: c ? { negocio: marcar.negocio(c.negocio) } : null,
+      cliente: c ? { negocio: marcar.negocio(c.negocio), vez: marcar.vez(c.vez), tiene: c.tiene ? marcar.dueno(c.tiene) : null } : null,
       ultimoEntrante: ultimo ? marcar.instante(ultimo) : null,
       respuestasAlMismoMensaje: respuestas[0]?.n ?? 0,
     },
@@ -148,12 +158,12 @@ type Destino = { readonly veredicto: Veredicto } & (
 )
 
 /** Pura. Sin teléfono no hay a quién mandar, en ningún modo. */
-function destinoDe(v: Veredicto, telefono: string | null): Destino {
+function destinoDe(v: Veredicto, i: DatosDeIntencion, telefono: string | null): Destino {
   if (telefono === null) {
     const motivo = v.tipo === 'no_sale' ? v.motivo : 'destinatario_de_otro_negocio'
     return { veredicto: { tipo: 'no_sale', motivo }, sale: false, motivo }
   }
-  if (v.tipo === 'no_sale' && seCumple(v, MODO_DE_LA_COMPUERTA)) return { veredicto: v, sale: false, motivo: v.motivo }
+  if (v.tipo === 'no_sale' && seCumple(v, i, MODO_DE_LA_COMPUERTA)) return { veredicto: v, sale: false, motivo: v.motivo }
   return { veredicto: v, sale: true, telefono }
 }
 
@@ -163,43 +173,54 @@ type Reclamo =
   | { readonly tipo: 'a_kapso'; readonly id: string; readonly telefono: string }
 
 /**
- * El INSERT es el reclamo. Si no entra, chocó con `clave` (el mismo intento: se devuelve lo guardado) o con el
- * índice parcial (otra instancia ya respondió ese mensaje entre la lectura y el INSERT). Entonces va una segunda y
- * última vez como `una_respuesta_por_mensaje`, que no choca con ese índice.
+ * El INSERT es el reclamo. Si no entra, chocó con `clave` (el mismo intento: se devuelve lo guardado), con la cerca (lo
+ * dice `decidir` al releer: una vez vieja no revive y una toma vencida no se extiende) o con el índice parcial (otra
+ * instancia ya respondió ese mensaje entre la lectura y el INSERT). Entonces va una segunda y última vez, con ese motivo.
  */
 async function reclamar(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: string | null, v: Veredicto): Promise<Reclamo> {
   const primero = await intentarReclamo(i, hechos, telefono, v)
   if (primero) return primero
-  const segundo = await intentarReclamo(i, hechos, telefono, { tipo: 'no_sale', motivo: 'una_respuesta_por_mensaje' })
+  const otraVez = hablaDe(i) ? decidir(i, (await leerHechos(i, new Date())).hechos) : null
+  const motivo = otraVez?.tipo === 'no_sale' && otraVez.motivo === 'no_le_toca' ? otraVez.motivo : 'una_respuesta_por_mensaje'
+  const segundo = await intentarReclamo(i, hechos, telefono, { tipo: 'no_sale', motivo })
   if (segundo) return segundo
   throw new Error(`[salida] ${i.clave} no entró ni quedó guardada`)
 }
 
 /** `null`: no entró y no hay fila con su clave, así que chocó con el índice parcial. */
 async function intentarReclamo(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: string | null, v: Veredicto): Promise<Reclamo | null> {
-  const destino = destinoDe(v, telefono)
-  const [fila] = await db
-    .insert(esquema.mensajesSalientes)
-    .values({
-      clave: i.clave,
-      negocioId: i.destinatario.negocio,
-      clienteId: i.destinatario.tipo === 'cliente' && hechos.cliente ? i.destinatario.cliente : null,
-      casoId: i.clase === 'resolucion_de_caso' ? i.caso : null,
-      telefono,
-      clase: i.clase,
-      enRespuestaA: i.clase === 'resolucion_de_caso' ? null : i.enRespuestaA,
-      veredicto: destino.veredicto.tipo,
-      motivo: destino.veredicto.tipo === 'no_sale' ? destino.veredicto.motivo : null,
-      estado: destino.sale ? 'por_enviar' : 'no_salio',
-    })
-    .onConflictDoNothing()
-    .returning({ id: esquema.mensajesSalientes.id })
+  const destino = destinoDe(v, i, telefono)
+  const habla = hablaDe(i)
+  // Una fila frenada por la toma no puede ocupar la clave: bloquearía al turno que sí debe contestar ese mensaje.
+  const clave = !destino.sale && destino.motivo === 'no_le_toca' && habla ? `${i.clave}:frenada:${habla.vez}` : i.clave
+  const clienteId = i.destinatario.tipo === 'cliente' && hechos.cliente ? i.destinatario.cliente : null
+  const enRespuestaA = enRespuestaADe(i)
+  const motivo = destino.veredicto.tipo === 'no_sale' ? destino.veredicto.motivo : null
+  const [fila] =
+    destino.sale && habla && clienteId
+      ? [await reclamarConCerca({ clave, negocioId: i.destinatario.negocio, clienteId, telefono: destino.telefono, clase: i.clase, enRespuestaA, veredicto: destino.veredicto.tipo, motivo }, habla)].flatMap((f) => (f ? [f] : []))
+      : await db
+          .insert(esquema.mensajesSalientes)
+          .values({
+            clave,
+            negocioId: i.destinatario.negocio,
+            clienteId,
+            casoId: i.clase === 'resolucion_de_caso' ? i.caso : null,
+            telefono,
+            clase: i.clase,
+            enRespuestaA,
+            veredicto: destino.veredicto.tipo,
+            motivo,
+            estado: destino.sale ? 'por_enviar' : 'no_salio',
+          })
+          .onConflictDoNothing()
+          .returning({ id: esquema.mensajesSalientes.id })
   if (fila) return destino.sale ? { tipo: 'a_kapso', id: fila.id, telefono: destino.telefono } : { tipo: 'frenado', motivo: destino.motivo }
 
   const [guardada] = await db
     .select({ estado: esquema.mensajesSalientes.estado, wamid: esquema.mensajesSalientes.wamid, motivo: esquema.mensajesSalientes.motivo, error: esquema.mensajesSalientes.error })
     .from(esquema.mensajesSalientes)
-    .where(eq(esquema.mensajesSalientes.clave, i.clave))
+    .where(eq(esquema.mensajesSalientes.clave, clave))
   return guardada ? { tipo: 'ya_estaba', resultado: resultadoGuardado(guardada) } : null
 }
 
@@ -241,14 +262,12 @@ async function registrarEnvio(id: string, i: IntencionDeEnvio, cliente: HechosDe
     await estado
     return
   }
-  await db.batch([
-    estado,
-    db.insert(esquema.mensajesCliente).values({
-      negocioId: cliente.negocio,
-      clienteId: d.cliente,
-      rol: 'agente',
-      texto: i.texto,
-      wamid: envio.tipo === 'enviado' ? envio.wamid : null,
-    }),
-  ])
+  const fila = db.insert(esquema.mensajesCliente).values({
+    negocioId: cliente.negocio,
+    clienteId: d.cliente,
+    rol: i.clase === 'del_dueno' ? 'dueno' : 'agente',
+    texto: i.texto,
+    wamid: envio.tipo === 'enviado' ? envio.wamid : null,
+  })
+  await (i.clase === 'del_dueno' ? db.batch([estado, fila, saldarConMensajeDelDueno(d.cliente, i.visto)]) : db.batch([estado, fila]))
 }

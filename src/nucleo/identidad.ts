@@ -15,6 +15,8 @@ export type CapacidadFaltanteId = Marca<string, 'CapacidadFaltanteId'>
 export type Wamid = Marca<string, 'Wamid'>
 /** sha256 de un contenido canónico: ata un botón a exactamente lo que el Dueño vio. */
 export type Huella = Marca<string, 'Huella'>
+/** Cuántas veces se había tomado una conversación cuando empezó un turno o una toma: es la cerca contra lo que quedó viejo. */
+export type VezDeToma = Marca<number, 'VezDeToma'>
 /** UTC, ISO 8601. */
 export type Instante = Marca<string, 'Instante'>
 
@@ -23,6 +25,7 @@ export const marcar = {
   negocio: (id: string) => id as NegocioId,
   dueno: (id: string) => id as DuenoId,
   cliente: (id: string) => id as ClienteId,
+  vez: (n: number) => n as VezDeToma,
   caso: (id: string) => id as CasoId,
   wamid: (id: string) => id as Wamid,
   instante: (d: Date) => d.toISOString() as Instante,
