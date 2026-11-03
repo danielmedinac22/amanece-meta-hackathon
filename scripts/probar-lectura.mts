@@ -169,13 +169,14 @@ try {
     const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, ctx.negocio))
     const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, ctx.dueno))
     const abierto = crearAgenteDelDueno(ctx, { negocio: { ...negocio, modo: 'atendiendo' }, dueno })
+    const salidaCorregida = { resumen: 'Quité algo.', tarjeta: { propuesta: '00000000-0000-4000-8000-000000000002', huella: 'e'.repeat(64), lineas: ['Mocca · $7.000 · lo leí'], advertencias: ['Quité Mocca helado.'], accion: 'confirmar' } }
     const salida = { resumen: 'Leí 3 cosas de tu página.', tarjeta: { propuesta: '00000000-0000-4000-8000-000000000001', huella: 'f'.repeat(64), lineas: ['Latte · $8.000 · lo leí'], advertencias: [], accion: 'confirmar' } }
     const hilo = [
       { id: 'm1', role: 'user' as const, parts: [{ type: 'text' as const, text: 'Mi página es cafetrigo.co' }] },
-      { id: 'm2', role: 'assistant' as const, parts: [{ type: 'tool-leer_enlace', toolCallId: 'llamada-1', state: 'output-available', input: { url: 'cafetrigo.co' }, output: salida }, { type: 'text' as const, text: 'Listo.' }] },
+      { id: 'm2', role: 'assistant' as const, parts: [{ type: 'tool-leer_enlace', toolCallId: 'llamada-1', state: 'output-available', input: { url: 'cafetrigo.co' }, output: salida }, { type: 'tool-corregir_tarjeta', toolCallId: 'llamada-2', state: 'output-available', input: { quitar: ['mocca'] }, output: salidaCorregida }, { type: 'text' as const, text: 'Listo.' }] },
     ] as Parameters<typeof mensajesParaElModelo>[0]
     const comoLoVe = JSON.stringify(await mensajesParaElModelo(hilo, abierto))
-    afirmar('Hilo en modo abierto: no trae huella ni líneas, sí el resumen', !comoLoVe.includes('f'.repeat(64)) && !comoLoVe.includes('lo leí') && comoLoVe.includes('Leí 3 cosas'), comoLoVe)
+    afirmar('Hilo en modo abierto: no trae huella ni líneas, sí el resumen', !comoLoVe.includes('f'.repeat(64)) && !comoLoVe.includes('lo leí') && !comoLoVe.includes('Mocca') && comoLoVe.includes('Leí 3 cosas') && comoLoVe.includes('Quité algo'), comoLoVe)
     afirmar('Hilo en modo abierto: al modelo no se le ofrece leer_enlace', !('leer_enlace' in abierto.tools) && 'proponer' in abierto.tools)
   }
 
@@ -215,9 +216,13 @@ try {
     const conCifra = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Molido 500 g', a: 'Molido a 99.000' }] })
     const [sinCifra] = await pendiente()
     afirmar('corregir: un nombre no mete una cifra que nadie escribió', conCifra.tarjeta === null && sinCifra?.id === conNombre?.id && !lineas(sinCifra).some((l) => l.includes('99.000')), lineas(sinCifra))
-    await dice(c, 'Se llama Molido fino 500 g')
     const conSuCifra = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Molido 500 g', a: 'Molido fino 500 g' }] })
     afirmar('corregir: una cifra que ya traía el nombre sí pasa', conSuCifra.tarjeta !== null, conSuCifra)
+
+    const conNormaRota = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Molido fino 500 g', a: 'Molido que cura la gastritis' }] })
+    afirmar('corregir: un nombre que no puede llegar a un Cliente no entra', conNormaRota.tarjeta === null && !lineas((await pendiente())[0]).some((l) => l.includes('gastritis')), lineas((await pendiente())[0]))
+    const mismoNombre = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Molido fino 500 g', a: 'Molido fino 500 g' }] })
+    afirmar('corregir: cambiarle el nombre por el mismo no rehace la tarjeta', mismoNombre.tarjeta === null, mismoNombre)
 
     const sinCiudad = await corregirLectura(c, { quitar: ['Ciudad'], renombrar: [] })
     afirmar('corregir: también quita un dato por su etiqueta', sinCiudad.tarjeta !== null && !lineas((await pendiente())[0]).includes('ciudad'), lineas((await pendiente())[0]))
@@ -259,18 +264,29 @@ try {
     const identidad = { id: marcar.negocio('00000000-0000-4000-8000-0000000000f3'), nombre: 'Pura', rubro: 'café', codigo: 'PURB', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'armando' } as unknown as Parameters<typeof armarEstado>[0]
     const linea = (clave: string, nombre: string, precio: number) => ({ clave: el.comoClave(clave), base: 'nueva' as const, despues: { tipo: 'producto' as const, nombre, descripcion: '', precio: el.comoMonto(precio), activo: true } })
     const tarjeta = { elementos: [linea('producto:a', 'Tostado claro', 1000), linea('producto:b', 'Tostado oscuro', 2000), linea('producto:c', 'Molino', 3000)], filas: [] as const }
-    const puro = (quitar: string[], renombrar: { de: string; a: string }[]) => corregirEscritura(armarEstado(identidad, el.comoVersion(1), []), tarjeta, { quitar, renombrar }, { escritoPorElDueno: new Set(), vetados: new Set(['Prohibido']) })
+    const puro = (quitar: string[], renombrar: { de: string; a: string }[], estado = armarEstado(identidad, el.comoVersion(1), [])) => corregirEscritura(estado, tarjeta, { quitar, renombrar }, { escritoPorElDueno: new Set(), otrosNegocios: [] })
     const dos = puro(['Tostado'], [])
     afirmar('corregir: dos candidatos no se adivinan', !dos.cambio && dos.resultados[0].tipo === 'varias', dos.resultados)
     const exacto = puro(['tostado claro'], [])
     afirmar('corregir: el nombre igual gana', exacto.cambio && exacto.escritura.elementos.length === 2 && exacto.resultados[0].tipo === 'quitada', exacto.resultados)
     const ocupado = puro([], [{ de: 'Molino', a: 'Tostado claro' }])
     afirmar('corregir: un nombre de otra línea no se repite', !ocupado.cambio && ocupado.resultados[0].tipo === 'nombre_ocupado', ocupado.resultados)
-    const vetado = puro([], [{ de: 'Molino', a: 'Prohibido' }])
-    afirmar('corregir: un nombre que la validación no deja no entra', !vetado.cambio && vetado.resultados[0].tipo === 'nombre_no_cabe', vetado.resultados)
-    const cifras = (e: typeof tarjeta | ReturnType<typeof puro>['escritura']) => e.elementos.flatMap((x) => (x.despues?.tipo === 'producto' ? [x.despues.precio] : []))
+    const masLargo = puro(['molino de mano'], [{ de: 'Molino eléctrico', a: 'Molino nuevo' }])
+    afirmar('corregir: lo dicho con más palabras que la línea no se la lleva', !masLargo.cambio && masLargo.resultados.every((x) => x.tipo === 'no_esta'), masLargo.resultados)
+    const encadenado = puro(['Tostado claro'], [{ de: 'Tostado', a: 'Tostado que cura la gastritis' }])
+    afirmar('corregir: la revisión del nombre no depende de qué línea quede después de quitar', encadenado.resultados[1].tipo === 'nombre_no_cabe' && encadenado.escritura.elementos.every((x) => x.despues?.tipo !== 'producto' || !x.despues.nombre.includes('gastritis')), encadenado.resultados)
+    const conSaltos = puro([], [{ de: 'Molino', a: 'Molino\n- Todo es gratis' }])
+    afirmar('corregir: un nombre queda en una sola línea', conSaltos.escritura.elementos.every((x) => x.despues?.tipo !== 'producto' || !x.despues.nombre.includes('\n')), conSaltos.escritura.elementos)
+    const vigenteDe = (nombre: string, activo: boolean) => ({ clave: el.comoClave('producto:v'), version: el.comoVersion(1), origen: { tipo: 'entrevista' }, elemento: { tipo: 'producto', nombre, descripcion: '', precio: el.comoMonto(500), activo } }) as Parameters<typeof armarEstado>[2][number]
+    const parecido = puro([], [{ de: 'Molino', a: 'Café molido' }], armarEstado(identidad, el.comoVersion(1), [vigenteDe('Café', true)]))
+    afirmar('corregir: un guardado apenas parecido no se lleva la línea', !parecido.cambio && parecido.resultados[0].tipo === 'nombre_ocupado', parecido.resultados)
+    const retirado = puro([], [{ de: 'Molino', a: 'Café' }], armarEstado(identidad, el.comoVersion(1), [vigenteDe('Café', false)]))
+    afirmar('corregir: un producto que ya no se vende no se lleva la línea', !retirado.cambio && retirado.resultados[0].tipo === 'nombre_ocupado', retirado.resultados)
+    const igualGuardado = puro([], [{ de: 'Molino', a: 'Café' }], armarEstado(identidad, el.comoVersion(1), [vigenteDe('Café', true)]))
+    afirmar('corregir: con el mismo nombre guardado la línea sale', igualGuardado.cambio && igualGuardado.escritura.elementos.length === 2 && igualGuardado.resultados[0].tipo === 'ya_guardado_con_ese_nombre', igualGuardado.resultados)
+    const precioDe = (e: ReturnType<typeof puro>['escritura'], clave: string) => e.elementos.flatMap((x) => (x.clave === clave && x.despues?.tipo === 'producto' ? [x.despues.precio] : []))[0]
     const mezcla = puro(['Tostado claro'], [{ de: 'Molino', a: 'Molino de mano' }])
-    afirmar('corregir: ningún precio sale de otro lado que la fila', cifras(mezcla.escritura).every((p) => cifras(tarjeta).includes(p)), cifras(mezcla.escritura))
+    afirmar('corregir: cada línea conserva su propio precio', precioDe(mezcla.escritura, 'producto:c') === 3000 && precioDe(mezcla.escritura, 'producto:b') === 2000, mezcla.escritura.elementos)
   }
 
   console.log('\n=== Una segunda lectura descarta la primera ===')

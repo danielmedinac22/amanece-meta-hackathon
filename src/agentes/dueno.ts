@@ -153,7 +153,8 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       return await trabajo()
     } catch (e) {
       console.error('[dueno] una herramienta falló', e)
-      return { resumen: `No pude hacerlo: ${e instanceof Error ? e.message : String(e)}. Díselo al Dueño con palabras sencillas.`, tarjeta: null }
+      // No el mensaje del error: el de una consulta trae sus parámetros, y ahí va lo leído de la página.
+      return { resumen: 'No pude hacerlo por un problema técnico. Díselo al Dueño con palabras sencillas.', tarjeta: null }
     }
   }
 
@@ -270,7 +271,9 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     execute: ({ quitar = [], renombrar = [] }) =>
       conTarjeta(async () => {
         const r = await corregirLectura(ctx, { quitar, renombrar })
-        return { resumen: negocio.modo === 'armando' ? `${r.resumen} ${await faltaAhora()}` : r.resumen, tarjeta: r.tarjeta }
+        // Ya quedó hecho: si leer lo que falta se cae, la tarjeta nueva igual tiene que llegar, o nadie vería su botón.
+        const sigue = negocio.modo === 'armando' ? await faltaAhora().catch(() => '') : r.tarjeta ? '' : 'Si el Dueño quiere cambiar algo ya guardado, eso va con proponer.'
+        return { resumen: [r.resumen, sigue].filter(Boolean).join(' '), tarjeta: r.tarjeta }
       }),
     toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
   })

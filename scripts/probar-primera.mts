@@ -180,13 +180,18 @@ try {
     const conAmericano = await lecturaPendiente(n.ctx.negocio)
     afirmar('corregir: otro nombre al mismo precio queda en la tarjeta con el precio leído', productosEn(conAmericano).some((p) => /americano/i.test(p.nombre) && p.precio === 3500) && !productosEn(conAmericano).some((p) => /tinto/i.test(p.nombre)) && !(await leerAplicado(n.ctx.negocio)).vigentes('producto').some((v) => v.elemento.precio === 3500), productosEn(conAmericano))
 
-    const [fila] = conAmericano ? await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, conAmericano.propuesta)) : []
+    await dice(n, `${EMPIEZA_A_CORREGIR}no se llama Café en grano 250 g, se llama Grano de la casa 250 g y vale 23.000`, puertos)
+    const conGrano = await lecturaPendiente(n.ctx.negocio)
+    const delGrano = (await leerAplicado(n.ctx.negocio)).vigentes('producto').filter((v) => /grano de la casa/i.test(v.elemento.nombre))
+    afirmar('corregir: otro nombre y otro precio queda guardado, y el viejo sale de la tarjeta', delGrano.length === 1 && delGrano[0].elemento.precio === 23000 && !productosEn(conGrano).some((p) => /grano/i.test(p.nombre)), { delGrano: delGrano.map((v) => v.elemento), tarjeta: productosEn(conGrano) })
+
+    const [fila] = conGrano ? await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, conGrano.propuesta)) : []
     const r = fila ? await aprobar(n.ctx, fila.id, fila.huella) : null
     const [despues] = fila ? await db.select({ estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.id, fila.id)) : []
     afirmar('corregir: termina en el botón, y eso es lo que la tarjeta pinta como Confirmada', r?.tipo === 'aplicado' && despues?.estado === 'aplicada' && (await lecturaPendiente(n.ctx.negocio)) === null, { r, despues })
     const productos = (await leerAplicado(n.ctx.negocio)).vigentes('producto').filter((v) => v.elemento.activo)
     const versiones = await versionesDeProductos(n.negocioId)
-    afirmar('corregir: al final está lo corregido, sin lo quitado, y el Latte nunca estuvo a 8.000', productos.length === cuantosLeyo - 1 && productos.some((v) => /latte/i.test(v.elemento.nombre) && v.elemento.precio === 9000) && productos.some((v) => /americano/i.test(v.elemento.nombre) && v.elemento.precio === 3500) && versiones.every((p) => !p || (!/capuchino|tinto/i.test(p.nombre) && (!/latte/i.test(p.nombre) || p.precio !== 8000))), productos.map((v) => [v.elemento.nombre, v.elemento.precio]))
+    afirmar('corregir: al final está lo corregido, sin lo quitado, y el Latte nunca estuvo a 8.000', productos.length === cuantosLeyo - 1 && productos.some((v) => /latte/i.test(v.elemento.nombre) && v.elemento.precio === 9000) && productos.some((v) => /americano/i.test(v.elemento.nombre) && v.elemento.precio === 3500) && versiones.every((p) => !p || (!/capuchino|tinto|café en grano/i.test(p.nombre) && (!/latte/i.test(p.nombre) || p.precio !== 8000))), productos.map((v) => [v.elemento.nombre, v.elemento.precio]))
 
     titulo('Corregir: abierto y sin tarjeta, quitar un producto guardado sigue yendo por proponer')
     await dice(n, 'Listo, ábrelo.', puertos)

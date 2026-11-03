@@ -11,12 +11,12 @@ import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
 import type { PaginaLeida } from '@/lib/leer-enlace'
 import { modelo } from '@/lib/modelo'
-import { leerAplicado, valorDelDato, type CambioDeElemento, type ElementoVigente, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
+import { leerAplicado, otrosNegocios, valorDelDato, type CambioDeElemento, type ElementoVigente, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, definicionDe, ETIQUETA_DEL_DATO, pesos, type CampoDeConocimiento, type Elemento } from '../estado/elementos'
 import { marcar, type ContextoDelDueno, type DuenoId, type NegocioId, type PropuestaId } from '../identidad'
-import { montosEn } from '../salida/revisar'
+import { montosEn, revisarTextoDelDueno } from '../salida/revisar'
 import { filaNueva, type TarjetaDeAprobacion } from './fila'
-import { traducir, type QuierePoner } from './traducir'
+import type { QuierePoner } from './traducir'
 
 // ══ Números y productos ═════════════════════════════════════════════════════════════════════════
 
@@ -215,7 +215,7 @@ export function lineasDeLaTarjeta(estado: EstadoDelNegocio, escritura: Escritura
   })
   const tuyas = estado
     .vigentes('producto')
-    .filter((v) => v.elemento.activo)
+    .filter((v) => v.elemento.activo && v.origen.tipo === 'entrevista')
     .map((v) => `${v.elemento.nombre} · ${pesos(v.elemento.precio)} · lo escribiste tú`)
   return [`Esto leí de ${fuente}. Tu agente de clientes no lo usa hasta que lo confirmes.`, ...leidas, ...tuyas, 'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.']
 }
@@ -246,7 +246,7 @@ export const cifrasDeLaTarjeta = (escritura: Escritura | null): ReadonlySet<numb
 type FilaDePropuesta = typeof esquema.propuestas.$inferSelect
 
 /** El único que cambia una tarjeta de lectura: la fila no se edita, se descarta y entra otra en la misma transacción. Si no queda nada, no hay tarjeta. */
-async function reemplazarPendiente(tx: Transaccion, negocio: NegocioId, p: FilaDePropuesta, quedan: Escritura, estado: EstadoDelNegocio): Promise<TarjetaDeAprobacion | null> {
+async function reemplazarPendiente(tx: Transaccion, negocio: NegocioId, p: FilaDePropuesta, quedan: Escritura, estado: EstadoDelNegocio, advertencias: readonly string[] = []): Promise<TarjetaDeAprobacion | null> {
   await tx.update(esquema.propuestas).set({ estado: 'descartada' }).where(eq(esquema.propuestas.id, p.id))
   if (!quedan.elementos.length) return null
   const fuente = fuenteDe(p.palabrasDelDueno)
@@ -259,7 +259,7 @@ async function reemplazarPendiente(tx: Transaccion, negocio: NegocioId, p: FilaD
     actos: [],
     revierte: null,
     version: estado.version,
-    vistaPrevia: { lineas: lineasDeLaTarjeta(estado, quedan, fuente), advertencias: [] },
+    vistaPrevia: { lineas: lineasDeLaTarjeta(estado, quedan, fuente), advertencias },
   })
   await tx.insert(esquema.propuestas).values(valores)
   return tarjeta
@@ -285,9 +285,9 @@ export async function rearmarLectura(tx: Transaccion, negocio: NegocioId, estado
 export type CorreccionDeTarjeta = { readonly quitar: readonly string[]; readonly renombrar: readonly { readonly de: string; readonly a: string }[] }
 
 export type ResultadoDeLinea = { readonly dicho: string } & (
-  | { readonly tipo: 'quitada' }
-  | { readonly tipo: 'renombrada'; readonly a: string }
-  | { readonly tipo: 'ya_guardado_con_ese_nombre'; readonly a: string }
+  | { readonly tipo: 'quitada'; readonly linea: string }
+  | { readonly tipo: 'renombrada'; readonly linea: string; readonly a: string }
+  | { readonly tipo: 'ya_guardado_con_ese_nombre'; readonly linea: string; readonly a: string }
   | { readonly tipo: 'no_esta' }
   | { readonly tipo: 'varias'; readonly cuantas: number }
   | { readonly tipo: 'ya_guardado' }
@@ -296,61 +296,66 @@ export type ResultadoDeLinea = { readonly dicho: string } & (
   | { readonly tipo: 'nombre_no_cabe'; readonly a: string }
 )
 
-type Encontrada = { readonly tipo: 'una'; readonly cambio: CambioDeElemento } | { readonly tipo: 'no_esta' } | { readonly tipo: 'varias'; readonly cuantas: number }
+type LineaDeProducto = CambioDeElemento & { readonly despues: Extract<Elemento, { tipo: 'producto' }> }
+const esDeProducto = (c: CambioDeElemento): c is LineaDeProducto => c.despues?.tipo === 'producto'
 
-/** Primero el nombre igual, como `buscarProducto`. Si no, `mismoProducto` decide, y dos candidatos no se adivinan. */
-function buscarEnLaTarjeta(escritura: Escritura, dicho: string, conDatos: boolean): Encontrada {
-  const productos = escritura.elementos.filter((c) => c.despues?.tipo === 'producto')
-  const nombre = (c: CambioDeElemento) => (c.despues?.tipo === 'producto' ? c.despues.nombre : '')
-  const igual = productos.find((c) => plano(nombre(c)) === plano(dicho))
-  if (igual) return { tipo: 'una', cambio: igual }
-  const parecidos = productos.filter((c) => mismoProducto(nombre(c), dicho))
-  if (parecidos.length > 1) return { tipo: 'varias', cuantas: parecidos.length }
-  if (parecidos[0]) return { tipo: 'una', cambio: parecidos[0] }
-  const dato = conDatos ? escritura.elementos.find((c) => c.despues?.tipo === 'dato' && plano(ETIQUETA_DEL_DATO[c.despues.campo]) === plano(dicho)) : undefined
-  return dato ? { tipo: 'una', cambio: dato } : { tipo: 'no_esta' }
+type Encontrada = { readonly tipo: 'una'; readonly linea: LineaDeProducto } | { readonly tipo: 'no_esta' } | { readonly tipo: 'varias'; readonly cuantas: number }
+
+/**
+ * Primero el nombre igual. Si no, las líneas que traen todas las palabras dichas, y dos no se adivinan. Más estricta
+ * que `mismoProducto` a propósito: «latte frío» es el mismo producto que «Latte», pero quitar la línea equivocada no se recupera sin volver a leer.
+ */
+function buscarLinea(elementos: readonly CambioDeElemento[], dicho: string): Encontrada {
+  const productos = elementos.filter(esDeProducto)
+  const igual = productos.find((c) => plano(c.despues.nombre) === plano(dicho))
+  if (igual) return { tipo: 'una', linea: igual }
+  const palabras = [...palabrasDe(dicho)]
+  const conTodas = palabras.length ? productos.filter((c) => palabras.every((w) => palabrasDe(c.despues.nombre).has(w))) : []
+  if (conTodas.length > 1) return { tipo: 'varias', cuantas: conTodas.length }
+  return conTodas[0] ? { tipo: 'una', linea: conTodas[0] } : { tipo: 'no_esta' }
 }
 
 /**
  * Pura. Dobla la corrección sobre la tarjeta, en orden. Solo saca líneas o les cambia el nombre, y el precio solo sale
- * de la fila, así que un precio leído sigue esperando el botón. `vetados` son los nombres que la validación no deja.
+ * de la fila, así que un precio leído sigue esperando el botón.
  */
-export function corregirEscritura(estado: EstadoDelNegocio, escritura: Escritura, c: CorreccionDeTarjeta, fuentes: { readonly escritoPorElDueno: ReadonlySet<number>; readonly vetados: ReadonlySet<string> }): { readonly escritura: Escritura; readonly resultados: readonly ResultadoDeLinea[]; readonly cambio: boolean } {
+export function corregirEscritura(estado: EstadoDelNegocio, escritura: Escritura, c: CorreccionDeTarjeta, fuentes: { readonly escritoPorElDueno: ReadonlySet<number>; readonly otrosNegocios: readonly string[] }): { readonly escritura: Escritura; readonly resultados: readonly ResultadoDeLinea[]; readonly cambio: boolean } {
   let elementos = escritura.elementos
   const resultados: ResultadoDeLinea[] = []
   const sinEncontrar = (dicho: string, e: Exclude<Encontrada, { tipo: 'una' }>): ResultadoDeLinea => (e.tipo === 'varias' ? { dicho, tipo: 'varias', cuantas: e.cuantas } : buscarProducto(estado, dicho) ? { dicho, tipo: 'ya_guardado' } : { dicho, tipo: 'no_esta' })
 
   for (const dicho of c.quitar) {
-    const e = buscarEnLaTarjeta({ ...escritura, elementos }, dicho, true)
-    if (e.tipo !== 'una') {
-      resultados.push(sinEncontrar(dicho, e))
-      continue
-    }
-    elementos = elementos.filter((x) => x !== e.cambio)
-    resultados.push({ dicho, tipo: 'quitada' })
+    const e = buscarLinea(elementos, dicho)
+    const dato = elementos.find((x) => x.despues?.tipo === 'dato' && plano(ETIQUETA_DEL_DATO[x.despues.campo]) === plano(dicho))
+    if (e.tipo === 'una') {
+      elementos = elementos.filter((x) => x !== e.linea)
+      resultados.push({ dicho, tipo: 'quitada', linea: e.linea.despues.nombre })
+    } else if (e.tipo === 'no_esta' && dato) {
+      elementos = elementos.filter((x) => x !== dato)
+      resultados.push({ dicho, tipo: 'quitada', linea: dicho })
+    } else resultados.push(sinEncontrar(dicho, e))
   }
 
   for (const { de, a: crudo } of c.renombrar) {
-    const a = crudo.trim()
-    const e = buscarEnLaTarjeta({ ...escritura, elementos }, de, false)
+    const a = crudo.replace(/\s+/g, ' ').trim()
+    const e = buscarLinea(elementos, de)
     if (e.tipo !== 'una') {
       resultados.push(sinEncontrar(de, e))
       continue
     }
-    const linea = e.cambio
-    if (linea.despues?.tipo !== 'producto') continue
-    const producto = linea.despues
-    const delNombreViejo = numerosEn(producto.nombre)
+    const { linea } = e
+    const delNombreViejo = numerosEn(linea.despues.nombre)
+    const guardado = buscarProducto(estado, a)
     if ([...numerosEn(a)].some((n) => !delNombreViejo.has(n) && !fuentes.escritoPorElDueno.has(n))) resultados.push({ dicho: de, tipo: 'cifra_sin_fuente', a })
-    else if (buscarProducto(estado, a)) {
-      // Lo que el Dueño ya escribió manda, como en `sinLoYaEscrito`: da igual en qué orden llegan guardar y renombrar.
+    else if (revisarTextoDelDueno(a, fuentes.otrosNegocios).length) resultados.push({ dicho: de, tipo: 'nombre_no_cabe', a })
+    else if (guardado?.elemento.activo && plano(guardado.elemento.nombre) === plano(a)) {
+      // Lo guardado manda, como en `sinLoYaEscrito`: da igual en qué orden llegan guardar y renombrar.
       elementos = elementos.filter((x) => x !== linea)
-      resultados.push({ dicho: de, tipo: 'ya_guardado_con_ese_nombre', a })
-    } else if (fuentes.vetados.has(a)) resultados.push({ dicho: de, tipo: 'nombre_no_cabe', a })
-    else if (elementos.some((x) => x !== linea && x.despues?.tipo === 'producto' && mismoProducto(x.despues.nombre, a))) resultados.push({ dicho: de, tipo: 'nombre_ocupado', a })
+      resultados.push({ dicho: de, tipo: 'ya_guardado_con_ese_nombre', linea: linea.despues.nombre, a })
+    } else if (guardado || elementos.some((x) => x !== linea && esDeProducto(x) && mismoProducto(x.despues.nombre, a))) resultados.push({ dicho: de, tipo: 'nombre_ocupado', a })
     else {
-      elementos = elementos.map((x) => (x === linea ? { ...x, despues: { ...producto, nombre: a } } : x))
-      resultados.push({ dicho: de, tipo: 'renombrada', a })
+      if (linea.despues.nombre !== a) elementos = elementos.map((x) => (x === linea ? { ...linea, despues: { ...linea.despues, nombre: a } } : x))
+      resultados.push({ dicho: de, tipo: 'renombrada', linea: linea.despues.nombre, a })
     }
   }
 
@@ -358,6 +363,7 @@ export function corregirEscritura(estado: EstadoDelNegocio, escritura: Escritura
   return { escritura: { ...escritura, elementos }, resultados, cambio }
 }
 
+/** Lo que le llega al modelo: solo repite lo que él pasó, porque lo leído de la página no entra a su contexto. */
 function resultadoEnPalabras(r: ResultadoDeLinea): string {
   switch (r.tipo) {
     case 'quitada':
@@ -365,15 +371,15 @@ function resultadoEnPalabras(r: ResultadoDeLinea): string {
     case 'renombrada':
       return `En la tarjeta, «${r.dicho}» ahora se llama «${r.a}» y sigue con su precio.`
     case 'ya_guardado_con_ese_nombre':
-      return `Quité «${r.dicho}» de la tarjeta, porque «${r.a}» ya está guardado con lo que escribió el Dueño.`
+      return `Quité «${r.dicho}» de la tarjeta, porque «${r.a}» ya está guardado y manda lo guardado.`
     case 'no_esta':
       return `Nada de la tarjeta coincide con «${r.dicho}»: eso no cambió. Pregúntale al Dueño cómo sale en la tarjeta.`
     case 'varias':
       return `«${r.dicho}» coincide con ${r.cuantas} líneas de la tarjeta: eso no cambió. Pregúntale al Dueño cuál es, con el nombre como sale en la tarjeta.`
     case 'ya_guardado':
-      return `«${r.dicho}» no está en la tarjeta porque ya está guardado, y esto no lo cambia: díselo al Dueño.`
+      return `«${r.dicho}» no está en la tarjeta porque ya está guardado: esta herramienta no lo cambia.`
     case 'nombre_ocupado':
-      return `«${r.dicho}» no cambió: en la tarjeta ya hay otra línea con el nombre «${r.a}». Pregúntale al Dueño si es otro producto.`
+      return `«${r.dicho}» no cambió: ya hay otro producto con el nombre «${r.a}» o uno muy parecido. Pregúntale al Dueño si es otro producto.`
     case 'cifra_sin_fuente':
       return `«${r.dicho}» no cambió: el nombre «${r.a}» trae una cifra que el Dueño no escribió. Pregúntale cómo se llama.`
     case 'nombre_no_cabe':
@@ -381,16 +387,17 @@ function resultadoEnPalabras(r: ResultadoDeLinea): string {
   }
 }
 
-/** Los nombres nuevos que la validación de un producto no deja. Va antes de abrir la transacción, y el nombre no depende de lo que cambie adentro. */
-async function nombresVetados(estado: Awaited<ReturnType<typeof leerAplicado>>, escritura: Escritura, c: CorreccionDeTarjeta): Promise<ReadonlySet<string>> {
-  const vetados = new Set<string>()
-  for (const { de, a } of c.renombrar) {
-    const e = buscarEnLaTarjeta(escritura, de, false)
-    if (e.tipo !== 'una' || e.cambio.despues?.tipo !== 'producto') continue
-    const t = await traducir(estado, [{ tipo: 'poner', elemento: { ...e.cambio.despues, nombre: a.trim() }, reemplaza: null }])
-    if ('tipo' in t) vetados.add(a.trim())
+/** Lo que el Dueño lee arriba de la tarjeta nueva: la línea real que cambió, que puede no ser lo que él dijo. */
+function cambioEnLaTarjeta(r: ResultadoDeLinea): readonly string[] {
+  switch (r.tipo) {
+    case 'quitada':
+    case 'ya_guardado_con_ese_nombre':
+      return [`Quité ${r.linea}.`]
+    case 'renombrada':
+      return r.linea === r.a ? [] : [`${r.linea} ahora se llama ${r.a}.`]
+    default:
+      return []
   }
-  return vetados
 }
 
 /**
@@ -399,18 +406,16 @@ async function nombresVetados(estado: Awaited<ReturnType<typeof leerAplicado>>, 
  */
 export async function corregirLectura(ctx: ContextoDelDueno, c: CorreccionDeTarjeta): Promise<{ readonly resumen: string; readonly tarjeta: TarjetaDeAprobacion | null }> {
   if (!c.quitar.length && !c.renombrar.length) return { resumen: 'No mandaste nada para corregir.', tarjeta: null }
-  const [estado, escritoPorElDueno, pendiente] = await Promise.all([leerAplicado(ctx.negocio), numerosDelDueno(ctx.dueno), lecturaPendiente(ctx.negocio)])
-  const SIN_TARJETA = { resumen: 'No hay ninguna tarjeta de lo leído esperando el botón: no cambié nada.', tarjeta: null }
-  if (!pendiente) return SIN_TARJETA
-  const vetados = await nombresVetados(estado, pendiente.escritura, c)
+  const [estado, escritoPorElDueno] = await Promise.all([leerAplicado(ctx.negocio), numerosDelDueno(ctx.dueno)])
+  const otros = c.renombrar.length ? await otrosNegocios(estado) : []
   return conTransaccion(async (tx) => {
     // El SDK corre herramientas a la vez. Sin este candado, la segunda esperaría la fila ya descartada y no vería la nueva: diría que no hay tarjeta.
     await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, ctx.negocio)).for('no key update')
     const [p] = await tx.select().from(esquema.propuestas).where(pendienteDe(ctx.negocio)).orderBy(desc(esquema.propuestas.creado)).limit(1).for('update')
-    if (!p) return SIN_TARJETA
+    if (!p) return { resumen: 'No hay ninguna tarjeta de lo leído esperando el botón: no cambié nada.', tarjeta: null }
     const ahora = await leerAplicado(ctx.negocio, tx)
-    const r = corregirEscritura(ahora, p.escritura, c, { escritoPorElDueno, vetados })
-    const tarjeta = r.cambio ? await reemplazarPendiente(tx, ctx.negocio, p, r.escritura, ahora) : null
+    const r = corregirEscritura(ahora, p.escritura, c, { escritoPorElDueno, otrosNegocios: otros })
+    const tarjeta = r.cambio ? await reemplazarPendiente(tx, ctx.negocio, p, r.escritura, ahora, r.resultados.flatMap(cambioEnLaTarjeta)) : null
     const cierre = !r.cambio ? '' : tarjeta ? 'Que el Dueño revise la tarjeta nueva y toque el botón.' : 'La tarjeta quedó vacía: ya no hay nada por confirmar.'
     return { resumen: [...r.resultados.map(resultadoEnPalabras), cierre].filter(Boolean).join(' '), tarjeta }
   })

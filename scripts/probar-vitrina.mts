@@ -22,7 +22,7 @@ const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
-const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-corregida', 'hilo-lectura-espera', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
+const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-corregida', 'armado-no-corrigio', 'hilo-lectura-espera', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
 const ESCENAS_DE_ALBA = ['alba', 'alba-al-armado']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion', '/panel/pedidos/un-pedido', '/panel/clientes/un-cliente']
 
@@ -271,7 +271,8 @@ const RECORRIDOS_DEL_ARMADO: typeof RECORRIDOS = [
   ['Armado: lo leído no se marca hasta tocar el botón, y al tocarlo se marca', 'armado-confirmar', '1440', TITULAR('¿Están bien estos productos?'), '--ve=Lo que encontré · 8 productos', FILA('Productos', 'Por confirmar'), FILA('Envíos', 'Por confirmar'), '--ve=Por confirmar', '--clic=Están bien y no falta ninguno', '--espera=500', FILA('Productos', 'Lo sé'), FILA('Envíos', 'Lo sé'), FILA('Nombre', 'Lo sé'), TITULAR('Solo me falta una cosa.'), '--ve=Confirmada'],
   ['Corregir: lleva al redactor, con el foco y el mensaje empezado, sin formulario ni cifras de la tarjeta', 'armado-confirmar', '1440', '--clic=Corregir', ...REDACTOR_EMPEZADO, FILA('Productos', 'Por confirmar'), '--escribe=el tueste claro vale 26.000', '--clic=Enviar', `--ve=${EMPIEZA_A_CORREGIR}el tueste claro vale 26.000`],
   ['Corregir: en teléfono también llega al redactor', 'armado-confirmar', '390', '--clic=Corregir', ...REDACTOR_EMPEZADO],
-  ['Corregir: la tarjeta nueva dice lo corregido, termina en Confirmada, y la vieja queda atrás', 'armado-corregida', '1440', TITULAR('¿Están bien estos productos?'), '--ve=Corrigió lo que leyó', '--no-ve=Tueste claro, grano 250 g', '--ve=Lo que encontré · 7 productos', '--clic=Ver lo anterior', '--ve=Descartada', '--clic=Están bien y no falta ninguno', '--espera=500', '--ve=Confirmada', FILA('Productos', 'Lo sé')],
+  ['Corregir: la tarjeta nueva dice lo corregido, termina en Confirmada, y la vieja queda atrás', 'armado-corregida', '1440', TITULAR('¿Están bien estos productos?'), '--ve=Corrigió lo que leyó', '--ve=Quité Tueste claro, grano 250 g.', '--ve=Lo que encontré · 7 productos', '--clic=Ver lo anterior', '--ve=Descartada', '--clic=Ocultar lo anterior', '--clic=Están bien y no falta ninguno', '--espera=500', '--ve=Confirmada', FILA('Productos', 'Lo sé')],
+  ['Corregir: si nada cambió, el rastro no dice que corrigió', 'armado-no-corrigio', '1440', '--ve=Revisó lo que leyó', '--no-ve=Corrigió lo que leyó'],
   ['Corregir: con el Negocio abierto, la misma tarjeta llega al redactor del Hilo', 'hilo-lectura-espera', '1440', '--clic=Corregir', ...REDACTOR_EMPEZADO],
   ['Corregir: con el Negocio abierto, en teléfono', 'hilo-lectura-espera', '390', '--clic=Corregir', ...REDACTOR_EMPEZADO],
   ['Corregir: solo en lo leído, una regla o un Caso no lo ofrecen', 'panel-un-caso', '1440', '--ve=Enviar', '--no-ve=Corregir'],
@@ -393,6 +394,9 @@ console.log('\nqué tarjeta espera al Dueño')
   afirmar('Vencida sin estado no cuenta', decisionQueEspera([tarjeta('a', 'aplicar', '2020-01-01T00:00:00Z')], {}) === null)
   afirmar('Deshacer no es una decisión que espera', decisionQueEspera([tarjeta('a', 'deshacer')], {}) === null)
   afirmar('Entre varias manda la más reciente', decisionQueEspera([tarjeta('a', 'enviar'), tarjeta('b', 'enviar')], { a: espera, b: espera }) === 'b')
+  const vieja = tarjeta('vieja', 'confirmar', '2030-01-01T00:00:00Z')
+  const nueva = tarjeta('nueva', 'confirmar', '2030-01-02T00:00:00Z')
+  afirmar('Lo leído corregido: la vieja deja de esperar aunque su estado todavía no llegue', JSON.stringify(decisionesEnEspera([vieja, nueva], {}).map((t) => t.propuesta)) === '["nueva"]')
   const orden = decisionesEnEspera([tarjeta('r', 'aplicar', '2030-01-01T00:00:00Z'), tarjeta('c2', 'enviar', '2030-01-03T00:00:00Z'), tarjeta('c1', 'enviar', '2030-01-02T00:00:00Z'), tarjeta('d', 'deshacer')], {}).map((t) => t.propuesta)
   afirmar('La más urgente primero: lo que espera un Cliente y después lo que vence antes', orden.join() === 'c1,c2,r', orden)
 }
