@@ -156,6 +156,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 - **Lo vendido** usa `CUENTA_COMO_VENTA`, la misma definición de las Secciones y los Indicadores.
 - **Una conversación de hoy** es un Cliente que escribió hoy. **Resuelta sin ti** es una donde el último mensaje es del agente y salió, y ese Cliente no tiene un Caso abierto ni un Caso abierto o resuelto hoy.
 - **El Rubro** es texto libre: lo que suena a agenda habla de quién escribió, porque nada guarda una cita todavía, y todo lo demás habla de ventas.
+- **Lo último** dice lo que dejó registro con hora. De un Cliente muestra su último mensaje tal cual, en una línea y recortado a 80 caracteres, sin el código del link. Un pedido confirmado antes de guardarse esa hora no sale como confirmado.
 
 ### Tablero
 

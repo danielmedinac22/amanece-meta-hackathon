@@ -52,7 +52,7 @@ export function InicioHoy({ hoy, link, reglas }: DatosDeHoy) {
             {hoy.ultimo.map((u) => (
               <li key={u.clave} className="flex items-baseline gap-3 border-b border-border/60 py-2.5 text-sm last:border-0">
                 <CheckCircle weight="fill" className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground" />
-                <span className="min-w-0 flex-1 text-pretty">{u.texto}</span>
+                <span className="min-w-0 flex-1 text-pretty wrap-anywhere">{u.texto}</span>
                 <span className="shrink-0 text-xs text-muted-foreground">{u.cuando}</span>
               </li>
             ))}

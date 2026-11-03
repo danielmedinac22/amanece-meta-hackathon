@@ -5,7 +5,7 @@
  *   pnpm tsx scripts/probar-hoy.mts
  */
 import { config } from 'dotenv'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { afirmar, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -14,7 +14,9 @@ process.env.ENVIO_SIMULADO = '1'
 const { db, esquema } = await import('../src/db')
 const { marcar } = await import('../src/nucleo/identidad')
 const { leerHoy } = await import('../src/nucleo/hoy')
-const { fraseDeHoy, haceCuanto, vozDelRubro } = await import('../src/nucleo/hoy-palabras')
+const { fraseDeHoy, haceCuanto, recorteDeLoEscrito, vozDelRubro } = await import('../src/nucleo/hoy-palabras')
+const { puertoDeLaBase } = await import('../src/nucleo/clientes/acciones')
+const { leerPublicado } = await import('../src/nucleo/estado')
 
 const ZONA = 'America/Bogota'
 const marca = String(Date.now()).slice(-7)
@@ -172,7 +174,7 @@ try {
 
   const ultimos = hoy.ultimo.map((u) => u.texto)
   afirmar('Lo último: cinco, lo más reciente primero', hoy.ultimo.length === 5 && ultimos[0] === 'Tu agente le tomó un pedido a Daniela Quintero', ultimos)
-  afirmar('Lo último: un Cliente sin nombre no queda en blanco', ultimos.includes('Un cliente te escribió'), ultimos)
+  afirmar('Lo último: un Cliente sin nombre no queda en blanco', ultimos.includes('Un cliente te escribió: «hola»'), ultimos)
   const todo = JSON.stringify(hoy)
   afirmar('Otro Negocio no se cuela', !todo.includes('Intruso') && !todo.includes('Caso de B') && !todo.includes('7.777.777'), hoy)
 
@@ -190,6 +192,55 @@ try {
   afirmar('El pedido entregado sale del ojo', !quedan.some((t) => t.includes('Pasto')), quedan)
   afirmar('Lo último cuenta que lo resolviste', despues.ultimo[0].texto === 'Resolviste un Caso: Quiere 20 bolsas', despues.ultimo)
   afirmar('Un Caso que el Dueño resolvió hoy no vuelve resuelta sin él esa conversación', despues.cifras.conversaciones.resueltas === 2, despues.cifras.conversaciones)
+
+  console.log('\nLa hora en que se confirma un pedido')
+  const conPedidos = await negocioNuevo('C')
+  const dePedidos = await clientesDe(conPedidos.id, ['Carolina Ruiz', 'Antes Pérez'])
+  const hace2Dias = new Date(ahora.getTime() - 2 * DIA)
+  const [porConfirmar] = await db.insert(esquema.pedidos).values({ negocioId: conPedidos.id, clienteId: dePedidos['Carolina Ruiz'], numero: 1, items: [], total: 30_000, estado: 'pendiente', creado: hace2Dias }).returning()
+  await db.insert(esquema.pedidos).values({ negocioId: conPedidos.id, clienteId: dePedidos['Antes Pérez'], numero: 2, items: [], total: 40_000, estado: 'confirmado', creado: hace2Dias })
+  const leerDelPedido = async () => (await db.select({ confirmado: esquema.pedidos.confirmado }).from(esquema.pedidos).where(eq(esquema.pedidos.id, porConfirmar.id)))[0].confirmado
+  afirmar('Sin confirmar no tiene hora', (await leerDelPedido()) === null)
+
+  const relojDeLaBase = async () => new Date((await db.execute(sql`select now() as ahora`)).rows[0].ahora as string)
+  const puerto = puertoDeLaBase(await leerPublicado(marcar.negocio(conPedidos.id)), marcar.cliente(dePedidos['Carolina Ruiz']))
+  const antes = await relojDeLaBase()
+  const confirmacion = await puerto.confirmar_pedido(1)
+  const luego = await relojDeLaBase()
+  const hora = await leerDelPedido()
+  afirmar('confirmar_pedido guarda la hora de la base', confirmacion.ok && hora !== null && hora >= antes && hora <= luego, { confirmacion, antes, hora, luego })
+
+  const repetida = await puerto.confirmar_pedido(1)
+  afirmar('Confirmar otra vez no mueve la hora', !repetida.ok && (await leerDelPedido())?.getTime() === hora?.getTime(), { repetida, hora })
+
+  const conConfirmados = await leerHoy(marcar.negocio(conPedidos.id), ZONA, conPedidos.rubro)
+  const linea = (texto: string) => conConfirmados.ultimo.find((u) => u.texto === texto)
+  afirmar('Lo último: quien confirmó, con la hora de confirmar y no la de tomarlo', linea('Carolina Ruiz confirmó su pedido')?.cuando === haceCuanto(hora!, new Date(), ZONA) && linea('Tu agente le tomó un pedido a Carolina Ruiz')?.cuando === haceCuanto(hace2Dias, new Date(), ZONA), conConfirmados.ultimo)
+  afirmar('Lo último: confirmado sin hora guardada no se cuenta como confirmado, sí como tomado', !linea('Antes Pérez confirmó su pedido') && !!linea('Tu agente le tomó un pedido a Antes Pérez'), conConfirmados.ultimo)
+
+  console.log('\nLo que escribió un Cliente')
+  const conMensajes = await negocioNuevo('D')
+  const deMensajes = await clientesDe(conMensajes.id, ['Con Ficha', 'Solo Ficha', 'Larga Díaz', 'Gabriel Luna'])
+  const hace = (minutos: number) => new Date(ahora.getTime() - minutos * MINUTO)
+  const largo = `¿Tienen café\n\nen grano? ${'palabra '.repeat(20)}`
+  await db.insert(esquema.mensajesCliente).values([
+    { negocioId: conMensajes.id, clienteId: deMensajes['Con Ficha'], rol: 'cliente', texto: `(${conMensajes.codigo}) Hola Café`, creado: hace(4) },
+    { negocioId: conMensajes.id, clienteId: deMensajes['Solo Ficha'], rol: 'cliente', texto: `(${conMensajes.codigo})`, creado: hace(3) },
+    { negocioId: conMensajes.id, clienteId: deMensajes['Larga Díaz'], rol: 'cliente', texto: largo, creado: hace(2) },
+    { negocioId: conMensajes.id, clienteId: deMensajes['Gabriel Luna'], rol: 'cliente', texto: 'Lo primero que escribió', creado: hace(9) },
+    { negocioId: conMensajes.id, clienteId: deMensajes['Gabriel Luna'], rol: 'cliente', texto: 'Lo último que escribió', creado: hace(1) },
+    { negocioId: conMensajes.id, clienteId: deMensajes['Gabriel Luna'], rol: 'agente', texto: 'Esto lo dijo el agente', creado: hace(0) },
+  ])
+  const escritos = (await leerHoy(marcar.negocio(conMensajes.id), ZONA, conMensajes.rubro)).ultimo.map((u) => u.texto)
+  afirmar('Lo último: su último mensaje, no el anterior ni el del agente', escritos[0] === 'Gabriel Luna te escribió: «Lo último que escribió»', escritos)
+  afirmar('Lo último: en una línea y recortado sin partir una palabra', escritos[1] === `Larga Díaz te escribió: «¿Tienen café en grano? ${'palabra '.repeat(6)}palabra…»`, escritos)
+  afirmar('Lo último: el código del link no se le muestra al Dueño', escritos[3] === 'Con Ficha te escribió: «Hola Café»', escritos)
+  afirmar('Lo último: si solo mandó el código, no hay comillas vacías', escritos[2] === 'Solo Ficha te escribió', escritos)
+
+  const emojis = '🧑‍🌾'.repeat(81)
+  afirmar('El recorte no parte un emoji', recorteDeLoEscrito(emojis) === `${'🧑‍🌾'.repeat(80)}…`, recorteDeLoEscrito(emojis))
+  afirmar('Justo en el tope no se recorta', recorteDeLoEscrito('a'.repeat(80)) === 'a'.repeat(80))
+  afirmar('El corte en un espacio no pierde la palabra', recorteDeLoEscrito(`${'a'.repeat(80)} b`) === `${'a'.repeat(80)}…`)
 } finally {
   if (creados.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, creados))
 }

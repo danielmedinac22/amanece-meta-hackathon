@@ -1,8 +1,9 @@
 import { and, desc, eq, gte, isNotNull, ne, or, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { CUENTA_COMO_VENTA } from './consultas/catalogo'
+import { FICHA_DE_ENRUTAMIENTO } from './entrada'
 import { pesos } from './estado/elementos'
-import { haceCuanto, vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
+import { haceCuanto, loQueEscribio, vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
 import type { NegocioId } from './identidad'
 
 export type CosaDelOjo = { clave: string; titulo: string; detalle: string; accion: 'Decidir' | 'Ver el pedido'; ruta: string }
@@ -125,18 +126,21 @@ async function leerElOjo(negocio: NegocioId, ahora: Date, zona: string): Promise
   ]
 }
 
-/** Solo lo que dejó un registro con su hora. Un pedido no guarda cuándo se confirmó, así que `Lo último` no lo cuenta. */
+/** Solo lo que dejó un registro con su hora. Un pedido confirmado antes de guardarse esa hora cuenta como tomado y nada más. */
 async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Promise<CosaReciente[]> {
-  const { casos, clientes, mensajesCliente, pedidos } = esquema
-  const escrito = sql`max(${mensajesCliente.creado})`.mapWith(mensajesCliente.creado)
-  const [escribieron, tomados, abiertos, resueltos] = await Promise.all([
+  const { casos, clientes, mensajesCliente: m, pedidos } = esquema
+  const ultimos = db
+    .selectDistinctOn([m.clienteId], { clienteId: m.clienteId, texto: m.texto, creado: m.creado })
+    .from(m)
+    .where(and(eq(m.negocioId, negocio), eq(m.rol, 'cliente')))
+    .orderBy(m.clienteId, desc(m.creado))
+    .as('ultimos')
+  const [escribieron, tomados, confirmados, abiertos, resueltos] = await Promise.all([
     db
-      .select({ id: clientes.id, nombre: clientes.nombre, cuando: escrito })
-      .from(mensajesCliente)
-      .innerJoin(clientes, and(eq(clientes.id, mensajesCliente.clienteId), eq(clientes.negocioId, negocio)))
-      .where(and(eq(mensajesCliente.negocioId, negocio), eq(mensajesCliente.rol, 'cliente')))
-      .groupBy(clientes.id)
-      .orderBy(desc(escrito))
+      .select({ id: clientes.id, nombre: clientes.nombre, texto: ultimos.texto, cuando: ultimos.creado })
+      .from(ultimos)
+      .innerJoin(clientes, and(eq(clientes.id, ultimos.clienteId), eq(clientes.negocioId, negocio)))
+      .orderBy(desc(ultimos.creado))
       .limit(CUANTOS_RECIENTES),
     db
       .select({ id: pedidos.id, cuando: pedidos.creado, nombre: clientes.nombre })
@@ -144,6 +148,13 @@ async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Prom
       .innerJoin(clientes, and(eq(clientes.id, pedidos.clienteId), eq(clientes.negocioId, negocio)))
       .where(eq(pedidos.negocioId, negocio))
       .orderBy(desc(pedidos.creado))
+      .limit(CUANTOS_RECIENTES),
+    db
+      .select({ id: pedidos.id, cuando: pedidos.confirmado, nombre: clientes.nombre })
+      .from(pedidos)
+      .innerJoin(clientes, and(eq(clientes.id, pedidos.clienteId), eq(clientes.negocioId, negocio)))
+      .where(and(eq(pedidos.negocioId, negocio), isNotNull(pedidos.confirmado)))
+      .orderBy(desc(pedidos.confirmado))
       .limit(CUANTOS_RECIENTES),
     db.select({ id: casos.id, titulo: casos.titulo, cuando: casos.creado }).from(casos).where(eq(casos.negocioId, negocio)).orderBy(desc(casos.creado)).limit(CUANTOS_RECIENTES),
     db
@@ -154,8 +165,9 @@ async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Prom
       .limit(CUANTOS_RECIENTES),
   ])
   return [
-    ...escribieron.map((m) => ({ clave: `escribio-${m.id}`, texto: `${conMayuscula(completo(m.nombre))} te escribió`, fecha: m.cuando })),
+    ...escribieron.map((e) => ({ clave: `escribio-${e.id}`, texto: loQueEscribio(conMayuscula(completo(e.nombre)), e.texto.replace(FICHA_DE_ENRUTAMIENTO, '')), fecha: e.cuando })),
     ...tomados.map((p) => ({ clave: `pedido-${p.id}`, texto: `Tu agente le tomó un pedido a ${completo(p.nombre)}`, fecha: p.cuando })),
+    ...confirmados.map((p) => ({ clave: `confirmado-${p.id}`, texto: `${conMayuscula(completo(p.nombre))} confirmó su pedido`, fecha: p.cuando! })),
     ...abiertos.map((c) => ({ clave: `abierto-${c.id}`, texto: `Tu agente abrió un Caso: ${c.titulo}`, fecha: c.cuando })),
     ...resueltos.map((c) => ({ clave: `resuelto-${c.id}`, texto: `Resolviste un Caso: ${c.titulo}`, fecha: c.cuando! })),
   ]
