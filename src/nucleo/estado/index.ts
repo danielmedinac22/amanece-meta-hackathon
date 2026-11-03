@@ -1,16 +1,19 @@
 /**
  * El único lector del estado de un Negocio. Nadie más consulta `elementos`; `probar-elementos` lo verifica.
  */
+import { createHash } from 'node:crypto'
 import { and, desc, eq, inArray, lt, ne, type SQL } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
+import { canonico } from '@/lib/canonico'
 import { NOMBRE_TEMPORAL } from '@/negocio/alta'
-import { marcar, type Marca, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
+import { marcar, type Huella, type Marca, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import {
   comoClave,
   comoVersion,
   DEFINICIONES,
   definicionDe,
+  describirCambio,
   ESQUEMA_DE_ELEMENTO,
   normalizar,
   sinCumplidorHoy,
@@ -188,6 +191,44 @@ export async function leerPublicado(negocio: NegocioId, x: Lector = db): Promise
   const [identidad, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio, eq(ultimas.sinPublicar, false))])
   const version = filas.reduce((max, f) => Math.max(max, f.version), 0)
   return armarEstado(sinVersion(identidad), comoVersion(version), vivasDe(filas)) as EstadoPublicado
+}
+
+export type ItemPendiente = {
+  readonly clave: Clave
+  readonly linea: string
+  /** `clientes` lo notan los Clientes; `equipo` solo lo ven el Dueño y su equipo. */
+  readonly loNotan: 'clientes' | 'equipo'
+}
+
+/** Por contenido, nunca por versión: una clave editada y devuelta a lo publicado, o creada y deshecha, no cuenta. */
+function diferencias(aplicado: EstadoAplicado, publicado: EstadoPublicado) {
+  const claves = [...new Set([...aplicado.todos(), ...publicado.todos()].map((v) => v.clave))].sort()
+  return claves.flatMap((clave) => {
+    const antes = publicado.vigente(clave)?.elemento ?? null
+    const despues = aplicado.vigente(clave)?.elemento ?? null
+    return canonico(antes) === canonico(despues) ? [] : [{ clave, antes, despues }]
+  })
+}
+
+/** Pura. Lo que falta por publicar. */
+export function loPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado): readonly ItemPendiente[] {
+  return diferencias(aplicado, publicado).map(({ clave, antes, despues }) => ({
+    clave,
+    linea: describirCambio(antes, despues, aplicado),
+    loNotan: definicionDe((despues ?? antes)!.tipo).alcance === 'clientes' ? 'clientes' : 'equipo',
+  }))
+}
+
+/** Pura. El mismo contenido da la misma huella, sin importar cuántas versiones hubo. */
+export function huellaDeLoPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado): Huella {
+  return createHash('sha256').update(canonico(diferencias(aplicado, publicado))).digest('hex') as Huella
+}
+
+/** La propuesta que escribió la última fila de cada clave, también si la quitó. */
+export async function quienEscribioLaUltima(negocio: NegocioId, claves: readonly Clave[]): Promise<ReadonlyMap<Clave, PropuestaId | null>> {
+  if (!claves.length) return new Map()
+  const filas = await ultimasDe(db, negocio, inArray(ultimas.clave, [...claves]))
+  return new Map(filas.map((f) => [comoClave(f.clave), f.propuestaId ? marcar.propuesta(f.propuestaId) : null]))
 }
 
 /**

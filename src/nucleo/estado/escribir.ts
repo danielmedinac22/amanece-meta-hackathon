@@ -1,12 +1,12 @@
 /**
  * El único escritor del estado de un Negocio. Lo importan `src/nucleo/cambios/**` y `scripts/` (eslint).
  */
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import { comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
-import { elementoDe, leerAplicado, origenDe, ultimasDe, validarEscritura, type Escritura, type OrigenDeEscritura } from './index'
+import { elementoDe, huellaDeLoPendiente, leerAplicado, leerPublicado, loPendiente, origenDe, ultimasDe, validarEscritura, type Escritura, type ItemPendiente, type OrigenDeEscritura } from './index'
 
 /** Quién tocó la clave después de la `base` que vio quien propuso. Todo null si la clave ya no tiene filas. */
 export type ClaveEnConflicto = {
@@ -99,6 +99,28 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   )
   await tx.update(esquema.negocios).set({ version }).where(eq(esquema.negocios.id, negocio))
   return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' && !sinPublicar ? v.escritura.elementos.length : 0 }
+}
+
+export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: readonly ItemPendiente[] } | { readonly tipo: 'sin_nada' } | { readonly tipo: 'cambio' }
+
+/**
+ * Dentro de la transacción de quien llama, con la misma fila del Negocio que toma `escribir`. Solo sella lo que se vio.
+ * Baja el bit de todas las filas, también las enterradas: una versión más alta siempre gana, así que no cambia nada más.
+ * No sube la versión del Negocio: no hay contenido nuevo.
+ */
+export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string): Promise<ResultadoDeSellar> {
+  const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+  if (!n) throw new Error(`No existe el Negocio ${negocio}`)
+  const aplicado = await leerAplicado(negocio, tx)
+  const publicado = await leerPublicado(negocio, tx)
+  const items = loPendiente(aplicado, publicado)
+  if (!items.length) return { tipo: 'sin_nada' }
+  if (huellaDeLoPendiente(aplicado, publicado) !== vista) return { tipo: 'cambio' }
+  await tx
+    .update(esquema.elementos)
+    .set({ sinPublicar: false })
+    .where(and(eq(esquema.elementos.negocioId, negocio), eq(esquema.elementos.sinPublicar, true)))
+  return { tipo: 'sellado', items }
 }
 
 type Es<A extends true> = A

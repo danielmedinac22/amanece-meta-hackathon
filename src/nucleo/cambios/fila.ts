@@ -7,11 +7,11 @@ import { esquema } from '@/db'
 import { canonico } from '@/lib/canonico'
 import type { Escritura } from '../estado'
 import type { VersionDelNegocio } from '../estado/elementos'
-import { marcar, type DuenoId, type Instante, type Marca, type NegocioId, type PropuestaId } from '../identidad'
+import { marcar, type DuenoId, type Huella, type Instante, type NegocioId, type PropuestaId } from '../identidad'
 import type { VistaPreviaGuardada } from './ensayar'
 import type { Acto } from './traducir'
 
-export type Huella = Marca<string, 'Huella'>
+export type { Huella }
 
 export const VIGENCIA_DE_UNA_PROPUESTA_HORAS = 24
 
