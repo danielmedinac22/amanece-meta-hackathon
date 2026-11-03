@@ -21,7 +21,7 @@ const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
-const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
+const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
 const HILO = '[data-pano=hilo]'
@@ -97,6 +97,57 @@ const RECORRIDOS_DE_PUBLICAR: typeof RECORRIDOS = [
   ['Constancias: lo publicado dice Publicada y ya no ofrece Deshacer', 'hilo-constancias', '1440', '--ve=Publicada', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => b.textContent.trim() === 'Deshacer')`],
 ]
 
+const LLENAR_ENTRADA = `--cierto=(() => { for (const [n, v] of [['nombre', 'Lucía'], ['email', 'lucia@cafe.co'], ['password', 'una-clave-larga']]) { const c = document.querySelector('[name=' + n + ']'); if (c) c.value = v } return true })()`
+const REDACTOR_DICE = (texto: string) => `--cierto=(() => { const c = document.querySelector('[data-pano=hilo] textarea'); return c.value === '${texto}' && document.activeElement === c && c.selectionStart === c.value.length })()`
+const EL_TITULO = (texto: string) => `--cierto=document.querySelector('h1').textContent === '${texto}'`
+const TOCAR_EN_TARJETA = (id: string, texto: string) => `--cierto=(() => { const b = [...document.querySelectorAll('[id="tarjeta-${id}"] button')].find((x) => x.textContent.trim() === '${texto}'); if (!b) return false; b.click(); return true })()`
+const TARJETA_DICE = (id: string, texto: string) => `--cierto=document.getElementById('tarjeta-${id}').textContent.includes('${texto}')`
+const TARJETA_SIN_BOTONES = (id: string) => `--cierto=![...document.querySelectorAll('[id="tarjeta-${id}"] button')].some((b) => /^(Aplicar|Enviar|Descartar)/.test(b.textContent.trim()))`
+const SECCIONES_CON_ESTADOS: [string, string][] = [['inicio', 'lo de hoy'], ['casos', 'tus Casos'], ['conversaciones', 'tus conversaciones'], ['pedidos', 'tus pedidos'], ['clientes', 'tus Clientes'], ['tablero', 'tu Tablero'], ['seccion', 'esta Sección'], ['ajustes', 'los ajustes de tu negocio']]
+const ESCENAS_DE_ESTADOS = ['entrar', 'entrar-registro', 'ajustes', 'ajustes-armandose', 'ajustes-sin-ciudad', 'ajustes-largo', ...SECCIONES_CON_ESTADOS.flatMap(([id]) => [`cargando-${id}`, `error-${id}`]), 'seccion-sin-advertencia', 'error-de-verdad', 'seccion-no-esta', 'hilo-capacidad-faltante', 'hilo-tarjeta-vencio', 'hilo-error']
+
+const RECORRIDOS_DE_ESTADOS: typeof RECORRIDOS = [
+  ['Entrar: cada falla dice qué pasó, se vuelve a tocar y al final entra', 'entrar', '1440', LLENAR_ENTRADA, '--clic=Entrar', '--ve=Entrando…', '--espera=500', '--ve=El correo o la contraseña no coinciden. Revísalos y vuelve a intentar.', `--cierto=document.querySelector('[name=email]').value === 'lucia@cafe.co' && document.querySelector('[name=password]').value === 'una-clave-larga'`, '--clic=Entrar', '--no-ve=no coinciden', '--espera=500', '--ve=No me pude conectar. Revisa tu internet', '--clic=Entrar', '--espera=500', '--ve=Ya van muchos intentos', '--clic=Entrar', '--espera=500', '--ve=Ya entraste.'],
+  ['Entrar, teléfono: la hoja llega hasta abajo y el titular va en el cielo', 'entrar', '390', `--cierto=(() => { const r = document.querySelector('main section').getBoundingClientRect(); return Math.abs(r.bottom - innerHeight) < 1 && r.width === innerWidth && document.querySelector('h1').getBoundingClientRect().bottom <= r.top })()`, `--cierto=getComputedStyle(document.querySelector('main')).backgroundImage.includes('linear-gradient')`],
+  ['Entrar: cabe en 320 px con el registro abierto', 'entrar-registro', '320', '--ve=Tu nombre', '--ve=Mínimo 8 caracteres.'],
+  ['Entrar: los campos dicen su autocompletado, también al registrarse', 'entrar-registro', '1440', `--cierto=document.querySelector('[name=password]').autocomplete === 'new-password' && document.querySelector('[name=email]').autocomplete === 'email'`, '--clic=¿Ya tienes cuenta?', `--cierto=document.querySelector('[name=password]').autocomplete === 'current-password'`],
+  ['Entrar: el correo que ya tiene cuenta lleva a entrar, y cambiar de modo limpia el error', 'entrar-registro', '1440', '--ve=Arma tu negocio', LLENAR_ENTRADA, '--clic=Crear cuenta', '--ve=Creando tu cuenta…', '--espera=500', '--ve=Ese correo ya tiene cuenta. Entra con tu contraseña.', '--clic=¿Ya tienes cuenta?', '--no-ve=Ese correo ya tiene cuenta', EL_TITULO('Entra a tu negocio'), '--no-ve=Tu nombre'],
+  ['Ajustes: se llega desde el selector del Negocio', 'panel-funcionando', '1440', '--clic=CCafé Ladera', '--ve=Ajustes del negocio', '--clic=Ajustes del negocio', EL_TITULO('Ajustes del negocio'), '--ve=Manizales', '--ve=wa.me/000000000000', '--ve=Sigue el de tu teléfono o tu computador.', '--no-ve=Necesita tu ojo'],
+  ['Ajustes, teléfono: se llega desde el cajón y queda en Tu negocio', 'telefono-cajon', '390', '--clic=CCafé Ladera', '--clic=Ajustes del negocio', EL_TITULO('Ajustes del negocio'), `--cierto=document.querySelector('[data-pano=lienzo]').checkVisibility()`],
+  ['Ajustes: el selector también lleva a Inicio', 'ajustes', '1440', '--clic=CCafé Ladera', `--cierto=(() => { const a = [...document.querySelectorAll('[role=menuitem]')].find((x) => x.textContent === 'Café Ladera'); if (!a) return false; a.click(); return true })()`, '--espera=400', '--ve=Necesita tu ojo'],
+  ['Ajustes: Cambiar empieza el mensaje en el redactor, sin enviar nada', 'ajustes', '1440', '--clic=Cambiar la ciudad', REDACTOR_DICE('Quiero cambiar la ciudad de mi negocio a '), `--cierto=document.querySelector('[data-conversacion]').innerText.includes('Hola, soy tu agente')`],
+  ['Ajustes, teléfono: Cambiar lleva a Tu agente', 'ajustes', '390', '--clic=Cambiar la ciudad', REDACTOR_DICE('Quiero cambiar la ciudad de mi negocio a '), `--cierto=document.querySelector('[data-pano=hilo]').checkVisibility() && !document.querySelector('[data-pano=lienzo]').checkVisibility()`],
+  ['Ajustes: con el negocio abierto el nombre no ofrece Cambiar y lo dice', 'ajustes', '1440', '--ve=el nombre todavía no se puede cambiar', `--cierto=!document.querySelector('[aria-label="Cambiar el nombre"]')`],
+  ['Ajustes: armándose no hay link, y el nombre sí se cambia', 'ajustes-armandose', '1440', '--ve=Tu link sale cuando abras tu negocio.', '--no-ve=wa.me', '--clic=Cambiar el nombre', REDACTOR_DICE('Mi negocio se llama ')],
+  ['Ajustes: sin ciudad lo dice y empieza a contarla', 'ajustes-sin-ciudad', '1440', '--ve=Tu agente todavía no la sabe.', '--clic=Cambiar la ciudad', REDACTOR_DICE('Mi negocio está en ')],
+  ['Ajustes: los textos largos caben en 320 px', 'ajustes-largo', '320', '--ve=Hermanos Giraldo'],
+  ...SECCIONES_CON_ESTADOS.map(([id, trae]): (typeof RECORRIDOS)[number] => [`Error de ${id}: dice qué no trajo y qué hacer`, `error-${id}`, '1440', `--ve=No pude traer ${trae}.`, '--ve=Vuelve a intentar en un momento.', '--clic=Volver a intentar', `--cierto=!!document.querySelector('[data-reintentos="1"]')`, `--cierto=document.querySelector('[data-pano=lienzo] [role=alert]') !== null`]),
+  ['Error: en teléfono la cáscara sigue ahí', 'error-pedidos', '390', '--ve=No pude traer tus pedidos.', `--cierto=document.querySelector('${PESTANAS}').checkVisibility()`],
+  ['Error: el archivo de verdad que usa Next vuelve a intentar', 'error-de-verdad', '1440', '--ve=No pude traer esta Sección.', '--evalua=window.yaNoFalla = true', '--clic=Volver a intentar', '--espera=500', '--ve=Ya cargó.'],
+  ['Error: una Sección que ya no está dice qué hacer', 'seccion-no-esta', '1440', '--ve=Esta Sección no está en tu negocio.', '--ve=Mira las tuyas en el menú', EL_TITULO('Tu negocio')],
+  ['Vacío: cada Sección dice qué sigue', 'pedidos-vacios', '1440', '--ve=Cuando tu agente tome uno, aparece aquí.', '--clic=Clientes', '--ve=Cuando un Cliente te escriba, aparece aquí.', '--clic=Casos', '--ve=Cuando algo la necesite, aparece aquí', '--clic=Conversaciones', '--ve=Cuando un Cliente te escriba, aparece aquí.', '--clic=Tablero', '--ve=Cuando tu agente tome uno, aparece aquí.'],
+  ['Hilo: lo que no sabe hacer queda anotado, sin botón, venga de donde venga', 'hilo-capacidad-faltante', '1440', `--cierto=document.querySelector('[data-conversacion]').innerText.split('Todavía no sé hacer esto').length === 3`, '--ve=Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Aplicar|Enviar)/.test(b.textContent.trim()))`, '--no-ve=Preparó lo que pediste', '--no-ve=Anotó algo'],
+  ['Hilo: proponer sin tarjeta dice que revisó, no que preparó', 'hilo-capacidad-faltante', '1440', '--ve=Revisó lo que pediste'],
+  ['Hilo: lo que no sabe hacer, en teléfono', 'hilo-capacidad-faltante', '390', '--ve=Todavía no sé hacer esto'],
+  ['Hilo: si se corta la respuesta dice qué hacer', 'hilo-error', '1440', '--ve=Se cortó mi respuesta. Escríbeme de nuevo.', '--no-ve=Algo falló'],
+  ['Tarjeta que venció sin refrescar: dice que venció y ya no deja tocar', 'hilo-tarjeta-vencio', '1440', '--ve=1 de 4', TOCAR_EN_TARJETA('v-aplicar', 'Aplicar'), '--espera=400', TARJETA_DICE('v-aplicar', 'Venció sin aplicarse. Pídela de nuevo'), TARJETA_SIN_BOTONES('v-aplicar'), '--ve=1 de 3', TOCAR_EN_TARJETA('v-enviar', 'Enviar'), '--espera=400', TARJETA_DICE('v-enviar', 'Venció sin enviarse. Pídele a tu agente'), TARJETA_SIN_BOTONES('v-enviar')],
+  ['Tarjeta que otro ya resolvió: dice qué hacer y ya no deja tocar', 'hilo-tarjeta-vencio', '1440', TOCAR_EN_TARJETA('v-otro', 'Aplicar'), '--espera=400', TARJETA_DICE('v-otro', 'Esta tarjeta ya no está disponible. Pídesela de nuevo'), TARJETA_SIN_BOTONES('v-otro')],
+  ['Tarjeta sin conexión: lo dice y se vuelve a tocar', 'hilo-tarjeta-vencio', '1440', TOCAR_EN_TARJETA('v-red', 'Aplicar'), '--espera=400', TARJETA_DICE('v-red', 'No me pude conectar'), TOCAR_EN_TARJETA('v-red', 'Aplicar')],
+]
+
+/** Qué no puede saltar al llegar los datos: la vista de verdad, su esqueleto y qué medir. `alto` compara solo la altura, porque arriba puede haber Indicadores del Negocio. */
+const FILA = (n: number) => `li:nth-child(${n})`
+const ESQUELETOS_QUE_NO_SALTAN: { vista: string; esqueleto: string; arriba: string[]; alto?: string[] }[] = [
+  { vista: 'telefono-tu-negocio', esqueleto: 'cargando-inicio', arriba: ['h3', 'li'] },
+  { vista: 'casos-espera', esqueleto: 'cargando-casos', arriba: ['p'] },
+  { vista: 'conversaciones-lista', esqueleto: 'cargando-conversaciones', arriba: ['li', FILA(2)] },
+  { vista: 'pedidos-lista', esqueleto: 'cargando-pedidos', arriba: ['h3', 'li'] },
+  { vista: 'clientes-tabla', esqueleto: 'cargando-clientes', arriba: ['thead tr', 'tbody tr'] },
+  { vista: 'tablero', esqueleto: 'cargando-tablero', arriba: ['.grid > div'] },
+  { vista: 'seccion-sin-advertencia', esqueleto: 'cargando-seccion', arriba: ['p', 'thead tr'] },
+  { vista: 'ajustes', esqueleto: 'cargando-ajustes', arriba: ['p', FILA(1), FILA(2), FILA(3), FILA(4)] },
+]
+
 const RECORRIDOS_DEL_TABLERO: typeof RECORRIDOS = [
   ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=Pedidos por estado', '--ve=Pedidos recientes', '--no-ve=De dónde llegan'],
   ['Tablero: un Indicador propio lleva su cifra y sus barras', 'tablero', '1440', '--ve=14 pedidos', '--ve=$1.120.000', `--cierto=document.querySelectorAll('[data-pano=lienzo] ol[aria-label="Ventas por día"] li').length === 5`],
@@ -124,7 +175,7 @@ const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
   ['Casos: Enviar desde el Hilo deja lo mismo en la Sección', 'casos-espera', '1440', tocarEn('hilo', 'Enviar'), '--espera=500', enElPano('hilo', 'Enviada a Marcela Ríos'), `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Espera tu decisión')`, enElPano('lienzo', 'El envío a Cali cuesta')],
   ['Casos: Descartar en la Sección lo deja esperando y dice qué sigue, igual en el Hilo', 'casos-espera', '1440', tocarEn('lienzo', 'Descartar'), '--espera=500', enElPano('lienzo', 'Espera tu decisión'), enElPano('lienzo', 'Descartada'), enElPano('lienzo', 'Sigue sin resolver'), enElPano('hilo', 'Descartada')],
   ['Casos: la tarjeta de la Sección no repite el ancla del Hilo', 'casos-espera', '1440', `--cierto=document.querySelectorAll('[id="tarjeta-p-caso"]').length === 1 && !!document.querySelector('[data-pano=hilo] [id="tarjeta-p-caso"]')`],
-  ['Casos: sin botón vivo dice por qué y qué sigue', 'casos-sin-boton', '1440', '--ve=Todavía no hay una respuesta lista para enviar', '--ve=Descartada', '--ve=Venció sin aplicarse', '--ve=Esta respuesta no le llegó', `--cierto=![...document.querySelectorAll('[data-pano=lienzo] button')].some((b) => /^(Enviar|Descartar)$/.test(b.textContent.trim()))`],
+  ['Casos: sin botón vivo dice por qué y qué sigue', 'casos-sin-boton', '1440', '--ve=Todavía no hay una respuesta lista para enviar', '--ve=Descartada', '--ve=Venció sin enviarse', '--ve=Esta respuesta no le llegó', `--cierto=![...document.querySelectorAll('[data-pano=lienzo] button')].some((b) => /^(Enviar|Descartar)$/.test(b.textContent.trim()))`],
   ['Casos: sin nada, dice qué sigue', 'casos-vacios', '1440', '--ve=Nada espera tu decisión', '--no-ve=Resueltos'],
   ['Casos: sin nada esperando no hay encabezado de decisión', 'pedidos-lista', '1440', '--clic=Casos', '--ve=Resueltos', '--ve=Pregunta por envío a San Andrés', `--no-ve=Espera tu decisión`],
   ['Casos: más que el límite dice el total', 'casos-muchos', '1440', '--ve=Ves los 50 más recientes de 60', '--ve=Ves los 50 más recientes de 1.204'],
@@ -168,7 +219,7 @@ const RECORRIDOS_DEL_HILO: typeof RECORRIDOS = [
   ['Teléfono: Enviar también confirma en su sitio', 'panel-un-caso', '390', '--clic=Enviar', '--espera=500', '--ve=Enviada a Marcela Ríos'],
   ['Movimiento: con prefers-reduced-motion la tarjeta se pliega sin animar', 'panel-un-caso', '1440', '--menos-movimiento', '--clic=Enviar', '--espera=60', '--no-ve=Le voy a responder', '--ve=Enviada a Marcela Ríos'],
   ['Constancias: cada desenlace', 'hilo-constancias', '1440', '--ve=Enviada a Camila Rojas', '--ve=La bolsa llegó rota · pedido #31', '--ve=Aplicada por Julián', '--ve=Aplicada por Julián, y revertida después', '--ve=Nuevo Indicador', '--ve=Descartada', '--ve=Nueva Sección', '--ve=Venció sin aplicarse. Pídela de nuevo si todavía la quieres.'],
-  ['Una tarjeta vencida no deja tocar, tenga estado o no', 'hilo-constancias', '1440', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Enviar|Aplicar|Descartar)/.test(b.textContent))`, `--cierto=document.getElementById('tarjeta-c-sin-estado').textContent.includes('Venció sin aplicarse')`],
+  ['Una tarjeta vencida no deja tocar, tenga estado o no', 'hilo-constancias', '1440', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Enviar|Aplicar|Descartar)/.test(b.textContent))`, `--cierto=document.getElementById('tarjeta-c-sin-estado').textContent.includes('Venció sin enviarse')`],
   ['Varias decisiones: la más urgente arriba, con 1 de 3', 'hilo-varias-decisiones', '1440', '--ve=1 de 3', '--ve=2 de 3', '--ve=3 de 3', `--cierto=document.querySelector('[data-conversacion] > button').textContent.includes('Quiere saber cuánto cuesta')`, `--cierto=document.getElementById('tarjeta-v-caso').textContent.includes('1 de 3')`, '--clic=Descartar', '--espera=400', '--ve=1 de 2', '--no-ve=3 de 3'],
 ]
 
@@ -286,7 +337,7 @@ try {
   const html = await indice.text()
   afirmar('dev: /vitrina da 200', indice.status === 200, { estado: indice.status, servidor: desarrollo.salida() })
   const ids = [...html.matchAll(/href="\/vitrina\/([\w-]+)"/g)].map((m) => m[1])
-  afirmar('dev: el índice enlaza las escenas esperadas', [...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR].every((id) => ids.includes(id)), ids)
+  afirmar('dev: el índice enlaza las escenas esperadas', [...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DE_ESTADOS].every((id) => ids.includes(id)), ids)
 
   for (const id of new Set([...ids, ...ESCENAS_ESPERADAS])) {
     const r = await ver(`${desarrollo.base}/vitrina/${id}`)
@@ -298,6 +349,9 @@ try {
 
   const noExiste = await ver(`${desarrollo.base}/vitrina/no-hay-esta`)
   afirmar('dev: una escena que no existe da 404', noExiste.status === 404, noExiste.status)
+  const entrada = await (await ver(`${desarrollo.base}/entrar`)).text()
+  afirmar('dev: /entrar pinta sin sesión ni base', entrada.includes('Entra a tu negocio') && entrada.includes('Con el correo y la contraseña'))
+  afirmar('dev: /entrar?modo=registro abre en registro', (await (await ver(`${desarrollo.base}/entrar?modo=registro`)).text()).includes('Arma tu negocio'))
 
   for (const ruta of RUTAS_DEL_PANEL) {
     const panel = await ver(`${desarrollo.base}${ruta}`)
@@ -317,9 +371,18 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
+  }
+
+  for (const { vista, esqueleto, arriba } of ESQUELETOS_QUE_NO_SALTAN) {
+    for (const anchoDeLaVentana of ['1440', '390']) {
+      const medir = `--evalua=${JSON.stringify(arriba)}.map((s) => { const e = document.querySelector('[data-pano=lienzo] ' + s); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)] })`
+      const medidas = [vista, esqueleto].map((escena) => JSON.parse(spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', medir], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } }).stdout.split('\n')[0]) as ([number, number] | null)[])
+      const iguales = arriba.every((_, i) => medidas[0][i] && medidas[1][i] && Math.abs(medidas[0][i][0] - medidas[1][i][0]) <= 1 && Math.abs(medidas[0][i][1] - medidas[1][i][1]) <= 1)
+      afirmar(`${esqueleto} a ${anchoDeLaVentana}: nada salta al llegar los datos`, iguales, { arriba, medidas })
+    }
   }
   desarrollo.parar()
 

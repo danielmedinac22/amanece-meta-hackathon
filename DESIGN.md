@@ -217,6 +217,18 @@ Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, po
 
 Hoy el único link es el de WhatsApp. **Destino**: el del Panel, para el equipo, cuando exista un rol distinto del Dueño y un link propio.
 
+## Entrar, estados y Ajustes
+
+**Derivado.** Nada de esto tuvo ronda de diseño: sale de lo decidido y sigue así hasta que Daniel lo revise.
+
+- **Entrar.** El mismo cielo de Alba: el titular arriba y el formulario en una hoja. En teléfono la hoja llega hasta abajo. Cada campo lleva su etiqueta visible, no solo el marcador. La pantalla no sabe quién autentica: recibe una función, y los códigos del proveedor viven en una sola tabla, `src/app/entrar/errores.ts`.
+- **Vacío.** Una línea tenue que dice qué sigue, sin ilustración ni botón.
+- **Cargando.** Un esqueleto por Sección con las mismas cajas que la vista, dentro de la cáscara, sin cambiarle el lugar a nada. Lo que siempre dice lo mismo, como los títulos de una tabla, va escrito. `probar-vitrina` mide cada par.
+- **Error.** `No pude traer [qué].`, `Vuelve a intentar en un momento.` y un botón. `--destructive` va en el ícono, no en el texto grande. La cáscara se queda: el Dueño puede irse a otra Sección.
+- **Tarjeta que venció.** Se ve viva hasta que el sondeo o un clic digan otra cosa. Al tocarla, la tarjeta se pliega con `Venció sin [verbo]` y qué hacer. El verbo es el de la acción: `Enviar` vence `sin enviarse`.
+- **Capacidad faltante.** Un bloque tenue en el Hilo, sin botón: `Todavía no sé hacer esto` y `Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.`. No promete cuándo. El rastro de `proponer` sin tarjeta dice `Revisó lo que pediste`, no `Preparó`.
+- **Ajustes del negocio.** Se abre desde el selector del Negocio. Solo muestra lo que el Negocio ya tiene y no guarda nada ahí mismo: `Cambiar` empieza el mensaje en el redactor, porque nombre y ciudad les llegan a los Clientes y pasan por la tarjeta y por Publicar.
+
 ## Palabras
 
 - Escribe de tú, en español de Colombia, con frases cortas y como le hablarías a quien atiende su negocio.

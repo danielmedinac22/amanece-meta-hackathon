@@ -7,7 +7,13 @@ import { SinNegocio, VistaDelNegocio, VistaDeUnaSeccion } from '@/app/panel/vist
 import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { VistaDeAjustes } from '@/app/panel/ajustes'
+import SeccionQueNoEsta from '@/app/panel/not-found'
+import { EsqueletoDeAjustes, EsqueletoDeCasos, EsqueletoDeClientes, EsqueletoDeConversaciones, EsqueletoDeInicio, EsqueletoDePedidos, EsqueletoDelTablero, EsqueletoDeUnaSeccion } from '@/app/panel/esqueletos'
+import { loQueTrae, RUTA_DE_AJUSTES } from '@/app/panel/secciones'
 import { Componentes } from './componentes'
+import { GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
+import { EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
@@ -40,6 +46,7 @@ function paginasDe(datos: NegocioDeMuestra | null): Record<string, ReactNode> {
     ...Object.fromEntries(Object.values(datos?.detalles ?? {}).map((d) => [rutaDeConversacion(d.cliente), <VistaDeConversaciones key={d.cliente} {...datos!.conversaciones} detalle={d} enDetalle />])),
     '/panel/pedidos': datos ? <ListaDePedidos {...datos.pedidos} /> : sin,
     '/panel/clientes': datos ? <TablaDeClientes {...datos.clientes} /> : sin,
+    [RUTA_DE_AJUSTES]: datos ? <VistaDeAjustes nombre={datos.nombre} ciudad="Manizales" link={datos.hoy?.link ?? null} /> : sin,
     ...Object.fromEntries((datos?.secciones ?? []).map((p) => [rutaDePropia(p.clave), <VistaDeUnaSeccion key={p.clave} p={p} />])),
   }
 }
@@ -67,6 +74,41 @@ function llegaUnaDecision() {
   const antes = HILO_CON_UN_CASO.slice(0, -1)
   return <MarcoDeMuestra datos={operacionDe(NEGOCIO_CON_UN_CASO)} paginas={paginasDe(NEGOCIO_CON_UN_CASO)} inicial={{ lugar: 'caja' }} tarjetas={TARJETAS_CON_UN_CASO} hilo={<HiloQueRecibeUnaDecision messages={antes} llega={HILO_CON_UN_CASO.at(-1)!} estado="listo" />} />
 }
+
+const LA_SECCION_PROPIA = rutaDePropia('pedidos-con-novedad')
+
+/** Una Sección con su estado en el lugar de la página: la cáscara no se mueve mientras carga ni si falla. */
+function conLaPagina(ruta: string, pagina: ReactNode, datos = NEGOCIO_FUNCIONANDO) {
+  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={{ ...paginasDe(datos), [ruta]: pagina }} rutaInicial={ruta} inicial={{ pestana: 'negocio' }} hilo={<HiloDeMuestra messages={[]} estado="listo" />} />
+}
+
+const ESTADOS_POR_SECCION: readonly { id: string; ruta: string; esqueleto: ReactNode }[] = [
+  { id: 'inicio', ruta: '/panel', esqueleto: <EsqueletoDeInicio /> },
+  { id: 'casos', ruta: '/panel/casos', esqueleto: <EsqueletoDeCasos /> },
+  { id: 'conversaciones', ruta: '/panel/conversaciones', esqueleto: <EsqueletoDeConversaciones /> },
+  { id: 'pedidos', ruta: '/panel/pedidos', esqueleto: <EsqueletoDePedidos /> },
+  { id: 'clientes', ruta: '/panel/clientes', esqueleto: <EsqueletoDeClientes /> },
+  { id: 'tablero', ruta: '/panel/tablero', esqueleto: <EsqueletoDelTablero /> },
+  { id: 'seccion', ruta: LA_SECCION_PROPIA, esqueleto: <EsqueletoDeUnaSeccion /> },
+  { id: 'ajustes', ruta: RUTA_DE_AJUSTES, esqueleto: <EsqueletoDeAjustes /> },
+]
+
+const ESCENAS_DE_ESTADOS: readonly Escena[] = [
+  { id: 'entrar', titulo: 'Entrar: si no coincide, lo dice y se vuelve a tocar', pinta: () => <EntradaDeMuestra modoInicial="entrar" responde={['datos_no_coinciden', 'sin_conexion', 'muchos_intentos', null]} /> },
+  { id: 'entrar-registro', titulo: 'Entrar: primera vez, con el correo que ya tiene cuenta', pinta: () => <EntradaDeMuestra modoInicial="registro" responde={['ya_tiene_cuenta', null]} /> },
+  { id: 'ajustes', titulo: 'Ajustes del negocio: funcionando', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, RUTA_DE_AJUSTES) },
+  { id: 'ajustes-armandose', titulo: 'Ajustes del negocio: armándose, sin link', pinta: () => enLaSeccion(NEGOCIO_ARMANDOSE, RUTA_DE_AJUSTES) },
+  { id: 'ajustes-sin-ciudad', titulo: 'Ajustes del negocio: el agente no sabe la ciudad', pinta: () => conLaPagina(RUTA_DE_AJUSTES, <VistaDeAjustes nombre="Café Ladera" ciudad="" link={NEGOCIO_FUNCIONANDO.hoy!.link} />) },
+  { id: 'ajustes-largo', titulo: 'Ajustes del negocio: nombre y ciudad muy largos', pinta: () => conLaPagina(RUTA_DE_AJUSTES, <VistaDeAjustes nombre="Distribuidora de Cafés Especiales y Tostadores del Eje Cafetero Hermanos Giraldo" ciudad="San José de las Palomas de Santa Rosa de Cabal, Risaralda, Colombia" link={NEGOCIO_FUNCIONANDO.hoy!.link} />) },
+  ...ESTADOS_POR_SECCION.map(({ id, ruta, esqueleto }) => ({ id: `cargando-${id}`, titulo: `Cargando: ${id}`, pinta: () => conLaPagina(ruta, esqueleto) })),
+  ...ESTADOS_POR_SECCION.map(({ id, ruta }) => ({ id: `error-${id}`, titulo: `Error: ${id}`, pinta: () => conLaPagina(ruta, <ErrorDeMuestra titulo={`No pude traer ${loQueTrae(ruta)}.`} />) })),
+  { id: 'seccion-sin-advertencia', titulo: 'Sección propia: sin aviso de recorte', pinta: () => conLaPagina(LA_SECCION_PROPIA, <VistaDeUnaSeccion p={{ ...NEGOCIO_FUNCIONANDO.secciones.find((p) => rutaDePropia(p.clave) === LA_SECCION_PROPIA)!, advertencias: [] }} />) },
+  { id: 'error-de-verdad', titulo: 'Error: el archivo que usa Next, con su Volver a intentar', pinta: () => <QueFallaDeVerdad /> },
+  { id: 'seccion-no-esta', titulo: 'Una Sección que ya no está en el Negocio', pinta: () => conLaPagina('/panel/secciones/ya-no-esta', <SeccionQueNoEsta />) },
+  { id: 'hilo-capacidad-faltante', titulo: 'Hilo: lo que el agente no sabe hacer queda anotado', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo', HILO_CAPACIDAD_FALTANTE) },
+  { id: 'hilo-tarjeta-vencio', titulo: 'Hilo: tocar tarjetas que vencieron sin refrescar', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} tarjetas={TARJETAS_QUE_VENCIERON} guion={GUION_TARJETAS_QUE_VENCIERON} hilo={<HiloDeMuestra messages={HILO_TARJETAS_QUE_VENCIERON} estado="listo" />} /> },
+  { id: 'hilo-error', titulo: 'Hilo: se cortó la respuesta', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_ARMANDOSE.slice(0, 1)} estado="listo" seCorto />} /> },
+]
 
 /** Agregar una pantalla a la vitrina es agregar una fila aquí. */
 export const ESCENAS: readonly Escena[] = [
@@ -119,5 +161,6 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'hilo-constancias', titulo: 'Hilo: cada desenlace de una tarjeta resuelta', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo', HILO_CONSTANCIAS, TARJETAS_CONSTANCIAS) },
   { id: 'hilo-varias-decisiones', titulo: 'Hilo: tres decisiones a la vez', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_VARIAS_DECISIONES, TARJETAS_VARIAS_DECISIONES) },
   { id: 'hilo-trabajando', titulo: 'Hilo: el agente trabajando', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_TRABAJANDO} estado="listo" status="streaming" />} /> },
+  ...ESCENAS_DE_ESTADOS,
   { id: 'componentes', titulo: 'Todos los componentes y colores', pinta: () => <Componentes /> },
 ]

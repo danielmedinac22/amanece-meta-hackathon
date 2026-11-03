@@ -6,7 +6,7 @@ import { VistaDeCasos } from '@/app/panel/casos'
 import { VistaDelHilo, type DatosDelHilo } from '@/app/panel/hilo-vista'
 import type { SeccionPropia } from '@/app/panel/secciones'
 import type { Publicador, RespuestaDePublicar } from '@/app/panel/tocar-publicar'
-import type { TocarTarjeta } from '@/app/panel/tocar-tarjeta'
+import type { RespuestaDeTarjeta, TocarTarjeta } from '@/app/panel/tocar-tarjeta'
 import type { DatosDeCasos } from '@/negocio/casos'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { ItemDeLoPendiente } from '@/nucleo/cambios'
@@ -23,6 +23,8 @@ export type GuionDePublicar = {
   respuestas?: readonly RespuestaDePublicar[]
   /** Lo que llega solo un rato después de abrir, como con el sondeo: la Sección entra al sidebar. */
   llega?: { mensaje: UIMessage; seccion: SeccionPropia; item: ItemDeLoPendiente; estado: Record<string, EstadoDeTarjeta> }
+  /** Lo que responde la ruta al aprobar esa tarjeta, en vez de salir bien, y cómo queda guardada. */
+  alAprobar?: Record<string, { respuesta: RespuestaDeTarjeta; queda?: EstadoDeTarjeta['estado'] }>
 }
 
 const aviso = (id: string, text: string): UIMessage => ({ id, role: 'assistant', parts: [{ type: 'text', text }] })
@@ -69,6 +71,12 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
   }
 
   const tocar: TocarTarjeta = async (tarjeta, accion) => {
+    const guionada = accion === 'aprobar' ? guion.alAprobar?.[tarjeta.propuesta] : undefined
+    if (guionada) {
+      const { respuesta, queda } = guionada
+      if (queda) setEstados((e) => ({ ...e, [tarjeta.propuesta]: { ...e[tarjeta.propuesta], estado: queda } }))
+      return respuesta
+    }
     const estado = accion === 'aprobar' ? 'aplicada' : accion === 'descartar' ? 'descartada' : 'revertida'
     setEstados((e) => (e[tarjeta.propuesta] ? { ...e, [tarjeta.propuesta]: { ...e[tarjeta.propuesta], estado } } : e))
     const cambio = guion.cambios?.[tarjeta.propuesta]
@@ -86,9 +94,9 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
 }
 
 /** El Hilo de la vitrina: pinta la conversación inventada y sus sugerencias, botones y envíos no llegan a ninguna ruta. */
-export function HiloDeMuestra({ status = 'ready', messages, ...datos }: Pick<DatosDelHilo, 'messages' | 'estado'> & { status?: DatosDelHilo['status'] }) {
+export function HiloDeMuestra({ status = 'ready', seCorto, messages, ...datos }: Pick<DatosDelHilo, 'messages' | 'estado'> & { status?: DatosDelHilo['status']; seCorto?: boolean }) {
   const { estados, tocar, avisos } = useContext(LasDecisiones)
-  return <VistaDelHilo {...datos} messages={[...messages, ...avisos]} estados={estados} status={status} error={undefined} alEnviar={nada} alTocar={tocar} alCambiar={nada} />
+  return <VistaDelHilo {...datos} messages={[...messages, ...avisos]} estados={estados} status={status} error={seCorto ? new Error('Se cortó') : undefined} alEnviar={nada} alTocar={tocar} alCambiar={nada} />
 }
 
 /** Casos con lo que la base diría después de un clic: enviar lo pasa a Resueltos, y descartarlo lo deja esperando. */

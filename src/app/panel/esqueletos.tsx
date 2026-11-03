@@ -48,12 +48,14 @@ export function EsqueletoDeInicio() {
         </h3>
         <ul className="flex flex-col gap-2">
           {veces(2).map((i) => (
-            <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-(--radius) border border-border p-3">
+            <li key={i} className="flex items-center gap-x-3 rounded-(--radius) border border-border p-3">
               <Forma className="size-4 rounded-full" />
-              {/* En teléfono el botón baja a su propia línea, como cuando el título es largo. */}
-              <div className="min-w-0 flex-1 basis-[calc(100%-1.75rem)] @xl:basis-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm">
                   <Linea className="w-3/4" />
+                  <span className="@xl:hidden">
+                    <Linea className="w-1/2" />
+                  </span>
                 </p>
                 <p className="text-xs">
                   <Linea className="w-1/2" />
@@ -318,16 +320,13 @@ export function EsqueletoDeUnaSeccion() {
   )
 }
 
-function FilaDeAjuste({ children }: { children?: ReactNode }) {
+function FilaDeAjuste({ children = <Linea className="w-2/5" /> }: { children?: ReactNode }) {
   return (
     <li className="border-b border-border py-3.5 last:border-0">
       <p className="text-xs">
         <Linea className="w-16" />
       </p>
-      <div className="mt-0.5 text-sm">
-        <Linea className="w-2/5" />
-      </div>
-      {children}
+      <div className="mt-0.5 text-sm">{children}</div>
     </li>
   )
 }
@@ -343,12 +342,15 @@ export function EsqueletoDeAjustes() {
       </p>
       <ul>
         <FilaDeAjuste>
+          <Linea className="w-2/5" />
           <p className="mt-0.5 text-xs">
             <Linea className="w-3/5" />
           </p>
         </FilaDeAjuste>
         <FilaDeAjuste />
-        <FilaDeAjuste />
+        <FilaDeAjuste>
+          <Forma className="mt-1.5 h-[46px] w-full rounded-(--radius)" />
+        </FilaDeAjuste>
         <FilaDeAjuste />
       </ul>
     </Cargando>
