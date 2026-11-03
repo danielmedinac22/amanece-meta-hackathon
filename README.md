@@ -17,6 +17,7 @@ Ver [`docs/diseno.md`](docs/diseno.md).
 ```bash
 pnpm install
 vercel env pull .env.local   # llaves de Meta, Kapso y Neon
+npx clerk@latest env pull    # llaves de desarrollo de Clerk, después de `clerk link`
 pnpm drizzle-kit migrate
 pnpm dev
 ```

@@ -1,6 +1,7 @@
 'use client'
 
-import { useSignIn, useSignUp } from '@clerk/nextjs'
+import { useAuth, useSignIn, useSignUp } from '@clerk/nextjs'
+import { useEffect } from 'react'
 import { motivoDelError, type MotivoDeEntrada } from './errores'
 import { PantallaDeEntrada, type Entrador, type ModoDeEntrada, type RespuestaDeEntrada } from './formulario'
 
@@ -15,20 +16,15 @@ function codigoDelError(error: unknown) {
 }
 
 const fallo = (error: unknown, cambia?: Partial<Record<MotivoDeEntrada, MotivoDeEntrada>>): RespuestaDeEntrada => {
-  const { code, status } = codigoDelError(error)
-  // Abrió sesión en otra pestaña después de cargar esta: ya entró.
-  if (code === 'session_exists') {
-    window.location.assign(EN_EL_PANEL)
-    return LISTO
-  }
-  const motivo = motivoDelError({ code, status })
+  const motivo = motivoDelError(codigoDelError(error))
   return { motivo: cambia?.[motivo] ?? motivo }
 }
 
 /** Una navegación completa: el Panel carga con la cookie nueva y sin nada del enrutador de antes de entrar. */
-const alPanel = ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
-  window.location.href = decorateUrl(EN_EL_PANEL)
+const navegarCompleto = (url: string) => {
+  window.location.href = url
 }
+const alPanel = ({ decorateUrl }: { decorateUrl: (url: string) => string }) => navegarCompleto(decorateUrl(EN_EL_PANEL))
 
 function useEntradorDeClerk(): Entrador {
   const { signIn } = useSignIn()
@@ -124,6 +120,12 @@ function useEntradorDeClerk(): Entrador {
 
 export function EntradaConClerk({ modoInicial }: { modoInicial: ModoDeEntrada }) {
   const entrar = useEntradorDeClerk()
+  const { isSignedIn } = useAuth()
+  // Un token vencido en una navegación interna llega aquí como si no hubiera sesión, porque Clerk solo lo renueva en
+  // una navegación completa. Con la sesión viva, esta la hace; también si entró en otra pestaña.
+  useEffect(() => {
+    if (isSignedIn) navegarCompleto(EN_EL_PANEL)
+  }, [isSignedIn])
   // Si la instancia pide captcha, Clerk lo pinta aquí. En un registro normal queda vacío.
   return <PantallaDeEntrada modoInicial={modoInicial} entrar={entrar} debajo={<div id="clerk-captcha" className="empty:hidden" />} />
 }

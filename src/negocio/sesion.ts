@@ -9,13 +9,16 @@ type Negocio = typeof esquema.negocios.$inferSelect
 /** Quién puede darse de alta. Solo lo entrega `duenoActual`, y solo si nada dice que ya tiene Negocio. */
 export type ParaAlta = { readonly id: string; readonly name: string | null; readonly email: string | null }
 
+/** Por qué una sesión espera. `confirmar_correo` se resuelve con un código; `cuenta_por_pasar`, con el importador. */
+export type Espera = { motivo: 'confirmar_correo'; email: string } | { motivo: 'cuenta_por_pasar' }
+
 /** Una sesión tiene Dueño, puede darse de alta o espera. Quien espera no recibe ni un Negocio ni uno nuevo vacío. */
 export type Sesion =
-  | { dueno: Dueno; negocio: Negocio; ctx: ContextoDelDueno; paraAlta: null; enEspera: false }
-  | { dueno: null; negocio: null; ctx: null; paraAlta: ParaAlta; enEspera: false }
-  | { dueno: null; negocio: null; ctx: null; paraAlta: null; enEspera: true }
+  | { dueno: Dueno; negocio: Negocio; ctx: ContextoDelDueno; paraAlta: null; espera: null }
+  | { dueno: null; negocio: null; ctx: null; paraAlta: ParaAlta; espera: null }
+  | { dueno: null; negocio: null; ctx: null; paraAlta: null; espera: Espera }
 
-const EN_ESPERA: Sesion = { dueno: null, negocio: null, ctx: null, paraAlta: null, enEspera: true }
+const enEspera = (espera: Espera): Sesion => ({ dueno: null, negocio: null, ctx: null, paraAlta: null, espera })
 
 async function buscarPorUsuario(usuarioId: string) {
   const [fila] = await db
@@ -27,7 +30,7 @@ async function buscarPorUsuario(usuarioId: string) {
 }
 
 function conDueno(fila: { dueno: Dueno; negocio: Negocio }): Sesion {
-  return { dueno: fila.dueno, negocio: fila.negocio, ctx: contextoDe(fila.dueno), paraAlta: null, enEspera: false }
+  return { dueno: fila.dueno, negocio: fila.negocio, ctx: contextoDe(fila.dueno), paraAlta: null, espera: null }
 }
 
 /** Un Dueño de antes de Clerk con ese correo. `duenos.email` nunca se verificó: esto solo frena un alta, no enlaza. */
@@ -46,15 +49,16 @@ async function hayDuenoSinPasar(email: string) {
  * Cuando el importador no deje pendientes y todos hayan entrado, este camino se borra.
  */
 async function sinFila(cuenta: Cuenta): Promise<Sesion> {
-  if (!cuenta.emailVerified || !cuenta.email) return EN_ESPERA
+  if (!cuenta.email) return enEspera({ motivo: 'cuenta_por_pasar' })
+  if (!cuenta.emailVerified) return enEspera({ motivo: 'confirmar_correo', email: cuenta.email })
   if (cuenta.idViejo) {
     // Una sola sentencia: si dos sondeos corren a la vez, el que pierde encuentra la fila del que ganó.
     await db.update(esquema.duenos).set({ usuarioId: cuenta.id }).where(eq(esquema.duenos.usuarioId, cuenta.idViejo))
     const enlazada = await buscarPorUsuario(cuenta.id)
     if (enlazada) return conDueno(enlazada)
   }
-  if (await hayDuenoSinPasar(cuenta.email)) return EN_ESPERA
-  return { dueno: null, negocio: null, ctx: null, paraAlta: { id: cuenta.id, name: cuenta.name, email: cuenta.email }, enEspera: false }
+  if (await hayDuenoSinPasar(cuenta.email)) return enEspera({ motivo: 'cuenta_por_pasar' })
+  return { dueno: null, negocio: null, ctx: null, paraAlta: { id: cuenta.id, name: cuenta.name, email: cuenta.email }, espera: null }
 }
 
 /**

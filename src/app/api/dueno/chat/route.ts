@@ -5,14 +5,11 @@ import { contextoDe, duenoActual } from '@/negocio/sesion'
 // Un turno puede generar y probar código varias veces.
 export const maxDuration = 300
 
-/** Una cuenta que espera no recibe Negocio: un Dueño de antes de Clerk no debe terminar en uno vacío. */
-const EN_ESPERA = 'en_espera'
-
-/** La sesión y su Dueño. La primera vez que entra, se le arma el Negocio. */
+/** La sesión y su Dueño, o la respuesta si no hay. La primera vez que entra, se le arma el Negocio. Una cuenta que espera no recibe uno. */
 async function sesionDelDueno() {
   const sesion = await duenoActual()
-  if (!sesion) return null
-  if (sesion.enEspera) return EN_ESPERA
+  if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
+  if (sesion.espera) return Response.json({ error: 'Tu cuenta todavía no está lista' }, { status: 409 })
   const { dueno, negocio } = sesion.paraAlta ? await altaDeDueno(sesion.paraAlta) : sesion
   return { dueno, negocio, ctx: contextoDe(dueno) }
 }
@@ -20,8 +17,7 @@ async function sesionDelDueno() {
 /** El Hilo de este Dueño, del más viejo al más nuevo, y el estado vivo de sus tarjetas: `{ mensajes, tarjetas }`. */
 export async function GET() {
   const sesion = await sesionDelDueno()
-  if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
-  if (sesion === EN_ESPERA) return Response.json({ error: 'Tu cuenta todavía no está lista' }, { status: 409 })
+  if (sesion instanceof Response) return sesion
   return Response.json(await leerHiloConTarjetas(sesion.ctx))
 }
 
@@ -31,8 +27,7 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   const sesion = await sesionDelDueno()
-  if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
-  if (sesion === EN_ESPERA) return Response.json({ error: 'Tu cuenta todavía no está lista' }, { status: 409 })
+  if (sesion instanceof Response) return sesion
 
   const cuerpo = (await req.json().catch(() => null)) as { message?: unknown; messages?: unknown[] } | null
   const ultimo = cuerpo?.message ?? cuerpo?.messages?.at(-1)

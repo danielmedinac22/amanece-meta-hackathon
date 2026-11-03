@@ -58,6 +58,7 @@ const LECTURAS_EN_LA_VITRINA = {
   regex: String.raw`(^|/)(db(/\w+)?|negocio/sesion|lib/auth/\w+|lib/equipo|app/entrar/con-clerk|app/panel/(hilo|page|layout|leer|salir-con-clerk))` + EXTENSION,
   message: "La vitrina pinta datos inventados: nada de base, sesión ni del Hilo conectado. Usa las vistas, como VistaDelHilo.",
 };
+const CLERK = { regex: "^@clerk/", message: "Ninguna otra parte del código sabe qué proveedor de login hay: usa src/lib/auth o la puerta de sesión." };
 const prohibir = (...patterns) => ({ "no-restricted-imports": ["error", { patterns }] });
 
 const eslintConfig = defineConfig([
@@ -68,13 +69,17 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/nucleo/**", "src/negocio/sesion.ts"],
+    rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA, CLERK),
+  },
+  {
+    files: ["src/lib/auth/**/*.{ts,tsx}", "src/proxy.ts", "src/app/entrar/con-clerk.tsx", "src/app/entrar/google/page.tsx", "src/app/panel/salir-con-clerk.tsx"],
     rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA),
   },
-  { files: ["src/app/vitrina/**/*.{ts,tsx}"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, LECTURAS_EN_LA_VITRINA) },
-  { files: ["src/app/api/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON) },
+  { files: ["src/app/vitrina/**/*.{ts,tsx}"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, CLERK, LECTURAS_EN_LA_VITRINA) },
+  { files: ["src/app/api/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, CLERK) },
   { files: ["src/agentes/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES) },
   { files: ["src/agentes/avisos.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES, LEER_APLICADO) },
-  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON) },
+  { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, CLERK) },
   {
     files: ["src/nucleo/**/*.ts"],
     ignores: ["src/nucleo/cambios/**", "src/nucleo/salida/index.ts", "src/nucleo/estado/escribir.ts", "src/nucleo/estado/index.ts"],

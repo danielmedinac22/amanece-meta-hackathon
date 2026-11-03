@@ -39,7 +39,7 @@ type DatosDeLaCarta = {
 }
 
 /** Un Negocio armándose: la conexión de verdad. Lo que se guarda en medio de un turno también se vuelve a leer, para que las filas se marquen una por una. */
-export function ArmadoEnLaRuta({ datos, inicial, tarjetas }: { datos: DatosDelArmado; inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }) {
+export function ArmadoEnLaRuta({ datos, inicial, tarjetas, salir }: { datos: DatosDelArmado; inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; salir: ReactNode }) {
   const router = useRouter()
   // Si abrió el agente, la vista primero saca el cielo y después vuelve a leer.
   const { messages, estados, status, error, ocupado, alEnviar, alCambiar } = useHilo({
@@ -54,7 +54,7 @@ export function ArmadoEnLaRuta({ datos, inicial, tarjetas }: { datos: DatosDelAr
     if (ocupado && guardo) router.refresh()
   }, [ocupado, guardo, router])
   const alSalir = useCallback(() => router.refresh(), [router])
-  return <VistaDelArmado datos={datos} messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alTocar={tocarTarjeta} alCambiar={alCambiar} alAbrir={abrir} alSalir={alSalir} />
+  return <VistaDelArmado salir={salir} datos={datos} messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alTocar={tocarTarjeta} alCambiar={alCambiar} alAbrir={abrir} alSalir={alSalir} />
 }
 
 async function abrir(): Promise<RespuestaDeAbrir | { error: string }> {
@@ -63,7 +63,7 @@ async function abrir(): Promise<RespuestaDeAbrir | { error: string }> {
 }
 
 /** Pinta la carta y Tu Panel. Quien la conecta decide qué pasa al enviar, al tocar y al abrir: esta vista no habla con ninguna ruta. */
-export function VistaDelArmado({ datos, messages, estados, status, error, alEnviar, alTocar, alCambiar, alAbrir, alSalir }: DatosDeLaCarta & { alEnviar: (contenido: string) => void; alTocar: TocarTarjeta; alCambiar: () => void; alAbrir: () => Promise<RespuestaDeAbrir | { error: string }>; alSalir: () => void }) {
+export function VistaDelArmado({ datos, messages, estados, status, error, alEnviar, alTocar, alCambiar, alAbrir, alSalir, salir }: DatosDeLaCarta & { salir?: ReactNode; alEnviar: (contenido: string) => void; alTocar: TocarTarjeta; alCambiar: () => void; alAbrir: () => Promise<RespuestaDeAbrir | { error: string }>; alSalir: () => void }) {
   const ocupado = status === 'submitted' || status === 'streaming'
   const [pospusoElCobro, setPospusoElCobro] = useState(false)
   const [abierto, setAbierto] = useState(false)
@@ -88,8 +88,9 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
     <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
       <motion.div className="cielo pointer-events-none absolute inset-x-0 top-0 h-[300px]" aria-hidden animate={saliendo ? { y: -300, opacity: 0 } : { y: 0, opacity: 1 }} transition={{ duration: SALE_EL_CIELO_MS / 1000, ease: ENTRA }} />
       <div className="relative flex-1 overflow-y-auto">
-        <header className="mx-auto flex h-14 w-full max-w-[1180px] items-center px-5">
+        <header className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between px-5">
           <span className="font-heading text-[17px] font-semibold tracking-tight">Amanece</span>
+          {salir}
         </header>
         <div className="mx-auto grid w-full max-w-[1180px] gap-x-10 px-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="flex min-w-0 flex-col">
