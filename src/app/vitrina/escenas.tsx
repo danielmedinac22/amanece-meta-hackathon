@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+import { CuentaEnEspera } from '@/app/panel/espera'
 import type { ComponentProps, ReactNode } from 'react'
 import { InicioHoy } from '@/app/panel/inicio-hoy'
 import { ListaDePedidos, TablaDeClientes } from '@/app/panel/listas'
@@ -99,6 +101,10 @@ const ESTADOS_POR_SECCION: readonly { id: string; ruta: string; esqueleto: React
 const ESCENAS_DE_ESTADOS: readonly Escena[] = [
   { id: 'entrar', titulo: 'Entrar: si no coincide, lo dice y se vuelve a tocar', pinta: () => <EntradaDeMuestra modoInicial="entrar" responde={['datos_no_coinciden', 'sin_conexion', 'muchos_intentos', null]} /> },
   { id: 'entrar-registro', titulo: 'Entrar: primera vez, con el correo que ya tiene cuenta', pinta: () => <EntradaDeMuestra modoInicial="registro" responde={['ya_tiene_cuenta', null]} /> },
+  { id: 'entrar-codigo', titulo: 'Entrar: el código del registro, con uno equivocado', pinta: () => <EntradaDeMuestra modoInicial="registro" responde={[{ en: 'codigo', por: 'registro', email: 'lucia@cafeladera.co' }, 'codigo_incorrecto', null]} /> },
+  { id: 'entrar-dispositivo', titulo: 'Entrar: desde un dispositivo nuevo', pinta: () => <EntradaDeMuestra modoInicial="entrar" responde={[{ en: 'codigo', por: 'dispositivo', email: 'lucia@cafeladera.co' }, null]} /> },
+  { id: 'entrar-olvido', titulo: 'Entrar: olvidó la contraseña', pinta: () => <EntradaDeMuestra modoInicial="entrar" responde={[{ en: 'codigo', por: 'recuperar', email: 'lucia@cafeladera.co' }, { en: 'contrasena_nueva' }, null]} /> },
+  { id: 'cuenta-en-espera', titulo: 'Una cuenta que todavía no llega a su Negocio', pinta: () => <CuentaEnEspera salir={<Button variant="ghost">Cerrar sesión</Button>} /> },
   { id: 'ajustes', titulo: 'Ajustes del negocio: funcionando', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, RUTA_DE_AJUSTES) },
   { id: 'ajustes-armandose', titulo: 'Ajustes del negocio: armándose, sin link', pinta: () => conLaPagina(RUTA_DE_AJUSTES, <VistaDeAjustes nombre="Café Ladera" ciudad="Manizales" link={null} />) },
   { id: 'ajustes-sin-ciudad', titulo: 'Ajustes del negocio: el agente no sabe la ciudad', pinta: () => conLaPagina(RUTA_DE_AJUSTES, <VistaDeAjustes nombre="Café Ladera" ciudad="" link={NEGOCIO_FUNCIONANDO.hoy.link} />) },

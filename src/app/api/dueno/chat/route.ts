@@ -5,11 +5,15 @@ import { contextoDe, duenoActual } from '@/negocio/sesion'
 // Un turno puede generar y probar código varias veces.
 export const maxDuration = 300
 
+/** Una cuenta que espera no recibe Negocio: un Dueño de antes de Clerk no debe terminar en uno vacío. */
+const EN_ESPERA = 'en_espera'
+
 /** La sesión y su Dueño. La primera vez que entra, se le arma el Negocio. */
 async function sesionDelDueno() {
   const sesion = await duenoActual()
   if (!sesion) return null
-  const { dueno, negocio } = sesion.dueno && sesion.negocio ? { dueno: sesion.dueno, negocio: sesion.negocio } : await altaDeDueno(sesion.usuario)
+  if (sesion.enEspera) return EN_ESPERA
+  const { dueno, negocio } = sesion.paraAlta ? await altaDeDueno(sesion.paraAlta) : sesion
   return { dueno, negocio, ctx: contextoDe(dueno) }
 }
 
@@ -17,6 +21,7 @@ async function sesionDelDueno() {
 export async function GET() {
   const sesion = await sesionDelDueno()
   if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
+  if (sesion === EN_ESPERA) return Response.json({ error: 'Tu cuenta todavía no está lista' }, { status: 409 })
   return Response.json(await leerHiloConTarjetas(sesion.ctx))
 }
 
@@ -27,6 +32,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const sesion = await sesionDelDueno()
   if (!sesion) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
+  if (sesion === EN_ESPERA) return Response.json({ error: 'Tu cuenta todavía no está lista' }, { status: 409 })
 
   const cuerpo = (await req.json().catch(() => null)) as { message?: unknown; messages?: unknown[] } | null
   const ultimo = cuerpo?.message ?? cuerpo?.messages?.at(-1)

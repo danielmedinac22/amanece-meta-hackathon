@@ -41,6 +41,8 @@ type Props = {
   /** Sin esto Publicar va a la ruta. La vitrina lo usa para recorrerlo sin base de datos. */
   publicador?: Publicador
   hilo: ReactNode
+  /** `Cerrar sesión`, como `hilo`: lo real lo pone el layout y la vitrina pinta el suyo, sin proveedor. */
+  salir: ReactNode
   children: ReactNode
   sidebarAbierto?: boolean
   cajonAbierto?: boolean
@@ -53,7 +55,7 @@ const ICONOS_DE_PESTANA: { id: Pestana; nombre: string; icono: Icon }[] = [
   { id: 'negocio', nombre: 'Tu negocio', icono: Storefront },
 ]
 
-export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sidebarAbierto = true, cajonAbierto = false, inicial }: Props) {
+export function Operacion({ datos, ruta, alIr, publicador, hilo, salir, children, sidebarAbierto = true, cajonAbierto = false, inicial }: Props) {
   const [disposicion, cambiar] = useReducer(disponer, { ...DISPOSICION_INICIAL, ...inicial })
   const { lugar, pestana, decision, movido } = disposicion
   const { negocio } = datos
@@ -96,7 +98,7 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
 
   return (
     <SidebarProvider defaultOpen={sidebarAbierto} defaultOpenMobile={cajonAbierto} className="h-dvh min-h-0" style={{ '--sidebar-width': '13.5rem' } as CSSProperties}>
-      <BarraLateral datos={datos} ruta={ruta} alTocar={alTocarUnaSeccion} />
+      <BarraLateral datos={datos} ruta={ruta} alTocar={alTocarUnaSeccion} salir={salir} />
       <SinPublicar.Provider value={sinPublicar}>
         <SidebarInset data-lugar={lugar} data-movido={movido || undefined} className="min-h-0 min-w-0 overflow-hidden lg:flex-row">
           <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border px-2 lg:hidden">
@@ -164,6 +166,11 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
   )
 }
 
+/** `Cerrar sesión` en el menú del Dueño. Quién cierra la sesión queda afuera: la vitrina la pinta sin proveedor. */
+export function ItemDeSalir({ alTocar }: { alTocar: () => void }) {
+  return <DropdownMenuItem onClick={alTocar}>Cerrar sesión</DropdownMenuItem>
+}
+
 /** La cáscara de verdad: la ruta sale de la URL y los enlaces navegan. */
 export function OperacionEnLaRuta(props: Omit<Props, 'ruta' | 'alIr' | 'inicial' | 'cajonAbierto'>) {
   return <Operacion {...props} ruta={usePathname()} />
@@ -182,7 +189,7 @@ function EstadoDelNegocio({ publicar }: { publicar: LoPendiente }) {
 
 type AlTocar = (evento: MouseEvent, destino: string) => void
 
-function BarraLateral({ datos, ruta, alTocar }: { datos: DatosDeLaOperacion; ruta: string; alTocar: AlTocar }) {
+function BarraLateral({ datos, ruta, alTocar, salir }: { datos: DatosDeLaOperacion; ruta: string; alTocar: AlTocar; salir: ReactNode }) {
   const { negocio, dueno } = datos
   const nombre = negocio?.nombre ?? 'Tu negocio'
   const { setOpenMobile } = useSidebar()
@@ -273,12 +280,21 @@ function BarraLateral({ datos, ruta, alTocar }: { datos: DatosDeLaOperacion; rut
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="flex h-8 items-center gap-2 px-1.5 text-sm">
-          <Avatar className="size-5 shrink-0">
-            <AvatarFallback className="text-[9px]">{dueno.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <span className="truncate group-data-[collapsible=icon]:hidden">{dueno}</span>
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<SidebarMenuButton aria-label={`Tu cuenta: ${dueno}`} className="data-popup-open:bg-sidebar-accent" />}>
+                <Avatar className="size-5 shrink-0">
+                  <AvatarFallback className="text-[9px]">{dueno.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="truncate group-data-[collapsible=icon]:hidden">{dueno}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top" className="min-w-40">
+                {salir}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )

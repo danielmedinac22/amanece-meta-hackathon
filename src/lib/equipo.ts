@@ -2,7 +2,7 @@
  * La puerta de lo que solo ve el equipo de Amanece, como `/medicion`. Falla cerrada: sin `EQUIPO_DE_AMANECE` no
  * entra nadie, y un correo sin verificar tampoco, porque cualquiera podría registrarse con el de otro.
  */
-import { auth } from '@/lib/auth/server'
+import { idDeLaSesion, leerCuenta } from '@/lib/auth/server'
 import type { Marca } from '@/nucleo/identidad'
 
 /** Solo la produce `delEquipo`: lo que pide esta prueba no compila sin ella. */
@@ -21,6 +21,6 @@ export function delEquipo(usuario: Usuario | null | undefined, lista: string | u
 }
 
 export async function esDelEquipo(): Promise<DelEquipo | null> {
-  const { data } = await auth.getSession()
-  return delEquipo(data?.user)
+  const id = await idDeLaSesion()
+  return id ? delEquipo(await leerCuenta(id)) : null
 }

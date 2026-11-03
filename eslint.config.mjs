@@ -55,7 +55,7 @@ const BOTONES = {
 };
 const VITRINA = { regex: String.raw`(^|/)vitrina/`, message: "La vitrina y sus datos inventados solo existen en next dev: ninguna pantalla real los importa." };
 const LECTURAS_EN_LA_VITRINA = {
-  regex: String.raw`(^|/)(db(/\w+)?|negocio/sesion|lib/auth/\w+|lib/equipo|app/panel/(hilo|page|layout|leer))` + EXTENSION,
+  regex: String.raw`(^|/)(db(/\w+)?|negocio/sesion|lib/auth/\w+|lib/equipo|app/entrar/con-clerk|app/panel/(hilo|page|layout|leer|salir-con-clerk))` + EXTENSION,
   message: "La vitrina pinta datos inventados: nada de base, sesión ni del Hilo conectado. Usa las vistas, como VistaDelHilo.",
 };
 const prohibir = (...patterns) => ({ "no-restricted-imports": ["error", { patterns }] });

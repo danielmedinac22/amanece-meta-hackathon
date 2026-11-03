@@ -41,7 +41,7 @@ export const duenos = pgTable(
   {
     id: id(),
     negocioId: negocioId(),
-    /** Id del usuario en Neon Auth. */
+    /** Id del usuario en Clerk. Un Dueño de antes de Clerk guarda su id viejo hasta que entra por primera vez: ver `sinFila` en `src/negocio/sesion.ts`. */
     usuarioId: text('usuario_id').notNull(),
     nombre: text('nombre').notNull().default(''),
     email: text('email').notNull().default(''),

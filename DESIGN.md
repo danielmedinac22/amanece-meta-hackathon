@@ -228,7 +228,7 @@ Hoy el único link es el de WhatsApp. **Destino**: el del Panel, para el equipo,
 
 **Derivado.** Nada de esto tuvo ronda de diseño: sale de lo decidido y sigue así hasta que Daniel lo revise.
 
-- **Entrar.** El mismo cielo de Alba: el titular arriba y el formulario en una hoja. En teléfono la hoja llega hasta abajo. Cada campo lleva su etiqueta visible, no solo el marcador. La pantalla no sabe quién autentica: recibe una función, y los códigos del proveedor viven en una sola tabla, `src/app/entrar/errores.ts`.
+- **Entrar.** El mismo cielo de Alba: el titular arriba y el formulario en una hoja. En teléfono la hoja llega hasta abajo. Cada campo lleva su etiqueta visible, no solo el marcador. La pantalla no sabe quién autentica: recibe una función, responde con el paso que sigue (`credenciales`, `olvido`, `codigo`, `contrasena_nueva`) y los códigos del proveedor viven en una sola tabla, `src/app/entrar/errores.ts`.
 - **Vacío.** Una línea tenue que dice qué sigue, sin ilustración ni botón.
 - **Cargando.** Un esqueleto por Sección con las mismas cajas que la vista, dentro de la cáscara, sin cambiarle el lugar a nada. Lo que siempre dice lo mismo, como los títulos de una tabla, va escrito. `probar-vitrina` mide cada par.
 - **Error.** `No pude traer [qué].`, `Vuelve a intentar en un momento.` y un botón. `--destructive` va en el ícono, no en el texto grande. La cáscara se queda: el Dueño puede irse a otra Sección.

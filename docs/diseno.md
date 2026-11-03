@@ -61,7 +61,7 @@ Cada Cambio guarda tokens de entrada y salida, costo estimado y latencia, desde 
 
 - **Next.js** (App Router) en Vercel, TypeScript, pnpm.
 - **Postgres en Neon con Drizzle**, creado desde Vercel. Desarrollo y producción usan la misma base por ahora.
-- **Neon Auth** para el alta y el inicio de sesión. Cada Dueño queda ligado a su Negocio.
+- **Clerk** para el alta y el inicio de sesión. Cada Dueño queda ligado a su Negocio.
 - **Modelos de Meta** por `api.meta.ai/v1` con el SDK de Vercel AI (`@ai-sdk/openai-compatible`). El modelo se elige con `MODEL_ID`: `muse-spark-1.3-contributor` para probar, `muse-spark-1.3` cuando lo prueben personas.
 - **Kapso.** Por el webhook `whatsapp.message.received`, firmado, entran los mensajes del número de Amanece; por la API de Kapso salen las respuestas. Un solo número para todos los Negocios: el código del link `wa.me` dice a qué Negocio habla cada Cliente.
 

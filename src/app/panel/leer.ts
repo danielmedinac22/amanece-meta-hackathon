@@ -48,13 +48,13 @@ export const leerCasos = cache(async () => {
 })
 
 export async function leerOperacion(): Promise<DatosDeLaOperacion> {
-  const { usuario, dueno } = await duenoDelPanel()
+  const { dueno } = await duenoDelPanel()
   const [leido, pendiente, casos] = await Promise.all([negocioDelPanel(), pendienteDelPanel(), leerCasos()])
   const sinPublicar = new Set<string>(pendiente?.items.map((i) => i.clave))
   // Solo corre consultas mientras hay algo sin publicar: lo pintan la tarjeta del Hilo, Inicio y Pedidos.
   const nuevos = leido ? await Promise.all(leido.estado.vigentes('indicador').filter((v) => sinPublicar.has(v.clave)).map((v) => pintarUna(leido.estado, v.clave, v.elemento))) : []
   return {
-    dueno: dueno?.nombre || usuario.name || usuario.email,
+    dueno: dueno?.nombre || dueno?.email || '',
     negocio:
       leido && pendiente && casos
         ? {
