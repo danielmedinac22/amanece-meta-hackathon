@@ -248,10 +248,12 @@ try {
       const w = marcar.wamid(`wamid.TOMA.${marca}.carrera.${i}`)
       await db.update(esquema.clientes).set({ sinContestar: w }).where(eq(esquema.clientes.id, c.id))
       const desde = envios.length
+      // De -400 a 400 ms: los extremos cruzan seguro cada rama, y el centro cae en la carrera de verdad.
+      const espera = (i - 7) * 57
+      const dormir = (ms: number) => new Promise((listo) => setTimeout(listo, Math.max(0, ms)))
       const [r] = await Promise.all([
-        despachar(intencion.respuesta({ destinatario: { tipo: 'cliente', negocio: N.id, cliente: marcar.cliente(c.id) }, texto: `Carrera ${i}`, enRespuestaA: w, habla: { tipo: 'agente', vez: marcar.vez(vez), debida: false } })),
-        // Sin esta espera, la toma siempre gana y la prueba no cruza la otra rama.
-        new Promise((listo) => setTimeout(listo, i * 25)).then(() => tomar(N.a.ctx, c.id)),
+        dormir(espera).then(() => despachar(intencion.respuesta({ destinatario: { tipo: 'cliente', negocio: N.id, cliente: marcar.cliente(c.id) }, texto: `Carrera ${i}`, enRespuestaA: w, habla: { tipo: 'agente', vez: marcar.vez(vez), debida: false } }))),
+        dormir(-espera).then(() => tomar(N.a.ctx, c.id)),
       ])
       const salio = enviosA(c.telefono, desde).length === 1
       if (salio !== (r.tipo === 'simulado') || salio !== ((await fila(c.id)).sinContestar === null)) malas++

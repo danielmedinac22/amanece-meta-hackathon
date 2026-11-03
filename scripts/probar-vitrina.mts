@@ -39,22 +39,25 @@ const SIDEBAR_ABIERTO = `--cierto=${ancho('[data-slot=sidebar-gap]')} === 216`
 
 const REDACTOR_DEL_CLIENTE = `document.querySelector('textarea[aria-label="Escríbele al Cliente"]')`
 const ESCRIBIR_AL_CLIENTE = `--cierto=(() => { const t = ${REDACTOR_DEL_CLIENTE}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Ya voy'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`
+// El Hilo también tiene su botón de enviar: `--clic` por el texto tocaría el primero.
+const ENVIAR_AL_CLIENTE = `--cierto=(() => { ${REDACTOR_DEL_CLIENTE}.closest('form').requestSubmit(); return true })()`
 const RECORRIDOS_DE_LA_TOMA: [string, string, string, ...string[]][] = [
   ['La toma: tomar da el tiempo y el redactor, y devolver vuelve al agente', 'conversaciones-lista', '1440', '--ve=Tu agente está atendiendo', `--cierto=${REDACTOR_DEL_CLIENTE} === null`, '--clic=Tomar la conversación', '--ve=La tienes tú', '--ve=vuelve a tu agente en 30 min', `--cierto=${REDACTOR_DEL_CLIENTE} !== null`, '--clic=Devolver al agente', '--ve=Tu agente está atendiendo', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
   ['La toma, teléfono: tomar y devolver caben', 'conversacion-tomada', '390', '--clic=DQDaniela Quintero', '--ve=La tienes tú', '--ve=vuelve a tu agente en 28 min', '--ve=Devolver al agente'],
   ['La toma: lo que escribió el Dueño se distingue del agente', 'conversacion-tomada', '1440', '--ve=Hola Daniela, soy Lucía', '--ve=Dueño', `--cierto=${REDACTOR_DEL_CLIENTE} !== null`],
-  ['La toma: enviar vacía el redactor y dice Enviado', 'conversacion-tomada', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', '--clic=Enviar', '--ve=Enviado.', `--cierto=${REDACTOR_DEL_CLIENTE}.value === ''`],
+  ['La toma: enviar vacía el redactor y dice Enviado', 'conversacion-tomada', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=Enviado.', `--cierto=${REDACTOR_DEL_CLIENTE}.value === ''`],
   ['La toma: otro Dueño ve quién la tiene y no le escribe', 'conversacion-de-otro', '1440', '--ve=La tiene Marcela', '--ve=vuelve a tu agente en 12 min', '--ve=Devolver al agente', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
   ['La toma: sin ventana no hay redactor y la pantalla lo dice', 'conversacion-tuya-sin-ventana', '1440', '--ve=La tienes tú', '--ve=WhatsApp no deja escribirle', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
   ['La toma: sin ventana no se ofrece tomarla', 'conversacion-sin-ventana', '1440', '--ve=Tu agente está atendiendo', '--ve=WhatsApp no deja escribirle', '--no-ve=Tomar la conversación'],
   ['La toma: un Cliente sin respuesta se ve y se puede tomar', 'conversacion-cliente-espera', '1440', '--ve=Este Cliente espera respuesta', '--ve=Tomar la conversación'],
   ['La toma: si tu agente alcanzó a responder, lo dice', 'conversacion-agente-terminando', '1440', '--ve=Tu agente alcanzó a responderle'],
   ['La toma: el tiempo llega a cero y vuelve a tu agente sin tocar nada', 'conversacion-por-vencer', '1440', '--ve=La tienes tú', '--ve=en menos de 1 min', '--espera=3500', '--ve=Tu agente está atendiendo', '--no-ve=La tienes tú'],
-  ['La toma: si no salió lo dice y el texto se queda', 'conversacion-no-salio', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', '--clic=Enviar', '--ve=No salió: pasaron más de 24 horas', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
-  ['La toma: si WhatsApp no lo tomó lo dice y el texto se queda', 'conversacion-whatsapp-no-lo-toma', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', '--clic=Enviar', '--ve=WhatsApp no tomó tu mensaje', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
-  ['La toma: se acabó el tiempo, nada salió y vuelve a tu agente', 'conversacion-se-acabo-el-tiempo', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', '--clic=Enviar', '--ve=Ya no tienes esta conversación y tu mensaje no salió', '--ve=Tu agente está atendiendo', '--ve=Lo que estabas escribiendo no salió', '--clic=Tomar la conversación', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
-  ['La toma: si no se sabe si salió, lo dice y no invita a reenviar', 'conversacion-sin-saber', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', '--clic=Enviar', '--ve=Todavía no sé si le llegó'],
+  ['La toma: si no salió lo dice y el texto se queda', 'conversacion-no-salio', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=No salió: pasaron más de 24 horas', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: si WhatsApp no lo tomó lo dice y el texto se queda', 'conversacion-whatsapp-no-lo-toma', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=WhatsApp no tomó tu mensaje', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: se acabó el tiempo, nada salió y vuelve a tu agente', 'conversacion-se-acabo-el-tiempo', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=Ya no tienes esta conversación y tu mensaje no salió', '--ve=Tu agente está atendiendo', '--ve=Lo que estabas escribiendo no salió', '--clic=Tomar la conversación', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: si no se sabe si salió, lo dice y no invita a reenviar', 'conversacion-sin-saber', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=Todavía no sé si le llegó'],
   ['La toma: el aviso del Hilo lleva a la conversación', 'hilo-aviso-de-la-toma', '1440', '--ve=Un Cliente te escribió en la conversación que tienes tomada', '--clic=Ver la conversación de Daniela Quintero', '--ve=Tomar la conversación'],
+  ['La toma, teléfono: el aviso del Hilo cambia a Tu negocio', 'hilo-aviso-de-la-toma', '390', '--clic=Ver la conversación de Daniela Quintero', '--ve=Tomar la conversación'],
 ]
 
 /** Recorridos con clics de verdad: lo que el Dueño nota al tocar la cáscara. Título, escena, ancho y pasos. */
