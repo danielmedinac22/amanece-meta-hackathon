@@ -201,6 +201,19 @@
   }
 }
 
+@keyframes crece {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .barra-crece {
+    transform-origin: bottom;
+    animation: crece 500ms var(--ease-entra) backwards;
+  }
+}
+
 /* `data-movido` espera al primer gesto: al cargar la página nada entra, ya estaba ahí. */
 @media (prefers-reduced-motion: no-preference) {
   @media (width >= 64rem) {

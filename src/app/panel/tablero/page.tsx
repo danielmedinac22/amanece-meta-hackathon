@@ -1,7 +1,8 @@
-import { leerIndicadores } from '../leer'
-import { SinNegocio, VistaDelTablero } from '../vista'
+import { leerTablero } from '../leer'
+import { VistaDelTablero } from '../tablero'
+import { SinNegocio } from '../vista'
 
 export default async function Tablero() {
-  const indicadores = await leerIndicadores()
-  return indicadores ? <VistaDelTablero indicadores={indicadores} /> : <SinNegocio />
+  const datos = await leerTablero()
+  return datos ? <VistaDelTablero {...datos} /> : <SinNegocio />
 }

@@ -9,6 +9,7 @@ import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import { leerHoy } from '@/nucleo/hoy'
 import { leerClientes as clientesDe, leerConversaciones as conversacionesDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
 import { pintarPanel, pintarUna } from '@/nucleo/panel'
+import { leerTablero as tableroDe } from '@/nucleo/tablero'
 import { casosDe } from '@/negocio/casos'
 import { duenoActual } from '@/negocio/sesion'
 import type { DatosDeHoy } from './inicio-hoy'
@@ -109,9 +110,13 @@ export async function leerConversaciones(elegido: string | undefined) {
   return leido && conversacionesDe(leido.id, leido.negocio.zonaHoraria, elegido)
 }
 
-export async function leerIndicadores() {
+/** `tablero` es `null` mientras el Negocio se arma: todavía no hay nada que contar, solo los Indicadores que pidió. */
+export async function leerTablero() {
   const leido = await negocioDelPanel()
-  return leido && Promise.all(leido.estado.vigentes('indicador').map((v) => pintarUna(leido.estado, v.clave, v.elemento)))
+  if (!leido) return null
+  const { negocio, id, estado } = leido
+  const [indicadores, tablero] = await Promise.all([Promise.all(estado.vigentes('indicador').map((v) => pintarUna(estado, v.clave, v.elemento))), negocio.estado === 'listo' ? tableroDe(id, negocio.zonaHoraria, estado.identidad.rubro) : null])
+  return { indicadores, tablero }
 }
 
 /** `undefined` si el Negocio no tiene esa Sección, también cuando es de otro Negocio: las claves se buscan solo en el suyo. */

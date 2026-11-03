@@ -155,6 +155,14 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 
 **Decidido.** Sección aparte. Cuatro tarjetas de Indicadores, gráfica, reparto y tabla reciente, en la forma de Eurocolombia.
 
+**Derivado.** Las definiciones viven en `src/nucleo/tablero.ts`, las palabras en `tablero-palabras.ts` y la gráfica en `graficas.ts`:
+
+- **Las cifras** son las de Inicio. **Necesitan atención** es `Necesita tu ojo` contado sin su límite, y sin conversaciones `Resueltas sin ti` dice `—`, no `0 %`. Una agenda cambia `Ventas de la semana` por `Clientes de la semana`.
+- **Pedidos por día** son los últimos 7 días en la zona del Negocio, con `CUENTA_COMO_VENTA`. **Pedidos por estado** son todos los pedidos de esos 7 días. `De dónde llegan` no se muestra: nada guarda el origen de un Cliente.
+- **Una gráfica** lleva una sola tinta, `--primary`, un solo eje y barras de hasta 24 px. Se rotulan el último punto y el más alto si no se pisan; las demás cifras salen al tocar o enfocar la barra y las lee un lector de pantalla. Con más de 7 puntos, el eje de abajo solo rotula los extremos.
+- **Un Indicador propio** de una cifra va en una tarjeta. Uno por tiempo lleva su último valor y sus barras, y un ranking va en barras con su nombre, a todo el ancho.
+- **Una Sección propia** siempre muestra su primera y su última columna. Las de en medio entran según el ancho y, mientras no caben, suben debajo del nombre con su título: ningún dato se pierde en teléfono. Una columna de números va a la derecha.
+
 ### Pedidos: Lista
 
 **Decidido.** Agrupados por lo que falta hacer, con este orden: Con novedad, Por confirmar, Confirmado, Enviado y Entregado. Encabezados pegajosos con su cuenta. Filas densas, sin gráficas. En teléfono se esconden número, ciudad y tiempo.

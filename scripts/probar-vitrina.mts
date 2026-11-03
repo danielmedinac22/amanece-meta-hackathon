@@ -18,7 +18,7 @@ import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
-const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
+const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -63,6 +63,31 @@ const TONO_DE = (i: number, token: string) => `(() => { const b = ${ENCABEZADOS}
 const PEGA_ARRIBA = `(() => { const l = ${LIENZO}; l.scrollTop = 700; const h = document.querySelector('[data-pano=lienzo] h3'); return l.scrollTop === 700 && Math.abs(h.getBoundingClientRect().top - l.getBoundingClientRect().top) < 1 })()`
 const SIN_DESPLAZAR = `(() => { const c = document.querySelector('[data-slot=table-container]'); return c.scrollWidth <= c.clientWidth })()`
 const NOMBRE_RECORTADO = `(() => { const t = document.querySelector('[data-slot=table-cell]'); return t.scrollWidth > t.clientWidth && getComputedStyle(t).textOverflow === 'ellipsis' })()`
+
+const BARRA = (n: number) => `document.querySelector('[data-pano=lienzo] ol[aria-label="Pedidos por día"] li:nth-child(${n})')`
+const COLUMNA = (titulo: string) => `[...document.querySelectorAll('[data-pano=lienzo] th')].find((h) => h.textContent === '${titulo}')`
+const ESCENAS_DE_320 = ['tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo']
+
+const RECORRIDOS_DEL_TABLERO: typeof RECORRIDOS = [
+  ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=Pedidos por estado', '--ve=Pedidos recientes', '--no-ve=De dónde llegan'],
+  ['Tablero: un Indicador propio lleva su cifra y sus barras', 'tablero', '1440', '--ve=14 pedidos', '--ve=$1.120.000', `--cierto=document.querySelectorAll('[data-pano=lienzo] ol[aria-label="Ventas por día"] li').length === 5`],
+  ['Tablero: la barra más alta llena el eje y la de cero no pinta', 'tablero', '1440', `--cierto=${BARRA(4)}.querySelector('.barra-crece').getBoundingClientRect().height === ${BARRA(4)}.getBoundingClientRect().height && ${BARRA(5)}.querySelector('.barra-crece').getBoundingClientRect().height === 0`],
+  ['Tablero: una barra dice su cifra al enfocarla, también la que no se rotula', 'tablero', '1440', `--cierto=getComputedStyle(${BARRA(2)}.lastElementChild).display === 'none'`, `--evalua=${BARRA(2)}.focus()`, `--cierto=getComputedStyle(${BARRA(2)}.lastElementChild).display === 'block' && ${BARRA(2)}.lastElementChild.textContent === '5 Jue 29 oct'`],
+  ['Tablero: un lector de pantalla oye cada barra', 'tablero', '1440', `--cierto=${BARRA(4)}.querySelector('.sr-only').textContent === 'Sáb 31 oct: 8'`],
+  ['Tablero: una barra enfocada no saca la página de su ancho a 320 px', 'tablero', '320', `--evalua=${BARRA(7)}.focus()`, `--cierto=${BARRA(7)}.lastElementChild.getBoundingClientRect().right <= innerWidth`],
+  ['Tablero: las cifras nunca parten a 320 px', 'tablero', '320', `--cierto=[...document.querySelectorAll('[data-pano=lienzo] .font-heading')].filter((p) => p.textContent.startsWith('$1')).every((p) => p.getClientRects().length === 1 && p.getBoundingClientRect().height < 40)`],
+  ['Tablero: sin pedidos dice qué falta, sin barras en cero', 'tablero-vacio', '1440', '--ve=Todavía no hay pedidos en estos 7 días', '--ve=Todavía no tienes pedidos', '--ve=—', `--cierto=!document.querySelector('[data-pano=lienzo] ol')`],
+  ['Tablero: una agenda no habla de ventas', 'tablero-agenda', '1440', '--ve=Clientes de la semana', '--no-ve=Ventas de la semana'],
+  ['Tablero: armándose no muestra cifras en cero', 'tablero-armandose', '1440', '--ve=Todavía no tienes indicadores', '--no-ve=Ventas de la semana'],
+  ['Tablero: un ranking va en barras con su nombre y sin cifra grande', 'tablero-muchos', '1440', '--ve=Ventas por ciudad', '--ve=$12.840.000', '--ve=Manizales'],
+  ['Tablero: 30 días rotulan solo los extremos del eje', 'tablero-muchos', '1440', `--cierto=document.querySelector('[data-pano=lienzo] ol[aria-label^="Ventas de los"]').parentElement.nextElementSibling.innerText.replace(/\\s+/g, ' ') === '1 oct 30 oct'`],
+  ['Sección propia: el nombre va en el encabezado, con lo que pidió el Dueño', 'seccion-propia', '1440', `--cierto=document.querySelector('h1').textContent === 'Pedidos con novedad'`, '--ve=Pedidos que la transportadora no pudo entregar', '--ve=Marcela Ríos', '--ve=Dirección incompleta'],
+  ['Sección propia: una columna de números va a la derecha', 'seccion-propia', '1440', `--cierto=getComputedStyle(${COLUMNA('Total')}).textAlign === 'right' && getComputedStyle(${COLUMNA('Ciudad')}).textAlign !== 'right'`],
+  ['Sección propia: en teléfono quedan nombre y última columna, y lo demás sube debajo del nombre', 'seccion-propia', '390', `--cierto=${COLUMNA('Ciudad')} && getComputedStyle(${COLUMNA('Ciudad')}).display === 'none' && getComputedStyle(${COLUMNA('Novedad')}).display !== 'none'`, '--ve=Ciudad: Manizales', '--ve=Total: 96.000', '--ve=Dirección incompleta'],
+  ['Sección propia: en PC cada columna va en su lugar y no se repite debajo', 'seccion-propia', '1440', `--cierto=getComputedStyle(${COLUMNA('Ciudad')}).display !== 'none'`, '--no-ve=Ciudad: Manizales'],
+  ['Sección propia: recortada lo dice una vez, con la cuenta de verdad', 'seccion-larga', '1440', '--ve=Hay 312 y el Panel muestra 50', '--no-ve=muestro'],
+  ['Sección propia: sin filas y sin poder calcular dicen qué pasa', 'seccion-sin-filas', '1440', '--ve=Nada por ahora', '--clic=Devoluciones del mes', '--ve=No se pudo calcular ahora'],
+]
 
 const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
   ['Pedidos: los grupos van en el orden del diseño, con su cuenta y cancelado al final', 'pedidos-lista', '1440', `--cierto=${ENCABEZADOS}.map((h) => h.textContent.trim().replace(/\\s+/g, ' ')).join('|') === 'Con novedad 1|Por confirmar 1|Confirmado 2|Enviado 3|Entregado 5|Cancelado 1'`],
@@ -248,8 +273,12 @@ try {
       afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
     }
   }
+  for (const id of ESCENAS_DE_320) {
+    const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), id, captura, '320', '700'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
+    afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
+  }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_HILO]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

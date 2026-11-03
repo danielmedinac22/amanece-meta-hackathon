@@ -10,13 +10,14 @@ import type { Clave } from '@/nucleo/estado/elementos'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
 import type { DatosDeClientes, DatosDeConversaciones, DatosDePedidos, DetalleDeConversacion, FilaDeCliente, FilaDePedido } from '@/nucleo/listas'
 import type { SeccionPintada } from '@/nucleo/panel'
+import type { DatosDelTablero } from '@/nucleo/tablero'
 
 const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. `hoy` en `null` es Armándose. */
-export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null; tablero: DatosDelTablero | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -203,11 +204,109 @@ const MENSAJE_LARGO = 'Buenas tardes, quisiera saber si me pueden enviar el pedi
 const UNA_LARGA = conversacion('larga', NOMBRE_LARGO, 'hace 12 min', Array.from({ length: 200 }, (_, i): ['cliente' | 'agente', string] => [i % 2 ? 'agente' : 'cliente', i === 199 ? 'httpsenlacesinespaciosquenoterminanuncaporquenadielepusoespaciosenningunapartedelmensajeyasiquedoguardado' : MENSAJE_LARGO]), 'Quiere 20 bolsas de café para un evento en Cali')
 const MUCHAS_CONVERSACIONES = conConversaciones([{ ...UNA_LARGA, detalle: { ...UNA_LARGA.detalle, cuenta: 1_204 } }, ...Array.from({ length: 99 }, (_, i) => conversacion(`c-${i}`, `Cliente de muestra ${i}`, 'hace 3 días', [['cliente', MENSAJE_LARGO]]))], 1_204)
 
+const TABLERO: DatosDelTablero = {
+  voz: 'tienda',
+  cifras: { semana: { ventas: 1_284_000, pedidos: 23, clientes: 31 }, anterior: { ventas: 1_088_000, pedidos: 19 }, conversaciones: { total: 14, resueltas: 13 } },
+  porAtender: { casos: 0, novedad: 1, pendiente: 1 },
+  porDia: [
+    { dia: '2026-10-28', pedidos: 3 },
+    { dia: '2026-10-29', pedidos: 5 },
+    { dia: '2026-10-30', pedidos: 4 },
+    { dia: '2026-10-31', pedidos: 8 },
+    { dia: '2026-11-01', pedidos: 0 },
+    { dia: '2026-11-02', pedidos: 2 },
+    { dia: '2026-11-03', pedidos: 6 },
+  ],
+  porEstado: [
+    { estado: 'novedad', cuenta: 1 },
+    { estado: 'pendiente', cuenta: 1 },
+    { estado: 'confirmado', cuenta: 6 },
+    { estado: 'enviado', cuenta: 9 },
+    { estado: 'entregado', cuenta: 12 },
+    { estado: 'cancelado', cuenta: 1 },
+  ],
+  recientes: [
+    { id: 'r-41', numero: 41, cliente: 'Daniela Quintero', ciudad: 'Pereira', items: '2 tueste medio, grano 500 g', total: 76_000, estado: 'pendiente' },
+    { id: 'r-40', numero: 40, cliente: 'Andrés Salazar', ciudad: 'Manizales', items: 'Tueste oscuro, molido 250 g', total: 22_000, estado: 'confirmado' },
+    { id: 'r-39', numero: 39, cliente: 'Paola Rojas', ciudad: 'Pasto', items: 'Tueste medio, grano 500 g + Molino manual', total: 118_000, estado: 'novedad' },
+    { id: 'r-38', numero: 38, cliente: 'Sara Montoya', ciudad: 'Armenia', items: 'Tueste claro, grano 250 g', total: 26_000, estado: 'enviado' },
+    { id: 'r-37', numero: 37, cliente: 'Julián Ramírez', ciudad: 'Bogotá', items: '3 tueste medio, grano 500 g', total: 114_000, estado: 'entregado' },
+  ],
+}
+
+const TABLERO_VACIO: DatosDelTablero = {
+  voz: 'tienda',
+  cifras: { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } },
+  porAtender: { casos: 0, novedad: 0, pendiente: 0 },
+  porDia: TABLERO.porDia.map((d) => ({ ...d, pedidos: 0 })),
+  porEstado: [],
+  recientes: [],
+}
+
+/** Treinta días que suben hasta millones. Cada etiqueta es una fecha distinta y el último punto es el más alto. */
+const ventasDeUnMes: SeccionPintada = {
+  ...ventasPorDia,
+  clave: clave('ventas-del-mes'),
+  nombre: 'Ventas de los últimos 30 días, con un nombre tan largo que necesita dos renglones en el teléfono',
+  total: 30,
+  mostradas: 30,
+  resultado: { tipo: 'serie', porTiempo: true, unidad: { tipo: 'dinero' }, puntos: Array.from({ length: 30 }, (_, i) => ({ etiqueta: `2026-10-${String(i + 1).padStart(2, '0')}`, valor: 40_000 * (i + 1) * (i + 1) })) },
+}
+
+const ventasPorCiudad: SeccionPintada = {
+  ...ventasPorDia,
+  clave: clave('ventas-por-ciudad'),
+  nombre: 'Ventas por ciudad',
+  enPalabras: 'Suma lo vendido en cada ciudad este mes.',
+  total: 3,
+  mostradas: 3,
+  resultado: {
+    tipo: 'serie',
+    porTiempo: false,
+    unidad: { tipo: 'dinero' },
+    puntos: [
+      { etiqueta: 'San José del Guaviare y municipios cercanos del departamento', valor: 12_840_000 },
+      { etiqueta: 'Manizales', valor: 4_120_000 },
+      { etiqueta: 'Pereira', valor: 910_000 },
+    ],
+  },
+}
+
+const COLUMNAS_LARGAS = ['Cliente', 'Ciudad', 'Transportadora', 'Guía', 'Días', 'Dirección', 'Total', 'Novedad'].map((titulo) => ({ columna: titulo.toLowerCase(), titulo }))
+
+/** Ocho columnas, valores sin espacios para partir y más filas que las que caben. */
+const seccionLarga: SeccionPintada = {
+  clave: clave('seccion-larga'),
+  tipo: 'seccion',
+  nombre: 'Envíos por transportadora',
+  enPalabras: 'Cada pedido enviado este mes, con su guía y lo que pasó.',
+  total: 312,
+  mostradas: 50,
+  resultado: {
+    tipo: 'filas',
+    columnas: COLUMNAS_LARGAS,
+    filas: Array.from({ length: 50 }, (_, i) => ({ cliente: i === 0 ? NOMBRE_LARGO : `Cliente de muestra ${i}`, ciudad: 'San José del Guaviare', transportadora: 'Interrapidísimo', 'guía': `GUIA-0000-1111-2222-3333-${i}`, 'días': 4 + i, 'dirección': 'Calle 12 # 34-56, barrio La Esperanza, casa de la esquina', total: 12_840_000, novedad: 'La-transportadora-no-encontró-la-dirección-del-Cliente' })),
+  },
+  advertencias: [{ tipo: 'filas_recortadas', clave: clave('seccion-larga'), total: 312, mostradas: 50 }],
+}
+
+const seccionSinFilas: SeccionPintada = {
+  clave: clave('devoluciones-de-hoy'),
+  tipo: 'seccion',
+  nombre: 'Devoluciones de hoy',
+  enPalabras: 'Pedidos devueltos hoy.',
+  total: 0,
+  mostradas: 0,
+  resultado: { tipo: 'filas', columnas: [{ columna: 'cliente', titulo: 'Cliente' }], filas: [] },
+  advertencias: [],
+}
+
 export const NEGOCIO_ARMANDOSE: NegocioDeMuestra = {
   nombre: 'Café Ladera',
   detalle: 'Armándose · 0 productos',
   pendiente: NADA_PENDIENTE,
   hoy: null,
+  tablero: null,
   pedidos: SIN_PEDIDOS,
   clientes: SIN_CLIENTES,
   seccionDeCasos: SIN_CASOS,
@@ -223,12 +322,13 @@ export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   detalle: 'Café de especialidad · Manizales · 12 productos',
   pendiente: NADA_PENDIENTE,
   hoy: { hoy: HOY_FUNCIONANDO, link: LINK, reglas: REGLAS },
+  tablero: TABLERO,
   pedidos: PEDIDOS,
   clientes: CLIENTES,
   seccionDeCasos: SOLO_RESUELTOS,
   ...CONVERSACIONES,
   indicadores: [pedidosDeHoy, ventasPorDia],
-  secciones: [pedidosConNovedad, fallo],
+  secciones: [pedidosConNovedad, fallo, seccionSinFilas],
   casos: [],
   reglas: REGLAS,
 }
@@ -244,10 +344,21 @@ export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
   seccionDeCasos: SIN_CASOS,
   ...SIN_CONVERSACIONES,
   hoy: { hoy: { voz: 'tienda', recienAbierto: true, cifras: NADA_TODAVIA, ojo: [], ultimo: [] }, link: LINK, reglas: [] },
+  tablero: TABLERO_VACIO,
+  indicadores: [],
 }
 
 export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
+  indicadores: [pedidosDeHoy, ventasDeUnMes, ventasPorCiudad],
+  secciones: [seccionLarga],
+  tablero: {
+    ...TABLERO,
+    cifras: { ...TABLERO.cifras, semana: { ventas: 12_840_000, pedidos: 1_204, clientes: 3_120 }, conversaciones: { total: 1_400, resueltas: 1_312 } },
+    porAtender: { casos: 60, novedad: 124, pendiente: 312 },
+    porDia: TABLERO.porDia.map((d, i) => ({ ...d, pedidos: 1_000 + i * 240 })),
+    recientes: TABLERO.recientes.map((r) => ({ ...r, cliente: NOMBRE_LARGO, ciudad: 'San José del Guaviare', total: 12_840_000, estado: 'pendiente' as const })),
+  },
   pedidos: {
     ...PEDIDOS,
     grupos: [
@@ -286,6 +397,8 @@ export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
 export const NEGOCIO_AGENDA: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   nombre: 'Barbería Central',
+  tablero: { ...TABLERO_VACIO, voz: 'agenda', cifras: { ...TABLERO_VACIO.cifras, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } }, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
+  indicadores: [],
   hoy: {
     hoy: {
       voz: 'agenda',

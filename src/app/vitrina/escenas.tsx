@@ -2,7 +2,8 @@ import type { ComponentProps, ReactNode } from 'react'
 import { InicioHoy } from '@/app/panel/inicio-hoy'
 import { ListaDePedidos, TablaDeClientes } from '@/app/panel/listas'
 import { rutaDeConversacion, VistaDeConversaciones } from '@/app/panel/conversaciones'
-import { SinNegocio, VistaDelNegocio, VistaDelTablero, VistaDeUnaSeccion } from '@/app/panel/vista'
+import { VistaDelTablero } from '@/app/panel/tablero'
+import { SinNegocio, VistaDelNegocio, VistaDeUnaSeccion } from '@/app/panel/vista'
 import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
@@ -33,7 +34,7 @@ function paginasDe(datos: NegocioDeMuestra | null): Record<string, ReactNode> {
   return {
     '/panel': datos?.hoy ? <InicioHoy {...datos.hoy} /> : datos ? <VistaDelNegocio datos={datos} /> : sin,
     '/panel/casos': datos ? <CasosDeMuestra {...datos.seccionDeCasos} /> : sin,
-    '/panel/tablero': datos ? <VistaDelTablero indicadores={datos.indicadores} /> : sin,
+    '/panel/tablero': datos ? <VistaDelTablero indicadores={datos.indicadores} tablero={datos.tablero} /> : sin,
     '/panel/conversaciones': datos ? <VistaDeConversaciones {...datos.conversaciones} /> : sin,
     ...Object.fromEntries(Object.values(datos?.detalles ?? {}).map((d) => [rutaDeConversacion(d.cliente), <VistaDeConversaciones key={d.cliente} {...datos!.conversaciones} detalle={d} enDetalle />])),
     '/panel/pedidos': datos ? <ListaDePedidos {...datos.pedidos} /> : sin,
@@ -78,6 +79,15 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'conversacion-con-caso', titulo: 'Conversaciones: una elegida, con un Caso que espera', pinta: () => enLaSeccion(NEGOCIO_CON_UN_CASO, rutaDeConversacion('camila')) },
   { id: 'conversaciones-vacias', titulo: 'Conversaciones: todavía ninguna', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/conversaciones') },
   { id: 'conversaciones-muchas', titulo: 'Conversaciones: más filas que el límite y textos largos', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDeConversacion('larga')) },
+  { id: 'tablero', titulo: 'Tablero: cifras, Indicadores propios, gráfica, reparto y tabla', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/tablero') },
+  { id: 'tablero-vacio', titulo: 'Tablero: todavía sin pedidos ni conversaciones', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/tablero') },
+  { id: 'tablero-agenda', titulo: 'Tablero: un Negocio de citas', pinta: () => enLaSeccion(NEGOCIO_AGENDA, '/panel/tablero') },
+  { id: 'tablero-armandose', titulo: 'Tablero: un Negocio armándose', pinta: () => enLaSeccion(NEGOCIO_ARMANDOSE, '/panel/tablero') },
+  { id: 'tablero-muchos', titulo: 'Tablero: cifras grandes, nombres largos, 30 días y un ranking', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, '/panel/tablero') },
+  { id: 'seccion-propia', titulo: 'Sección propia: la que pidió el Dueño', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDePropia('pedidos-con-novedad')) },
+  { id: 'seccion-larga', titulo: 'Sección propia: ocho columnas, valores largos y recortada', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDePropia('seccion-larga')) },
+  { id: 'seccion-sin-filas', titulo: 'Sección propia: sin filas por ahora', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDePropia('devoluciones-de-hoy')) },
+  { id: 'seccion-fallo', titulo: 'Sección propia: no se pudo calcular', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDePropia('devoluciones')) },
   { id: 'operacion-sidebar-plegado', titulo: 'PC: el sidebar plegado a íconos', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { sidebarAbierto: false }) },
   { id: 'operacion-hilo-oculto', titulo: 'PC: el Hilo oculto, con la caja flotante', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo', HILO_ARMANDOSE, {}, { inicial: { lugar: 'caja' } }) },
   { id: 'operacion-conversacion-flotante', titulo: 'PC: la conversación abierta encima del lienzo', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { inicial: { lugar: 'conversacion' } }) },

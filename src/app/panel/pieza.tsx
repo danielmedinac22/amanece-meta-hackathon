@@ -1,6 +1,10 @@
 /** Pinta una Sección o un Indicador ya calculados. La consulta da los datos; la forma de pintarlos es fija. */
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { cn } from '@/lib/utils'
+import { etiquetaLarga, graficaDe } from '@/nucleo/graficas'
 import type { SeccionPintada } from '@/nucleo/panel'
 import { advertenciaEnPalabras, conUnidad } from '@/nucleo/panel-palabras'
+import { Barras, Reparto } from './graficas'
 
 /** `to_jsonb` da el instante ya en la zona del Negocio, porque el lote fija `TimeZone`: solo se recorta. */
 const INSTANTE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/
@@ -26,28 +30,29 @@ function Advertencias({ p }: { p: SeccionPintada }) {
 
 export function Indicador({ p }: { p: SeccionPintada }) {
   const r = p.resultado
-  const maximo = r.tipo === 'serie' ? Math.max(1, ...r.puntos.map((s) => s.valor)) : 1
+  const grafica = r.tipo === 'serie' && r.porTiempo ? graficaDe(r.puntos, r.unidad) : null
+  const ranking = r.tipo === 'serie' && !r.porTiempo ? r.puntos : []
+  const maximo = Math.max(1, ...ranking.map((s) => s.valor))
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-(--radius) border border-border bg-card p-4">
       <Advertencias p={p} />
-      <p className="text-sm text-muted-foreground">{p.nombre}</p>
-      {r.tipo === 'numero' && <p className="mt-1 text-3xl font-semibold">{conUnidad(r.valor, r.unidad)}</p>}
+      <p className="text-sm font-medium">{p.nombre}</p>
+      {r.tipo === 'numero' && <p className="mt-1 font-heading text-2xl font-semibold tracking-tight tabular-nums wrap-anywhere">{conUnidad(r.valor, r.unidad)}</p>}
       {r.tipo === 'serie' && (
         <>
-          {r.porTiempo && <p className="mt-1 text-3xl font-semibold">{conUnidad(r.puntos.at(-1)?.valor ?? null, r.unidad)}</p>}
-          {r.puntos.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">Nada por ahora.</p>
-          ) : (
-            <ul className="mt-3 max-h-64 space-y-1 overflow-auto text-sm">
-              {r.puntos.map((s, i) => (
-                <li key={i} className="relative flex justify-between gap-3 rounded-md px-2 py-0.5">
-                  <span className="absolute inset-y-0 left-0 rounded-md bg-primary/15" style={{ width: `${(Math.max(0, s.valor) / maximo) * 100}%` }} />
-                  <span className="relative">{s.etiqueta}</span>
-                  <span className="relative whitespace-nowrap font-medium">{conUnidad(s.valor, r.unidad)}</span>
-                </li>
-              ))}
-            </ul>
+          {r.porTiempo && r.puntos.length > 0 && (
+            <>
+              <p className="mt-1 font-heading text-3xl font-semibold tracking-tight tabular-nums wrap-anywhere">{conUnidad(r.puntos.at(-1)!.valor, r.unidad)}</p>
+              <p className="text-xs text-muted-foreground">{etiquetaLarga(r.puntos.at(-1)!.etiqueta)}</p>
+            </>
           )}
+          {grafica && <Barras grafica={grafica} titulo={p.nombre} />}
+          {ranking.length > 0 && (
+            <div className="mt-3 max-h-64 overflow-auto">
+              <Reparto filas={ranking.map((s, i) => ({ clave: `${i}`, etiqueta: s.etiqueta, cifra: conUnidad(s.valor, r.unidad), parte: s.valor / maximo }))} />
+            </div>
+          )}
+          {!grafica && !ranking.length && <p className="mt-2 text-sm text-muted-foreground">Nada por ahora.</p>}
         </>
       )}
       <p className="mt-2 text-xs text-muted-foreground">{p.enPalabras}</p>
@@ -55,51 +60,105 @@ export function Indicador({ p }: { p: SeccionPintada }) {
   )
 }
 
+/** Las de una cifra van como las tarjetas de arriba; una gráfica o un ranking piden todo el ancho. */
+export function Indicadores({ indicadores }: { indicadores: readonly SeccionPintada[] }) {
+  return (
+    <div className="grid gap-3 @lg:grid-cols-2 @3xl:grid-cols-4">
+      {indicadores.map((p) =>
+        p.resultado.tipo === 'no_se_pudo_calcular' ? (
+          <Fallo key={p.clave} nombre={p.nombre} />
+        ) : (
+          <div key={p.clave} className={cn('min-w-0', p.resultado.tipo === 'serie' && 'col-span-full')}>
+            <Indicador p={p} />
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
+
+/**
+ * Las columnas de una Sección las pide el Dueño, así que no se sabe cuáles pesan. La primera y la última siempre se ven:
+ * suelen ser el nombre y el estado. Las de en medio entran según el ancho y, mientras no caben, suben debajo del nombre.
+ */
+const COLUMNAS_POR_ANCHO = [
+  { celda: 'hidden @xl:table-cell', debajo: '@xl:hidden' },
+  { celda: 'hidden @3xl:table-cell', debajo: '@3xl:hidden' },
+  { celda: 'hidden @5xl:table-cell', debajo: '@5xl:hidden' },
+]
+const COLUMNAS_EN_CADA_ANCHO = 2
+
+const anchoDeLaColumna = (i: number) => COLUMNAS_POR_ANCHO[Math.min(COLUMNAS_POR_ANCHO.length - 1, Math.floor((i - 1) / COLUMNAS_EN_CADA_ANCHO))]
+
+function TablaDeSeccion({ filas, columnas }: Extract<SeccionPintada['resultado'], { tipo: 'filas' }>) {
+  if (!filas.length) return <p className="mt-2 text-sm text-muted-foreground">Nada por ahora.</p>
+  const ultima = columnas.length - 1
+  const enMedio = columnas.slice(1, ultima)
+  const esNumerica = columnas.map((c) => filas.some((f) => typeof f[c.columna] === 'number') && filas.every((f) => typeof f[c.columna] === 'number' || f[c.columna] === null))
+  const alinear = (i: number) => (i > 0 && esNumerica[i] ? 'text-right tabular-nums' : '')
+  const ocultar = (i: number) => (i === 0 || i === ultima ? '' : anchoDeLaColumna(i).celda)
+  return (
+    <Table className="text-[13px]">
+      <TableHeader>
+        <TableRow>
+          {columnas.map((c, i) => (
+            <TableHead key={c.columna} className={cn(alinear(i), ocultar(i))}>
+              {c.titulo}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filas.map((fila, f) => (
+          <TableRow key={f}>
+            {columnas.map((c, i) => (
+              <TableCell key={c.columna} className={cn('align-top whitespace-normal wrap-anywhere', i === 0 ? 'font-medium' : 'text-muted-foreground', i > 0 && esNumerica[i] && 'text-foreground', alinear(i), ocultar(i))}>
+                {formato(fila[c.columna])}
+                {i === 0 &&
+                  enMedio.map((m, j) => (
+                    <span key={m.columna} className={cn('block text-xs font-normal text-muted-foreground', anchoDeLaColumna(j + 1).debajo)}>
+                      {m.titulo}: {formato(fila[m.columna])}
+                    </span>
+                  ))}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+/** En una tarjeta, junto a otras: mientras el Negocio se arma, Inicio las pinta todas seguidas. */
 export function Seccion({ p }: { p: SeccionPintada }) {
   if (p.resultado.tipo !== 'filas') return null
-  const { filas, columnas } = p.resultado
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-(--radius) border border-border bg-card p-4">
       <Advertencias p={p} />
       <p className="font-heading font-medium">
-        {p.nombre} <span className="text-sm font-normal text-muted-foreground">· {p.total > p.mostradas ? `muestro ${formato(p.mostradas)} de ${formato(p.total)}` : formato(p.total)}</span>
+        {p.nombre} <span className="text-sm font-normal text-muted-foreground">· {formato(p.total)}</span>
       </p>
-      <p className="text-xs text-muted-foreground">{p.enPalabras}</p>
-      {filas.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">Nada por ahora.</p>
-      ) : (
-        <div className="mt-3 max-h-96 overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-muted-foreground">
-              <tr>
-                {columnas.map((c) => (
-                  <th key={c.columna} className="py-1 pr-3 font-normal">
-                    {c.titulo}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filas.map((fila, i) => (
-                <tr key={i} className="border-t border-border">
-                  {columnas.map((c) => (
-                    <td key={c.columna} className="py-1.5 pr-3">
-                      {formato(fila[c.columna])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <p className="mb-2 text-xs text-muted-foreground">{p.enPalabras}</p>
+      <TablaDeSeccion {...p.resultado} />
+    </div>
+  )
+}
+
+/** Sola en su ruta: el nombre ya va en el encabezado del lienzo. */
+export function SeccionEntera({ p }: { p: SeccionPintada }) {
+  if (p.resultado.tipo !== 'filas') return null
+  return (
+    <div className="mx-auto max-w-4xl">
+      <Advertencias p={p} />
+      <p className="mb-3 text-sm text-muted-foreground">{p.enPalabras}</p>
+      <TablaDeSeccion {...p.resultado} />
     </div>
   )
 }
 
 export function Fallo({ nombre }: { nombre: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 text-sm">
+    <div className="rounded-(--radius) border border-border bg-card p-4 text-sm">
       <p className="font-heading font-medium">{nombre}</p>
       <p className="mt-1 text-muted-foreground">No se pudo calcular ahora. Pídele a tu agente que lo revise.</p>
     </div>

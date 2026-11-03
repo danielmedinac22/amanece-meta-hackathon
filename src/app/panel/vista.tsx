@@ -1,5 +1,5 @@
 import type { SeccionPintada } from '@/nucleo/panel'
-import { Fallo, Indicador, Seccion } from './pieza'
+import { Fallo, Indicadores, Seccion, SeccionEntera } from './pieza'
 
 /** Lo que Inicio pinta mientras el Negocio se arma. Quien lo arma lee; quien lo pinta no toca datos. */
 export type DatosDelNegocio = {
@@ -28,9 +28,7 @@ export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
 
       {casos.length > 0 && <CasosParaTi casos={casos} />}
 
-      {secciones.map((p) => (
-        <VistaDeUnaSeccion key={p.clave} p={p} />
-      ))}
+      {secciones.map((p) => (p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo key={p.clave} nombre={p.nombre} /> : <Seccion key={p.clave} p={p} />))}
 
       {reglas.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-4">
@@ -42,14 +40,6 @@ export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
           </ol>
         </div>
       )}
-    </div>
-  )
-}
-
-function Indicadores({ indicadores }: { indicadores: SeccionPintada[] }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {indicadores.map((p) => (p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo key={p.clave} nombre={p.nombre} /> : <Indicador key={p.clave} p={p} />))}
     </div>
   )
 }
@@ -70,10 +60,6 @@ function CasosParaTi({ casos }: { casos: DatosDelNegocio['casos'] }) {
   )
 }
 
-export function VistaDelTablero({ indicadores }: { indicadores: SeccionPintada[] }) {
-  return indicadores.length ? <Indicadores indicadores={indicadores} /> : <p className="text-muted-foreground">Todavía no tienes indicadores. Pídele a tu agente el número que quieres mirar.</p>
-}
-
 export function VistaDeUnaSeccion({ p }: { p: SeccionPintada }) {
-  return p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo nombre={p.nombre} /> : <Seccion p={p} />
+  return p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo nombre={p.nombre} /> : <SeccionEntera p={p} />
 }
