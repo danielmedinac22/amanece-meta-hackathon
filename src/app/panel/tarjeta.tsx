@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import type { ResultadoDeAprobar, ResultadoDeDeshacer, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 
@@ -43,9 +44,9 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
   }
 
   return (
-    <div className="mt-2 rounded-xl border border-borde bg-tarjeta p-3 text-sm">
+    <div className="mt-2 rounded-lg border border-border bg-card p-3 text-sm">
       {(tarjeta.advertencias ?? []).map((a, i) => (
-        <p key={`a${i}`} className="mb-2 rounded-lg bg-amber-50 px-2 py-1 text-amber-900">
+        <p key={`a${i}`} className="mb-2 rounded-md bg-ojo-suave px-2 py-1 text-ojo">
           {a}
         </p>
       ))}
@@ -54,26 +55,26 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
           {l}
         </p>
       ))}
-      {esperando && respuesta && <p className="mt-2 text-xs text-red-700">{respuesta.tipo === 'error' ? respuesta.mensaje : 'resumen' in respuesta ? respuesta.resumen : null}</p>}
+      {esperando && respuesta && <p className="mt-2 text-xs text-destructive">{respuesta.tipo === 'error' ? respuesta.mensaje : 'resumen' in respuesta ? respuesta.resumen : null}</p>}
       {esperando ? (
         <div className="mt-3 flex gap-2">
           {esDeshacer ? (
-            <button disabled={enCurso} onClick={() => tocar('deshacer')} className="rounded-full border border-borde px-4 py-1.5 text-suave disabled:opacity-50">
+            <Button variant="outline" disabled={enCurso} onClick={() => tocar('deshacer')}>
               {verbo}
-            </button>
+            </Button>
           ) : (
             <>
-              <button disabled={enCurso} onClick={() => tocar('aprobar')} className="rounded-full bg-sol px-4 py-1.5 font-medium text-white disabled:opacity-50">
+              <Button disabled={enCurso} onClick={() => tocar('aprobar')}>
                 {verbo}
-              </button>
-              <button disabled={enCurso} onClick={() => tocar('descartar')} className="rounded-full border border-borde px-4 py-1.5 text-suave disabled:opacity-50">
+              </Button>
+              <Button variant="outline" disabled={enCurso} onClick={() => tocar('descartar')}>
                 Descartar
-              </button>
+              </Button>
             </>
           )}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-suave">{textoDelEstado(verbo, estado, respuesta)}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{textoDelEstado(verbo, estado, respuesta)}</p>
       )}
     </div>
   )

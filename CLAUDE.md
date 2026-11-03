@@ -40,7 +40,7 @@ Algo está hecho cuando se cumplen las cuatro:
 
 1. `tsc --noEmit`, `pnpm lint` y `pnpm build` pasan.
 2. `pnpm probar` corre los `scripts/probar-*.mts` contra Neon y Muse Spark reales, con `ENVIO_SIMULADO=1`, y sale con 0. Cada cambio agrega su caso al `probar` de su área con `afirmar` de `scripts/afirmar.mts`. Ese caso afirma lo que queda en la base o lo que se habría enviado, nunca el texto exacto del modelo.
-3. Si tocaste el Panel, ábrelo en Chrome, recorre lo que cambió y míralo.
+3. Si tocaste el Panel, ábrelo en Chrome, recorre lo que cambió y míralo. Sin sesión se mira en `/vitrina`, con `scripts/mirar-vitrina.mts`, en teléfono y PC, claro y oscuro. Una pantalla nueva agrega su fila a `ESCENAS` (ver `DESIGN.md`).
 4. Lo revisó otro modelo: `interrogate` si es pieza compartida, `/code-review` en lo demás.
 
 ## Lo que sale hacia afuera

@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { LoPendiente, ResultadoDePublicar } from '@/nucleo/cambios'
 
 const QUIEN_LO_NOTA = { clientes: 'Lo notan tus Clientes', equipo: 'Solo lo ven tú y tu equipo' } as const
@@ -32,44 +34,45 @@ export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
   }
 
   return (
-    <details>
-      <summary className={`flex cursor-pointer list-none items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium ${cuantos ? 'bg-sol text-white' : 'border border-borde text-suave'}`}>
+    <Popover>
+      <PopoverTrigger render={<Button variant={cuantos ? 'default' : 'outline'} />}>
         {enCurso ? (
           'Publicando'
         ) : cuantos ? (
           <>
-            Publicar <span className="rounded-full bg-white/25 px-1.5 text-xs tabular-nums">{cuantos}</span>
+            Publicar <span className="rounded-full bg-primary-foreground/25 px-1.5 text-xs tabular-nums">{cuantos}</span>
           </>
         ) : (
           'Publicado'
         )}
-      </summary>
-      {/* Se ancla a la fila de quien lo pinta, no al botón: en un teléfono el botón queda a la izquierda y la lista se saldría de la pantalla. */}
-      <div className="absolute right-0 z-10 mt-2 w-full max-w-[340px] rounded-2xl border border-borde bg-tarjeta p-3 text-sm shadow-lg">
-        {cuantos ? (
-          <>
-            <p className="text-xs font-medium">Sin publicar</p>
-            {alguienAplico && <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-amber-900">Alguien aplicó algo más. Revísalo y vuelve a tocar Publicar.</p>}
-            <ul className="mt-2 space-y-2">
-              {pendiente.items.map((i) => (
-                <li key={i.clave}>
-                  <span className="block whitespace-pre-wrap">{i.linea}</span>
-                  <span className="block text-xs text-suave">
-                    {QUIEN_LO_NOTA[i.loNotan]}
-                    {i.aplicadoPor ? ` · Aplicada por ${i.aplicadoPor}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-            <button disabled={enCurso} onClick={publicar} className="mt-3 w-full rounded-full bg-sol px-4 py-1.5 font-medium text-white disabled:opacity-50">
-              {enCurso ? 'Publicando' : 'Publicar'}
-            </button>
-          </>
-        ) : (
-          <p className="text-suave">Todo está en tu link. No hay nada sin publicar.</p>
-        )}
-      </div>
-    </details>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(340px,calc(100vw-32px))] text-sm">
+        <div>
+          {cuantos ? (
+            <>
+              <p className="text-xs font-medium">Sin publicar</p>
+              {alguienAplico && <p className="mt-2 rounded-md bg-ojo-suave px-2 py-1 text-ojo">Alguien aplicó algo más. Revísalo y vuelve a tocar Publicar.</p>}
+              <ul className="mt-2 space-y-2">
+                {pendiente.items.map((i) => (
+                  <li key={i.clave}>
+                    <span className="block whitespace-pre-wrap">{i.linea}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {QUIEN_LO_NOTA[i.loNotan]}
+                      {i.aplicadoPor ? ` · Aplicada por ${i.aplicadoPor}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+              <Button disabled={enCurso} onClick={publicar} className="mt-3 w-full">
+                {enCurso ? 'Publicando' : 'Publicar'}
+              </Button>
+            </>
+          ) : (
+            <p className="text-muted-foreground">Todo está en tu link. No hay nada sin publicar.</p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }

@@ -53,6 +53,11 @@ const BOTONES = {
   importNames: ["publicar", "deshacer"],
   message: "Publicar y Deshacer son botones del Dueño: el Agente del dueño no los toca.",
 };
+const VITRINA = { regex: String.raw`(^|/)vitrina/`, message: "La vitrina y sus datos inventados solo existen en next dev: ninguna pantalla real los importa." };
+const LECTURAS_EN_LA_VITRINA = {
+  regex: String.raw`(^|/)(db(/\w+)?|negocio/sesion|lib/auth/\w+|lib/equipo|app/panel/(hilo|page))` + EXTENSION,
+  message: "La vitrina pinta datos inventados: nada de base, sesión ni del Hilo conectado. Usa las vistas, como VistaDelHilo.",
+};
 const prohibir = (...patterns) => ({ "no-restricted-imports": ["error", { patterns }] });
 
 const eslintConfig = defineConfig([
@@ -63,8 +68,9 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/nucleo/**", "src/negocio/sesion.ts"],
-    rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON),
+    rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA),
   },
+  { files: ["src/app/vitrina/**/*.{ts,tsx}"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, LECTURAS_EN_LA_VITRINA) },
   { files: ["src/app/api/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON) },
   { files: ["src/agentes/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES) },
   { files: ["src/agentes/avisos.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES, LEER_APLICADO) },
