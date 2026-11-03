@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
+import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { Escritura } from '../nucleo/estado'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
@@ -207,8 +207,10 @@ export const propuestas = pgTable(
 const ORIGENES_DE_ESCRITURA = ['propuesta', 'tablas_viejas', 'entrevista'] as const
 
 /**
- * Lo que un Cambio deja en un Negocio, solo de agregar: por clave vale la versión más alta, y `contenido` null quiere
- * decir que se quitó. Solo escribe `src/nucleo/estado/escribir.ts`; solo lee `src/nucleo/estado/index.ts`.
+ * Lo que un Cambio deja en un Negocio: por clave vale la versión más alta, y `contenido` null quiere decir que se
+ * quitó. `contenido` nunca se edita y `sin_publicar` solo baja, de true a false: abajo quiere decir que les llegó a los
+ * Clientes. Una fila que nunca les llegó se queda arriba para siempre. Solo escribe
+ * `src/nucleo/estado/escribir.ts`; solo lee `src/nucleo/estado/index.ts`.
  */
 export const elementos = pgTable(
   'elementos',
@@ -221,9 +223,15 @@ export const elementos = pgTable(
     contenido: jsonb('contenido').$type<unknown>(),
     origen: text('origen', { enum: ORIGENES_DE_ESCRITURA }).notNull(),
     propuestaId: uuid('propuesta_id').references(() => propuestas.id, { onDelete: 'set null' }),
+    /** Sin `.default()`: todo INSERT en TypeScript tiene que decirlo. El DEFAULT de la base solo cuida al código viejo durante el corte. */
+    sinPublicar: boolean('sin_publicar').notNull(),
     creado: creado(),
   },
-  (t) => [primaryKey({ columns: [t.negocioId, t.clave, t.version] }), index('elementos_propuesta').on(t.propuestaId)],
+  (t) => [
+    primaryKey({ columns: [t.negocioId, t.clave, t.version] }),
+    index('elementos_propuesta').on(t.propuestaId),
+    index('elementos_sin_publicar').on(t.negocioId).where(sql`${t.sinPublicar}`),
+  ],
 )
 
 /** Las filas de las tablas propias de un Negocio, con el mismo contador de versiones. Nadie las escribe todavía. */

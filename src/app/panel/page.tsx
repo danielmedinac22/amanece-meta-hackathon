@@ -2,8 +2,9 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { db, esquema } from '@/db'
+import { leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
-import { leerEstado, valorDelDato } from '@/nucleo/estado'
+import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import type { NegocioId } from '@/nucleo/identidad'
 import { pintarPanel } from '@/nucleo/panel'
@@ -12,6 +13,7 @@ import { leerHiloConTarjetas } from '@/negocio/dueno-chat'
 import { duenoActual } from '@/negocio/sesion'
 import { Hilo } from './hilo'
 import { Fallo, Indicador, Seccion } from './pieza'
+import { BotonPublicar } from './publicar'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -54,7 +56,7 @@ export default async function Panel() {
 
 async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$inferSelect; id: NegocioId }) {
   const [estado, casos] = await Promise.all([
-    leerEstado(id),
+    leerAplicado(id),
     db
       .select()
       .from(esquema.casos)
@@ -62,6 +64,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
       .orderBy(desc(esquema.casos.creado))
       .limit(10),
   ])
+  const pendiente = await leerLoPendiente(estado)
   const reglas = estado.vigentes('regla')
   const productos = estado.vigentes('producto').filter((v) => v.elemento.activo)
   const pintadas = await pintarPanel(estado)
@@ -79,9 +82,13 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
             </p>
           </div>
           {negocio.estado === 'listo' ? (
-            <a href={linkDeWhatsapp(negocio.nombre, negocio.codigo)} target="_blank" className="rounded-full bg-verde px-4 py-2 text-sm font-medium text-white">
-              Escríbele por WhatsApp
-            </a>
+            <div className="relative flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-3 py-1 text-xs ${pendiente.items.length ? 'bg-sol-claro text-sol' : 'border border-borde text-verde'}`}>{pendiente.items.length ? 'Vista previa' : 'Atendiendo'}</span>
+              <BotonPublicar pendiente={pendiente} />
+              <a href={linkDeWhatsapp(negocio.nombre, negocio.codigo)} target="_blank" className="rounded-full bg-verde px-4 py-2 text-sm font-medium text-white">
+                Escríbele por WhatsApp
+              </a>
+            </div>
           ) : (
             <span className="rounded-full bg-sol-claro px-3 py-1 text-xs text-sol">Armándose</span>
           )}

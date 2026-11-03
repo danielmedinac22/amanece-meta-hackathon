@@ -18,7 +18,7 @@ const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
 const { leerHilo } = await import('../src/negocio/dueno-hilo')
 const { mensajeDelDueno, responderEnElHilo } = await import('../src/negocio/dueno-chat')
-const { leerEstado } = await import('../src/nucleo/estado')
+const { leerAplicado } = await import('../src/nucleo/estado')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
@@ -51,7 +51,7 @@ async function sembrar() {
     escribir(tx, N, { tipo: 'entrevista' }, {
       elementos: PRODUCTOS.map((p) => ({ clave: el.claveDeProducto.deId(p.id), base: 'nueva' as const, despues: { tipo: 'producto', nombre: p.nombre, descripcion: '', precio: el.comoMonto(p.precio), activo: true } })),
       filas: [],
-    }),
+    }, null),
   )
   const clientes = await db
     .insert(esquema.clientes)
@@ -93,7 +93,7 @@ async function turno(s: Awaited<ReturnType<typeof sembrar>>, texto: string) {
 
 /** Lo del Panel que dejó el turno: los Elementos nuevos, cada uno pintado y con su propuesta. */
 async function delPanelNuevos(N: ReturnType<typeof marcar.negocio>, vistos: Set<string>) {
-  const estado = await leerEstado(N)
+  const estado = await leerAplicado(N)
   const nuevos = [...estado.vigentes('indicador'), ...estado.vigentes('seccion')].filter((v) => !vistos.has(v.clave))
   for (const v of nuevos) vistos.add(v.clave)
   return Promise.all(
@@ -162,10 +162,10 @@ try {
   console.log(`  la ventana por defecto la usó: ${creados.filter((c) => c.elemento.consulta.supuestos.includes(VENTANA_POR_DEFECTO.supuesto)).map((c) => c.elemento.nombre).join(', ') || 'ninguno'}`)
 
   titulo('5. "¿Cuántos días pasan de confirmado a entregado?": Capacidad faltante tipada')
-  const panelAntes = (await leerEstado(s.N)).vigentes('indicador').length + (await leerEstado(s.N)).vigentes('seccion').length
+  const panelAntes = (await leerAplicado(s.N)).vigentes('indicador').length + (await leerAplicado(s.N)).vigentes('seccion').length
   await turno(s, 'Quiero ver en el Panel cuántos días pasan de confirmado a entregado.')
   const faltantes = await db.select().from(esquema.capacidadesFaltantes).where(and(eq(esquema.capacidadesFaltantes.negocioId, s.negocio.id), gte(esquema.capacidadesFaltantes.creado, inicio)))
-  const despues = (await leerEstado(s.N)).vigentes('indicador').length + (await leerEstado(s.N)).vigentes('seccion').length
+  const despues = (await leerAplicado(s.N)).vigentes('indicador').length + (await leerAplicado(s.N)).vigentes('seccion').length
   afirmar(
     '5: queda una Capacidad faltante no_se_puede con su clave de agrupación, y nada nuevo en el Panel',
     faltantes.some((f) => f.tipo === 'no_se_puede' && f.claveDeAgrupacion.startsWith('no_se_puede:') && (f.detalle as { falta?: string } | null)?.falta) && despues === panelAntes,
@@ -177,7 +177,7 @@ try {
   const ms = turnos.map((t) => t.ms).sort((a, b) => a - b)
   const costo = turnos.reduce((x, t) => x + t.costoUsd, 0)
   console.log(`redactor: ${turnos.length} llamadas, ms p50 ${ms[Math.floor(ms.length / 2)]}, máx ${ms.at(-1)}; costo total US$${costo.toFixed(5)}, por llamada US$${(costo / Math.max(1, turnos.length)).toFixed(5)}`)
-  const estado = await leerEstado(s.N)
+  const estado = await leerAplicado(s.N)
   const lotes: number[] = []
   for (const c of creados) {
     const v = await validarConsulta(c.elemento.consulta.sql, c.elemento.consulta.salida.tipo)

@@ -17,7 +17,7 @@ const { conTransaccion } = await import('../src/db/pool')
 const { descartar, proponer, proponerLectura } = await import('../src/nucleo/cambios')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const { vistaPreviaDe } = await import('../src/nucleo/cambios/ensayar')
-const { armarEstado, leerEstado } = await import('../src/nucleo/estado')
+const { armarEstado, leerAplicado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
 
@@ -91,7 +91,7 @@ try {
         { clave: MOLINO, base: 'nueva', despues: { tipo: 'producto', nombre: 'Molino manual', descripcion: '', precio: el.comoMonto(120000), activo: true } },
       ],
       filas: [],
-    }),
+    }, null),
   )
   const clientes = await db
     .insert(esquema.clientes)
@@ -208,11 +208,14 @@ try {
       reescribir: async () => ({ texto: 'Con gusto te ayudo.', uso: SIN_USO }),
     }
     const escritura = { elementos: [{ clave: el.claveNueva('regla'), base: 'nueva' as const, despues: manizales('Con tope') }], filas: [] as never[] }
+    // El tope tiene que dar para las lecturas de la preparación: si Neon se lo come antes de la primera llamada, no hay nada que abortar.
+    const TOPE_MS = 1500
+    const estadoConTope = await leerAplicado(N)
     const inicio = Date.now()
-    const conTope = await vistaPreviaDe(await leerEstado(N), escritura, [], lento, 300)
+    const conTope = await vistaPreviaDe(estadoConTope, escritura, [], lento, TOPE_MS)
     const ms = Date.now() - inicio
     const c = conTope.guardada.conversaciones
-    afirmar(`tope total: a los 300 ms lo que no terminó cuenta como no ensayado (${ms} ms)`, ms < 2000 && c !== null && c !== undefined && c.fallaron === c.ensayos.length && c.ensayos.length === 5 && (conTope.guardada.advertencias?.[0] ?? '').startsWith('No pude ensayar 5 de 5'), { ms, c, advertencias: conTope.guardada.advertencias })
+    afirmar(`tope total: a los ${TOPE_MS} ms lo que no terminó cuenta como no ensayado (${ms} ms)`, ms < 2900 && c !== null && c !== undefined && c.fallaron === c.ensayos.length && c.ensayos.length === 5 && (conTope.guardada.advertencias?.[0] ?? '').startsWith('No pude ensayar 5 de 5'), { ms, c, advertencias: conTope.guardada.advertencias })
     afirmar('tope total: las llamadas al modelo que no terminaron se abortan', abortadas > 0, abortadas)
 
     const identidad = { id: marcar.negocio('no-es-un-uuid'), nombre: 'Roto', rubro: 'café', codigo: 'ROTO', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'atendiendo' } as const

@@ -7,13 +7,15 @@ import { esquema } from '@/db'
 import { canonico } from '@/lib/canonico'
 import type { Escritura } from '../estado'
 import type { VersionDelNegocio } from '../estado/elementos'
-import { marcar, type DuenoId, type Instante, type Marca, type NegocioId, type PropuestaId } from '../identidad'
+import { marcar, type DuenoId, type Huella, type Instante, type NegocioId, type PropuestaId } from '../identidad'
 import type { VistaPreviaGuardada } from './ensayar'
 import type { Acto } from './traducir'
 
-export type Huella = Marca<string, 'Huella'>
+export type { Huella }
 
 export const VIGENCIA_DE_UNA_PROPUESTA_HORAS = 24
+
+export const HUELLA = /^[0-9a-f]{64}$/
 
 /** De dónde sale lo que se propone. `lectura`: lo que se leyó de un enlace; solo lo arma el código y espera el botón siempre. */
 export type OrigenDelPedido = 'hilo' | 'panel' | 'lectura'
@@ -30,7 +32,7 @@ export type TarjetaDeAprobacion = {
   readonly vence: Instante
   readonly advertencias: readonly string[]
   readonly lineas: readonly string[]
-  readonly accion: 'aplicar' | 'enviar' | 'confirmar'
+  readonly accion: 'aplicar' | 'enviar' | 'confirmar' | 'deshacer' | 'revertir'
 }
 
 /**
@@ -63,8 +65,10 @@ export function filaNueva(p: {
   const vence = new Date(Date.now() + VIGENCIA_DE_UNA_PROPUESTA_HORAS * 3600_000)
   return {
     valores: { id, negocioId: p.negocio, palabrasDelDueno: p.palabrasDelDueno, pedidoPor: p.pedidoPor, origen: p.origen, escritura: p.escritura, actos: p.actos, revierte: p.revierte, huella, vence, vistaPrevia: p.vistaPrevia },
-    tarjeta: { propuesta: id, huella, vence: marcar.instante(vence), advertencias: p.vistaPrevia.advertencias ?? [], lineas: p.vistaPrevia.lineas, accion: accionDe(p.origen, p.actos) },
+    tarjeta: { propuesta: id, huella, vence: marcar.instante(vence), advertencias: p.vistaPrevia.advertencias ?? [], lineas: p.vistaPrevia.lineas, accion: accionDe(p.origen, p.actos, p.revierte) },
   }
 }
 
-export const accionDe = (origen: OrigenDelPedido, actos: readonly Acto[]): TarjetaDeAprobacion['accion'] => (actos.length ? 'enviar' : origen === 'lectura' ? 'confirmar' : 'aplicar')
+/** `deshacer` no sale de aquí: es la tarjeta de algo que ya se aplicó, y la arma `proponerComo` con el modo leído en el reclamo. */
+export const accionDe = (origen: OrigenDelPedido, actos: readonly Acto[], revierte: string | null): TarjetaDeAprobacion['accion'] =>
+  actos.length ? 'enviar' : origen === 'lectura' ? 'confirmar' : revierte ? 'revertir' : 'aplicar'

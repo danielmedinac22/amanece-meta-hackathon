@@ -6,7 +6,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { conTransaccion } from '@/db/pool'
-import { leerEstado } from '../estado'
+import { leerAplicado } from '../estado'
 import { escribir } from '../estado/escribir'
 import { describirVigente, type Problema } from '../estado/elementos'
 import type { ContextoDelDueno } from '../identidad'
@@ -38,7 +38,7 @@ export async function guardarEnElAlta(
   ctx: ContextoDelDueno,
   pedido: { readonly nombre: string | null; readonly rubro: string | null; readonly quiere: readonly QuierePoner[] },
 ): Promise<ResultadoDelAlta> {
-  const [estado, escritoPorElDueno, pendiente] = await Promise.all([leerEstado(ctx.negocio), numerosDelDueno(ctx.dueno), lecturaPendiente(ctx.negocio)])
+  const [estado, escritoPorElDueno, pendiente] = await Promise.all([leerAplicado(ctx.negocio), numerosDelDueno(ctx.dueno), lecturaPendiente(ctx.negocio)])
   const enLaTarjeta = cifrasDeLaTarjeta(pendiente?.escritura ?? null)
   const quedan: QuierePoner[] = []
   const porConfirmar: string[] = []
@@ -56,14 +56,14 @@ export async function guardarEnElAlta(
       .select({ id: esquema.negocios.id })
       .from(esquema.negocios)
       .where(and(eq(esquema.negocios.id, ctx.negocio), eq(esquema.negocios.estado, 'armando')))
-      .for('update')
+      .for('no key update')
     if (!sigue) return deshacer('abierto')
     if (Object.keys(identidad).length) await tx.update(esquema.negocios).set(identidad).where(eq(esquema.negocios.id, ctx.negocio))
     if (!t) return { tarjeta: null }
-    const w = await escribir(tx, ctx.negocio, { tipo: 'entrevista' }, t.escritura)
+    const w = await escribir(tx, ctx.negocio, { tipo: 'entrevista' }, t.escritura, null)
     if (w.tipo === 'invalida') return deshacer({ problemas: w.problemas })
     if (w.tipo === 'conflicto') return deshacer('conflicto')
-    return { tarjeta: await rearmarLectura(tx, ctx.negocio, await leerEstado(ctx.negocio, tx)) }
+    return { tarjeta: await rearmarLectura(tx, ctx.negocio, await leerAplicado(ctx.negocio, tx)) }
   })
   if (r === 'abierto') return { problemas: [SOLO_MIENTRAS_SE_ARMA] }
   if (r === 'conflicto') return { problemas: [{ tipo: 'valor_invalido', campo: 'quiere', porQue: 'Otro cambio llegó primero: vuelve a intentarlo' }] }
@@ -78,7 +78,7 @@ export async function guardarEnElAlta(
 
 /** Abre si nada bloquea. Lo que solo avisa vuelve para que el Agente del dueño se lo cuente al Dueño. */
 export async function abrirEnElAlta(ctx: ContextoDelDueno): Promise<{ readonly abierto: false; readonly falta: readonly Falta[]; readonly avisos: readonly Falta[] } | { readonly abierto: true; readonly avisos: readonly Falta[] }> {
-  const estado = await leerEstado(ctx.negocio)
+  const estado = await leerAplicado(ctx.negocio)
   const { bloquea, avisa } = queFaltaParaAbrir(estado, (await lecturaPendiente(ctx.negocio))?.escritura ?? null)
   if (estado.identidad.modo !== 'armando') return { abierto: true, avisos: [] }
   if (bloquea.length) return { abierto: false, falta: bloquea, avisos: avisa }

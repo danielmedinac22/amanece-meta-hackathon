@@ -1,12 +1,27 @@
 /**
  * El único escritor del estado de un Negocio. Lo importan `src/nucleo/cambios/**` y `scripts/` (eslint).
  */
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, or } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
-import { marcar, type DuenoId, type Instante, type NegocioId } from '../identidad'
-import { comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
-import { elementoDe, leerEstado, origenDe, ultimasDe, validarEscritura, type Escritura, type OrigenDeEscritura } from './index'
+import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId } from '../identidad'
+import { alcanceDeLaClave, comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
+import {
+  elementoDe,
+  historiaParaRevertir,
+  huellaDeLoPendiente,
+  leerAplicado,
+  leerPublicado,
+  loPendiente,
+  origenDe,
+  ultimasDe,
+  validarEscritura,
+  validarReversion,
+  type ComoSeRevierte,
+  type Escritura,
+  type ItemPendiente,
+  type OrigenDeEscritura,
+} from './index'
 
 /** Quién tocó la clave después de la `base` que vio quien propuso. Todo null si la clave ya no tiene filas. */
 export type ClaveEnConflicto = {
@@ -19,29 +34,47 @@ export type ClaveEnConflicto = {
 }
 
 export type ResultadoDeEscribir =
-  | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio }
+  /** `deUna`: cuántas filas de alcance `clientes` les llegan sin pasar por Publicar. Un freno del Panel no es una. */
+  | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio; readonly deUna: number; readonly modo: ModoDelNegocio }
   | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
   /** No cabe en el estado de ahora (`validarEscritura`): quien llama hace ROLLBACK. */
   | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }
+
+/** La versión que dejó su escritura y las claves que su tarjeta prometió que solo salían de la vista previa. */
+export type LoRevertido = { readonly version: VersionDelNegocio; readonly soloVistaPrevia: readonly Clave[] }
+
+/**
+ * Pura. Lo decide solo `escribir`, bajo la fila del Negocio. Sin Clientes reales no hay nada que retener, y lo de las
+ * tablas viejas ya lo notaban. `como`: la clave se está revirtiendo.
+ */
+export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDelNegocio, como: ComoSeRevierte | null): boolean {
+  if (origen === 'tablas_viejas' || modo !== 'atendiendo') return false
+  return como?.tipo !== 'frena'
+}
+
+const NO_SE_PUEDE: ComoSeRevierte = { tipo: 'no_se_puede' }
 
 /**
  * Dentro de la transacción de quien llama, después de tomar la fila del Negocio: ahí relee el estado y valida, así
  * dos escrituras a la vez no dejan dos productos con el mismo nombre. Una escritura vacía no sube la versión. Si
  * una clave cambió desde la `base` que vio quien propuso, no escribe nada y devuelve `conflicto`.
  */
-export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura): Promise<ResultadoDeEscribir> {
-  const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura, revierte: LoRevertido | null): Promise<ResultadoDeEscribir> {
+  const [n] = await tx.select({ version: esquema.negocios.version, modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
-  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version) }
+  const modo = n.modo ?? 'armando'
+  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0, modo }
 
-  const estado = await leerEstado(negocio, tx)
+  const estado = await leerAplicado(negocio, tx)
   const claves = escritura.elementos.map((c) => c.clave)
   const ultimaDe = new Map((await ultimasDe(tx, negocio, inArray(esquema.elementos.clave, claves))).map((u) => [u.clave, u]))
+  const historia = revierte ? await historiaParaRevertir(negocio, claves, revierte.version, tx) : null
+  const comoDe = (clave: Clave): ComoSeRevierte | null => (historia ? (historia.get(clave)?.como ?? NO_SE_PUEDE) : null)
   const chocan = escritura.elementos.flatMap((c) => {
     const ultima = ultimaDe.get(c.clave)
     const viva = ultima && ultima.contenido !== null ? ultima : null
     const coincide = c.base === 'nueva' ? viva === null : viva !== null && viva.version === c.base
-    return coincide ? [] : [{ clave: c.clave, ultima, viva }]
+    return coincide && comoDe(c.clave)?.tipo !== 'no_se_puede' ? [] : [{ clave: c.clave, ultima, viva }]
   })
   if (chocan.length) {
     const ids = chocan.flatMap((c) => (c.ultima?.propuestaId ? [c.ultima.propuestaId] : []))
@@ -62,12 +95,25 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
     }
   }
 
-  const v = validarEscritura(estado, escritura)
+  // El clic se dio para otra acción: lo que iba a salir de la vista previa ahora les llegaría a los Clientes.
+  if (revierte?.soloVistaPrevia.some((clave) => comoDe(clave)?.tipo === 'frena' && alcanceDeLaClave(clave) === 'clientes')) return { tipo: 'invalida', problemas: [{ tipo: 'ya_se_publico' }] }
+
+  const v = revierte ? validarReversion(estado, escritura) : validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') return v
+  const validadas = new Map(v.escritura.elementos.map((c) => [c.clave, c]))
+  const filas = escritura.elementos.map((c) => validadas.get(c.clave) ?? c)
+
+  const nace = (c: { readonly clave: Clave }) => naceSinPublicar(origen.tipo, modo, comoDe(c.clave))
+  const deFreno = revierte ? filas.filter((c) => modo === 'atendiendo' && !nace(c)) : []
+  if (deFreno.length) {
+    // Lo que los Clientes tienen puede no parecerse a lo aplicado, y el freno también tiene que caber ahí.
+    const w = validarEscritura(await leerPublicado(negocio, tx), { elementos: deFreno, filas: [] })
+    if (w.tipo === 'invalida') return { tipo: 'invalida', problemas: w.problemas.map((problema) => ({ tipo: 'rompe_lo_publicado', problema })) }
+  }
 
   const version = n.version + 1
   await tx.insert(esquema.elementos).values(
-    v.escritura.elementos.map((c) => {
+    filas.map((c) => {
       const tipo = c.despues?.tipo ?? ultimaDe.get(c.clave)!.tipo
       return {
         negocioId: negocio,
@@ -78,12 +124,38 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
         contenido: c.despues,
         origen: origen.tipo,
         propuestaId: origen.tipo === 'propuesta' ? origen.propuesta : null,
+        sinPublicar: nace(c),
       }
     }),
   )
   await tx.update(esquema.negocios).set({ version }).where(eq(esquema.negocios.id, negocio))
-  return { tipo: 'escrito', version: comoVersion(version) }
+  return { tipo: 'escrito', version: comoVersion(version), deUna: deFreno.filter((c) => alcanceDeLaClave(c.clave) === 'clientes').length, modo }
+}
+
+export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: readonly ItemPendiente[] } | { readonly tipo: 'sin_nada' } | { readonly tipo: 'cambio' }
+
+/**
+ * Dentro de la transacción de quien llama, con la misma fila del Negocio que toma `escribir`. Solo sella lo que se vio.
+ * No sube la versión del Negocio: no hay contenido nuevo. Sellada quiere decir que les llegó a los Clientes: solo baja
+ * el bit de la última fila de cada clave de la lista. Una fila enterrada o una clave devuelta a lo publicado quedan
+ * arriba para siempre, y un freno nunca las devuelve.
+ */
+export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string): Promise<ResultadoDeSellar> {
+  const [n] = await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
+  if (!n) throw new Error(`No existe el Negocio ${negocio}`)
+  const aplicado = await leerAplicado(negocio, tx)
+  const publicado = await leerPublicado(negocio, tx)
+  const items = loPendiente(aplicado, publicado)
+  if (!items.length) return { tipo: 'sin_nada' }
+  if (huellaDeLoPendiente(aplicado, publicado) !== vista) return { tipo: 'cambio' }
+  const ultimasFilas = await ultimasDe(tx, negocio, inArray(esquema.elementos.clave, items.map((i) => i.clave)))
+  await tx
+    .update(esquema.elementos)
+    .set({ sinPublicar: false })
+    .where(and(eq(esquema.elementos.negocioId, negocio), or(...ultimasFilas.map((u) => and(eq(esquema.elementos.clave, u.clave), eq(esquema.elementos.version, u.version))))))
+  return { tipo: 'sellado', items }
 }
 
 type Es<A extends true> = A
 export type _EscribirPideTransaccion = Es<Parameters<typeof escribir>[0] extends Transaccion ? true : false>
+export type _TodoInsertDiceElBit = Es<undefined extends (typeof esquema.elementos.$inferInsert)['sinPublicar'] ? false : true>

@@ -13,6 +13,8 @@ export type CasoId = Marca<string, 'CasoId'>
 export type PropuestaId = Marca<string, 'PropuestaId'>
 export type CapacidadFaltanteId = Marca<string, 'CapacidadFaltanteId'>
 export type Wamid = Marca<string, 'Wamid'>
+/** sha256 de un contenido canónico: ata un botón a exactamente lo que el Dueño vio. */
+export type Huella = Marca<string, 'Huella'>
 /** UTC, ISO 8601. */
 export type Instante = Marca<string, 'Instante'>
 

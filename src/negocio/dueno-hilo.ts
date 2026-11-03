@@ -24,6 +24,12 @@ export function mensajeDelAgente(texto: string, partesExtra: UIMessage['parts'] 
   return { id: generateId(), role: 'assistant', parts: [{ type: 'text', text: texto, state: 'done' }, ...partesExtra] }
 }
 
+/** Una línea fija en el Hilo de cada Dueño del Negocio: así se entera el otro Dueño y, en el turno siguiente, el modelo. */
+export async function avisarEnLosHilos(negocioId: string, texto: string, partesExtra: UIMessage['parts'] = []): Promise<void> {
+  const duenos = await db.select({ id: esquema.duenos.id }).from(esquema.duenos).where(eq(esquema.duenos.negocioId, negocioId)).orderBy(asc(esquema.duenos.creado))
+  for (const dueno of duenos) await guardarEnElHilo(negocioId, dueno.id, 'agente', mensajeDelAgente(texto, partesExtra))
+}
+
 const LARGO_MAXIMO = 4000
 
 /** El texto de un Dueño, llegue por la web o por WhatsApp, con el mismo tope. `null` si queda vacío. */

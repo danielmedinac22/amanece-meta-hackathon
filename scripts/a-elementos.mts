@@ -109,7 +109,7 @@ export async function pasarAElementos(negocio: NegocioId, deseados: readonly Des
       .map((u): CambioDeElemento => ({ clave: el.comoClave(u.clave), base: el.comoVersion(u.version), despues: null }))
     const pasada = { escritas: cambios.map((c) => c.clave), quitadas: lapidas.map((c) => c.clave), respetadas, version: n.version }
     if (opciones.enSeco) return deshacer(pasada)
-    const r = await escribir(tx, negocio, { tipo: 'tablas_viejas' }, { elementos: [...cambios, ...lapidas], filas: [] })
+    const r = await escribir(tx, negocio, { tipo: 'tablas_viejas' }, { elementos: [...cambios, ...lapidas], filas: [] }, null)
     if (r.tipo === 'conflicto') throw new Error(`conflicto en ${r.claves.map((c) => c.clave).join(', ')}; vuelve a correrlo`)
     if (r.tipo === 'invalida') throw new Error(`no cabe: ${r.problemas.map((p) => JSON.stringify(p)).join('; ')}`)
     return { ...pasada, version: r.version }

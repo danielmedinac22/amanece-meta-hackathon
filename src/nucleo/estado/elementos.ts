@@ -152,6 +152,12 @@ export type Problema =
   | { readonly tipo: 'fuera_de_ventana'; readonly cliente: ClienteId }
   | { readonly tipo: 'caso_resuelto'; readonly caso: CasoId }
   | { readonly tipo: 'solo_mientras_se_arma' }
+  /** Cabe en lo aplicado, pero lo que los Clientes tienen todavía depende de eso. */
+  | { readonly tipo: 'rompe_lo_publicado'; readonly problema: Problema }
+  /** La tarjeta prometió que solo salía de la vista previa, y mientras esperaba alguien publicó: ahora les llegaría a los Clientes. */
+  | { readonly tipo: 'ya_se_publico' }
+  /** Revertir dejaría huérfano algo vigente. Una reversión va sola: no se puede quitar junto con lo que la usa. */
+  | { readonly tipo: 'la_usa_algo_vigente'; readonly quitada: Clave; readonly usadaPor: Clave }
 
 /** Lo que `validar` necesita del Negocio: los vigentes, con lo propuesto encima si es un borrador. */
 export type Vigentes = {
@@ -294,7 +300,7 @@ const regla = (e: typeof escenario | typeof escenarioDeEntrada) =>
 
 const unidad = z.discriminatedUnion('tipo', [z.object({ tipo: z.literal('cantidad'), nombre: z.string() }), z.object({ tipo: z.literal('dinero') }), z.object({ tipo: z.literal('porcentaje') })])
 
-/** Lo guardado de una consulta. No lo ve ningún modelo: lo lee `leerEstado` del jsonb y lo revisa `escribir`. */
+/** Lo guardado de una consulta. No lo ve ningún modelo: lo lee `leerAplicado` del jsonb y lo revisa `escribir`. */
 function consultaGuardada<S extends 'filas' | 'numero' | 'serie'>(salida: z.ZodType<ConsultaGuardada<S>['salida']>) {
   return z
     .object({ sql: z.string(), enPalabras: z.string(), supuestos: z.array(z.string()), catalogo: z.number().int(), usa: z.array(z.string()), salida })
@@ -351,7 +357,7 @@ const ENTRADAS = {
   }),
 } as const
 
-/** Un Elemento completo: lo usan `escribir` antes de guardar y `leerEstado` al leer el jsonb. */
+/** Un Elemento completo: lo usan `escribir` antes de guardar y `leerAplicado` al leer el jsonb. */
 export const ESQUEMA_DE_ELEMENTO = z.discriminatedUnion('tipo', [
   regla(escenario).extend({ tipo: z.literal('regla') }),
   ENTRADAS.voz.extend({ tipo: z.literal('voz') }),
@@ -632,6 +638,12 @@ export function describirVigente(e: Elemento, estado: Vigentes): string {
     case 'indicador':
       return `Indicador «${e.nombre}»: ${e.consulta.enPalabras}`
   }
+}
+
+/** Pura. `validarEscritura` hace cumplir que toda clave empiece por su tipo. Una lápida no trae Elemento, y esto sí sirve. */
+export function alcanceDeLaClave(clave: Clave): Alcance {
+  const tipo = clave.split(':')[0]
+  return tipo in DEFINICIONES ? definicionDe(tipo as TipoDeElemento).alcance : 'clientes'
 }
 
 export function describirCambio(antes: Elemento | null, despues: Elemento | null, estado: Vigentes): string {

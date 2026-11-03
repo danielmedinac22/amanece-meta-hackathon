@@ -27,7 +27,7 @@ const { mensajeDelDueno, responderEnElHilo, tarjetasDe } = await import('../src/
 const { crearAgenteDelDueno, parteDeDatosParaElModelo } = await import('../src/agentes/dueno')
 const { aprobar, proponer, guardarEnElAlta, abrirEnElAlta } = await import('../src/nucleo/cambios')
 const { marcar } = await import('../src/nucleo/identidad')
-const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
+const { leerAplicado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type Ctx = import('../src/nucleo/identidad').ContextoDelDueno
@@ -192,7 +192,7 @@ try {
       proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'seccion', nombre, queQuiereVer: nombre, salida: 'filas', reemplaza: null }] }, undefined, g.motor)
     const pedirNumero = (nombre: string, g: ReturnType<typeof guion>) =>
       proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'indicador', nombre, queQuiereVer: nombre, salida: 'numero', reemplaza: null }] }, undefined, g.motor)
-    const pintadaDe = async (nombre: string) => (await pintarPanel(await leerEstado(N))).find((p) => p.nombre === nombre)
+    const pintadaDe = async (nombre: string) => (await pintarPanel(await leerAplicado(N))).find((p) => p.nombre === nombre)
     const vistaDe = async (r: Awaited<ReturnType<typeof proponer>>) => ('propuesta' in r ? (await db.select().from(esquema.propuestas).where(eq(esquema.propuestas.id, r.propuesta)))[0]?.vistaPrevia : undefined)
 
     titulo('1. Indicador con una consulta fija: queda aplicado sin botón y el Panel da la misma cifra')
@@ -238,14 +238,14 @@ try {
     titulo('7. Una consulta guardada que ya no valida: no_se_pudo_calcular y el Panel no se cae')
     const rota = el.claveNueva('indicador')
     const indicadorRoto = { tipo: 'indicador', nombre: `Roto (prueba 7 ${corrida})`, queQuiereVer: 'x', consulta: { sql: 'select now() as valor', enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'numero', unidad: { tipo: 'dinero' } } } } as unknown as Elemento
-    await conTransaccion((tx) => escribir(tx, N, { tipo: 'entrevista' }, { elementos: [{ clave: rota, base: 'nueva', despues: indicadorRoto }], filas: [] }))
-    const conRota = await pintarPanel(await leerEstado(N))
+    await conTransaccion((tx) => escribir(tx, N, { tipo: 'entrevista' }, { elementos: [{ clave: rota, base: 'nueva', despues: indicadorRoto }], filas: [] }, null))
+    const conRota = await pintarPanel(await leerAplicado(N))
     afirmar('7: la rota sale como no_se_pudo_calcular y las demás se pintan', conRota.find((p) => p.clave === rota)?.resultado.tipo === 'no_se_pudo_calcular' && conRota.some((p) => p.nombre === `Con novedad (prueba 2 ${corrida})` && p.resultado.tipo === 'filas'), conRota.map((p) => [p.nombre, p.resultado.tipo]))
 
     titulo('3b. El error vuelve al redactor: dos consultas malas y una buena')
     const g3b = guion([salida("select count(*) as valor from pedidos p, (select set_config('app.negocio_id', 'x', true)) s"), salida('select telefono as etiqueta, count(*) as valor from clientes group by 1'), salida(BUENA)])
     const r3b = await pedirIndicador(`Confirmados por día (prueba 3b ${corrida})`, g3b)
-    const vigente3b = (await leerEstado(N)).vigentes('indicador').find((v) => v.elemento.nombre === `Confirmados por día (prueba 3b ${corrida})`)
+    const vigente3b = (await leerAplicado(N)).vigentes('indicador').find((v) => v.elemento.nombre === `Confirmados por día (prueba 3b ${corrida})`)
     afirmar('3b: el redactor corrió exactamente 3 veces', g3b.prompts.length === 3, g3b.prompts.length)
     afirmar('3b: el 2.º intento recibió la consulta anterior y por qué no sirvió', g3b.prompts[1]?.includes('set_config') && g3b.prompts[1].includes('No se permite set_config()'), g3b.prompts[1]?.slice(-400))
     afirmar('3b: el 3.º intento recibió el dato que no existe y los campos que sí', g3b.prompts[2]?.includes('telefono no existe') && g3b.prompts[2].includes('Campos:'), g3b.prompts[2]?.slice(-400))
@@ -255,7 +255,7 @@ try {
     const g3c = guion([salida('', { decision: 'no_se_puede', faltaEn: 'pedidos', falta: 'la fecha de entrega' })])
     const r3c = await pedirIndicador(`Días hasta la entrega (prueba 3c ${corrida})`, g3c)
     const fila3c = r3c.desenlace === 'capacidad_faltante' ? await faltanteDe(r3c.capacidadFaltante) : undefined
-    afirmar('3c: termina en una Capacidad faltante no_se_puede:pedidos, sin Elemento', r3c.desenlace === 'capacidad_faltante' && fila3c?.tipo === 'no_se_puede' && fila3c.claveDeAgrupacion === 'no_se_puede:pedidos' && (fila3c.detalle as { falta?: string })?.falta === 'la fecha de entrega' && !(await leerEstado(N)).vigentes('indicador').some((v) => v.elemento.nombre.includes('3c')), fila3c)
+    afirmar('3c: termina en una Capacidad faltante no_se_puede:pedidos, sin Elemento', r3c.desenlace === 'capacidad_faltante' && fila3c?.tipo === 'no_se_puede' && fila3c.claveDeAgrupacion === 'no_se_puede:pedidos' && (fila3c.detalle as { falta?: string })?.falta === 'la fecha de entrega' && !(await leerAplicado(N)).vigentes('indicador').some((v) => v.elemento.nombre.includes('3c')), fila3c)
 
     titulo('3c bis. /medicion: solo el equipo, y agrupado sin palabras del Dueño')
     const prueba = { email: 'Equipo@Amanece.co', emailVerified: true }
@@ -281,7 +281,7 @@ try {
     afirmar('3e: dos cortadas y la tercera sirve: 3 intentos y queda aplicado', g3e.prompts.length === 3 && r3e.desenlace === 'aplicado' && g3e.prompts[1].includes('se cortó'), { intentos: g3e.prompts.length, desenlace: r3e.desenlace })
 
     titulo('4. Regla: no prometer fechas, por Elementos')
-    const reglasDe = async () => (await leerEstado(N)).vigentes('regla')
+    const reglasDe = async () => (await leerAplicado(N)).vigentes('regla')
     const reglasAntes = (await reglasDe()).length
     const regla = await aplicar(ctx, 'No prometas fechas de entrega', [
       poner({
@@ -293,7 +293,7 @@ try {
       }),
     ])
     const conLaNueva = await reglasDe()
-    const estadoTras = await leerEstado(N)
+    const estadoTras = await leerAplicado(N)
     console.log('Reglas vigentes tras aplicar:', conLaNueva.map((v) => el.reglaEnPalabras(v.elemento, estadoTras)))
     afirmar('4 regla: tras aplicar aparece entre las reglas vigentes', conLaNueva.length === reglasAntes + 1 && conLaNueva.some((v) => v.origen.tipo === 'propuesta' && v.origen.propuesta === regla), conLaNueva)
     await aplicar(ctx, 'Quita esa regla', [{ tipo: 'revertir', propuesta: regla }])
@@ -301,18 +301,18 @@ try {
     afirmar('4 regla: tras revertir ya no está y quedan las de antes', reglasTras.length === reglasAntes && reglasTras.every((v) => v.origen.tipo !== 'propuesta' || v.origen.propuesta !== regla), reglasTras)
 
     titulo('5. Datos y productos: horario y un producto nuevo')
-    const antes = valorDelDato(await leerEstado(N), 'horario')
+    const antes = valorDelDato(await leerAplicado(N), 'horario')
     const conocimiento = await aplicar(ctx, 'Ahora abrimos también los domingos y vendemos un café de prueba', [
       poner({ tipo: 'dato', campo: 'horario', valor: `${antes} y domingos de 9 a 1` }),
       poner({ tipo: 'producto', nombre: 'Café de prueba 250 g', descripcion: '', precio: el.comoMonto(21000), activo: true }),
     ])
-    const aplicado = await leerEstado(N)
+    const aplicado = await leerAplicado(N)
     const nuevos = aplicado.vigentes('producto').filter((v) => v.elemento.nombre.startsWith('Café de prueba'))
     console.log(`Horario aplicado: "${valorDelDato(aplicado, 'horario')}"; productos de prueba: ${nuevos.length}`)
     afirmar('5 datos: tras aplicar el horario es el nuevo', valorDelDato(aplicado, 'horario') === `${antes} y domingos de 9 a 1`, valorDelDato(aplicado, 'horario'))
     afirmar('5 datos: tras aplicar el producto nuevo está activo con su precio', nuevos.length === 1 && nuevos[0].elemento.activo && nuevos[0].elemento.precio === 21000, nuevos)
     await aplicar(ctx, 'Deshaz eso', [{ tipo: 'revertir', propuesta: conocimiento }])
-    const revertido = await leerEstado(N)
+    const revertido = await leerAplicado(N)
     afirmar('5 datos: tras revertir el horario vuelve al de antes', valorDelDato(revertido, 'horario') === antes, valorDelDato(revertido, 'horario'))
     afirmar('5 datos: tras revertir no queda el producto de prueba', revertido.vigentes('producto').every((v) => !v.elemento.nombre.startsWith('Café de prueba')))
   }
@@ -406,9 +406,9 @@ try {
 
     const panel = await turno(negocio.id, dueno.id, 'Quiero ver cuántos pedidos tengo con novedad, en una lista.')
     const aplicadas = (await propuestasDelDueno()).filter((p) => p.estado === 'aplicada' && p.aprobadoPor === null)
-    afirmar('8 Panel: lo que solo ve el Dueño queda aplicado sin botón', aplicadas.length > 0 && tarjetasDe([panel]).length === 0, { aplicadas, herramientas: herramientasDe(panel) })
+    afirmar('8 Panel: lo que solo ve el Dueño queda aplicado, y su única tarjeta es la de Deshacer', aplicadas.length > 0 && tarjetasDe([panel]).every((t) => t.accion === 'deshacer'), { aplicadas, herramientas: herramientasDe(panel) })
 
-    const reglasDe = async () => (await leerEstado(N)).vigentes('regla').length
+    const reglasDe = async () => (await leerAplicado(N)).vigentes('regla').length
     const reglasAntes = await reglasDe()
     const pedida = await turno(negocio.id, dueno.id, 'Nunca les prometas a los clientes una fecha de entrega.')
     const [tarjeta] = tarjetasDe([pedida])
@@ -425,7 +425,7 @@ try {
     }
 
     titulo('8b. La regla de Manizales, cuando pedido, propuesta por el Agente del dueño')
-    const deManizales = async () => (await leerEstado(N)).vigentes('regla').filter((v) => v.elemento.cuando.tipo === 'pedido').length
+    const deManizales = async () => (await leerAplicado(N)).vigentes('regla').filter((v) => v.elemento.cuando.tipo === 'pedido').length
     const deManizalesAntes = await deManizales()
     const pide = await turno(negocio.id, dueno.id, 'Cuando un pedido sea para fuera de Manizales, ábreme un Caso y no le prometas fecha de entrega al cliente.')
     const mensajesDeLaRegla = tarjetasDe([pide]).length ? [pide] : [pide, await turno(negocio.id, dueno.id, 'Sí, prepáralo así.')]
@@ -470,7 +470,7 @@ try {
     const precio = await turno(nuevo.id, duenoNuevo.id, 'Sube el precio del arequipe de 500 g a 19000.')
     const si = await turno(nuevo.id, duenoNuevo.id, 'Sí, aplícalo.')
     const NUEVO = marcar.negocio(nuevo.id)
-    const productosDe = async () => (await leerEstado(NUEVO)).vigentes('producto').map((v) => v.elemento)
+    const productosDe = async () => (await leerAplicado(NUEVO)).vigentes('producto').map((v) => v.elemento)
     const arequipesDe = async () => (await productosDe()).filter((p) => /requipe/i.test(p.nombre))
     const antesDelBoton = (await arequipesDe()).filter((p) => p.activo)
     afirmar('9 precio: decir "sí" por escrito no cambia el precio', antesDelBoton.length > 0 && antesDelBoton.every((p) => p.precio === 18000), antesDelBoton)
@@ -481,12 +481,12 @@ try {
     console.log(`Precio del arequipe tras el botón: ${arequipes[0]?.precio}`)
     const [final] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, nuevo.id))
     const productos = await productosDe()
-    const ciudad = valorDelDato(await leerEstado(NUEVO), 'ciudad')
+    const ciudad = valorDelDato(await leerAplicado(NUEVO), 'ciudad')
     console.log(`\nNegocio tras la entrevista: "${final.nombre}", estado ${final.estado}, rubro "${final.rubro}", ciudad "${ciudad}", ${productos.length} productos`)
     afirmar('9 alta: tras la entrevista el Negocio está listo', final.estado === 'listo', final.estado)
     afirmar('9 alta: guardó al menos 2 productos', productos.length >= 2, productos.map((p) => p.nombre))
     afirmar('9 alta: guardó la ciudad Popayán', ciudad.toLowerCase().includes('popay'), ciudad)
-    const deLaEntrevista = (await leerEstado(NUEVO)).todos().filter((v) => v.origen.tipo === 'entrevista')
+    const deLaEntrevista = (await leerAplicado(NUEVO)).todos().filter((v) => v.origen.tipo === 'entrevista')
     afirmar('9 alta: lo de la entrevista quedó como Elementos con origen entrevista', deLaEntrevista.length >= 3, deLaEntrevista.map((v) => v.clave))
 
     titulo('9b. Abrir en el alta: sin producto se bloquea; sin horario solo avisa')
@@ -499,10 +499,10 @@ try {
     const guardarConocimiento = (entrada: Record<string, string>) =>
       (deRosa.guardar_conocimiento as unknown as { execute: (e: unknown, o: unknown) => Promise<{ resumen: string }> }).execute(entrada, { toolCallId: 'prueba', messages: [] })
     const conMalTono = await guardarConocimiento({ ciudad: 'Medellín', tono: 'Decimos que la arepa cura la gastritis' })
-    const trasMalTono = await leerEstado(marcar.negocio(otro.id))
+    const trasMalTono = await leerAplicado(marcar.negocio(otro.id))
     afirmar('9b tono: uno que no puede llegar a un Cliente se omite y se dice, y la ciudad se guarda', conMalTono.resumen.includes('tono') && valorDelDato(trasMalTono, 'ciudad') === 'Medellín' && trasMalTono.vigentes('voz').length === 0, conMalTono)
     await guardarConocimiento({ tono: `Cercanos, nunca de usted. ${'Hablamos sencillo. '.repeat(30)}` })
-    const [vozDeRosa] = (await leerEstado(marcar.negocio(otro.id))).vigentes('voz')
+    const [vozDeRosa] = (await leerAplicado(marcar.negocio(otro.id))).vigentes('voz')
     afirmar('9b tono: uno largo se corta al largo del estilo y "nunca de usted" tutea', vozDeRosa?.elemento.estilo.length === el.LARGO_DEL_ESTILO && vozDeRosa.elemento.trato === 'tu', vozDeRosa)
     await guardarEnElHilo(otro.id, duenoOtro.id, 'dueno', mensajeDelDuenoEnTexto('Se llama Arepas de Rosa y la arepa de choclo vale 6000')!)
     const guardado = await guardarEnElAlta(ctxOtro, { nombre: 'Arepas de Rosa', rubro: 'arepas', quiere: [poner({ tipo: 'producto', nombre: 'Arepa de choclo', descripcion: '', precio: el.comoMonto(6000), activo: true }), poner({ tipo: 'dato', campo: 'ciudad', valor: 'Medellín' })] })
@@ -518,18 +518,18 @@ try {
   if (quiero('agente')) {
     titulo('10. Una regla de horario que hoy nada cumple queda anotada, sin propuesta')
     const propuestasAntes = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id)))
-    const versionAntes = (await leerEstado(N)).version
+    const versionAntes = (await leerAplicado(N)).version
     const faltantesAntes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
     await turno(negocio.id, dueno.id, 'Fuera de horario no contestes nada a los clientes.')
     const propuestasDespues = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id), sql`${esquema.propuestas.estado} <> 'capacidad_faltante'`))
     const faltantes = await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))
-    afirmar('10 horario: queda una Capacidad faltante, sin propuesta y con la versión igual', faltantes > faltantesAntes && propuestasDespues === propuestasAntes && (await leerEstado(N)).version === versionAntes, { faltantesAntes, faltantes, propuestasAntes, propuestasDespues })
+    afirmar('10 horario: queda una Capacidad faltante, sin propuesta y con la versión igual', faltantes > faltantesAntes && propuestasDespues === propuestasAntes && (await leerAplicado(N)).version === versionAntes, { faltantesAntes, faltantes, propuestasAntes, propuestasDespues })
 
     titulo('10b. "Pásamelo" queda anotado: ni regla ni propuesta')
-    const reglasAntes = (await leerEstado(N)).vigentes('regla').length
+    const reglasAntes = (await leerAplicado(N)).vigentes('regla').length
     await turno(negocio.id, dueno.id, 'Cuando un cliente pregunte por ventas al por mayor, pásamelo a mí.')
     const conPasar = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.negocioId, negocio.id), eq(esquema.propuestas.pedidoPor, dueno.id), sql`${esquema.propuestas.estado} <> 'capacidad_faltante'`))
-    afirmar('10b pásamelo: queda otra Capacidad faltante, sin propuesta, sin regla y con la versión igual', (await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))) > faltantes && conPasar === propuestasAntes && (await leerEstado(N)).vigentes('regla').length === reglasAntes && (await leerEstado(N)).version === versionAntes, { conPasar, propuestasAntes })
+    afirmar('10b pásamelo: queda otra Capacidad faltante, sin propuesta, sin regla y con la versión igual', (await db.$count(esquema.capacidadesFaltantes, eq(esquema.capacidadesFaltantes.negocioId, negocio.id))) > faltantes && conPasar === propuestasAntes && (await leerAplicado(N)).vigentes('regla').length === reglasAntes && (await leerAplicado(N)).version === versionAntes, { conPasar, propuestasAntes })
   }
 
   const turnos = await db.select().from(esquema.turnos).where(eq(esquema.turnos.negocioId, negocio.id))

@@ -1,16 +1,19 @@
 /**
  * El único lector del estado de un Negocio. Nadie más consulta `elementos`; `probar-elementos` lo verifica.
  */
+import { createHash } from 'node:crypto'
 import { and, desc, eq, inArray, lt, ne, type SQL } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
+import { canonico } from '@/lib/canonico'
 import { NOMBRE_TEMPORAL } from '@/negocio/alta'
-import { marcar, type Marca, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
+import { marcar, type Huella, type Marca, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import {
   comoClave,
   comoVersion,
   DEFINICIONES,
   definicionDe,
+  describirCambio,
   ESQUEMA_DE_ELEMENTO,
   normalizar,
   sinCumplidorHoy,
@@ -60,8 +63,10 @@ export interface EstadoDelNegocio extends Vigentes {
   todos(): readonly ElementoVigente[]
 }
 
-/** Lo que está funcionando ahora. Solo lo produce `leerEstado`. */
-export type EstadoVigente = Marca<EstadoDelNegocio, 'EstadoVigente'>
+/** Lo que ve el Dueño: su vista previa. Solo lo produce `leerAplicado`. */
+export type EstadoAplicado = Marca<EstadoDelNegocio, 'EstadoAplicado'>
+/** Lo que notan los Clientes. Solo lo produce `leerPublicado`. */
+export type EstadoPublicado = Marca<EstadoDelNegocio, 'EstadoPublicado'>
 
 export type CambioDeElemento = {
   readonly clave: Clave
@@ -122,7 +127,7 @@ export function armarEstado(identidad: IdentidadDelNegocio, version: VersionDelN
 
 const ultimas = esquema.elementos
 
-/** Quien lee: la base, o la transacción de quien escribe, que relee después de su `FOR UPDATE`. */
+/** Quien lee: la base, o la transacción de quien escribe, que relee después de tomar la fila del Negocio. */
 export type Lector = typeof db | Transaccion
 
 /** La última fila de cada clave del Negocio, también la que la quitó (`contenido` null). La única consulta de `elementos`. */
@@ -136,6 +141,7 @@ export function ultimasDe(x: Lector, negocio: NegocioId, filtro?: SQL) {
       contenido: ultimas.contenido,
       origen: ultimas.origen,
       propuestaId: ultimas.propuestaId,
+      sinPublicar: ultimas.sinPublicar,
       creado: ultimas.creado,
     })
     .from(ultimas)
@@ -143,34 +149,86 @@ export function ultimasDe(x: Lector, negocio: NegocioId, filtro?: SQL) {
     .orderBy(ultimas.clave, desc(ultimas.version))
 }
 
-/**
- * Sin caché: un Cambio vale desde el siguiente mensaje. Son dos lecturas en READ COMMITTED, no una sola foto: quien
- * escribe no confía en esta, relee con `x = tx` después de tomar la fila del Negocio.
- */
-export async function leerEstado(negocio: NegocioId, x: Lector = db): Promise<EstadoVigente> {
-  const [negocios, filas] = await Promise.all([
-    x
-      .select({
-        nombre: esquema.negocios.nombre,
-        rubro: esquema.negocios.rubro,
-        codigo: esquema.negocios.codigo,
-        pais: esquema.negocios.pais,
-        moneda: esquema.negocios.moneda,
-        zonaHoraria: esquema.negocios.zonaHoraria,
-        modo: esquema.negocios.modo,
-        version: esquema.negocios.version,
-      })
-      .from(esquema.negocios)
-      .where(eq(esquema.negocios.id, negocio)),
-    ultimasDe(x, negocio),
-  ])
-  const [n] = negocios
+async function identidadDe(x: Lector, negocio: NegocioId): Promise<{ readonly identidad: IdentidadDelNegocio; readonly version: number }> {
+  const [n] = await x
+    .select({
+      nombre: esquema.negocios.nombre,
+      rubro: esquema.negocios.rubro,
+      codigo: esquema.negocios.codigo,
+      pais: esquema.negocios.pais,
+      moneda: esquema.negocios.moneda,
+      zonaHoraria: esquema.negocios.zonaHoraria,
+      modo: esquema.negocios.modo,
+      version: esquema.negocios.version,
+    })
+    .from(esquema.negocios)
+    .where(eq(esquema.negocios.id, negocio))
   if (!n) throw new NegocioInexistente(`No existe el Negocio ${negocio}`)
-  const vigentes = filas
-    .filter((f) => f.contenido !== null)
-    .map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
-  const identidad: IdentidadDelNegocio = { id: negocio, nombre: n.nombre, rubro: n.rubro, codigo: n.codigo, pais: n.pais, moneda: n.moneda, zonaHoraria: n.zonaHoraria, modo: n.modo ?? 'armando' }
-  return armarEstado(identidad, comoVersion(n.version), vigentes) as EstadoVigente
+  const { version, modo, ...resto } = n
+  return { identidad: { ...resto, id: negocio, modo: modo ?? 'armando' }, version }
+}
+
+const vivasDe = (filas: Awaited<ReturnType<typeof ultimasDe>>) =>
+  filas.filter((f) => f.contenido !== null).map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
+
+/**
+ * La última fila de cada clave. Sin caché: un Cambio se ve desde la siguiente lectura. Son dos lecturas en READ
+ * COMMITTED, no una sola foto: quien escribe no confía en esta, relee con `x = tx` después de tomar la fila del Negocio.
+ */
+export async function leerAplicado(negocio: NegocioId, x: Lector = db): Promise<EstadoAplicado> {
+  const [{ identidad, version }, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio)])
+  return armarEstado(identidad, comoVersion(version), vivasDe(filas)) as EstadoAplicado
+}
+
+/**
+ * La última fila sellada de cada clave. Las filas salen de un solo SELECT: un Cliente nunca ve una publicación a medias.
+ * `version` es la más alta de esas filas, lápidas incluidas: 0 quiere decir que no hay Elementos.
+ */
+export async function leerPublicado(negocio: NegocioId, x: Lector = db): Promise<EstadoPublicado> {
+  const [{ identidad }, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio, eq(ultimas.sinPublicar, false))])
+  const version = filas.reduce((max, f) => Math.max(max, f.version), 0)
+  return armarEstado(identidad, comoVersion(version), vivasDe(filas)) as EstadoPublicado
+}
+
+export type ItemPendiente = {
+  readonly clave: Clave
+  readonly linea: string
+  readonly loNotan: 'clientes' | 'equipo'
+}
+
+/** Por contenido, nunca por versión: una clave editada y devuelta a lo publicado, o creada y deshecha, no cuenta. */
+function diferencias(aplicado: EstadoAplicado, publicado: EstadoPublicado) {
+  const claves = [...new Set([...aplicado.todos(), ...publicado.todos()].map((v) => v.clave))].sort()
+  return claves.flatMap((clave) => {
+    const antes = publicado.vigente(clave)?.elemento ?? null
+    const despues = aplicado.vigente(clave)?.elemento ?? null
+    return canonico(antes) === canonico(despues) ? [] : [{ clave, antes, despues }]
+  })
+}
+
+export function loPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado): readonly ItemPendiente[] {
+  return diferencias(aplicado, publicado).map(({ clave, antes, despues }) => ({
+    clave,
+    linea: describirCambio(antes, despues, aplicado),
+    loNotan: definicionDe((despues ?? antes)!.tipo).alcance === 'clientes' ? 'clientes' : 'equipo',
+  }))
+}
+
+/** Pura. El mismo contenido da la misma huella, sin importar cuántas versiones hubo. */
+export function huellaDeLoPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado): Huella {
+  return createHash('sha256').update(canonico(diferencias(aplicado, publicado))).digest('hex') as Huella
+}
+
+/** Pura. Lo que deja cada clave pendiente igual a lo publicado. Cabe: el resultado es lo publicado, que siempre es válido. */
+export function escrituraParaRetirar(aplicado: EstadoAplicado, publicado: EstadoPublicado): Escritura {
+  return { elementos: diferencias(aplicado, publicado).map(({ clave, despues, antes }) => ({ clave, base: despues ? aplicado.vigente(clave)!.version : 'nueva', despues: antes })), filas: [] }
+}
+
+/** También si la quitó. */
+export async function quienEscribioLaUltima(negocio: NegocioId, claves: readonly Clave[]): Promise<ReadonlyMap<Clave, PropuestaId | null>> {
+  if (!claves.length) return new Map()
+  const filas = await ultimasDe(db, negocio, inArray(ultimas.clave, [...claves]))
+  return new Map(filas.map((f) => [comoClave(f.clave), f.propuestaId ? marcar.propuesta(f.propuestaId) : null]))
 }
 
 /**
@@ -212,9 +270,21 @@ export type ResultadoDeValidar = { readonly tipo: 'valida'; readonly escritura: 
 
 const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_invalido', campo, porQue })
 
+/** Sin las lápidas sobre claves que ya no están: solo las deja el freno, cuando lo aplicado ya quitó lo que los Clientes todavía tienen. */
+function queCambiaLoAplicado(estado: EstadoDelNegocio, escritura: Escritura): Escritura {
+  return { ...escritura, elementos: escritura.elementos.filter((c) => c.despues !== null || estado.vigente(c.clave) !== null) }
+}
+
+/** Pura. Lo que no cambia lo aplicado se valida contra lo publicado. */
+export function validarReversion(estado: EstadoDelNegocio, escritura: Escritura): ResultadoDeValidar {
+  const v = validarEscritura(estado, queCambiaLoAplicado(estado, escritura))
+  if (v.tipo === 'valida') return v
+  return { tipo: 'invalida', problemas: v.problemas.map((p) => (p.tipo === 'referencia_huerfana' ? { ...p, tipo: 'la_usa_algo_vigente' } : p)) }
+}
+
 /**
  * Pura. La única validación de una Escritura: la corre `traducir` para la tarjeta y otra vez `escribir`, dentro de la
- * transacción, contra lo que leyó después del `FOR UPDATE`. Devuelve los Elementos parseados: eso es lo que se guarda.
+ * transacción, contra lo que leyó después de tomar la fila del Negocio. Devuelve los Elementos parseados: eso es lo que se guarda.
  */
 export function validarEscritura(estado: EstadoDelNegocio, escritura: Escritura): ResultadoDeValidar {
   const problemas: Problema[] = []
@@ -251,13 +321,66 @@ export function validarEscritura(estado: EstadoDelNegocio, escritura: Escritura)
   return problemas.length ? { tipo: 'invalida', problemas } : { tipo: 'valida', escritura: parseada }
 }
 
-export type HistoriaDeClave = { readonly ultima: VersionDelNegocio; readonly antes: Elemento | null }
+export type ComoSeRevierte =
+  /** Les llega a los Clientes de una. `pierde`: lo que hay sin publicar encima, que también se va de la vista previa. */
+  | { readonly tipo: 'frena'; readonly pierde: { readonly hoy: Elemento | null } | null }
+  | { readonly tipo: 'solo_vista_previa' }
+  | { readonly tipo: 'no_se_puede' }
 
-/** Para revertir: la última versión de cada clave (también si la quitó) y lo que valía justo antes de `version`. */
-export async function historiaParaRevertir(negocio: NegocioId, claves: readonly Clave[], version: VersionDelNegocio): Promise<ReadonlyMap<Clave, HistoriaDeClave>> {
+export type FilaDeUnaClave = { readonly version: number; readonly contenido: Elemento | null }
+
+/**
+ * Pura. La llaman `reversion`, al proponer, y `escribir`, con la fila del Negocio tomada, que es la que manda.
+ */
+export function comoSeRevierte({ fila, sellada, ultima, ultimaSellada }: {
+  readonly fila: FilaDeUnaClave
+  readonly sellada: boolean
+  readonly ultima: FilaDeUnaClave
+  readonly ultimaSellada: number | null
+}): ComoSeRevierte {
+  // También si lo que se publicó encima vale lo mismo: "solo sale de la vista previa" dejaría a los Clientes con eso sin decirlo.
+  if (ultimaSellada !== null && ultimaSellada > fila.version) return { tipo: 'no_se_puede' }
+  const nadaEncima = canonico(ultima.contenido) === canonico(fila.contenido)
+  if (sellada) return { tipo: 'frena', pierde: nadaEncima ? null : { hoy: ultima.contenido } }
+  return nadaEncima ? { tipo: 'solo_vista_previa' } : { tipo: 'no_se_puede' }
+}
+
+export type HistoriaDeClave = {
+  /** Lo que escribió la propuesta que se revierte. */
+  readonly fila: Elemento | null
+  /** A lo que vuelve: si frena, la última fila sellada de abajo, que es lo que los Clientes tenían. Si no, la última de abajo. */
+  readonly antes: Elemento | null
+  readonly como: ComoSeRevierte
+}
+
+const contenidoDe = (f: Parameters<typeof elementoDe>[0] & { readonly contenido: unknown }) => (f.contenido === null ? null : elementoDe(f))
+
+/** Una clave sin fila en `version` no viene. */
+export async function historiaParaRevertir(negocio: NegocioId, claves: readonly Clave[], version: VersionDelNegocio, x: Lector = db): Promise<ReadonlyMap<Clave, HistoriaDeClave>> {
   if (!claves.length) return new Map()
   const deEstas = inArray(ultimas.clave, [...claves])
-  const [ahora, previas] = await Promise.all([ultimasDe(db, negocio, deEstas), ultimasDe(db, negocio, and(deEstas, lt(ultimas.version, version)))])
-  const antes = new Map(previas.map((f) => [f.clave, f.contenido === null ? null : elementoDe(f)]))
-  return new Map(ahora.map((f) => [comoClave(f.clave), { ultima: comoVersion(f.version), antes: antes.get(f.clave) ?? null }]))
+  const [ahora, previas, previasSelladas, suyas, selladas] = await Promise.all([
+    ultimasDe(x, negocio, deEstas),
+    ultimasDe(x, negocio, and(deEstas, lt(ultimas.version, version))),
+    ultimasDe(x, negocio, and(deEstas, lt(ultimas.version, version), eq(ultimas.sinPublicar, false))),
+    ultimasDe(x, negocio, and(deEstas, eq(ultimas.version, version))),
+    ultimasDe(x, negocio, and(deEstas, eq(ultimas.sinPublicar, false))),
+  ])
+  const antes = new Map(previas.map((f) => [f.clave, contenidoDe(f)]))
+  const antesSellado = new Map(previasSelladas.map((f) => [f.clave, contenidoDe(f)]))
+  const ultimaDe = new Map(ahora.map((f) => [f.clave, f]))
+  const selladaDe = new Map(selladas.map((f) => [f.clave, f.version]))
+  return new Map(
+    suyas.map((f) => {
+      const u = ultimaDe.get(f.clave)!
+      const fila = contenidoDe(f)
+      const como = comoSeRevierte({
+        fila: { version: f.version, contenido: fila },
+        sellada: !f.sinPublicar,
+        ultima: { version: u.version, contenido: contenidoDe(u) },
+        ultimaSellada: selladaDe.get(f.clave) ?? null,
+      })
+      return [comoClave(f.clave), { fila, antes: (como.tipo === 'frena' ? antesSellado : antes).get(f.clave) ?? null, como }]
+    }),
+  )
 }

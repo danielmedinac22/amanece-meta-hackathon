@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import type { ResultadoDeAprobar, TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { ResultadoDeAprobar, ResultadoDeDeshacer, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 
-const VERBO = { aplicar: 'Aplicar', enviar: 'Enviar', confirmar: 'Están bien y no falta ninguno' } as const satisfies Record<TarjetaDeAprobacion['accion'], string>
-const HECHA = { Aplicar: 'Aplicada', Enviar: 'Enviada', 'Están bien y no falta ninguno': 'Confirmada' } as const satisfies Record<(typeof VERBO)[keyof typeof VERBO], string>
+const VERBO = { aplicar: 'Aplicar', enviar: 'Enviar', confirmar: 'Están bien y no falta ninguno', deshacer: 'Deshacer', revertir: 'Revertir' } as const satisfies Record<TarjetaDeAprobacion['accion'], string>
+const HECHA = { Aplicar: 'Aplicada', Enviar: 'Enviada', 'Están bien y no falta ninguno': 'Confirmada', Deshacer: 'Deshecho', Revertir: 'Revertida' } as const satisfies Record<(typeof VERBO)[keyof typeof VERBO], string>
 
-type Respuesta = ResultadoDeAprobar | { readonly tipo: 'descartada' } | { readonly tipo: 'error'; readonly mensaje: string }
+type Respuesta = ResultadoDeAprobar | ResultadoDeDeshacer | { readonly tipo: 'descartada' } | { readonly tipo: 'error'; readonly mensaje: string }
 
 /** Una propuesta dentro del Hilo: sus líneas y el botón. Después de un clic muestra lo que respondió la ruta. */
 export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; alCambiar: () => void }) {
@@ -16,10 +16,15 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
 
   // Recién llegada en el stream todavía no tiene estado: se deja tocar si no venció, y la ruta decide.
   const [vigente] = useState(() => Date.parse(tarjeta.vence) > Date.now())
-  const esperando = (!respuesta || respuesta.tipo === 'error') && (estado ? estado.estado === 'espera_al_dueno' : vigente)
+  // Deshacer es de algo ya aplicado: no vence, y la apaga que ya esté revertido.
+  const esDeshacer = tarjeta.accion === 'deshacer'
+  const abierta = esDeshacer ? !estado || estado.estado === 'aplicada' : estado ? estado.estado === 'espera_al_dueno' : vigente
+  // Un `conflicto` de Aplicar ya descartó la tarjeta y su texto pide proponerlo de nuevo: ahí tocar otra vez no sirve.
+  const sirveTocarOtraVez = !respuesta || respuesta.tipo === 'error' || respuesta.tipo === 'ya_no_cabe' || (respuesta.tipo === 'conflicto' && esDeshacer)
+  const esperando = sirveTocarOtraVez && abierta
   const verbo = VERBO[tarjeta.accion]
 
-  async function tocar(accion: 'aprobar' | 'descartar') {
+  async function tocar(accion: 'aprobar' | 'descartar' | 'deshacer') {
     setEnCurso(true)
     try {
       const r = await fetch(`/api/propuestas/${tarjeta.propuesta}/${accion}`, {
@@ -49,15 +54,23 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
           {l}
         </p>
       ))}
-      {respuesta?.tipo === 'error' && <p className="mt-2 text-xs text-red-700">{respuesta.mensaje}</p>}
+      {esperando && respuesta && <p className="mt-2 text-xs text-red-700">{respuesta.tipo === 'error' ? respuesta.mensaje : 'resumen' in respuesta ? respuesta.resumen : null}</p>}
       {esperando ? (
         <div className="mt-3 flex gap-2">
-          <button disabled={enCurso} onClick={() => tocar('aprobar')} className="rounded-full bg-sol px-4 py-1.5 font-medium text-white disabled:opacity-50">
-            {verbo}
-          </button>
-          <button disabled={enCurso} onClick={() => tocar('descartar')} className="rounded-full border border-borde px-4 py-1.5 text-suave disabled:opacity-50">
-            Descartar
-          </button>
+          {esDeshacer ? (
+            <button disabled={enCurso} onClick={() => tocar('deshacer')} className="rounded-full border border-borde px-4 py-1.5 text-suave disabled:opacity-50">
+              {verbo}
+            </button>
+          ) : (
+            <>
+              <button disabled={enCurso} onClick={() => tocar('aprobar')} className="rounded-full bg-sol px-4 py-1.5 font-medium text-white disabled:opacity-50">
+                {verbo}
+              </button>
+              <button disabled={enCurso} onClick={() => tocar('descartar')} className="rounded-full border border-borde px-4 py-1.5 text-suave disabled:opacity-50">
+                Descartar
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <p className="mt-2 text-xs text-suave">{textoDelEstado(verbo, estado, respuesta)}</p>
@@ -70,6 +83,8 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
 function textoDelEstado(verbo: keyof typeof HECHA, estado: EstadoDeTarjeta | undefined, r: Respuesta | null): string {
   const hecha = HECHA[verbo]
   switch (r?.tipo) {
+    case 'deshecho':
+      return hecha
     case 'aplicado':
       // Si el envío no salió como debía, el desenlace que armó el núcleo lo dice.
       return r.envio && r.envio.tipo !== 'simulado' && r.envio.tipo !== 'enviado' ? r.resumen : hecha
@@ -87,7 +102,7 @@ function textoDelEstado(verbo: keyof typeof HECHA, estado: EstadoDeTarjeta | und
     case 'aplicada':
       return `${hecha}${estado.aprobadaPor ? ` por ${estado.aprobadaPor}` : ''}`
     case 'revertida':
-      return `${hecha}${estado.aprobadaPor ? ` por ${estado.aprobadaPor}` : ''}, y revertida después`
+      return verbo === 'Deshacer' ? hecha : `${hecha}${estado.aprobadaPor ? ` por ${estado.aprobadaPor}` : ''}, y revertida después`
     case 'descartada':
       return 'Descartada'
     default:
