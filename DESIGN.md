@@ -29,7 +29,7 @@ Amanece se ve como un buen producto de hoy y le habla a quien vende por WhatsApp
 
 Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de referencia para Tablero, tablas y bandeja. Este repo ya usa esos tokens y esas letras. Para ver una pantalla sin sesión, mira `/vitrina`.
 
-**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Con `pnpm dev` corriendo, `pnpm tsx scripts/mirar-vitrina.mts <escena> <salida.png> [ancho] [alto] [--oscuro]` la captura y avisa si se desborda a lo ancho. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
+**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Con `pnpm dev` corriendo, `pnpm tsx scripts/mirar-vitrina.mts <escena> <salida.png> [ancho] [alto] [--oscuro]` la captura y avisa si se desborda a lo ancho; sus pasos (`--clic`, `--ve`, `--cierto` y los demás, en la cabecera del script) tocan y afirman como lo haría el Dueño. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
 
 ## Tokens
 
