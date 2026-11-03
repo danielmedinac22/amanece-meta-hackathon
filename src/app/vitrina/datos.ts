@@ -1,7 +1,6 @@
 /** Datos inventados para pintar la vitrina. Solo `src/app/vitrina/` los importa: ninguna pantalla real los toca. */
 import type { UIMessage } from 'ai'
 import type { DatosDeHoy } from '@/app/panel/inicio-hoy'
-import type { DatosDelNegocio } from '@/app/panel/vista'
 import type { CasoResuelto, DatosDeCasos } from '@/negocio/casos'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { LoPendiente, TarjetaDeAprobacion } from '@/nucleo/cambios'
@@ -15,8 +14,8 @@ const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
-/** Lo que la cáscara de la vitrina necesita además de las páginas. `hoy` en `null` es Armándose. */
-export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+/** Lo que la cáscara de la vitrina necesita además de las páginas. Sin `hoy`, Inicio dice que falta. */
+export type NegocioDeMuestra = { nombre: string; detalle: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; reglas: { clave: string; texto: string }[]; pendiente: LoPendiente; hoy: DatosDeHoy | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -202,21 +201,6 @@ const CONVERSACIONES = conConversaciones([
 const MENSAJE_LARGO = 'Buenas tardes, quisiera saber si me pueden enviar el pedido a la vereda La Esperanza, kilómetro 14 de la vía antigua, porque la dirección que aparece en la guía no es la correcta y el mensajero no ha podido llegar.'
 const UNA_LARGA = conversacion('larga', NOMBRE_LARGO, 'hace 12 min', Array.from({ length: 200 }, (_, i): ['cliente' | 'agente', string] => [i % 2 ? 'agente' : 'cliente', i === 199 ? 'httpsenlacesinespaciosquenoterminanuncaporquenadielepusoespaciosenningunapartedelmensajeyasiquedoguardado' : MENSAJE_LARGO]), 'Quiere 20 bolsas de café para un evento en Cali')
 const MUCHAS_CONVERSACIONES = conConversaciones([{ ...UNA_LARGA, detalle: { ...UNA_LARGA.detalle, cuenta: 1_204 } }, ...Array.from({ length: 99 }, (_, i) => conversacion(`c-${i}`, `Cliente de muestra ${i}`, 'hace 3 días', [['cliente', MENSAJE_LARGO]]))], 1_204)
-
-export const NEGOCIO_ARMANDOSE: NegocioDeMuestra = {
-  nombre: 'Café Ladera',
-  detalle: 'Armándose · 0 productos',
-  pendiente: NADA_PENDIENTE,
-  hoy: null,
-  pedidos: SIN_PEDIDOS,
-  clientes: SIN_CLIENTES,
-  seccionDeCasos: SIN_CASOS,
-  ...SIN_CONVERSACIONES,
-  indicadores: [],
-  secciones: [],
-  casos: [],
-  reglas: [],
-}
 
 export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   nombre: 'Café Ladera',

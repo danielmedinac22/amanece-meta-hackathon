@@ -19,6 +19,7 @@ import { afirmar, terminar } from './afirmar.mjs'
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
+const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -116,6 +117,29 @@ const RECORRIDOS_DEL_HILO: typeof RECORRIDOS = [
   ['Constancias: cada desenlace', 'hilo-constancias', '1440', '--ve=Enviada a Camila Rojas', '--ve=La bolsa llegó rota · pedido #31', '--ve=Aplicada por Julián', '--ve=Aplicada por Julián, y revertida después', '--ve=Nuevo Indicador', '--ve=Descartada', '--ve=Nueva Sección', '--ve=Venció sin aplicarse. Pídela de nuevo si todavía la quieres.'],
   ['Una tarjeta vencida no deja tocar, tenga estado o no', 'hilo-constancias', '1440', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Enviar|Aplicar|Descartar)/.test(b.textContent))`, `--cierto=document.getElementById('tarjeta-c-sin-estado').textContent.includes('Venció sin aplicarse')`],
   ['Varias decisiones: la más urgente arriba, con 1 de 3', 'hilo-varias-decisiones', '1440', '--ve=1 de 3', '--ve=2 de 3', '--ve=3 de 3', `--cierto=document.querySelector('[data-conversacion] > button').textContent.includes('Quiere saber cuánto cuesta')`, `--cierto=document.getElementById('tarjeta-v-caso').textContent.includes('1 de 3')`, '--clic=Descartar', '--espera=400', '--ve=1 de 2', '--no-ve=3 de 3'],
+]
+
+const FILA = (dato: string, estado: string) => `--cierto=[...document.querySelectorAll('section li')].find((l) => l.textContent.includes('${dato}')).querySelector('[aria-label="${estado}"]') !== null`
+const TITULAR = (texto: string) => `--cierto=document.querySelector('h1').textContent === '${texto}'`
+
+/** Cuadro a cuadro: un vistazo a una hora fija depende de lo cargada que esté la máquina. */
+const MUESTREAR_EL_CIELO = `--evalua=(() => { window.cielo = []; const m = () => { const e = document.querySelector('.cielo'); if (e) { const c = getComputedStyle(e); window.cielo.push([Number(c.opacity), new DOMMatrix(c.transform).m42]); requestAnimationFrame(m) } }; m(); return 'listo' })()`
+
+const RECORRIDOS_DEL_ARMADO: typeof RECORRIDOS = [
+  ['Armado: recién entrado, todo falta y Tu Panel va en gris', 'panel-vacio', '1440', TITULAR('Cuéntame de tu negocio.'), '--ve=Hola, soy tu agente', FILA('Nombre', 'Falta'), '--no-ve=$0'],
+  ['Armado: leyendo dice qué lee y no tiene temporizador que lo saque del paso', 'armado-leyendo', '1440', TITULAR('Estoy leyendo tu negocio.'), '--ve=Leyendo cafeladera.com', '--espera=4000', TITULAR('Estoy leyendo tu negocio.')],
+  ['Armado: lo leído no se marca hasta tocar el botón, y al tocarlo se marca', 'armado-confirmar', '1440', TITULAR('¿Están bien estos productos?'), '--ve=Lo que encontré · 8 productos', FILA('Productos', 'Por confirmar'), FILA('Envíos', 'Por confirmar'), '--ve=Por confirmar', '--clic=Están bien y no falta ninguno', '--espera=500', FILA('Productos', 'Lo sé'), FILA('Envíos', 'Lo sé'), FILA('Nombre', 'Lo sé'), TITULAR('Solo me falta una cosa.'), '--ve=Confirmada'],
+  ['Armado: el cobro se responde con un botón, y el paso sale de lo que se sabe', 'armado-cobro', '1440', TITULAR('Solo me falta una cosa.'), FILA('Cómo cobras', 'Falta'), '--clic=1Contra entrega', '--espera=500', TITULAR('Café Ladera puede abrir.'), FILA('Cómo cobras', 'Lo sé'), '--ve=Mis clientes me pagan contra entrega.'],
+  ['Armado: el cobro también se responde con el número', 'armado-cobro', '1440', `--evalua=(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: '2' })); return 'listo' })()`, '--espera=500', '--ve=Mis clientes me pagan por transferencia.'],
+  ['Armado: el cobro se puede dejar para después, y sigue sin marcarse', 'armado-cobro', '1440', '--clic=Te lo digo después', '--espera=500', TITULAR('Café Ladera puede abrir.'), FILA('Cómo cobras', 'Falta')],
+  ['Armado: si faltan más cosas no dice que solo falta una', 'armado-cobro-con-mas-faltantes', '1440', TITULAR('Me falta saber cómo te pagan.')],
+  ['Armado: el redactor sigue en todos los pasos', 'armado-listo', '1440', '--cierto=!!document.querySelector(\'textarea[aria-label="Escríbele a tu agente"]\')', '--ve=Abrir Café Ladera', '--ve=listo para abrir'],
+  ['Armado: abrir saca el cielo hacia arriba y lleva a la operación', 'armado-listo', '1440', MUESTREAR_EL_CIELO, '--clic=Abrir Café Ladera', '--espera=1200', `--cierto=window.cielo.some(([o, y]) => o > 0 && o < 1 && y < 0 && y > -300)`, '--ve=Todavía no te ha escrito nadie.', `--cierto=!document.querySelector('.cielo')`],
+  ['Armado: con prefers-reduced-motion el cielo sale sin recorrido y abrir igual lleva a la operación', 'armado-listo', '1440', '--menos-movimiento', MUESTREAR_EL_CIELO, '--clic=Abrir Café Ladera', '--espera=1200', `--cierto=window.cielo.length > 0 && window.cielo.every(([, y]) => y === 0 || y === -300)`, '--ve=Todavía no te ha escrito nadie.'],
+  ['Armado: fuera del orden del guion, lo dicho se marca y el paso no se adelanta', 'armado-fuera-de-orden', '1440', TITULAR('Cuéntame de tu negocio.'), FILA('Cómo cobras', 'Lo sé'), FILA('Tono', 'Lo sé'), FILA('Nombre', 'Falta'), FILA('Productos', 'Falta'), '--no-ve=¿Cómo te pagan tus clientes?', '--no-ve=Abrir'],
+  ['Armado: un nombre largo no saca el botón Abrir de la carta a 320', 'armado-textos-largos', '320', `--cierto=(() => { const s = document.querySelector('.cielo').nextElementSibling; return s.scrollWidth <= s.clientWidth })()`],
+  ['Armado: en teléfono Tu Panel queda debajo de la carta', 'armado-listo', '390', `--cierto=document.querySelector('aside').getBoundingClientRect().top > document.querySelector('main').getBoundingClientRect().bottom`],
+  ['Armado: en PC Tu Panel queda a la derecha', 'armado-listo', '1024', `--cierto=document.querySelector('aside').getBoundingClientRect().left >= document.querySelector('main').getBoundingClientRect().right`],
 ]
 
 const hijos = new Set<ChildProcess>()
@@ -222,9 +246,9 @@ try {
   const html = await indice.text()
   afirmar('dev: /vitrina da 200', indice.status === 200, { estado: indice.status, servidor: desarrollo.salida() })
   const ids = [...html.matchAll(/href="\/vitrina\/([\w-]+)"/g)].map((m) => m[1])
-  afirmar('dev: el índice enlaza las escenas esperadas', ESCENAS_ESPERADAS.every((id) => ids.includes(id)), ids)
+  afirmar('dev: el índice enlaza las escenas esperadas', [...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO].every((id) => ids.includes(id)), ids)
 
-  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS])) {
+  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO])) {
     const r = await ver(`${desarrollo.base}/vitrina/${id}`)
     afirmar(`dev: /vitrina/${id} da 200`, r.status === 200, { estado: r.status, servidor: desarrollo.salida() })
   }
@@ -242,14 +266,14 @@ try {
 
   // Teléfono y PC valen igual: ninguna escena se desborda a lo ancho a ninguno de los dos anchos.
   const captura = join(mkdtempSync(join(tmpdir(), 'vitrina-')), 'escena.png')
-  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS])) {
+  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO])) {
     for (const [ancho, alto] of [['390', '844'], ['1440', '900']]) {
       const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), id, captura, ancho, alto], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
       afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
     }
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_HILO]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DEL_ARMADO]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

@@ -2,14 +2,16 @@ import type { ComponentProps, ReactNode } from 'react'
 import { InicioHoy } from '@/app/panel/inicio-hoy'
 import { ListaDePedidos, TablaDeClientes } from '@/app/panel/listas'
 import { rutaDeConversacion, VistaDeConversaciones } from '@/app/panel/conversaciones'
-import { SinNegocio, VistaDelNegocio, VistaDelTablero, VistaDeUnaSeccion } from '@/app/panel/vista'
+import { SinNegocio, VistaDelTablero, VistaDeUnaSeccion } from '@/app/panel/vista'
 import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { ArmadoDeMuestra } from './armado-de-muestra'
 import { Componentes } from './componentes'
+import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_ARMANDOSE, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof MarcoDeMuestra>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial' | 'rutaInicial'>
@@ -31,7 +33,7 @@ function operacionDe(datos: NegocioDeMuestra | null) {
 function paginasDe(datos: NegocioDeMuestra | null): Record<string, ReactNode> {
   const sin = <SinNegocio />
   return {
-    '/panel': datos?.hoy ? <InicioHoy {...datos.hoy} /> : datos ? <VistaDelNegocio datos={datos} /> : sin,
+    '/panel': datos?.hoy ? <InicioHoy {...datos.hoy} /> : sin,
     '/panel/casos': datos ? <CasosDeMuestra {...datos.seccionDeCasos} /> : sin,
     '/panel/tablero': datos ? <VistaDelTablero indicadores={datos.indicadores} /> : sin,
     '/panel/conversaciones': datos ? <VistaDeConversaciones {...datos.conversaciones} /> : sin,
@@ -56,8 +58,15 @@ function llegaUnaDecision() {
 
 /** Agregar una pantalla a la vitrina es agregar una fila aquí. */
 export const ESCENAS: readonly Escena[] = [
-  { id: 'panel-vacio', titulo: 'Panel sin Negocio todavía', pinta: () => panel(null, null) },
-  { id: 'panel-armandose', titulo: 'Panel de un Negocio armándose', pinta: () => panel(NEGOCIO_ARMANDOSE, 'armando', HILO_ARMANDOSE) },
+  { id: 'panel-vacio', titulo: 'Armado: un Dueño recién entrado', pinta: () => <ArmadoDeMuestra datos={ARMADO_VACIO} messages={[]} /> },
+  { id: 'panel-armandose', titulo: 'Armado: conversando, sin enlace', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_CONOCIENDO} /> },
+  { id: 'armado-leyendo', titulo: 'Armado: leyendo su página', pinta: () => <ArmadoDeMuestra datos={ARMADO_LEYENDO} messages={HILO_LEYENDO} status="streaming" /> },
+  { id: 'armado-confirmar', titulo: 'Armado: ¿están bien estos productos?', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONFIRMAR} messages={HILO_CONFIRMAR} tarjetas={TARJETAS_CONFIRMAR} siguiente={ARMADO_COBRO} /> },
+  { id: 'armado-cobro', titulo: 'Armado: cómo te pagan', pinta: () => <ArmadoDeMuestra datos={ARMADO_COBRO} messages={HILO_COBRO} siguiente={ARMADO_LISTO} /> },
+  { id: 'armado-cobro-con-mas-faltantes', titulo: 'Armado: cómo te pagan, y faltan otras cosas', pinta: () => <ArmadoDeMuestra datos={ARMADO_COBRO_CON_MAS_FALTANTES} messages={HILO_COBRO} /> },
+  { id: 'armado-listo', titulo: 'Armado: listo para abrir', pinta: () => <ArmadoDeMuestra datos={ARMADO_LISTO} messages={HILO_LISTO} despues={panel(NEGOCIO_RECIEN_ABIERTO, 'listo')} /> },
+  { id: 'armado-fuera-de-orden', titulo: 'Armado: dijo primero cómo cobra, antes que el nombre', pinta: () => <ArmadoDeMuestra datos={ARMADO_FUERA_DE_ORDEN} messages={HILO_FUERA_DE_ORDEN} /> },
+  { id: 'armado-textos-largos', titulo: 'Armado: nombre, envíos y producto largos', pinta: () => <ArmadoDeMuestra datos={ARMADO_TEXTOS_LARGOS} messages={HILO_LISTO} /> },
   { id: 'panel-funcionando', titulo: 'Panel de un Negocio funcionando', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo') },
   { id: 'panel-un-caso', titulo: 'Panel con un Caso esperando al Dueño', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO) },
   { id: 'panel-con-cambios', titulo: 'Panel con cambios sin publicar', pinta: () => panel(NEGOCIO_CON_CAMBIOS, 'listo') },
