@@ -40,7 +40,7 @@ type NegocioId = import('../src/nucleo/identidad').NegocioId
 type ContextoDelDueno = import('../src/nucleo/identidad').ContextoDelDueno
 type Motores = import('../src/nucleo/clientes/turno').Motores
 type Pedido = Parameters<typeof proponer>[1]
-type Quiere = Extract<Pedido, { origen: 'hilo' | 'panel' }>['quiere'][number]
+type Quiere = Extract<Pedido, { origen: 'hilo' }>['quiere'][number]
 type SalidaDelRedactor = import('../src/nucleo/cambios').SalidaDelRedactor
 type MotorDelRedactor = import('../src/nucleo/cambios').MotorDelRedactor
 

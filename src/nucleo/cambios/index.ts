@@ -140,13 +140,13 @@ export const ESQUEMA_DEL_PEDIDO = z.object({
     .describe('Lo que el Dueño pidió: se aplica todo junto o nada'),
 })
 
-/**
- * `panel`: el clic del Dueño es la aprobación; solo lo produce `deshacer`. `lectura` la arma solo `proponerLectura`:
- * el modelo no tiene esquema para ella.
- */
-export type PedidoDelDueno =
-  | { readonly origen: 'hilo' | 'panel'; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
-  | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuierePoner, ...QuierePoner[]] }
+type PedidoEnPalabras<O extends OrigenDelPedido> = { readonly origen: O; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
+
+/** `lectura` la arma solo `proponerLectura`: el modelo no tiene esquema para ella. */
+export type PedidoDelDueno = PedidoEnPalabras<'hilo'> | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuierePoner, ...QuierePoner[]] }
+
+/** `panel`: el clic del Dueño es la aprobación, así que no puede entrar por `proponer`. Solo lo produce `deshacer`. */
+type PedidoConSuClic = PedidoDelDueno | PedidoEnPalabras<'panel'>
 
 // ══ Lo que vuelve ═══════════════════════════════════════════════════════════════════════════════
 
@@ -278,7 +278,7 @@ type Traducida = {
 
 type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capacidad_faltante' }>
 
-async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
+async function proponerComo(quien: Quien, pedido: PedidoConSuClic, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
   if (pedido.origen !== 'lectura' && pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
   const traducida = await traducirPedido(quien, pedido, redactor)
   if ('desenlace' in traducida) return traducida
@@ -335,7 +335,7 @@ function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelP
 
 const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
-async function traducirPedido(quien: Quien, pedido: PedidoDelDueno, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
+async function traducirPedido(quien: Quien, pedido: PedidoConSuClic, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
   const estado = await leerAplicado(quien.negocio)
   const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[], redactor)
   if (!('tipo' in t)) return { ...t, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
@@ -724,3 +724,5 @@ export async function historial(ctx: ContextoDelDueno, filtro: { readonly limite
     cuando: marcar.instante(f.creado),
   }))
 }
+
+export type _ProponerNoApruebaSolo = Es<'panel' extends Parameters<typeof proponer>[1]['origen'] ? false : true>

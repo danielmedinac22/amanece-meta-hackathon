@@ -145,6 +145,12 @@ const MUTACIONES: readonly Mutacion[] = [
     despues: "actores: { agente: 'libre', vigilancia: 'nunca', boton: 'libre', panel: 'nunca' },",
   },
   {
+    nombre: 'proponer acepta el origen panel, que aplica sin botón',
+    archivo: 'src/nucleo/cambios/index.ts',
+    antes: 'export async function proponer(ctx: ContextoDelDueno, pedido: PedidoDelDueno,',
+    despues: 'export async function proponer(ctx: ContextoDelDueno, pedido: PedidoConSuClic,',
+  },
+  {
     nombre: 'el contexto de un Caso con lo aplicado',
     archivo: 'src/agentes/avisos.ts',
     antes: '  estado: EstadoPublicado,\n',
