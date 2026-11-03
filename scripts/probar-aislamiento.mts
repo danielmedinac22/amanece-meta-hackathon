@@ -332,7 +332,8 @@ try {
   const fuga = await conPolitica('true', sinWhere)
   afirmar('9 control: sin WHERE y sin política sí aparecen los pedidos de B, así que la prueba ve una fuga', ve(fuga, B.ids).length === B.pedidos, ve(fuga, B.ids).length)
   const conGuc = await conPolitica(`negocio_id = current_setting('app.negocio_id')::uuid`, hastaLaConsulta(armarLote(estadoA, cruda(ataqueEnElSelect), firmaA)))
-  afirmar('9 control: con la política vuelta al GUC simple, el ataque de #8 fuga los pedidos de B', ve(conGuc, B.ids).length === B.pedidos, ve(conGuc, B.ids).length)
+  // Cuántos, depende del plan: la política filtra las filas que se escanean antes de que corra el set_config. Con una sola, ya hay fuga.
+  afirmar('9 control: con la política vuelta al GUC simple, el ataque de #8 fuga pedidos de B', ve(conGuc, B.ids).length > 0, ve(conGuc, B.ids).length)
   const enSesionDelDueno = await correrLote([...preambulo, ...crudas(['SET ROLE neondb_owner']), sondaDeEscape], delDueno)
   afirmar('9 control: un lote en sesión del dueño deja pasar SET ROLE neondb_owner y ve a B', enSesionDelDueno.ok && enSesionDelDueno.filas[0]?.usuario === 'neondb_owner' && enSesionDelDueno.filas[0]?.de_b === B.pedidos, enSesionDelDueno)
   const [despues] = (await db.execute(sql`select (select qual from pg_policies where tablename = 'pedidos' and policyname = 'consultas_del_negocio') as qual, pg_has_role(current_user, 'amanece_consultas', 'SET') as puede`)).rows as { qual: string; puede: boolean }[]

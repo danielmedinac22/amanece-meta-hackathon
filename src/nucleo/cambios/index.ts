@@ -212,6 +212,8 @@ function estadoDe(f: { readonly estado: EstadoGuardado; readonly vence: Date }, 
 /** Escrito a mano y no con `${columna}`: dentro de la subconsulta, una columna sin calificar sería la de `r`. */
 const REVERTIDA = sql<boolean>`exists (select 1 from propuestas r where r.revierte = "propuestas"."id" and r.estado = 'aplicada')`
 
+const OTRA_REVERSION_VIVA = sql<boolean>`exists (select 1 from propuestas r where r.revierte = "propuestas"."id" and r.estado = 'espera_al_dueno')`
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HUELLA = /^[0-9a-f]{64}$/
 const SIN_GASTO: Gasto = { llamadas: 0, usd: 0, ms: 0 }
@@ -661,10 +663,10 @@ const PAUSA_ENTRE_ESPERAS_MS = 250
 /** El clic que perdió la carrera espera a que el que ganó termine: mientras haya otra reversión viva, todavía puede quedar. */
 async function terminoDeshecha(negocio: NegocioId, propuesta: string): Promise<boolean> {
   for (let i = 0; i < ESPERAS_A_LA_OTRA_REVERSION; i++) {
-    const [f] = await db.select({ revertida: REVERTIDA }).from(esquema.propuestas).where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, negocio)))
+    // Un solo SELECT: en dos, el otro clic puede hacer COMMIT en medio y no verse ni viva ni aplicada.
+    const [f] = await db.select({ revertida: REVERTIDA, viva: OTRA_REVERSION_VIVA }).from(esquema.propuestas).where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, negocio)))
     if (f?.revertida) return true
-    const vivas = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.revierte, propuesta), eq(esquema.propuestas.estado, 'espera_al_dueno')))
-    if (!vivas) return false
+    if (!f?.viva) return false
     await new Promise((r) => setTimeout(r, PAUSA_ENTRE_ESPERAS_MS))
   }
   return false
