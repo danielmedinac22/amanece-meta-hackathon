@@ -37,6 +37,24 @@ const tocarEn = (pano: 'lienzo' | 'hilo', texto: string) => `--cierto=(() => { c
 const enElPano = (pano: 'lienzo' | 'hilo', texto: string) => `--cierto=document.querySelector('[data-pano=${pano}]').innerText.includes('${texto}')`
 const SIDEBAR_ABIERTO = `--cierto=${ancho('[data-slot=sidebar-gap]')} === 216`
 
+const REDACTOR_DEL_CLIENTE = `document.querySelector('textarea[aria-label="Escríbele al Cliente"]')`
+const RECORRIDOS_DE_LA_TOMA: [string, string, string, ...string[]][] = [
+  ['La toma: tomar da el tiempo y el redactor, y devolver vuelve al agente', 'conversaciones-lista', '1440', '--ve=Tu agente está atendiendo', `--cierto=${REDACTOR_DEL_CLIENTE} === null`, '--clic=Tomar la conversación', '--ve=La tienes tú', '--ve=vuelve a tu agente en 30 min', `--cierto=${REDACTOR_DEL_CLIENTE} !== null`, '--clic=Devolver al agente', '--ve=Tu agente está atendiendo', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
+  ['La toma, teléfono: tomar y devolver caben', 'conversacion-tomada', '390', '--clic=DQDaniela Quintero', '--ve=La tienes tú', '--ve=vuelve a tu agente en 28 min', '--ve=Devolver al agente'],
+  ['La toma: lo que escribió el Dueño se distingue del agente', 'conversacion-tomada', '1440', '--ve=Hola Daniela, soy Lucía', '--ve=Dueño', `--cierto=${REDACTOR_DEL_CLIENTE} !== null`],
+  ['La toma: enviar vacía el redactor y dice Enviado', 'conversacion-tomada', '1440', `--cierto=(() => { const t = ${REDACTOR_DEL_CLIENTE}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Ya voy'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`, '--espera=100', '--clic=Enviar', '--ve=Enviado.', `--cierto=${REDACTOR_DEL_CLIENTE}.value === ''`],
+  ['La toma: otro Dueño ve quién la tiene y no le escribe', 'conversacion-de-otro', '1440', '--ve=La tiene Marcela', '--ve=vuelve a tu agente en 12 min', '--ve=Devolver al agente', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
+  ['La toma: sin ventana no hay redactor y la pantalla lo dice', 'conversacion-tuya-sin-ventana', '1440', '--ve=La tienes tú', '--ve=WhatsApp no deja escribirle', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
+  ['La toma: sin ventana no se ofrece tomarla', 'conversacion-sin-ventana', '1440', '--ve=Tu agente está atendiendo', '--ve=WhatsApp no deja escribirle', '--no-ve=Tomar la conversación'],
+  ['La toma: un Cliente sin respuesta se ve y se puede tomar', 'conversacion-cliente-espera', '1440', '--ve=Este Cliente espera respuesta', '--ve=Tomar la conversación'],
+  ['La toma: si tu agente alcanzó a responder, lo dice', 'conversacion-agente-terminando', '1440', '--ve=Tu agente alcanzó a responderle'],
+  ['La toma: el tiempo llega a cero y vuelve a tu agente sin tocar nada', 'conversacion-por-vencer', '1440', '--ve=La tienes tú', '--ve=en menos de 1 min', '--espera=3500', '--ve=Tu agente está atendiendo', '--no-ve=La tienes tú'],
+  ['La toma: si no salió lo dice y el texto se queda', 'conversacion-no-salio', '1440', `--cierto=(() => { const t = ${REDACTOR_DEL_CLIENTE}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Ya voy'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`, '--espera=100', '--clic=Enviar', '--ve=No salió: pasaron más de 24 horas', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: si WhatsApp no lo tomó lo dice y el texto se queda', 'conversacion-whatsapp-no-lo-toma', '1440', `--cierto=(() => { const t = ${REDACTOR_DEL_CLIENTE}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Ya voy'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`, '--espera=100', '--clic=Enviar', '--ve=WhatsApp no tomó tu mensaje', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: se acabó el tiempo, nada salió y vuelve a tu agente', 'conversacion-se-acabo-el-tiempo', '1440', `--cierto=(() => { const t = ${REDACTOR_DEL_CLIENTE}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Ya voy'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`, '--espera=100', '--clic=Enviar', '--ve=Ya no tienes esta conversación y tu mensaje no salió', '--ve=Tu agente está atendiendo'],
+  ['La toma: el aviso del Hilo lleva a la conversación', 'hilo-aviso-de-la-toma', '1440', '--ve=Un Cliente te escribió en la conversación que tienes tomada', '--clic=Ver la conversación de Daniela Quintero', '--ve=Tomar la conversación'],
+]
+
 /** Recorridos con clics de verdad: lo que el Dueño nota al tocar la cáscara. Título, escena, ancho y pasos. */
 const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['PC: el sidebar mide 216 y el Hilo 348', 'panel-funcionando', '1440', SIDEBAR_ABIERTO, `--cierto=${ancho(HILO)} === 348`],
@@ -124,7 +142,8 @@ const SECCIONES_CON_ESTADOS: [string, string][] = [['inicio', 'lo de hoy'], ['ca
 const ESCENAS_DE_ESTADOS = ['entrar', 'entrar-registro', 'ajustes', 'ajustes-armandose', 'ajustes-sin-ciudad', 'ajustes-largo', ...SECCIONES_CON_ESTADOS.flatMap(([id]) => [`cargando-${id}`, `error-${id}`]), 'seccion-sin-advertencia', 'error-de-verdad', 'seccion-no-esta', 'hilo-capacidad-faltante', 'hilo-tarjeta-vencio', 'hilo-error']
 
 const ESCENAS_DEL_DETALLE = ['pedido-abierto', 'pedido-sin-conversacion', 'pedido-cancelado', 'pedido-largo', 'pedido-no-esta', 'cliente-abierto', 'cliente-con-caso', 'cliente-sin-nada', 'cliente-largo', 'cliente-no-esta']
-const TODAS_LAS_ESCENAS = [...ESCENAS_DEL_CASO, ...ESCENAS_DEL_DETALLE, ...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA, ...ESCENAS_DE_ESTADOS]
+const ESCENAS_DE_LA_TOMA = ['conversacion-tomada', 'conversacion-agente-terminando', 'conversacion-de-otro', 'conversacion-tuya-sin-ventana', 'conversacion-sin-ventana', 'conversacion-cliente-espera', 'conversacion-por-vencer', 'conversacion-se-acabo-el-tiempo', 'conversacion-no-salio', 'conversacion-whatsapp-no-lo-toma', 'hilo-aviso-de-la-toma']
+const TODAS_LAS_ESCENAS = [...ESCENAS_DE_LA_TOMA, ...ESCENAS_DEL_CASO, ...ESCENAS_DEL_DETALLE, ...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA, ...ESCENAS_DE_ESTADOS]
 
 const RECORRIDOS_DE_ESTADOS: typeof RECORRIDOS = [
   ['Entrar: cada falla dice qué pasó, se vuelve a tocar y al final entra', 'entrar', '1440', LLENAR_ENTRADA, '--clic=Entrar', '--ve=Entrando…', '--espera=500', '--ve=El correo o la contraseña no coinciden. Revísalos y vuelve a intentar.', `--cierto=document.querySelector('[name=email]').value === 'lucia@cafe.co' && document.querySelector('[name=password]').value === 'una-clave-larga'`, '--clic=Entrar', '--no-ve=no coinciden', '--espera=500', '--ve=No me pude conectar. Revisa tu internet', '--clic=Entrar', '--espera=500', '--ve=Ya van muchos intentos', '--clic=Entrar', '--espera=500', '--ve=Ya entraste.'],
@@ -227,7 +246,7 @@ const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
   ['Casos: sin nada, dice qué sigue', 'casos-vacios', '1440', '--ve=Nada espera tu decisión', '--no-ve=Resueltos'],
   ['Casos: sin nada esperando no hay encabezado de decisión', 'pedidos-lista', '1440', '--clic=Casos', '--ve=Resueltos', '--ve=Pregunta por envío a San Andrés', `--no-ve=Espera tu decisión`],
   ['Casos: más que el límite dice el total', 'casos-muchos', '1440', '--ve=Ves los 50 más recientes de 60', '--ve=Ves los 50 más recientes de 1.204'],
-  ['Conversaciones: PC con lista y detalle, y la primera elegida', 'conversaciones-lista', '1440', '--ve=Listo, tu pedido #41 por $76.000', '--ve=Santiago Herrera', '--ve=Tu agente está atendiendo', '--no-ve=Tomar la conversación', '--no-ve=Un Caso espera tu decisión'],
+  ['Conversaciones: PC con lista y detalle, y la primera elegida', 'conversaciones-lista', '1440', '--ve=Listo, tu pedido #41 por $76.000', '--ve=Santiago Herrera', '--ve=Tu agente está atendiendo', '--ve=Tomar la conversación', '--no-ve=Un Caso espera tu decisión'],
   // La fila empieza por las iniciales del avatar, y `--clic` busca por el comienzo del texto.
   ['Conversaciones: tocar otra cambia el detalle y conserva la Sección', 'conversaciones-lista', '1440', '--clic=SHSantiago Herrera', '--ve=Buenas, tengo greca en la casa', '--no-ve=Hola, quiero pedir 2 tueste medio', `--cierto=document.querySelector('h1').textContent === 'Conversaciones'`, `--cierto=document.querySelector('[aria-current=true]').textContent.includes('Santiago')`],
   ['Conversaciones: un Caso que espera lleva a Casos', 'conversacion-con-caso', '1440', '--clic=Un Caso espera tu decisión', '--ve=Espera tu decisión', `--cierto=document.querySelector('h1').textContent === 'Casos'`],
@@ -488,7 +507,7 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
     const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

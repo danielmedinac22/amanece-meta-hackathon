@@ -16,7 +16,7 @@ export type FilaDeCliente = { id: string; nombre: string; ciudad: string; pedido
 export type DatosDeClientes = { cuenta: number; filas: FilaDeCliente[] }
 
 export type FilaDeConversacion = { cliente: string; nombre: string; ultima: string; hace: string }
-export type MensajeDeConversacion = { id: string; de: 'cliente' | 'agente'; texto: string }
+export type MensajeDeConversacion = { id: string; de: 'cliente' | 'agente' | 'dueno'; texto: string }
 /** `cuenta` son todos los mensajes; `mensajes`, los últimos hasta `CUANTOS_MENSAJES`, del más viejo al más nuevo. `casoQueEspera` es el título de su Caso sin resolver. */
 export type DetalleDeConversacion = { cliente: string; nombre: string; cuenta: number; mensajes: MensajeDeConversacion[]; casoQueEspera: string | null }
 /** `detalle` es la elegida o, sin elegir, la más reciente. `enDetalle` dice si el Dueño la eligió: en teléfono se ve una pantalla a la vez. */

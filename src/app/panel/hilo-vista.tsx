@@ -3,12 +3,14 @@
 import { ArrowsClockwise, ArrowUp, CaretUp, CheckCircle, NotePencil, Warning } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { rutaDeConversacion } from '@/nucleo/listas-palabras'
 import { PARTE_DE_PLANTILLA, PARTIDAS, plantillaDelHilo, type IdDePlantilla } from '@/nucleo/plantillas'
 import { decisionesEnEspera, decisionQueEspera, esCapacidadFaltante, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { HiloEnLaOperacion } from './disposicion'
+import { IrASeccion } from './ir-a-seccion'
 import { etiquetaDe, Tarjeta } from './tarjeta'
 import type { TocarTarjeta } from './tocar-tarjeta'
 
@@ -167,6 +169,14 @@ export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boo
           if (parte.type === PARTE_DE_PLANTILLA) {
             const id = plantillaDelHilo([m])
             return id && <RastroDePlantilla key={i} id={id} />
+          }
+          if (parte.type === 'data-toma') {
+            const { cliente, nombre } = parte.data as { cliente: string; nombre: string }
+            return (
+              <IrASeccion key={i} href={rutaDeConversacion(cliente)} className={buttonVariants({ variant: 'outline', size: 'sm', className: 'mt-1 self-start' })}>
+                {nombre ? `Ver la conversación de ${nombre}` : 'Ver la conversación'}
+              </IrASeccion>
+            )
           }
           const t = tarjetaDeLaParte(parte)
           if (esCapacidadFaltante(parte)) return <CapacidadFaltante key={i} />

@@ -13,13 +13,14 @@ import type { DatosDeClientes, DatosDeConversaciones, DatosDePedidos, DetalleDeC
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero } from '@/nucleo/tablero'
 import { rutaDePedido } from '@/nucleo/listas-palabras'
+import type { Atencion, ResultadoDeEscribir } from '@/nucleo/clientes/toma'
 
 const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. */
-export type NegocioDeMuestra = { nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+export type NegocioDeMuestra = { atenciones?: Record<string, Atencion>; alEscribir?: ResultadoDeEscribir; nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -163,7 +164,7 @@ const SOLO_RESUELTOS: DatosDeCasos = { ...SIN_CASOS, cuentaDeResueltos: RESUELTO
 
 const SIN_CONVERSACIONES: Pick<NegocioDeMuestra, 'conversaciones' | 'detalles'> = { conversaciones: { cuenta: 0, filas: [], detalle: null, enDetalle: false }, detalles: {} }
 
-const conversacion = (cliente: string, nombre: string, hace: string, mensajes: ['cliente' | 'agente', string][], casoQueEspera: string | null = null) => ({
+const conversacion = (cliente: string, nombre: string, hace: string, mensajes: ['cliente' | 'agente' | 'dueno', string][], casoQueEspera: string | null = null) => ({
   fila: { cliente, nombre, ultima: mensajes.at(-1)![1], hace },
   detalle: { cliente, nombre, cuenta: mensajes.length, casoQueEspera, mensajes: mensajes.map(([de, texto], i) => ({ id: `${cliente}-${i}`, de, texto })) },
 })
