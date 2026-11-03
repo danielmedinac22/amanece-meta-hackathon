@@ -46,6 +46,8 @@ try {
 
   await cdp('Emulation.setDeviceMetricsOverride', { width: +ancho, height: +alto, deviceScaleFactor: 1, mobile: false })
   await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: banderas.includes('--oscuro') ? 'dark' : 'light' }, { name: 'prefers-reduced-motion', value: banderas.includes('--menos-movimiento') ? 'reduce' : 'no-preference' }] })
+  // Sin ventana la pestaña nunca tiene foco y `:focus` no aplica: lo que se muestra al enfocar no se podría afirmar.
+  await cdp('Emulation.setFocusEmulationEnabled', { enabled: true })
   await cdp('Page.enable')
   await cdp('Page.navigate', { url: `${BASE}/vitrina/${escena}` })
   // Next bloquea su JavaScript de desarrollo fuera de `localhost`: la página se pinta pero ningún botón responde.
