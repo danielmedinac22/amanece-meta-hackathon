@@ -118,6 +118,7 @@
   --globo-cliente-foreground: oklch(0.25 0.04 150);
   --alba: linear-gradient(180deg, #a9c7f2 0%, #d5d3ee 38%, #fbd6c6 72%, #ffe9c9 100%);
   --sol: linear-gradient(120deg, #ff9a5c, #ff6b8b);
+  --sol-foreground: oklch(0.23 0.035 265);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -169,6 +170,18 @@
   }
 }
 
+@keyframes punto {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
 @keyframes sube {
   from {
     opacity: 0;
@@ -206,5 +219,26 @@
     [data-movido] [data-pano="lienzo"] {
       animation: desde-la-derecha 160ms var(--ease-mueve);
     }
+  }
+}
+
+.puntos i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  animation: punto 1s infinite cubic-bezier(0.45, 0, 0.1, 1);
+}
+.puntos i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.puntos i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .puntos i {
+    animation: none;
   }
 }

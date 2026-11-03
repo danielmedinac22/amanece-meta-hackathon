@@ -80,7 +80,8 @@ for (const [par, texto, fondo, minClaro, minOscuro] of PARES) {
   }
 }
 
-const TINTA = claro['--foreground']
+const TINTA = claro['--sol-foreground']
+afirmar('La tinta de --sol es la de DESIGN.md y no cambia en oscuro', TINTA === 'oklch(0.23 0.035 265)' && oscuro['--sol-foreground'] === TINTA, { claro: TINTA, oscuro: oscuro['--sol-foreground'] })
 for (const extremo of ['#ff9a5c', '#ff6b8b']) {
   const ratio = contraste(TINTA, extremo)
   afirmar(`Tinta sobre el extremo ${extremo} de --sol: ${ratio.toFixed(2)} (documentado 6.2)`, ratio >= 6.2 - TOLERANCIA)

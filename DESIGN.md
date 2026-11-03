@@ -43,7 +43,7 @@ Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de refer
 | `--bien` | Lo resuelto o funcionando: `Atendiendo`, `Confirmado`, el check de una constancia |
 | `--ojo` | Lo que espera al Dueño o está en vista previa: `Vista previa`, `Con novedad`, el número de Casos |
 | `--alba` | Solo el cielo de la entrada y del armado |
-| `--sol` | Solo el botón de enviar activo, siempre con ícono en tinta `oklch(0.23 0.035 265)` |
+| `--sol` | Solo el botón de enviar activo, siempre con ícono en `--sol-foreground`, la tinta `oklch(0.23 0.035 265)`, que no cambia en oscuro |
 | `--globo-cliente` | **Derivado.** El globo de lo que escribe el Cliente en una muestra de WhatsApp. El texto va en `--globo-cliente-foreground`. |
 | `--velo` | **Derivado.** El velo que oscurece lo de atrás cuando abre un diálogo o un cajón. Es el de `base-nova`. |
 | `--destructive` | **Derivado.** Errores y acciones que borran. Valores de `base-nova`: `oklch(0.577 0.245 27.325)` en claro y `oklch(0.704 0.191 22.216)` en oscuro. Su contraste está medido en la tabla de abajo. |
@@ -173,11 +173,13 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 
 **Constancia.** Al resolver, el cuerpo se pliega y quedan dos líneas: de qué se trataba y qué pasó, con un caret para volver a verlo. Desenlaces que ya existen en el código: `Aplicada por [Dueño]`, `y revertida después` y `Venció sin aplicarse. Pídela de nuevo si todavía la quieres.`
 
+**Derivado: varias decisiones a la vez.** Cada tarjeta se queda en su lugar de la conversación y lleva su `1 de 3`. Arriba del Hilo queda una línea con la más urgente, que lleva a ella: primero lo que un Cliente está esperando y después lo que vence antes.
+
 **Hoy el código** aplica un Indicador o una Sección sin tarjeta, y una regla aplicada queda funcionando de una vez. La tarjeta y la vista previa de esta tabla llegan con el ticket de Publicar.
 
 ### Redactor
 
-**Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto.
+**Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto. **Destino**: adjuntar, porque el Hilo todavía no recibe archivos.
 
 ## Publicar
 
@@ -204,5 +206,4 @@ Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, po
 
 - **Portada pública.** Alba es la entrada del armado. Si la portada comparte esa pantalla o lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
 - **Clientes, formularios, ajustes y errores** no tuvieron ronda. Son **Derivado**.
-- **Varias decisiones a la vez** en el Hilo.
 - **Lo que ve el equipo** cuando exista un rol distinto del Dueño.
