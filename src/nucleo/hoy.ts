@@ -26,7 +26,7 @@ const nombre = (n: string | null | undefined) => n?.trim().split(/\s+/)[0] || 'U
 const completo = (n: string | null | undefined) => n?.trim() || 'un cliente'
 const conMayuscula = (t: string) => t[0].toUpperCase() + t.slice(1)
 
-async function leerCifras(negocio: NegocioId, zona: string): Promise<Cifras & { alguienEscribio: boolean }> {
+export async function leerCifras(negocio: NegocioId, zona: string): Promise<Cifras & { alguienEscribio: boolean }> {
   const z = sql`${zona}::text`
   const venta = sql.join(
     CUENTA_COMO_VENTA.map((e) => sql`${e}`),
