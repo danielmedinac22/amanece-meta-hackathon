@@ -1,11 +1,16 @@
+import { PARTIDAS, type IdDePlantilla } from '@/nucleo/plantillas'
+
 export type Tono = 'bien' | 'ojo' | 'nada'
 
+/** Solo las Secciones que tiene un Panel de verdad. Algo que el Panel no tiene no se puede poner en una tarjeta. */
+export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
+
 export type Plantilla = {
-  id: 'logistica' | 'tienda' | 'agenda'
+  id: IdDePlantilla
   nombre: string
   promesa: string
   negocio: string
-  secciones: string[]
+  secciones: SeccionDePlantilla[]
   indicadores: { dato: string; valor: string }[]
   barras: number[]
   tituloBarras: string
@@ -14,81 +19,87 @@ export type Plantilla = {
   globos: { de: 'cliente' | 'agente'; texto: string }[]
 }
 
-/** Negocios inventados, a propósito y a la vista de todos: `DESIGN.md` los pide así, y ningún dato de aquí sale de un Negocio. */
+/**
+ * Negocios inventados, a propósito y a la vista de todos: `DESIGN.md` los pide así. Nada de aquí sale de un Negocio ni
+ * entra a uno. Lo que muestran es lo que el producto hace hoy: lo que falta para el texto del prototipo está en `tanda.md`.
+ */
 export const PLANTILLAS: Plantilla[] = [
   {
     id: 'tienda',
-    nombre: 'Venta contra entrega',
-    promesa: 'Toma pedidos, los confirma y sigue cada envío.',
+    nombre: PARTIDAS.tienda.nombre,
+    promesa: 'Toma pedidos, los confirma y te muestra lo que se vendió.',
     negocio: 'Tienda Nativa',
     secciones: ['Inicio', 'Pedidos', 'Conversaciones', 'Clientes'],
     indicadores: [
-      { dato: 'Confirmados hoy', valor: '32' },
+      { dato: 'Ventas de la semana', valor: '$840.000' },
       { dato: 'Por confirmar', valor: '8' },
-      { dato: 'Con novedad', valor: '3' },
+      { dato: 'Conversaciones', valor: '46' },
     ],
     barras: [18, 24, 21, 30, 27, 36, 32],
-    tituloBarras: 'Pedidos confirmados',
+    tituloBarras: 'Pedidos por día',
     filas: [
       { nombre: 'Diana Salazar', detalle: 'Bucaramanga · $89.000', estado: 'Por confirmar', tono: 'nada' },
       { nombre: 'Óscar Peña', detalle: 'Neiva · $124.000', estado: 'Confirmado', tono: 'bien' },
-      { nombre: 'Yuli Cortés', detalle: 'Ibagué · $65.000', estado: 'Con novedad', tono: 'ojo' },
+      { nombre: 'Yuli Cortés', detalle: 'Ibagué · $65.000', estado: 'Confirmado', tono: 'bien' },
     ],
     chat: [
-      { de: 'agente', texto: 'Hola Diana, soy de Tienda Nativa. Tu pedido por $89.000 sale mañana, pagas al recibir. ¿Lo confirmamos?' },
-      { de: 'cliente', texto: 'Sí, pero cámbialo a la dirección de mi trabajo' },
-      { de: 'agente', texto: 'Listo, queda para la Calle 45 # 27-10. Confirmado.' },
+      { de: 'cliente', texto: 'Hola, quiero la mochila negra. Pago al recibir.' },
+      { de: 'agente', texto: 'Hola Diana, soy de Tienda Nativa. Tu pedido queda por $89.000 y pagas al recibir. ¿Lo confirmamos?' },
+      { de: 'cliente', texto: 'Sí, confírmalo' },
+      { de: 'agente', texto: 'Listo, quedó confirmado.' },
     ],
-    globos: [{ de: 'agente', texto: '¿Confirmamos tu pedido por $89.000?' }, { de: 'cliente', texto: 'Sí, confirmado' }],
+    globos: [{ de: 'agente', texto: '¿Confirmamos tu pedido por $89.000?' }, { de: 'cliente', texto: 'Sí, confírmalo' }],
   },
   {
     id: 'logistica',
-    nombre: 'Envíos y paquetería',
-    promesa: 'Cotiza por peso y destino, y deja cada contacto en tu bandeja.',
+    nombre: PARTIDAS.logistica.nombre,
+    promesa: 'Responde con tus tarifas y te deja cada conversación a la vista.',
     negocio: 'Envíos Puente',
-    secciones: ['Tablero', 'Bandeja', 'Contactos', 'Tarifas'],
+    secciones: ['Tablero', 'Conversaciones', 'Clientes', 'Casos'],
     indicadores: [
-      { dato: 'Conversaciones hoy', valor: '128' },
-      { dato: 'Resueltas sin ti', valor: '75 %' },
+      { dato: 'Conversaciones', valor: '128' },
+      { dato: 'Resueltas sin ti', valor: '96' },
       { dato: 'Necesitan atención', valor: '7' },
     ],
     barras: [62, 88, 74, 96, 110, 128, 104],
-    tituloBarras: 'Conversaciones',
+    tituloBarras: 'Conversaciones por día',
     filas: [
-      { nombre: 'Rosa Mendoza', detalle: '12 kg a Madrid, por barco', estado: 'Cotizado', tono: 'bien' },
-      { nombre: 'Jairo Duque', detalle: '¿Puedo enviar perfumes?', estado: 'Atiendes tú', tono: 'ojo' },
-      { nombre: 'Marta Cano', detalle: 'Recogida en Pereira', estado: 'Agendada', tono: 'nada' },
+      { nombre: 'Rosa Mendoza', detalle: '¿Cuánto vale el kilo a Madrid?', estado: 'Resuelta', tono: 'bien' },
+      { nombre: 'Jairo Duque', detalle: '¿Puedo enviar perfumes?', estado: 'Espera tu decisión', tono: 'ojo' },
+      { nombre: 'Marta Cano', detalle: '¿Recogen en Pereira?', estado: 'Resuelta', tono: 'bien' },
     ],
     chat: [
-      { de: 'cliente', texto: 'Buenas, ¿cuánto vale enviar 12 kilos a Madrid?' },
-      { de: 'agente', texto: 'Por barco son $340.000 y tarda unas 6 semanas. Por avión, $780.000 y tarda 8 días. ¿Por cuál te lo cotizo?' },
-      { de: 'cliente', texto: 'Por barco' },
+      { de: 'cliente', texto: 'Buenas, ¿cuánto vale enviar a Madrid?' },
+      { de: 'agente', texto: 'Por barco son $28.000 el kilo y tarda unas 6 semanas. Por avión, $65.000 el kilo y tarda 8 días.' },
+      { de: 'cliente', texto: '¿Puedo enviar perfumes?' },
+      { de: 'agente', texto: 'Eso se lo paso a Envíos Puente, y te responden por aquí.' },
     ],
-    globos: [{ de: 'cliente', texto: '¿Cuánto vale enviar 12 kilos a Madrid?' }, { de: 'agente', texto: 'Por barco, $340.000. Tarda 6 semanas.' }],
+    globos: [{ de: 'cliente', texto: '¿Cuánto vale enviar a Madrid?' }, { de: 'agente', texto: 'Por barco, $28.000 el kilo. Tarda 6 semanas.' }],
   },
   {
     id: 'agenda',
-    nombre: 'Servicios con agenda',
-    promesa: 'Agenda citas, las recuerda y mueve las que cambian.',
+    nombre: PARTIDAS.agenda.nombre,
+    promesa: 'Responde por tus servicios y te pasa cada cita para que la confirmes.',
     negocio: 'Consultorio Alameda',
-    secciones: ['Agenda', 'Conversaciones', 'Pacientes', 'Tablero'],
+    secciones: ['Casos', 'Conversaciones', 'Clientes', 'Tablero'],
     indicadores: [
-      { dato: 'Citas de hoy', valor: '14' },
-      { dato: 'Confirmadas', valor: '11' },
-      { dato: 'Sin confirmar', valor: '3' },
+      { dato: 'Clientes de la semana', valor: '34' },
+      { dato: 'Conversaciones', valor: '52' },
+      { dato: 'Necesitan atención', valor: '5' },
     ],
     barras: [9, 12, 14, 11, 15, 8, 14],
-    tituloBarras: 'Citas agendadas',
+    tituloBarras: 'Conversaciones por día',
     filas: [
-      { nombre: 'Felipe Rueda', detalle: '9:00 a. m. · Primera cita', estado: 'Confirmada', tono: 'bien' },
-      { nombre: 'Ana Lucía Mora', detalle: '10:30 a. m. · Control', estado: 'Sin confirmar', tono: 'ojo' },
-      { nombre: 'Tomás Vélez', detalle: '11:15 a. m. · Control', estado: 'Confirmada', tono: 'bien' },
+      { nombre: 'Felipe Rueda', detalle: 'Quiere mover su cita del jueves', estado: 'Espera tu decisión', tono: 'ojo' },
+      { nombre: 'Ana Lucía Mora', detalle: 'Pidió cita de control', estado: 'Espera tu decisión', tono: 'ojo' },
+      { nombre: 'Tomás Vélez', detalle: '¿Cuánto vale la consulta?', estado: 'Resuelta', tono: 'bien' },
     ],
     chat: [
       { de: 'cliente', texto: 'Hola, necesito mover mi cita del jueves' },
-      { de: 'agente', texto: 'Claro, Felipe. Tengo viernes a las 9:00 a. m. o lunes a las 3:30 p. m. ¿Cuál te sirve?' },
-      { de: 'cliente', texto: 'El viernes' },
+      { de: 'agente', texto: 'Claro, Felipe. Se lo paso a Consultorio Alameda, y te responden por aquí.' },
+      { de: 'cliente', texto: '¿Cuánto vale la consulta?' },
+      { de: 'agente', texto: 'La consulta vale $90.000.' },
     ],
-    globos: [{ de: 'cliente', texto: 'Necesito mover mi cita del jueves' }, { de: 'agente', texto: 'Tengo viernes a las 9:00 a. m.' }],
+    globos: [{ de: 'cliente', texto: 'Necesito mover mi cita del jueves' }, { de: 'agente', texto: 'Se lo paso a Consultorio Alameda.' }],
   },
 ]
