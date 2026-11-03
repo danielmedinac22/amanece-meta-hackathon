@@ -255,7 +255,7 @@ function ListaQueYaSe({ filas }: { filas: readonly FilaQueYaSe[] }) {
   )
 }
 
-function AEscala({ ancho, alto, children }: { ancho: number; alto: number; children: ReactNode }) {
+export function AEscala({ ancho, alto, children }: { ancho: number; alto: number; children: ReactNode }) {
   const caja = useRef<HTMLDivElement>(null)
   const [escala, setEscala] = useState(0.4)
   useLayoutEffect(() => {

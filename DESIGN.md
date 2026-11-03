@@ -116,7 +116,13 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **Decidido.** Como Lovable: cielo completo, `¿Qué hace tu negocio?` al centro y una caja grande que escribe ejemplos sola mientras está vacía y se detiene cuando el Dueño escribe. Debajo sube una hoja con dos pestañas: `Plantillas` y `Lo que puede hacer`.
 
-**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Destino**: hoy el armado no parte de plantillas.
+**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Destino**: hoy el armado no parte de plantillas, así que la tarjeta ofrece solo `Ver` hasta que `Remixear` sea de verdad.
+
+**Lo que puede hacer.** Cada fila es algo que el producto hace hoy. Lo que todavía no existe no se promete aquí.
+
+**Portada.** Alba vive en `/`, con `Entrar` arriba. Nada de esta pantalla llama al servidor, así que un visitante sin cuenta no gasta modelo.
+
+**Lo escrito.** **Derivado.** La caja lo guarda en el navegador por un día, sigue a `/panel` y la puerta de sesión pide la cuenta si hace falta. Después de cualquier entrada, lo guardado llega al agente sin volver a escribirlo.
 
 ### Armado
 
@@ -220,6 +226,6 @@ Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, po
 
 ## Lo que falta decidir
 
-- **Portada pública.** Alba es la entrada del armado. Si la portada comparte esa pantalla o lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
+- **Demo en vivo.** Si la portada lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
 - **Clientes, formularios, ajustes y errores** no tuvieron ronda. Son **Derivado**.
 - **Lo que ve el equipo** cuando exista un rol distinto del Dueño.
