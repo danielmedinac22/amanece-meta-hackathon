@@ -2,6 +2,36 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* El corte de teléfono a PC es 1024 px: por debajo el Hilo es una pestaña, sin importar dónde lo dejó el Dueño. */
+@custom-variant fijo {
+  @media (width >= 64rem) {
+    [data-lugar="fijo"] & {
+      @slot;
+    }
+  }
+}
+@custom-variant flotante {
+  @media (width >= 64rem) {
+    [data-lugar="caja"] &,
+    [data-lugar="conversacion"] & {
+      @slot;
+    }
+  }
+}
+@custom-variant plegada {
+  @media (width >= 64rem) {
+    [data-lugar="caja"] & {
+      @slot;
+    }
+  }
+}
+
+@theme {
+  --ease-entra: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-mueve: cubic-bezier(0.25, 1, 0.5, 1);
+  --shadow-alzada: 0 1px 2px rgb(0 0 0 / 0.04), 0 16px 40px -16px rgb(30 30 60 / 0.18);
+}
+
 @theme inline {
   --font-sans: var(--fuente);
   --font-heading: var(--fuente-titulo);
@@ -136,5 +166,45 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@keyframes sube {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes desde-la-izquierda {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+@keyframes desde-la-derecha {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+/* `data-movido` espera al primer gesto: al cargar la página nada entra, ya estaba ahí. */
+@media (prefers-reduced-motion: no-preference) {
+  @media (width >= 64rem) {
+    [data-movido][data-lugar="fijo"] [data-pano="hilo"] {
+      animation: desde-la-izquierda 280ms var(--ease-mueve);
+    }
+    [data-movido]:not([data-lugar="fijo"]) [data-pano="hilo"],
+    [data-movido][data-lugar="conversacion"] [data-conversacion] {
+      animation: sube 240ms var(--ease-entra);
+    }
+  }
+  @media (width < 64rem) {
+    [data-movido] [data-pano="hilo"] {
+      animation: desde-la-izquierda 160ms var(--ease-mueve);
+    }
+    [data-movido] [data-pano="lienzo"] {
+      animation: desde-la-derecha 160ms var(--ease-mueve);
+    }
   }
 }
