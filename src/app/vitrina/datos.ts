@@ -1,5 +1,6 @@
 /** Datos inventados para pintar la vitrina. Solo `src/app/vitrina/` los importa: ninguna pantalla real los toca. */
 import type { UIMessage } from 'ai'
+import type { DatosDeHoy } from '@/app/panel/inicio-hoy'
 import type { DatosDelNegocio } from '@/app/panel/vista'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { LoPendiente, TarjetaDeAprobacion } from '@/nucleo/cambios'
@@ -11,6 +12,9 @@ import type { SeccionPintada } from '@/nucleo/panel'
 const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
+
+/** Lo que la cáscara de la vitrina necesita además de las páginas. `hoy` en `null` es Armándose. */
+export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; hoy: DatosDeHoy | null }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -80,34 +84,106 @@ const fallo: SeccionPintada = {
   advertencias: [],
 }
 
-export const NEGOCIO_ARMANDOSE: DatosDelNegocio = {
+const REGLAS = [
+  { clave: 'envio-fuera-de-la-ciudad', texto: 'Si el pedido es para fuera de Manizales, no prometas fecha y ábreme un Caso.' },
+  { clave: 'pago-contra-entrega', texto: 'Acepta pago contra entrega solo en pedidos de hasta $200.000.' },
+]
+
+const OJO_FUNCIONANDO = [
+  { clave: 'pedido-37', titulo: 'Paola tiene una novedad con su envío a Pasto', detalle: 'Pedido #37 · ayer', accion: 'Ver el pedido', ruta: '/panel/pedidos' },
+  { clave: 'pedido-41', titulo: 'Daniela todavía no confirma su pedido', detalle: 'Pedido #41 · $76.000 · hace 12 min', accion: 'Ver el pedido', ruta: '/panel/pedidos' },
+] as const
+
+const HOY_FUNCIONANDO: DatosDeHoy['hoy'] = {
+  voz: 'tienda',
+  recienAbierto: false,
+  cifras: {
+    semana: { ventas: 1284000, pedidos: 23, clientes: 31 },
+    anterior: { ventas: 1088000, pedidos: 19 },
+    conversaciones: { total: 14, resueltas: 13 },
+  },
+  ojo: [...OJO_FUNCIONANDO],
+  ultimo: [
+    { clave: 'pedido-41', texto: 'Tu agente le tomó un pedido a Daniela Quintero', cuando: 'hace 12 min' },
+    { clave: 'santiago', texto: 'Santiago Herrera te escribió', cuando: 'hace 40 min' },
+    { clave: 'nicolas', texto: 'Tu agente le tomó un pedido a Nicolás Aristizábal', cuando: 'hace 1 h' },
+    { clave: 'andres', texto: 'Andrés Felipe Gómez te escribió', cuando: 'hace 3 h' },
+  ],
+}
+
+export const NEGOCIO_ARMANDOSE: NegocioDeMuestra = {
   nombre: 'Café Ladera',
   detalle: 'Armándose · 0 productos',
-  link: null,
   pendiente: NADA_PENDIENTE,
+  hoy: null,
   indicadores: [],
   secciones: [],
   casos: [],
   reglas: [],
 }
 
-export const NEGOCIO_FUNCIONANDO: DatosDelNegocio = {
+export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   nombre: 'Café Ladera',
   detalle: 'Café de especialidad · Manizales · 12 productos',
-  link: LINK,
   pendiente: NADA_PENDIENTE,
+  hoy: { hoy: HOY_FUNCIONANDO, link: LINK, reglas: REGLAS },
   indicadores: [pedidosDeHoy, ventasPorDia],
   secciones: [pedidosConNovedad, fallo],
   casos: [],
-  reglas: [
-    { clave: 'envio-fuera-de-la-ciudad', texto: 'Si el pedido es para fuera de Manizales, no prometas fecha y ábreme un Caso.' },
-    { clave: 'pago-contra-entrega', texto: 'Acepta pago contra entrega solo en pedidos de hasta $200.000.' },
-  ],
+  reglas: REGLAS,
 }
 
-export const NEGOCIO_CON_UN_CASO: DatosDelNegocio = {
+const CASO_DE_MUESTRA = { id: 'caso-1', titulo: 'Quiere 20 bolsas de café para un evento en Cali', propuesta: 'Ofrecerle 10% de descuento y entrega en 4 días' }
+
+export const NEGOCIO_CON_UN_CASO: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
-  casos: [{ id: 'caso-1', titulo: 'Quiere 20 bolsas de café para un evento en Cali', propuesta: 'Ofrecerle 10% de descuento y entrega en 4 días' }],
+  casos: [CASO_DE_MUESTRA],
+  hoy: {
+    hoy: {
+      ...HOY_FUNCIONANDO,
+      ojo: [{ clave: 'caso-1', titulo: CASO_DE_MUESTRA.titulo, detalle: 'Marcela Ríos · pedido #44', accion: 'Decidir', ruta: '/panel/casos' }, ...OJO_FUNCIONANDO],
+    },
+    link: LINK,
+    reglas: REGLAS,
+  },
+}
+
+const NADA_TODAVIA = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } }
+
+export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  hoy: { hoy: { voz: 'tienda', recienAbierto: true, cifras: NADA_TODAVIA, ojo: [], ultimo: [] }, link: LINK, reglas: [] },
+}
+
+export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  hoy: {
+    hoy: {
+      voz: 'tienda',
+      recienAbierto: false,
+      cifras: { ...NADA_TODAVIA, semana: { ventas: 0, pedidos: 0, clientes: 1 }, conversaciones: { total: 1, resueltas: 1 } },
+      ojo: [],
+      ultimo: [{ clave: 'santiago', texto: 'Santiago Herrera te escribió', cuando: 'hace 40 min' }],
+    },
+    link: LINK,
+    reglas: [],
+  },
+}
+
+export const NEGOCIO_AGENDA: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  nombre: 'Barbería Central',
+  hoy: {
+    hoy: {
+      voz: 'agenda',
+      recienAbierto: false,
+      cifras: { ...NADA_TODAVIA, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } },
+      ojo: [{ clave: 'caso-2', titulo: 'Pregunta si atienden el festivo', detalle: 'Julián Ramírez', accion: 'Decidir', ruta: '/panel/casos' }],
+      ultimo: [{ clave: 'julian', texto: 'Julián Ramírez te escribió', cuando: 'hace 8 min' }],
+    },
+    link: LINK,
+    reglas: [],
+  },
 }
 
 const tarjeta = (propuesta: string, accion: TarjetaDeAprobacion['accion'], lineas: string[], advertencias: string[] = []): TarjetaDeAprobacion => ({
@@ -191,7 +267,7 @@ export const TARJETAS_VARIAS_DECISIONES: Record<string, EstadoDeTarjeta> = {
 
 export const HILO_TRABAJANDO: UIMessage[] = [mensaje('t1', 'user', texto('Quiero ver los pedidos confirmados por día')), mensaje('t2', 'assistant', { ...conTarjeta('ver_negocio', tarjeta('t-nada', 'deshacer', [])), output: { resumen: 'Listo', tarjeta: null } }, trabajando('proponer'))]
 
-export const NEGOCIO_CON_CAMBIOS: DatosDelNegocio = {
+export const NEGOCIO_CON_CAMBIOS: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   pendiente: {
     huella: 'vitrina-con-cambios' as Huella,

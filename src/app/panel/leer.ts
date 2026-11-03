@@ -6,8 +6,10 @@ import { leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
+import { leerHoy } from '@/nucleo/hoy'
 import { pintarPanel, pintarUna } from '@/nucleo/panel'
 import { duenoActual } from '@/negocio/sesion'
+import type { DatosDeHoy } from './inicio-hoy'
 import type { DatosDeLaOperacion } from './operacion'
 import type { DatosDelNegocio } from './vista'
 
@@ -23,7 +25,7 @@ export const duenoDelPanel = cache(async () => {
 
 const negocioDelPanel = cache(async () => {
   const { negocio, ctx } = await duenoDelPanel()
-  return negocio && ctx ? { negocio, estado: await leerAplicado(ctx.negocio) } : null
+  return negocio && ctx ? { negocio, id: ctx.negocio, estado: await leerAplicado(ctx.negocio) } : null
 })
 
 const pendienteDelPanel = cache(async () => {
@@ -59,21 +61,29 @@ export async function leerOperacion(): Promise<DatosDeLaOperacion> {
   }
 }
 
-export async function leerInicio(): Promise<DatosDelNegocio | null> {
-  const [leido, pendiente, casos] = await Promise.all([negocioDelPanel(), pendienteDelPanel(), leerCasos()])
-  if (!leido || !pendiente || !casos) return null
-  const { negocio, estado } = leido
+export type Inicio = { tipo: 'hoy'; datos: DatosDeHoy } | { tipo: 'armando'; datos: DatosDelNegocio }
+
+export async function leerInicio(): Promise<Inicio | null> {
+  const [leido, casos] = await Promise.all([negocioDelPanel(), leerCasos()])
+  if (!leido || !casos) return null
+  const { negocio, id, estado } = leido
+  const reglas = estado.vigentes('regla').map((r) => ({ clave: r.clave, texto: reglaEnPalabras(r.elemento, estado) }))
+  if (negocio.estado === 'listo') {
+    const hoy = await leerHoy(id, negocio.zonaHoraria, estado.identidad.rubro)
+    return { tipo: 'hoy', datos: { hoy, link: linkDeWhatsapp(negocio.nombre, negocio.codigo), reglas } }
+  }
   const productos = estado.vigentes('producto').filter((v) => v.elemento.activo)
   const pintadas = await pintarPanel(estado)
   return {
-    nombre: estado.identidad.nombre,
-    detalle: `${[estado.identidad.rubro, valorDelDato(estado, 'ciudad')].filter(Boolean).join(' · ') || 'Armándose'} · ${productos.length} productos`,
-    link: negocio.estado === 'listo' ? linkDeWhatsapp(negocio.nombre, negocio.codigo) : null,
-    pendiente,
-    indicadores: pintadas.filter((p) => p.tipo === 'indicador'),
-    secciones: pintadas.filter((p) => p.tipo === 'seccion'),
-    casos: casos.slice(0, 10),
-    reglas: estado.vigentes('regla').map((r) => ({ clave: r.clave, texto: reglaEnPalabras(r.elemento, estado) })),
+    tipo: 'armando',
+    datos: {
+      nombre: estado.identidad.nombre,
+      detalle: `${[estado.identidad.rubro, valorDelDato(estado, 'ciudad')].filter(Boolean).join(' · ') || 'Armándose'} · ${productos.length} productos`,
+      indicadores: pintadas.filter((p) => p.tipo === 'indicador'),
+      secciones: pintadas.filter((p) => p.tipo === 'seccion'),
+      casos: casos.slice(0, 10),
+      reglas,
+    },
   }
 }
 

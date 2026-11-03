@@ -144,6 +144,13 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y una agenda de citas. Cada cifra sale de un dato real, nunca del modelo.
 
+**Derivado.** Las definiciones viven en `src/nucleo/hoy.ts` y las palabras en `hoy-palabras.ts`:
+
+- **Esta semana** va desde el lunes en la zona del Negocio. `la anterior` es la semana pasada hasta este mismo momento, y solo se compara con al menos 3 pedidos en ese tramo.
+- **Lo vendido** usa `CUENTA_COMO_VENTA`, la misma definición de las Secciones y los Indicadores.
+- **Una conversación de hoy** es un Cliente que escribió hoy. **Resuelta sin ti** es una donde el último mensaje es del agente y salió, y ese Cliente no tiene un Caso abierto ni un Caso abierto o resuelto hoy.
+- **El Rubro** es texto libre: lo que suena a agenda habla de quién escribió, porque nada guarda una cita todavía, y todo lo demás habla de ventas.
+
 ### Tablero
 
 **Decidido.** Sección aparte. Cuatro tarjetas de Indicadores, gráfica, reparto y tabla reciente, en la forma de Eurocolombia.

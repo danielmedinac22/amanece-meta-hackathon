@@ -1,18 +1,19 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { Operacion } from '@/app/panel/operacion'
-import { FaltaEstaSeccion, SinNegocio, VistaDeCasos, VistaDelNegocio, VistaDelTablero, VistaDeUnaSeccion, type DatosDelNegocio } from '@/app/panel/vista'
+import { InicioHoy } from '@/app/panel/inicio-hoy'
+import { FaltaEstaSeccion, SinNegocio, VistaDeCasos, VistaDelNegocio, VistaDelTablero, VistaDeUnaSeccion } from '@/app/panel/vista'
 import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { Componentes } from './componentes'
 import { HiloDeMuestra, HiloQueRecibeUnaDecision } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_ARMANDOSE, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_ARMANDOSE, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof Operacion>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial'>
 
-function operacionDe(datos: DatosDelNegocio | null) {
+function operacionDe(datos: NegocioDeMuestra | null) {
   if (!datos) return { dueno: 'Lucía', negocio: null }
   return {
     dueno: 'Lucía',
@@ -21,15 +22,15 @@ function operacionDe(datos: DatosDelNegocio | null) {
       ciudad: 'Manizales',
       casosAbiertos: datos.casos.length,
       propias: datos.secciones.map((s) => ({ clave: s.clave, nombre: s.nombre })),
-      publicar: datos.link ? datos.pendiente : null,
+      publicar: datos.hoy ? datos.pendiente : null,
     },
   }
 }
 
-function paginasDe(datos: DatosDelNegocio | null): Record<string, ReactNode> {
+function paginasDe(datos: NegocioDeMuestra | null): Record<string, ReactNode> {
   const sin = <SinNegocio />
   return {
-    '/panel': datos ? <VistaDelNegocio datos={datos} /> : sin,
+    '/panel': datos?.hoy ? <InicioHoy {...datos.hoy} /> : datos ? <VistaDelNegocio datos={datos} /> : sin,
     '/panel/casos': datos ? <VistaDeCasos casos={datos.casos} /> : sin,
     '/panel/tablero': datos ? <VistaDelTablero indicadores={datos.indicadores} /> : sin,
     '/panel/conversaciones': <FaltaEstaSeccion que="tus conversaciones" />,
@@ -39,7 +40,7 @@ function paginasDe(datos: DatosDelNegocio | null): Record<string, ReactNode> {
   }
 }
 
-function panel(datos: DatosDelNegocio | null, estado: 'armando' | 'listo' | null, mensajes: UIMessage[] = [], tarjetas: Record<string, EstadoDeTarjeta> = {}, disposicion: Disposicion = {}) {
+function panel(datos: NegocioDeMuestra | null, estado: 'armando' | 'listo' | null, mensajes: UIMessage[] = [], tarjetas: Record<string, EstadoDeTarjeta> = {}, disposicion: Disposicion = {}) {
   return <MarcoDeMuestra datos={operacionDe(datos)} paginas={paginasDe(datos)} hilo={<HiloDeMuestra messages={mensajes} estados={tarjetas} estado={estado} />} {...disposicion} />
 }
 
@@ -55,6 +56,9 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'panel-funcionando', titulo: 'Panel de un Negocio funcionando', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo') },
   { id: 'panel-un-caso', titulo: 'Panel con un Caso esperando al Dueño', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO) },
   { id: 'panel-con-cambios', titulo: 'Panel con cambios sin publicar', pinta: () => panel(NEGOCIO_CON_CAMBIOS, 'listo') },
+  { id: 'panel-recien-abierto', titulo: 'Inicio: recién abierto, nadie ha escrito', pinta: () => panel(NEGOCIO_RECIEN_ABIERTO, 'listo') },
+  { id: 'hoy-sin-ventas', titulo: 'Inicio: una semana sin ventas y nada que mirar', pinta: () => panel(NEGOCIO_SIN_VENTAS, 'listo') },
+  { id: 'hoy-agenda', titulo: 'Inicio: un Negocio de citas', pinta: () => panel(NEGOCIO_AGENDA, 'listo') },
   { id: 'operacion-sidebar-plegado', titulo: 'PC: el sidebar plegado a íconos', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { sidebarAbierto: false }) },
   { id: 'operacion-hilo-oculto', titulo: 'PC: el Hilo oculto, con la caja flotante', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo', HILO_ARMANDOSE, {}, { inicial: { lugar: 'caja' } }) },
   { id: 'operacion-conversacion-flotante', titulo: 'PC: la conversación abierta encima del lienzo', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { inicial: { lugar: 'conversacion' } }) },

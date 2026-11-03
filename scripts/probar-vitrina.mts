@@ -18,7 +18,7 @@ import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
-const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
+const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -27,7 +27,6 @@ const ESPACIO_DEL_HILO = '[data-slot=sidebar-inset] > [aria-hidden]'
 const PESTANAS = 'nav[aria-label="Dónde estás"]'
 const PUNTO = '[aria-label="Algo espera tu decisión"]'
 const SIDEBAR_ABIERTO = `--cierto=${ancho('[data-slot=sidebar-gap]')} === 216`
-const WHATSAPP_CON_BORDE = `--cierto=(() => { const a = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Escríbele')); return getComputedStyle(a).borderTopColor !== 'rgba(0, 0, 0, 0)' })()`
 
 /** Recorridos con clics de verdad: lo que el Dueño nota al tocar la cáscara. Título, escena, ancho y pasos. */
 const RECORRIDOS: [string, string, string, ...string[]][] = [
@@ -38,14 +37,19 @@ const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['PC: Ocultar con una decisión esperando deja la conversación abierta', 'panel-un-caso', '1440', '--clic=Ocultar', '--ve=Una clienta preguntó'],
   ['Sidebar: Casos muestra el número de Casos abiertos', 'panel-un-caso', '1440', `--cierto=document.querySelectorAll('[data-slot=sidebar-menu-badge]').length === 1 && document.querySelector('[data-slot=sidebar-menu-badge]').textContent.trim() === '1'`],
   ['Sidebar: sin Casos abiertos no hay número', 'panel-funcionando', '1440', `--cierto=document.querySelectorAll('[data-slot=sidebar-menu-badge]').length === 0`],
-  ['Sidebar: cada Sección pinta lo suyo y dice si falta', 'panel-un-caso', '1440', '--clic=Pedidos con novedad', '--ve=Marcela Ríos', `--no-ve=14 pedidos`, '--clic=Pedidos', '--ve=Esta Sección todavía falta', `--cierto=document.querySelector('h1').textContent === 'Pedidos'`, '--clic=Casos', '--ve=Casos para ti', '--clic=Tablero', '--ve=14 pedidos', '--no-ve=Casos para ti', '--clic=Inicio', '--ve=Casos para ti', '--ve=14 pedidos'],
-  ['PC: Publicar vive en el encabezado del lienzo y abre su lista', 'panel-con-cambios', '1440', '--clic=Publicar', '--ve=Lo notan tus Clientes', `--ve=Vista previa`, WHATSAPP_CON_BORDE],
+  ['Sidebar: cada Sección pinta lo suyo y dice si falta', 'panel-un-caso', '1440', '--clic=Pedidos con novedad', '--ve=Marcela Ríos', `--no-ve=Necesita tu ojo`, '--clic=Pedidos', '--ve=Esta Sección todavía falta', `--cierto=document.querySelector('h1').textContent === 'Pedidos'`, '--clic=Casos', '--ve=Casos para ti', '--clic=Tablero', '--ve=14 pedidos', '--no-ve=Casos para ti', '--clic=Inicio', '--ve=Necesita tu ojo', '--no-ve=14 pedidos'],
+  ['PC: Publicar vive en el encabezado del lienzo y abre su lista', 'panel-con-cambios', '1440', '--clic=Publicar', '--ve=Lo notan tus Clientes', `--ve=Vista previa`],
   ['Teléfono: Publicar va arriba y abre su lista', 'panel-con-cambios', '390', '--clic=Publicar', '--ve=Lo notan tus Clientes', `--cierto=document.querySelector('header').textContent.includes('Publicar')`],
-  ['Teléfono: el Escríbele por WhatsApp se ve con borde', 'panel-con-cambios', '390', '--clic=Tu negocio', WHATSAPP_CON_BORDE],
-  ['Teléfono: pestañas, punto y cajón', 'panel-un-caso', '390', '--ve=Una clienta preguntó', '--no-ve=14 pedidos', `--cierto=!document.querySelector('${PUNTO}')`, '--clic=Tu negocio', '--ve=14 pedidos', '--no-ve=Una clienta preguntó', `--cierto=!!document.querySelector('${PUNTO}')`, '--clic=Menú', '--ve=Conversaciones', '--clic=Casos', '--no-ve=Conversaciones', '--ve=Casos para ti', '--clic=Tu agente', '--ve=Una clienta preguntó', `--cierto=!document.querySelector('${PUNTO}')`],
+  ['Inicio: la frase lleva sus cifras en negrita', 'panel-funcionando', '1440', '--ve=Esta semana vendiste', `--cierto=[...document.querySelectorAll('p b')].map((b) => b.textContent).join('|') === '$1.284.000|23 pedidos|13 de 14'`],
+  ['Inicio: Decidir lleva a Casos sin navegar fuera', 'panel-un-caso', '1440', '--ve=Necesita tu ojo', '--clic=Decidir', '--ve=Casos para ti', '--no-ve=Necesita tu ojo'],
+  ['Inicio en teléfono: Ver el pedido se queda en Tu negocio', 'panel-un-caso', '390', '--clic=Tu negocio', '--ve=Necesita tu ojo', '--clic=Ver el pedido', '--ve=Esta Sección todavía falta'],
+  ['Inicio: recién abierto muestra el link y ninguna cifra', 'panel-recien-abierto', '1440', '--ve=Todavía no te ha escrito nadie.', '--no-ve=Necesita tu ojo', '--no-ve=Esta semana', `--evalua=(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: (t) => { window.copiado = t; return Promise.resolve() } } }); return 'listo' })()`, '--clic=Copiar', '--ve=Copiado', `--cierto=window.copiado.startsWith('https://wa.me/')`],
+  ['Inicio: con cero ventas no dice $0 y el ojo vacío dice qué sigue', 'hoy-sin-ventas', '1440', '--ve=Esta semana todavía no tienes ventas.', '--ve=la única conversación', '--ve=Nada por ahora', '--no-ve=$0'],
+  ['Inicio: una agenda no habla de ventas', 'hoy-agenda', '1440', '--ve=te escribieron', '--ve=3 de 4', '--no-ve=vendiste', '--no-ve=pedidos,'],
+  ['Teléfono: pestañas, punto y cajón', 'panel-un-caso', '390', '--ve=Una clienta preguntó', '--no-ve=Necesita tu ojo', `--cierto=!document.querySelector('${PUNTO}')`, '--clic=Tu negocio', '--ve=Necesita tu ojo', '--no-ve=Una clienta preguntó', `--cierto=!!document.querySelector('${PUNTO}')`, '--clic=Menú', '--ve=Conversaciones', '--clic=Casos', '--no-ve=Conversaciones', '--ve=Casos para ti', '--clic=Tu agente', '--ve=Una clienta preguntó', `--cierto=!document.querySelector('${PUNTO}')`],
   ['Teléfono: tocar una Sección lleva a Tu negocio', 'panel-funcionando', '390', '--clic=Menú', '--clic=Pedidos', '--ve=Esta Sección todavía falta'],
-  ['El corte: en 1023 son pestañas', 'panel-funcionando', '1023', `--cierto=document.querySelector('${PESTANAS}').checkVisibility()`, '--no-ve=Pedidos de hoy'],
-  ['El corte: en 1024 son tres paños', 'panel-funcionando', '1024', `--cierto=!document.querySelector('${PESTANAS}').checkVisibility()`, '--ve=Pedidos de hoy', `--cierto=${ancho(HILO)} === 348`],
+  ['El corte: en 1023 son pestañas', 'panel-funcionando', '1023', `--cierto=document.querySelector('${PESTANAS}').checkVisibility()`, '--no-ve=Necesita tu ojo'],
+  ['El corte: en 1024 son tres paños', 'panel-funcionando', '1024', `--cierto=!document.querySelector('${PESTANAS}').checkVisibility()`, '--ve=Necesita tu ojo', `--cierto=${ancho(HILO)} === 348`],
   ['Movimiento: los paños usan la curva de DESIGN.md', 'panel-funcionando', '1440', `--cierto=(() => { const c = getComputedStyle(document.querySelector('${ESPACIO_DEL_HILO}')); return c.transitionDuration === '0.28s' && c.transitionTimingFunction === 'cubic-bezier(0.25, 1, 0.5, 1)' })()`, `--cierto=getComputedStyle(document.querySelector('[data-slot=sidebar-gap]')).transitionTimingFunction === 'cubic-bezier(0.25, 1, 0.5, 1)'`, '--clic=Ocultar', `--cierto=getComputedStyle(document.querySelector('${HILO}')).animationName === 'sube'`],
   ['Movimiento: con prefers-reduced-motion el estado cambia y nada se mueve', 'panel-funcionando', '1440', '--menos-movimiento', `--cierto=getComputedStyle(document.querySelector('${ESPACIO_DEL_HILO}')).transitionProperty === 'none'`, `--cierto=getComputedStyle(document.querySelector('[data-slot=sidebar-gap]')).transitionProperty === 'none'`, '--clic=Ocultar', '--no-ve=Hola, soy tu agente', `--cierto=getComputedStyle(document.querySelector('${HILO}')).animationName === 'none'`],
 ]
@@ -178,7 +182,7 @@ try {
   }
 
   const funcionando = await (await ver(`${desarrollo.base}/vitrina/panel-funcionando`)).text()
-  afirmar('dev: panel-funcionando pinta el Negocio de prueba', funcionando.includes('Café Ladera') && funcionando.includes('Pedidos de hoy'))
+  afirmar('dev: panel-funcionando pinta el Negocio de prueba', funcionando.includes('Café Ladera') && funcionando.includes('Necesita tu ojo'))
 
   const noExiste = await ver(`${desarrollo.base}/vitrina/no-hay-esta`)
   afirmar('dev: una escena que no existe da 404', noExiste.status === 404, noExiste.status)

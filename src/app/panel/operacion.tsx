@@ -12,6 +12,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
 import { cn } from '@/lib/utils'
 import type { LoPendiente } from '@/nucleo/cambios'
 import { DISPOSICION_INICIAL, HiloEnLaOperacion, disponer, type Disposicion, type Pestana } from './disposicion'
+import { AlIrASeccion } from './ir-a-seccion'
 import { BotonPublicar } from './publicar'
 import { SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
 
@@ -126,7 +127,9 @@ export function Operacion({ datos, ruta, alIr, hilo, children, sidebarAbierto = 
                 )}
               </div>
             </div>
-            <div className="@container min-h-0 flex-1 overflow-y-auto p-4 lg:p-6 flotante:pb-28">{children}</div>
+            <div className="@container min-h-0 flex-1 overflow-y-auto p-4 lg:p-6 flotante:pb-28">
+              <AlIrASeccion.Provider value={alTocarUnaSeccion}>{children}</AlIrASeccion.Provider>
+            </div>
           </div>
         </section>
 

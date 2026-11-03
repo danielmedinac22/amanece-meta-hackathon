@@ -1,15 +1,10 @@
-import { buttonVariants } from '@/components/ui/button'
-import type { LoPendiente } from '@/nucleo/cambios'
 import type { SeccionPintada } from '@/nucleo/panel'
 import { Fallo, Indicador, Seccion } from './pieza'
 
-/** Todo lo que el Panel de un Negocio necesita para pintarse. Quien lo arma lee; quien lo pinta no toca datos. */
+/** Lo que Inicio pinta mientras el Negocio se arma. Quien lo arma lee; quien lo pinta no toca datos. */
 export type DatosDelNegocio = {
   nombre: string
   detalle: string
-  /** El link de WhatsApp del Negocio cuando está listo; `null` es Armándose. */
-  link: string | null
-  pendiente: LoPendiente
   indicadores: SeccionPintada[]
   secciones: SeccionPintada[]
   casos: { id: string; titulo: string; propuesta: string | null }[]
@@ -21,26 +16,12 @@ export function SinNegocio() {
 }
 
 export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
-  const { nombre, detalle, link, pendiente, indicadores, secciones, casos, reglas } = datos
+  const { nombre, detalle, indicadores, secciones, casos, reglas } = datos
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-card p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-2xl font-semibold">{nombre}</h2>
-            <p className="text-sm text-muted-foreground">{detalle}</p>
-          </div>
-          {link && (
-            <a href={link} target="_blank" className={buttonVariants({ variant: pendiente.items.length ? 'outline' : 'default' })}>
-              Escríbele por WhatsApp
-            </a>
-          )}
-        </div>
-        {link && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Comparte este link con tus clientes: <span className="break-all font-mono">{link}</span>
-          </p>
-        )}
+        <h2 className="font-heading text-2xl font-semibold">{nombre}</h2>
+        <p className="text-sm text-muted-foreground">{detalle}</p>
       </div>
 
       {indicadores.length > 0 && <Indicadores indicadores={indicadores} />}
