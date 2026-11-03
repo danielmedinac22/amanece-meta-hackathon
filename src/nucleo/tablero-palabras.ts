@@ -1,0 +1,41 @@
+import { pesos } from './estado/elementos'
+import { cambioContraLaAnterior, type Cifras, type Voz } from './hoy-palabras'
+import { cifra, ETIQUETA_DE_PEDIDO } from './listas-palabras'
+import type { DatosDelTablero, PorAtender } from './tablero'
+
+export type TarjetaDelTablero = { clave: 'negocio' | 'conversaciones' | 'resueltas' | 'atencion'; dato: string; valor: string; nota: string; espera: boolean }
+
+const pedidos = (n: number) => `${cifra(n)} ${n === 1 ? 'pedido' : 'pedidos'}`
+
+/** La primera tarjeta dice lo que el Negocio registra: una agenda no vende por `pedidos`, y mostrarle `$0` no dice nada. */
+const PRIMERA: Record<Voz, (c: Cifras) => Pick<TarjetaDelTablero, 'dato' | 'valor' | 'nota'>> = {
+  tienda: (c) => ({
+    dato: 'Ventas de la semana',
+    valor: pesos(c.semana.ventas),
+    nota: c.semana.pedidos ? (cambioContraLaAnterior(c) ?? pedidos(c.semana.pedidos)) : 'Todavía sin ventas esta semana',
+  }),
+  agenda: (c) => ({ dato: 'Clientes de la semana', valor: cifra(c.semana.clientes), nota: c.semana.clientes ? 'Clientes que te escribieron' : 'Todavía no te ha escrito nadie' }),
+}
+
+function notaDeAtencion({ casos, novedad, pendiente }: PorAtender): string {
+  const partes = [casos && `${cifra(casos)} ${casos === 1 ? 'Caso' : 'Casos'}`, novedad && `${cifra(novedad)} ${ETIQUETA_DE_PEDIDO.novedad.toLowerCase()}`, pendiente && `${cifra(pendiente)} ${ETIQUETA_DE_PEDIDO.pendiente.toLowerCase()}`].filter(Boolean)
+  return partes.join(', ') || 'Nada espera por ti'
+}
+
+export function tarjetasDelTablero({ voz, cifras, porAtender }: Pick<DatosDelTablero, 'voz' | 'cifras' | 'porAtender'>): TarjetaDelTablero[] {
+  const { total, resueltas } = cifras.conversaciones
+  const atencion = porAtender.casos + porAtender.novedad + porAtender.pendiente
+  return [
+    { clave: 'negocio', ...PRIMERA[voz](cifras), espera: false },
+    { clave: 'conversaciones', dato: 'Conversaciones hoy', valor: cifra(total), nota: total ? 'Clientes que escribieron' : 'Hoy no ha escrito nadie', espera: false },
+    {
+      clave: 'resueltas',
+      dato: 'Resueltas sin ti',
+      // Sin conversaciones no hay porcentaje: un `0 %` diría que el agente falló.
+      valor: total ? `${Math.round((resueltas / total) * 100)} %` : '—',
+      nota: total ? `${cifra(resueltas)} de ${cifra(total)} ${total === 1 ? 'conversación' : 'conversaciones'}` : 'Hoy no ha escrito nadie',
+      espera: false,
+    },
+    { clave: 'atencion', dato: 'Necesitan atención', valor: cifra(atencion), nota: notaDeAtencion(porAtender), espera: atencion > 0 },
+  ]
+}

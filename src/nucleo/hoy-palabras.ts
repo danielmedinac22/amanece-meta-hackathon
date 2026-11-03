@@ -29,11 +29,17 @@ const escribieron = (n: number) => (n === 1 ? 'escribió ' : 'escribieron ')
 /** Con menos pedidos que esto la semana pasada, un porcentaje dice más del azar que del Negocio. */
 export const MINIMO_PARA_COMPARAR = 3
 
-function contraLaAnterior({ semana, anterior }: Cifras): string {
-  if (anterior.pedidos < MINIMO_PARA_COMPARAR || anterior.ventas <= 0) return '.'
+/** `null` si no hay con qué comparar. */
+export function cambioContraLaAnterior({ semana, anterior }: Pick<Cifras, 'semana' | 'anterior'>): string | null {
+  if (anterior.pedidos < MINIMO_PARA_COMPARAR || anterior.ventas <= 0) return null
   const cambio = Math.round(((semana.ventas - anterior.ventas) / anterior.ventas) * 100)
-  if (cambio === 0) return ', igual que la anterior.'
-  return `, ${Math.abs(cambio)}\u00a0% ${cambio > 0 ? 'más' : 'menos'} que la anterior.`
+  if (cambio === 0) return 'igual que la anterior'
+  return `${Math.abs(cambio)}\u00a0% ${cambio > 0 ? 'más' : 'menos'} que la anterior`
+}
+
+function contraLaAnterior(cifras: Cifras): string {
+  const cambio = cambioContraLaAnterior(cifras)
+  return cambio ? `, ${cambio}.` : '.'
 }
 
 const SEMANA: Record<Voz, (c: Cifras) => Parte[]> = {

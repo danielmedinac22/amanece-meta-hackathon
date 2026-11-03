@@ -20,7 +20,7 @@ export type Hoy = {
 const CUANTOS_EN_EL_OJO = 10
 const CUANTOS_RECIENTES = 5
 /** Un pedido sin confirmar hace más de una semana ya no espera nada del Dueño. */
-const DIAS_QUE_ESPERA_UNA_CONFIRMACION = 7
+export const DIAS_QUE_ESPERA_UNA_CONFIRMACION = 7
 
 const nombre = (n: string | null | undefined) => n?.trim().split(/\s+/)[0] || 'Un cliente'
 const completo = (n: string | null | undefined) => n?.trim() || 'un cliente'
