@@ -15,6 +15,7 @@ const { db, esquema } = await import('../src/db')
 const { marcar } = await import('../src/nucleo/identidad')
 const { leerHoy } = await import('../src/nucleo/hoy')
 const { fraseDeHoy, haceCuanto, recorteDeLoEscrito, vozDelRubro } = await import('../src/nucleo/hoy-palabras')
+const { sinSuFicha } = await import('../src/nucleo/ficha')
 const { puertoDeLaBase } = await import('../src/nucleo/clientes/acciones')
 const { leerPublicado } = await import('../src/nucleo/estado')
 
@@ -208,7 +209,7 @@ try {
   const confirmacion = await puerto.confirmar_pedido(1)
   const luego = await relojDeLaBase()
   const hora = await leerDelPedido()
-  afirmar('confirmar_pedido guarda la hora de la base', confirmacion.ok && hora !== null && hora >= antes && hora <= luego, { confirmacion, antes, hora, luego })
+  afirmar('confirmar_pedido guarda la hora en que se confirma', confirmacion.ok && hora !== null && hora >= antes && hora <= luego, { confirmacion, antes, hora, luego })
 
   const repetida = await puerto.confirmar_pedido(1)
   afirmar('Confirmar otra vez no mueve la hora', !repetida.ok && (await leerDelPedido())?.getTime() === hora?.getTime(), { repetida, hora })
@@ -220,10 +221,11 @@ try {
 
   console.log('\nLo que escribió un Cliente')
   const conMensajes = await negocioNuevo('D')
-  const deMensajes = await clientesDe(conMensajes.id, ['Con Ficha', 'Solo Ficha', 'Larga Díaz', 'Gabriel Luna'])
+  const deMensajes = await clientesDe(conMensajes.id, ['Con Ficha', 'Solo Ficha', 'Larga Díaz', 'Gabriel Luna', 'Entre Paréntesis'])
   const hace = (minutos: number) => new Date(ahora.getTime() - minutos * MINUTO)
   const largo = `¿Tienen café\n\nen grano? ${'palabra '.repeat(20)}`
   await db.insert(esquema.mensajesCliente).values([
+    { negocioId: conMensajes.id, clienteId: deMensajes['Entre Paréntesis'], rol: 'cliente', texto: '(sin) azúcar', creado: hace(5) },
     { negocioId: conMensajes.id, clienteId: deMensajes['Con Ficha'], rol: 'cliente', texto: `(${conMensajes.codigo}) Hola Café`, creado: hace(4) },
     { negocioId: conMensajes.id, clienteId: deMensajes['Solo Ficha'], rol: 'cliente', texto: `(${conMensajes.codigo})`, creado: hace(3) },
     { negocioId: conMensajes.id, clienteId: deMensajes['Larga Díaz'], rol: 'cliente', texto: largo, creado: hace(2) },
@@ -236,10 +238,17 @@ try {
   afirmar('Lo último: en una línea y recortado sin partir una palabra', escritos[1] === `Larga Díaz te escribió: «¿Tienen café en grano? ${'palabra '.repeat(6)}palabra…»`, escritos)
   afirmar('Lo último: el código del link no se le muestra al Dueño', escritos[3] === 'Con Ficha te escribió: «Hola Café»', escritos)
   afirmar('Lo último: si solo mandó el código, no hay comillas vacías', escritos[2] === 'Solo Ficha te escribió', escritos)
+  afirmar('Lo último: un paréntesis que no es su código se queda', escritos[4] === 'Entre Paréntesis te escribió: «(sin) azúcar»', escritos)
+  afirmar('Lo último: lo confirmado de otro Negocio no se cuela', !escritos.some((t) => t.includes('Carolina')), escritos)
+  const otraVez = JSON.stringify(await leerHoy(marcar.negocio(conPedidos.id), ZONA, conPedidos.rubro))
+  afirmar('Lo último: lo que escribió un Cliente de otro Negocio no se cuela', !otraVez.includes('Gabriel') && !otraVez.includes('Lo último que escribió'), otraVez)
 
   const emojis = '🧑‍🌾'.repeat(81)
   afirmar('El recorte no parte un emoji', recorteDeLoEscrito(emojis) === `${'🧑‍🌾'.repeat(80)}…`, recorteDeLoEscrito(emojis))
   afirmar('Justo en el tope no se recorta', recorteDeLoEscrito('a'.repeat(80)) === 'a'.repeat(80))
+  afirmar('El código del link se quita también en minúsculas', sinSuFicha(`(${conMensajes.codigo.toLowerCase()}) Hola`, conMensajes.codigo) === ' Hola')
+  afirmar('El código de otro Negocio se queda', sinSuFicha('(OTRO123) Hola', conMensajes.codigo) === '(OTRO123) Hola')
+  afirmar('Un link largo después de otras palabras se corta y no se pierde', recorteDeLoEscrito(`Mira este ${'x'.repeat(100)}`) === `Mira este ${'x'.repeat(70)}…`, recorteDeLoEscrito(`Mira este ${'x'.repeat(100)}`))
   afirmar('El corte en un espacio no pierde la palabra', recorteDeLoEscrito(`${'a'.repeat(80)} b`) === `${'a'.repeat(80)}…`)
 } finally {
   if (creados.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, creados))

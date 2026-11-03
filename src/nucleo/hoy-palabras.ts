@@ -64,13 +64,13 @@ export const MIENTRAS_NADIE_ESCRIBE: Record<Voz, string> = {
 
 const LARGO_DE_LO_ESCRITO = 80
 
-/** En una línea y sin partir una palabra ni un emoji. Una sola palabra más larga que el tope sí se corta, como un link. */
+/** En una línea y sin partir un emoji ni una palabra corta. Un link se corta por donde caiga, para que no se pierda entero. */
 export function recorteDeLoEscrito(texto: string): string {
   const limpio = texto.replace(/\s+/g, ' ').trim()
   const grafemas = Array.from(new Intl.Segmenter('es').segment(limpio), (g) => g.segment)
   if (grafemas.length <= LARGO_DE_LO_ESCRITO) return limpio
   const corte = grafemas.slice(0, LARGO_DE_LO_ESCRITO).join('')
-  return `${(grafemas[LARGO_DE_LO_ESCRITO] === ' ' ? corte : corte.replace(/\s\S*$/, '')).trimEnd()}…`
+  return `${(grafemas[LARGO_DE_LO_ESCRITO] === ' ' ? corte : corte.replace(/\s\S{1,20}$/, '')).trimEnd()}…`
 }
 
 /** Lo dice tal cual lo escribió el Cliente. `preguntó` del prototipo no sale: un mensaje no siempre es una pregunta y saberlo pediría al modelo. */

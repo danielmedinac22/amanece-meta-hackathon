@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { guardarEnElHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
 import { atenderMensaje } from './clientes/atender'
+import { FICHA_DE_ENRUTAMIENTO } from './ficha'
 import { contextoDelTelefonoDelDueno, marcar, NUMERO_DE_AMANECE, type ContextoDelDueno, type Instante, type NegocioId, type Wamid } from './identidad'
 import { despachar, intencion } from './salida'
 
@@ -75,9 +76,6 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
     boton: typeof boton === 'string' ? boton : null,
   }
 }
-
-/** La ficha del link `wa.me`: `(CODIGO)` al inicio del texto, en mayúsculas o minúsculas. Nada más del texto enruta. */
-export const FICHA_DE_ENRUTAMIENTO = /^\(([A-Za-z0-9]{3,12})\)/
 
 export function linkDeWhatsapp(nombre: string, codigo: string): string {
   return `https://wa.me/${NUMERO_DE_AMANECE.telefono}?text=${encodeURIComponent(`(${codigo}) Hola ${nombre}`)}`

@@ -1,8 +1,8 @@
 import { and, desc, eq, gte, isNotNull, ne, or, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { CUENTA_COMO_VENTA } from './consultas/catalogo'
-import { FICHA_DE_ENRUTAMIENTO } from './entrada'
 import { pesos } from './estado/elementos'
+import { sinSuFicha } from './ficha'
 import { haceCuanto, loQueEscribio, vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
 import type { NegocioId } from './identidad'
 
@@ -128,7 +128,7 @@ async function leerElOjo(negocio: NegocioId, ahora: Date, zona: string): Promise
 
 /** Solo lo que dejó un registro con su hora. Un pedido confirmado antes de guardarse esa hora cuenta como tomado y nada más. */
 async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Promise<CosaReciente[]> {
-  const { casos, clientes, mensajesCliente: m, pedidos } = esquema
+  const { casos, clientes, mensajesCliente: m, negocios, pedidos } = esquema
   const ultimos = db
     .selectDistinctOn([m.clienteId], { clienteId: m.clienteId, texto: m.texto, creado: m.creado })
     .from(m)
@@ -137,9 +137,10 @@ async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Prom
     .as('ultimos')
   const [escribieron, tomados, confirmados, abiertos, resueltos] = await Promise.all([
     db
-      .select({ id: clientes.id, nombre: clientes.nombre, texto: ultimos.texto, cuando: ultimos.creado })
+      .select({ id: clientes.id, nombre: clientes.nombre, texto: ultimos.texto, cuando: ultimos.creado, codigo: negocios.codigo })
       .from(ultimos)
       .innerJoin(clientes, and(eq(clientes.id, ultimos.clienteId), eq(clientes.negocioId, negocio)))
+      .innerJoin(negocios, eq(negocios.id, clientes.negocioId))
       .orderBy(desc(ultimos.creado))
       .limit(CUANTOS_RECIENTES),
     db
@@ -165,7 +166,7 @@ async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Prom
       .limit(CUANTOS_RECIENTES),
   ])
   return [
-    ...escribieron.map((e) => ({ clave: `escribio-${e.id}`, texto: loQueEscribio(conMayuscula(completo(e.nombre)), e.texto.replace(FICHA_DE_ENRUTAMIENTO, '')), fecha: e.cuando })),
+    ...escribieron.map((e) => ({ clave: `escribio-${e.id}`, texto: loQueEscribio(conMayuscula(completo(e.nombre)), sinSuFicha(e.texto, e.codigo)), fecha: e.cuando })),
     ...tomados.map((p) => ({ clave: `pedido-${p.id}`, texto: `Tu agente le tomó un pedido a ${completo(p.nombre)}`, fecha: p.cuando })),
     ...confirmados.map((p) => ({ clave: `confirmado-${p.id}`, texto: `${conMayuscula(completo(p.nombre))} confirmó su pedido`, fecha: p.cuando! })),
     ...abiertos.map((c) => ({ clave: `abierto-${c.id}`, texto: `Tu agente abrió un Caso: ${c.titulo}`, fecha: c.cuando })),

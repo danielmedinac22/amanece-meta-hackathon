@@ -18,7 +18,8 @@ const envios = capturarEnvios()
 const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
-const { elegirReparto, FICHA_DE_ENRUTAMIENTO, leerMensajeEntrante, linkDeWhatsapp, recibirMensaje, repartir } = await import('../src/nucleo/entrada')
+const { FICHA_DE_ENRUTAMIENTO } = await import('../src/nucleo/ficha')
+const { elegirReparto, leerMensajeEntrante, linkDeWhatsapp, recibirMensaje, repartir } = await import('../src/nucleo/entrada')
 const { marcar } = await import('../src/nucleo/identidad')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
 
