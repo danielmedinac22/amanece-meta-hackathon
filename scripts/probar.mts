@@ -26,6 +26,7 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-publicar'],
   ['probar-dueno'],
   ['probar-primera'],
+  ['probar-armado'],
   ['probar-vista-previa'],
   ['probar-panel'],
   ['probar-hoy'],
