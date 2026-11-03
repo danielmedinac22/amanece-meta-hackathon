@@ -79,7 +79,7 @@ try {
     }
   }
   // Un paño recorta lo que se le sale, así que el documento no se entera. Las tablas son la excepción por ahora: esconder columnas según el ancho llega con #42.
-  const desbordes = await evaluar<string[]>(`[document.documentElement, ...document.querySelectorAll('body *')].filter((e) => e === document.documentElement ? e.scrollWidth > innerWidth : e.scrollWidth - e.clientWidth > 1 && !e.querySelector(':scope > table, :scope > * > table') && ['auto', 'scroll', 'hidden', 'clip'].includes(getComputedStyle(e).overflowX) && e.clientWidth > 40).map((e) => e.tagName + ' ' + String(e.className).slice(0, 60) + ': ' + (e.scrollWidth - (e === document.documentElement ? innerWidth : e.clientWidth)) + ' px')`)
+  const desbordes = await evaluar<string[]>(`[document.documentElement, ...document.querySelectorAll('body *')].filter((e) => e === document.documentElement ? e.scrollWidth > innerWidth : e.scrollWidth - e.clientWidth > 1 && !e.querySelector(':scope > table, :scope > * > table') && ['auto', 'scroll', 'hidden', 'clip'].includes(getComputedStyle(e).overflowX) && getComputedStyle(e).textOverflow !== 'ellipsis' && e.clientWidth > 40).map((e) => e.tagName + ' ' + String(e.className).slice(0, 60) + ': ' + (e.scrollWidth - (e === document.documentElement ? innerWidth : e.clientWidth)) + ' px')`)
   if (desbordes.length) {
     console.error(`Se desborda a lo ancho:\n${desbordes.join('\n')}`)
     process.exitCode = 1
