@@ -29,7 +29,7 @@ Amanece se ve como un buen producto de hoy y le habla a quien vende por WhatsApp
 
 Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de referencia para Tablero, tablas y bandeja. Este repo ya usa esos tokens y esas letras. Para ver una pantalla sin sesión, mira `/vitrina`.
 
-**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
+**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Con `pnpm dev` corriendo, `pnpm tsx scripts/mirar-vitrina.mts <escena> <salida.png> [ancho] [alto] [--oscuro]` la captura y avisa si se desborda a lo ancho. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
 
 ## Tokens
 
@@ -44,7 +44,8 @@ Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de refer
 | `--ojo` | Lo que espera al Dueño o está en vista previa: `Vista previa`, `Con novedad`, el número de Casos |
 | `--alba` | Solo el cielo de la entrada y del armado |
 | `--sol` | Solo el botón de enviar activo, siempre con ícono en tinta `oklch(0.23 0.035 265)` |
-| `--globo-cliente` | **Derivado.** El globo de lo que recibe el Cliente de WhatsApp, donde se muestra junto a lo del Dueño. El texto va en `--globo-cliente-foreground`. |
+| `--globo-cliente` | **Derivado.** El globo de lo que escribe el Cliente en una muestra de WhatsApp. El texto va en `--globo-cliente-foreground`. |
+| `--velo` | **Derivado.** El velo que oscurece lo de atrás cuando abre un diálogo o un cajón. Es el de `base-nova`. |
 | `--destructive` | **Derivado.** Errores y acciones que borran. Valores de `base-nova`: `oklch(0.577 0.245 27.325)` en claro y `oklch(0.704 0.191 22.216)` en oscuro. Su contraste está medido en la tabla de abajo. |
 
 ### Contraste

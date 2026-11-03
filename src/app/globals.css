@@ -23,6 +23,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-velo: var(--velo);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -69,6 +70,7 @@
   --border: oklch(0.92 0.007 250);
   --input: oklch(0.92 0.007 250);
   --ring: oklch(0.7 0.12 45);
+  --velo: rgb(0 0 0 / 0.1);
   --sidebar: oklch(0.975 0.004 250);
   --sidebar-foreground: oklch(0.35 0.03 265);
   --sidebar-accent: oklch(0.94 0.007 250);

@@ -15,7 +15,7 @@ import { afirmar, terminar } from './afirmar.mjs'
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const SIN_BASE = 'postgres://nadie:x@127.0.0.1:1/nada'
-const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'componentes']
+const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'componentes']
 
 const hijos = new Set<ChildProcess>()
 

@@ -149,7 +149,7 @@ export function ultimasDe(x: Lector, negocio: NegocioId, filtro?: SQL) {
     .orderBy(ultimas.clave, desc(ultimas.version))
 }
 
-async function identidadDe(x: Lector, negocio: NegocioId): Promise<IdentidadDelNegocio & { readonly versionDelNegocio: number }> {
+async function identidadDe(x: Lector, negocio: NegocioId): Promise<{ readonly identidad: IdentidadDelNegocio; readonly version: number }> {
   const [n] = await x
     .select({
       nombre: esquema.negocios.nombre,
@@ -159,28 +159,25 @@ async function identidadDe(x: Lector, negocio: NegocioId): Promise<IdentidadDelN
       moneda: esquema.negocios.moneda,
       zonaHoraria: esquema.negocios.zonaHoraria,
       modo: esquema.negocios.modo,
-      versionDelNegocio: esquema.negocios.version,
+      version: esquema.negocios.version,
     })
     .from(esquema.negocios)
     .where(eq(esquema.negocios.id, negocio))
   if (!n) throw new NegocioInexistente(`No existe el Negocio ${negocio}`)
-  return { ...n, id: negocio, modo: n.modo ?? 'armando' }
+  const { version, modo, ...resto } = n
+  return { identidad: { ...resto, id: negocio, modo: modo ?? 'armando' }, version }
 }
 
 const vivasDe = (filas: Awaited<ReturnType<typeof ultimasDe>>) =>
   filas.filter((f) => f.contenido !== null).map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
-
-function sinVersion({ versionDelNegocio: _, ...identidad }: Awaited<ReturnType<typeof identidadDe>>): IdentidadDelNegocio {
-  return identidad
-}
 
 /**
  * La última fila de cada clave. Sin caché: un Cambio se ve desde la siguiente lectura. Son dos lecturas en READ
  * COMMITTED, no una sola foto: quien escribe no confía en esta, relee con `x = tx` después de tomar la fila del Negocio.
  */
 export async function leerAplicado(negocio: NegocioId, x: Lector = db): Promise<EstadoAplicado> {
-  const [identidad, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio)])
-  return armarEstado(sinVersion(identidad), comoVersion(identidad.versionDelNegocio), vivasDe(filas)) as EstadoAplicado
+  const [{ identidad, version }, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio)])
+  return armarEstado(identidad, comoVersion(version), vivasDe(filas)) as EstadoAplicado
 }
 
 /**
@@ -188,9 +185,9 @@ export async function leerAplicado(negocio: NegocioId, x: Lector = db): Promise<
  * `version` es la más alta de esas filas, lápidas incluidas: 0 quiere decir que no hay Elementos.
  */
 export async function leerPublicado(negocio: NegocioId, x: Lector = db): Promise<EstadoPublicado> {
-  const [identidad, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio, eq(ultimas.sinPublicar, false))])
+  const [{ identidad }, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio, eq(ultimas.sinPublicar, false))])
   const version = filas.reduce((max, f) => Math.max(max, f.version), 0)
-  return armarEstado(sinVersion(identidad), comoVersion(version), vivasDe(filas)) as EstadoPublicado
+  return armarEstado(identidad, comoVersion(version), vivasDe(filas)) as EstadoPublicado
 }
 
 export type ItemPendiente = {
@@ -222,6 +219,11 @@ export function loPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado
 /** Pura. El mismo contenido da la misma huella, sin importar cuántas versiones hubo. */
 export function huellaDeLoPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado): Huella {
   return createHash('sha256').update(canonico(diferencias(aplicado, publicado))).digest('hex') as Huella
+}
+
+/** Pura. Lo que deja cada clave pendiente igual a lo publicado. Cabe: el resultado es lo publicado, que siempre es válido. */
+export function escrituraParaRetirar(aplicado: EstadoAplicado, publicado: EstadoPublicado): Escritura {
+  return { elementos: diferencias(aplicado, publicado).map(({ clave, despues, antes }) => ({ clave, base: despues ? aplicado.vigente(clave)!.version : 'nueva', despues: antes })), filas: [] }
 }
 
 /** La propuesta que escribió la última fila de cada clave, también si la quitó. */

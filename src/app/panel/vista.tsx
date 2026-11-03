@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import type { LoPendiente } from '@/nucleo/cambios'
 import type { SeccionPintada } from '@/nucleo/panel'
 import { Fallo, Indicador, Seccion } from './pieza'
+import { BotonPublicar } from './publicar'
 
 /** Todo lo que el Panel de un Negocio necesita para pintarse. Quien lo arma lee; quien lo pinta no toca datos. */
 export type DatosDelNegocio = {
@@ -10,6 +12,7 @@ export type DatosDelNegocio = {
   detalle: string
   /** El link de WhatsApp del Negocio cuando está listo; `null` es Armándose. */
   link: string | null
+  pendiente: LoPendiente
   indicadores: SeccionPintada[]
   secciones: SeccionPintada[]
   casos: { id: string; titulo: string; propuesta: string | null }[]
@@ -50,7 +53,7 @@ export function SinNegocio() {
 }
 
 export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
-  const { nombre, detalle, link, indicadores, secciones, casos, reglas } = datos
+  const { nombre, detalle, link, pendiente, indicadores, secciones, casos, reglas } = datos
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-card p-5">
@@ -60,9 +63,13 @@ export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
             <p className="text-sm text-muted-foreground">{detalle}</p>
           </div>
           {link ? (
-            <Button render={<a href={link} target="_blank" />} nativeButton={false}>
-              Escríbele por WhatsApp
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-3 py-1 text-xs ${pendiente.items.length ? 'bg-ojo-suave text-ojo' : 'border border-border text-bien'}`}>{pendiente.items.length ? 'Vista previa' : 'Atendiendo'}</span>
+              <BotonPublicar pendiente={pendiente} />
+              <Button render={<a href={link} target="_blank" />} nativeButton={false}>
+                Escríbele por WhatsApp
+              </Button>
+            </div>
           ) : (
             <span className="rounded-full bg-ojo-suave px-3 py-1 text-xs text-ojo">Armándose</span>
           )}

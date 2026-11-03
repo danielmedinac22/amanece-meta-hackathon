@@ -110,4 +110,12 @@ const conLucide = fuentes.filter((r) => /lucide/i.test(readFileSync(r, 'utf8')))
 afirmar('Ningún archivo de src usa lucide', conLucide.length === 0, conLucide)
 afirmar('package.json no depende de lucide', !/lucide/i.test(readFileSync(join(RAIZ, 'package.json'), 'utf8')))
 
+const COLOR_A_MANO = /\b(?:bg|text|border|ring|fill|stroke|from|via|to|outline|divide|shadow)-(?:red|amber|green|blue|yellow|orange|gray|slate|zinc|neutral|stone|emerald|rose|pink|purple|indigo|sky|teal|lime|cyan|violet|fuchsia|white|black)\b|\[(?:color:)?(?:oklch|rgba?|hsla?)\(|["'`\s\[:]#[0-9a-fA-F]{3,8}\b/
+const pantallas = [...archivos(join(RAIZ, 'src/app')), ...archivos(join(RAIZ, 'src/components'))].filter((r) => r.endsWith('.tsx'))
+const conColorAMano = pantallas.filter((r) => COLOR_A_MANO.test(readFileSync(r, 'utf8'))).map((r) => r.slice(RAIZ.length))
+afirmar('Ninguna pantalla ni componente escribe un color a mano: todo color sale de un token', conColorAMano.length === 0, conColorAMano)
+
+const conOtraLetra = fuentes.filter((r) => /next\/font\//.test(readFileSync(r, 'utf8'))).map((r) => r.slice(RAIZ.length))
+afirmar('Las letras se cargan en un solo lugar, el layout raíz', conOtraLetra.length === 1 && conOtraLetra[0].endsWith('src/app/layout.tsx'), conOtraLetra)
+
 terminar()

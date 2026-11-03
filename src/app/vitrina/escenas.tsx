@@ -4,7 +4,7 @@ import { MarcoDelPanel, SinNegocio, VistaDelNegocio, type DatosDelNegocio } from
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { Componentes } from './componentes'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, NEGOCIO_ARMANDOSE, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, TARJETAS_CON_UN_CASO } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, NEGOCIO_ARMANDOSE, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, TARJETAS_CON_UN_CASO } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 
@@ -22,5 +22,6 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'panel-armandose', titulo: 'Panel de un Negocio armándose', pinta: () => panel(NEGOCIO_ARMANDOSE, 'armando', HILO_ARMANDOSE) },
   { id: 'panel-funcionando', titulo: 'Panel de un Negocio funcionando', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo') },
   { id: 'panel-un-caso', titulo: 'Panel con un Caso esperando al Dueño', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO) },
+  { id: 'panel-con-cambios', titulo: 'Panel con cambios sin publicar', pinta: () => panel(NEGOCIO_CON_CAMBIOS, 'listo') },
   { id: 'componentes', titulo: 'Todos los componentes y colores', pinta: () => <Componentes /> },
 ]

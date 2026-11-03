@@ -6,7 +6,7 @@ Este repo es la base de código de Amanece. Arrancó en la hackatón de Meta, de
 
 1. **El Dueño se da de alta en la web** y conversa con su Agente del dueño, que le pregunta por el Negocio: qué vende, precios, ciudad, envíos, horario y tono. Con eso arma el catálogo y la configuración, y le entrega un link `wa.me` con el código del Negocio.
 2. **Un Cliente abre el link**, le escribe al número de Amanece y lo atiende el Agente de clientes de ese Negocio: responde por el catálogo, toma el pedido y lo confirma.
-3. **El Dueño pide un Cambio** y queda funcionando solo en su Negocio. Ejemplos: "si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso", o "quiero ver los pedidos confirmados por día".
+3. **El Dueño pide un Cambio**, lo ve en su vista previa y lo manda a su link con **Publicar**. Solo le toca a su Negocio. Ejemplos: "si preguntan por envíos fuera de la ciudad, no prometas fecha y abre un Caso", o "quiero ver los pedidos confirmados por día".
 4. **Cuando se abre un Caso**, el Agente del dueño lo trae al Hilo del Dueño con una propuesta. El Dueño la aprueba y el Agente de clientes le responde al Cliente.
 
 ## La frontera del Cambio
@@ -22,7 +22,23 @@ Este repo es la base de código de Amanece. Arrancó en la hackatón de Meta, de
 
 **Ver antes de aplicar.** Un Cambio se propone, corre contra los datos del Negocio y el Dueño ve el resultado antes de aplicarlo. La vista previa nunca le escribe a un Cliente.
 
-**Revertir** vuelve a la versión anterior de la regla o del código. Lo que la regla ya hizo con Clientes no se deshace y queda en el historial.
+**Revertir** vuelve a la versión anterior de la regla o del código. Lo que la regla ya hizo con Clientes no se deshace y queda en el historial. Revertir algo que los Clientes ya tienen les llega de una, sin Publicar, porque frena. Revertir algo sin publicar solo lo saca de la vista previa.
+
+## Aplicado y publicado
+
+Lo aplicado es lo que ve el Dueño: su vista previa. Lo publicado es lo que notan sus Clientes: el Agente de clientes atiende con eso.
+
+| Cambio | Tarjeta | Después |
+|---|---|---|
+| Indicador o Sección | Muestra el resultado, ya en la vista previa, y solo ofrece Deshacer | Publicar |
+| Regla o conocimiento | Muestra la vista previa y ofrece Aplicar y Descartar | Publicar |
+
+- **Publicar es un botón del Dueño.** El Agente del dueño lo explica y no lo toca. Publicar manda todo lo que está sin publicar, y la huella lo ata a la lista que el Dueño vio: si otro Dueño aplicó algo más, no se publica nada y vuelve la lista nueva.
+- **Se guarda en una sola fila.** Cada fila de `elementos` lleva `sin_publicar`, y solo baja de true a false. Lo aplicado es la última fila de cada clave. Lo publicado es la última fila de cada clave con el bit abajo. `escribir` decide con qué bit nace una fila, y solo `src/nucleo/estado/escribir.ts` lo baja.
+- **Lo que no espera Publicar:** responder un Caso, que es un mensaje; y mientras se arma, porque no hay Clientes reales. Abrir el Negocio es la primera publicación.
+- **"Solo lo ve el equipo" todavía no le cambia la pantalla a nadie:** hoy solo existe el Dueño, y los Dueños ven la vista previa. Un Indicador se guarda, se cuenta y se publica igual.
+- **Por WhatsApp no hay botón todavía.** Publicar se toca en la web.
+- **Corte y vuelta atrás:** la migración va antes del código y no copia nada, porque el `DEFAULT` deja lo de hoy publicado. Antes de volver a un despliegue anterior corre `scripts/retirar-sin-publicar.mts` y después `scripts/quitar-panel.mts`, en ese orden. Si no, lo aplicado sin publicar les llega a los Clientes de una.
 
 **Qué no hace el núcleo, ni con un Cambio:**
 - mandar desde un número que no sea el de Amanece;

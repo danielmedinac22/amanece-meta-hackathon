@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { db, esquema } from '@/db'
+import { leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
@@ -42,6 +43,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
       .orderBy(desc(esquema.casos.creado))
       .limit(10),
   ])
+  const pendiente = await leerLoPendiente(estado)
   const productos = estado.vigentes('producto').filter((v) => v.elemento.activo)
   const pintadas = await pintarPanel(estado)
 
@@ -49,6 +51,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
     nombre: estado.identidad.nombre,
     detalle: `${[estado.identidad.rubro, valorDelDato(estado, 'ciudad')].filter(Boolean).join(' · ') || 'Armándose'} · ${productos.length} productos`,
     link: negocio.estado === 'listo' ? linkDeWhatsapp(negocio.nombre, negocio.codigo) : null,
+    pendiente,
     indicadores: pintadas.filter((p) => p.tipo === 'indicador'),
     secciones: pintadas.filter((p) => p.tipo === 'seccion'),
     casos: casos.map((c) => ({ id: c.id, titulo: c.titulo, propuesta: c.propuesta })),

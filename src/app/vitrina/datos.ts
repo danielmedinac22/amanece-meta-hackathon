@@ -2,7 +2,7 @@
 import type { UIMessage } from 'ai'
 import type { DatosDelNegocio } from '@/app/panel/vista'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { LoPendiente, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Supuesto } from '@/nucleo/consultas/tipos'
 import type { Clave } from '@/nucleo/estado/elementos'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
@@ -10,6 +10,7 @@ import type { SeccionPintada } from '@/nucleo/panel'
 
 const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/573000000000?text=Hola%20Caf%C3%A9%20Ladera%20LADERA'
+const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -83,6 +84,7 @@ export const NEGOCIO_ARMANDOSE: DatosDelNegocio = {
   nombre: 'Café Ladera',
   detalle: 'Armándose · 0 productos',
   link: null,
+  pendiente: NADA_PENDIENTE,
   indicadores: [],
   secciones: [],
   casos: [],
@@ -93,6 +95,7 @@ export const NEGOCIO_FUNCIONANDO: DatosDelNegocio = {
   nombre: 'Café Ladera',
   detalle: 'Café de especialidad · Manizales · 12 productos',
   link: LINK,
+  pendiente: NADA_PENDIENTE,
   indicadores: [pedidosDeHoy, ventasPorDia],
   secciones: [pedidosConNovedad, fallo],
   casos: [],
@@ -143,4 +146,15 @@ export const HILO_CON_UN_CASO: UIMessage[] = [
 export const TARJETAS_CON_UN_CASO: Record<string, EstadoDeTarjeta> = {
   'p-regla': { estado: 'aplicada', accion: 'aplicar', aprobadaPor: 'Daniela' },
   'p-caso': { estado: 'espera_al_dueno', accion: 'enviar', aprobadaPor: null },
+}
+
+export const NEGOCIO_CON_CAMBIOS: DatosDelNegocio = {
+  ...NEGOCIO_FUNCIONANDO,
+  pendiente: {
+    huella: 'vitrina-con-cambios' as Huella,
+    items: [
+      { clave: clave('regla-fuera-de-ciudad'), linea: 'Si un pedido es para fuera de Manizales, ábreme un Caso y no prometas fecha.', loNotan: 'clientes', aplicadoPor: 'Lucía' },
+      { clave: clave('pedidos-de-hoy'), linea: 'Pedidos de hoy', loNotan: 'equipo', aplicadoPor: null },
+    ],
+  },
 }
