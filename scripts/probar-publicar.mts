@@ -588,7 +588,7 @@ const CASOS: Record<string, () => Promise<void>> = {
   },
 
   async abrir() {
-    const [n] = await db.insert(esquema.negocios).values({ nombre: `Café Por Abrir ${marca}`, codigo: `PUB${marca}R`, rubro: 'café', estado: 'armando' }).returning({ id: esquema.negocios.id })
+    const [n] = await db.insert(esquema.negocios).values({ nombre: `Café Por Abrir ${marca}`, codigo: `PUB${marca}AB`, rubro: 'café', estado: 'armando' }).returning({ id: esquema.negocios.id })
     creados.push(n.id)
     const N = marcar.negocio(n.id)
     const ana = await duenoDe(N, 'Ana')
