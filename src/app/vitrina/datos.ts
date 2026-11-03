@@ -134,19 +134,62 @@ export const HILO_ARMANDOSE: UIMessage[] = [
   mensaje('a2', 'assistant', texto('Qué rico. Cuéntame cómo se llama tu negocio y cuánto cuesta una bolsa de 250 g.')),
 ]
 
+const trabajando = (herramienta: string) => ({ type: `tool-${herramienta}`, toolCallId: `llamada-${herramienta}`, state: 'input-available', input: {} })
+
 const REGLA = tarjeta('p-regla', 'aplicar', ['Regla nueva: si el pedido es para fuera de Manizales, no prometer fecha y abrir un Caso.'], ['Esta regla cambia lo que le dice tu agente a los clientes.'])
-const CASO = tarjeta('p-caso', 'enviar', ['Marcela Ríos escribió: ¿Cuánto cuesta enviar a Cali?', 'Respuesta propuesta: El envío a Cali cuesta $12.000 y llega en 3 días hábiles.'])
+const CASO = tarjeta('p-caso', 'enviar', ['Responderle a Marcela Ríos: «El envío a Cali cuesta $12.000 y llega en 3 días hábiles.»'])
 
 export const HILO_CON_UN_CASO: UIMessage[] = [
   mensaje('c1', 'user', texto('Cuando un pedido sea para fuera de mi ciudad, no prometas fecha')),
   mensaje('c2', 'assistant', texto('Listo, te dejo la regla para que la apruebes.'), conTarjeta('proponer', REGLA)),
-  mensaje('c3', 'assistant', texto('Una clienta preguntó por un envío y necesita tu OK.'), conTarjeta('proponer', CASO)),
+  mensaje('c3', 'assistant', texto('Una clienta preguntó por un envío y necesita tu OK.'), { type: 'data-tarjeta', data: CASO }),
 ]
 
+const estadoDe = (estado: EstadoDeTarjeta['estado'], accion: TarjetaDeAprobacion['accion'], asunto: EstadoDeTarjeta['asunto'], aprobadaPor: string | null = null): EstadoDeTarjeta => ({ estado, accion, aprobadaPor, asunto })
+const ES_REGLA = { tipo: 'elemento', que: 'regla' } as const
+const CASO_DE_MARCELA = { tipo: 'caso', titulo: 'Quiere saber cuánto cuesta un envío', pedido: 31, cliente: 'Marcela Ríos', escribio: '¿Cuánto cuesta enviar a Cali?', respuesta: 'El envío a Cali cuesta $12.000 y llega en 3 días hábiles.' } as const
+
 export const TARJETAS_CON_UN_CASO: Record<string, EstadoDeTarjeta> = {
-  'p-regla': { estado: 'aplicada', accion: 'aplicar', aprobadaPor: 'Daniela' },
-  'p-caso': { estado: 'espera_al_dueno', accion: 'enviar', aprobadaPor: null },
+  'p-regla': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Daniela'),
+  'p-caso': estadoDe('espera_al_dueno', 'enviar', CASO_DE_MARCELA),
 }
+
+const VENCIDA = { ...tarjeta('c-vencida', 'aplicar', ['Cerrar los domingos en diciembre']), vence: '2020-01-01T00:00:00.000Z' as Instante }
+const SIN_ESTADO_VENCIDA = { ...tarjeta('c-sin-estado', 'enviar', ['Responderle a Marcela Ríos: «Hola, ya te confirmo.»']), vence: '2020-01-01T00:00:00.000Z' as Instante }
+
+export const HILO_CONSTANCIAS: UIMessage[] = [
+  mensaje('k0', 'assistant', texto('Así queda cada tarjeta cuando ya se resolvió.')),
+  mensaje('k1', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-enviada', 'enviar', ['Responderle a Camila Rojas: «Hola Camila, te la repongo sin costo.»']) }),
+  mensaje('k2', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-aplicada', 'aplicar', ['Si el pedido pasa de $150.000, el envío es gratis']) }),
+  mensaje('k3', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-revertida', 'aplicar', ['Ticket promedio por ciudad']) }),
+  mensaje('k4', 'assistant', { type: 'data-tarjeta', data: tarjeta('c-descartada', 'aplicar', ['Devoluciones del mes']) }),
+  mensaje('k5', 'assistant', { type: 'data-tarjeta', data: VENCIDA }),
+  mensaje('k6', 'assistant', { type: 'data-tarjeta', data: SIN_ESTADO_VENCIDA }),
+]
+
+export const TARJETAS_CONSTANCIAS: Record<string, EstadoDeTarjeta> = {
+  'c-enviada': estadoDe('aplicada', 'enviar', { tipo: 'caso', titulo: 'La bolsa llegó rota', pedido: 31, cliente: 'Camila Rojas', escribio: 'Una de las bolsas llegó abierta y con café regado dentro de la caja.', respuesta: 'Hola Camila, te la repongo sin costo.' }, 'Lucía'),
+  'c-aplicada': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Julián'),
+  'c-revertida': estadoDe('revertida', 'aplicar', { tipo: 'elemento', que: 'indicador' }, 'Julián'),
+  'c-descartada': estadoDe('descartada', 'aplicar', { tipo: 'elemento', que: 'seccion' }),
+  'c-vencida': estadoDe('vencida', 'aplicar', ES_REGLA),
+}
+
+const vence = (t: TarjetaDeAprobacion, cuando: string) => ({ ...t, vence: new Date(cuando).toISOString() as Instante })
+
+export const HILO_VARIAS_DECISIONES: UIMessage[] = [
+  mensaje('v1', 'assistant', texto('Te dejé esta regla para que la mires.'), { type: 'data-tarjeta', data: vence(tarjeta('v-regla', 'aplicar', ['Si el pedido pasa de $150.000, el envío es gratis']), '2030-01-01T00:00:00Z') }),
+  mensaje('v2', 'assistant', texto('Una clienta preguntó por un envío y necesita tu OK.'), { type: 'data-tarjeta', data: vence(tarjeta('v-caso', 'enviar', ['Responderle a Marcela Ríos: «El envío a Cali cuesta $12.000.»']), '2030-01-02T00:00:00Z') }),
+  mensaje('v3', 'assistant', texto('Otra regla, por si te sirve.'), { type: 'data-tarjeta', data: vence(tarjeta('v-otra', 'aplicar', ['No prometer fecha fuera de Manizales']), '2030-01-03T00:00:00Z') }),
+]
+
+export const TARJETAS_VARIAS_DECISIONES: Record<string, EstadoDeTarjeta> = {
+  'v-regla': estadoDe('espera_al_dueno', 'aplicar', ES_REGLA),
+  'v-caso': estadoDe('espera_al_dueno', 'enviar', CASO_DE_MARCELA),
+  'v-otra': estadoDe('espera_al_dueno', 'aplicar', ES_REGLA),
+}
+
+export const HILO_TRABAJANDO: UIMessage[] = [mensaje('t1', 'user', texto('Quiero ver los pedidos confirmados por día')), mensaje('t2', 'assistant', { ...conTarjeta('ver_negocio', tarjeta('t-nada', 'deshacer', [])), output: { resumen: 'Listo', tarjeta: null } }, trabajando('proponer'))]
 
 export const NEGOCIO_CON_CAMBIOS: DatosDelNegocio = {
   ...NEGOCIO_FUNCIONANDO,

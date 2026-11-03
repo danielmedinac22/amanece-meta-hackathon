@@ -7,17 +7,18 @@
  *   pnpm tsx scripts/probar-vitrina.mts
  */
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { decisionQueEspera } from '../src/negocio/partes-del-hilo'
+import { tocarTarjeta } from '../src/app/panel/tocar-tarjeta'
+import { decisionesEnEspera, decisionQueEspera } from '../src/negocio/partes-del-hilo'
 import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
-const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'componentes']
+const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -47,6 +48,22 @@ const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['El corte: en 1024 son tres paños', 'panel-funcionando', '1024', `--cierto=!document.querySelector('${PESTANAS}').checkVisibility()`, '--ve=Pedidos de hoy', `--cierto=${ancho(HILO)} === 348`],
   ['Movimiento: los paños usan la curva de DESIGN.md', 'panel-funcionando', '1440', `--cierto=(() => { const c = getComputedStyle(document.querySelector('${ESPACIO_DEL_HILO}')); return c.transitionDuration === '0.28s' && c.transitionTimingFunction === 'cubic-bezier(0.25, 1, 0.5, 1)' })()`, `--cierto=getComputedStyle(document.querySelector('[data-slot=sidebar-gap]')).transitionTimingFunction === 'cubic-bezier(0.25, 1, 0.5, 1)'`, '--clic=Ocultar', `--cierto=getComputedStyle(document.querySelector('${HILO}')).animationName === 'sube'`],
   ['Movimiento: con prefers-reduced-motion el estado cambia y nada se mueve', 'panel-funcionando', '1440', '--menos-movimiento', `--cierto=getComputedStyle(document.querySelector('${ESPACIO_DEL_HILO}')).transitionProperty === 'none'`, `--cierto=getComputedStyle(document.querySelector('[data-slot=sidebar-gap]')).transitionProperty === 'none'`, '--clic=Ocultar', '--no-ve=Hola, soy tu agente', `--cierto=getComputedStyle(document.querySelector('${HILO}')).animationName === 'none'`],
+]
+
+const CARD_CASO = 'document.getElementById("tarjeta-p-caso")'
+const RECORRIDOS_DEL_HILO: typeof RECORRIDOS = [
+  ['Hilo: el Dueño va en globo secondary y el agente sin globo', 'panel-un-caso', '1440', `--cierto=(() => { const dueno = [...document.querySelectorAll('[data-conversacion] div')].filter((d) => d.textContent === 'Cuando un pedido sea para fuera de mi ciudad, no prometas fecha').at(-1); const agente = [...document.querySelectorAll('[data-conversacion] p')].find((p) => p.textContent.startsWith('Una clienta')); const probe = document.createElement('i'); probe.style.background = 'var(--secondary)'; document.body.append(probe); const secundario = getComputedStyle(probe).backgroundColor; probe.remove(); return getComputedStyle(dueno).backgroundColor === secundario && getComputedStyle(agente).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(agente).fontSize === '14.5px' })()`],
+  ['Hilo: hasta dos sugerencias y sin adjuntar', 'panel-un-caso', '1440', `--cierto=[...document.querySelectorAll('[data-pano=hilo] button')].filter((b) => /^(Quiero ver|Muéstrame|Cuando un pedido)/.test(b.textContent)).length === 2`, `--cierto=!document.querySelector('[aria-label="Adjuntar"]')`],
+  ['Redactor: vacío no se enciende; con texto se enciende con --sol y su tinta', 'panel-funcionando', '1440', `--cierto=document.querySelector('form button[aria-label="Enviar"]').disabled && getComputedStyle(document.querySelector('form button[aria-label="Enviar"]')).backgroundImage === 'none'`, `--evalua=(() => { const t = document.querySelector('form textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Hola'); t.dispatchEvent(new Event('input', { bubbles: true })); return 'escrito' })()`, '--espera=500', `--cierto=(() => { const b = getComputedStyle(document.querySelector('form button[aria-label="Enviar"]')); const probe = document.createElement('i'); probe.style.color = 'var(--sol-foreground)'; document.body.append(probe); const tinta = getComputedStyle(probe).color; probe.remove(); return b.backgroundImage.includes('linear-gradient') && b.color === tinta })()`],
+  ['Rastro: un check o tres puntos', 'hilo-trabajando', '1440', '--ve=Revisó tu negocio', '--ve=Preparó lo que pediste', `--cierto=document.querySelectorAll('[data-conversacion] .puntos').length === 1`],
+  ['Tarjeta de un Caso: etiqueta, lo que escribió, la respuesta, a quién le llega', 'panel-un-caso', '1440', '--ve=Quiere saber cuánto cuesta un envío · pedido #31', '--ve=Marcela Ríos escribió', '--ve=¿Cuánto cuesta enviar a Cali?', '--ve=Le voy a responder', '--ve=Sale por WhatsApp a Marcela Ríos'],
+  ['Enviar confirma en su sitio y pliega en una constancia que se vuelve a abrir', 'panel-un-caso', '1440', `--evalua=(() => { const r = ${CARD_CASO}.getBoundingClientRect(); window.__x = r.x; return 'medido' })()`, '--clic=Enviar', '--espera=500', '--ve=Enviada a Marcela Ríos', '--no-ve=Le voy a responder', `--cierto=${CARD_CASO}.getBoundingClientRect().x === window.__x`, '--no-ve=Sale por WhatsApp', `--cierto=(() => { const b = [...${CARD_CASO}.querySelectorAll('button')]; return b.length === 1 && b[0].getAttribute('aria-label') === 'Ver el detalle' })()`, `--evalua=${CARD_CASO}.querySelector('button').click()`, '--espera=500', '--ve=Le voy a responder', '--ve=Enviada a Marcela Ríos'],
+  ['Descartar queda en la tarjeta', 'panel-un-caso', '1440', '--clic=Descartar', '--espera=500', '--ve=Descartada', '--no-ve=Le voy a responder'],
+  ['Teléfono: Enviar también confirma en su sitio', 'panel-un-caso', '390', '--clic=Enviar', '--espera=500', '--ve=Enviada a Marcela Ríos'],
+  ['Movimiento: con prefers-reduced-motion la tarjeta se pliega sin animar', 'panel-un-caso', '1440', '--menos-movimiento', '--clic=Enviar', '--espera=60', '--no-ve=Le voy a responder', '--ve=Enviada a Marcela Ríos'],
+  ['Constancias: cada desenlace', 'hilo-constancias', '1440', '--ve=Enviada a Camila Rojas', '--ve=La bolsa llegó rota · pedido #31', '--ve=Aplicada por Julián', '--ve=Aplicada por Julián, y revertida después', '--ve=Nuevo Indicador', '--ve=Descartada', '--ve=Nueva Sección', '--ve=Venció sin aplicarse. Pídela de nuevo si todavía la quieres.'],
+  ['Una tarjeta vencida no deja tocar, tenga estado o no', 'hilo-constancias', '1440', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Enviar|Aplicar|Descartar)/.test(b.textContent))`, `--cierto=document.getElementById('tarjeta-c-sin-estado').textContent.includes('Venció sin aplicarse')`],
+  ['Varias decisiones: la más urgente arriba, con 1 de 3', 'hilo-varias-decisiones', '1440', '--ve=1 de 3', '--ve=2 de 3', '--ve=3 de 3', `--cierto=document.querySelector('[data-conversacion] > button').textContent.includes('Quiere saber cuánto cuesta')`, `--cierto=document.getElementById('tarjeta-v-caso').textContent.includes('1 de 3')`, '--clic=Descartar', '--espera=400', '--ve=1 de 2', '--no-ve=3 de 3'],
 ]
 
 const hijos = new Set<ChildProcess>()
@@ -112,7 +129,7 @@ function nombres(carpeta: string): string[] {
 console.log('\nqué tarjeta espera al Dueño')
 {
   const tarjeta = (propuesta: string, accion: string, vence = '2099-01-01T00:00:00Z') => ({ id: propuesta, role: 'assistant', parts: [{ type: 'data-tarjeta', data: { propuesta, accion, vence } }] }) as never
-  const espera = { estado: 'espera_al_dueno', accion: 'enviar', aprobadaPor: null } as const
+  const espera = { estado: 'espera_al_dueno', accion: 'enviar', aprobadaPor: null, asunto: null } as const
   afirmar('Sin tarjetas no hay decisión', decisionQueEspera([], {}) === null)
   afirmar('La que espera al Dueño cuenta', decisionQueEspera([tarjeta('a', 'enviar')], { a: espera }) === 'a')
   afirmar('Una ya aplicada no cuenta', decisionQueEspera([tarjeta('a', 'aplicar')], { a: { ...espera, estado: 'aplicada' } }) === null)
@@ -120,6 +137,30 @@ console.log('\nqué tarjeta espera al Dueño')
   afirmar('Vencida sin estado no cuenta', decisionQueEspera([tarjeta('a', 'aplicar', '2020-01-01T00:00:00Z')], {}) === null)
   afirmar('Deshacer no es una decisión que espera', decisionQueEspera([tarjeta('a', 'deshacer')], {}) === null)
   afirmar('Entre varias manda la más reciente', decisionQueEspera([tarjeta('a', 'enviar'), tarjeta('b', 'enviar')], { a: espera, b: espera }) === 'b')
+  const orden = decisionesEnEspera([tarjeta('r', 'aplicar', '2030-01-01T00:00:00Z'), tarjeta('c2', 'enviar', '2030-01-03T00:00:00Z'), tarjeta('c1', 'enviar', '2030-01-02T00:00:00Z'), tarjeta('d', 'deshacer')], {}).map((t) => t.propuesta)
+  afirmar('La más urgente primero: lo que espera un Cliente y después lo que vence antes', orden.join() === 'c1,c2,r', orden)
+}
+
+console.log('\nuna tarjeta sigue pasando por sus rutas')
+{
+  const llamadas: { url: string; init: RequestInit }[] = []
+  const original = globalThis.fetch
+  const tarjeta = { propuesta: 'p1', huella: 'h1' } as never
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    llamadas.push({ url, init })
+    return new Response(JSON.stringify({ tipo: 'descartada' }))
+  }) as typeof fetch
+  for (const accion of ['aprobar', 'descartar', 'deshacer'] as const) {
+    const r = await tocarTarjeta(tarjeta, accion)
+    const ultima = llamadas.at(-1)!
+    afirmar(`${accion}: POST a su ruta con la huella`, ultima.url === `/api/propuestas/p1/${accion}` && ultima.init.method === 'POST' && ultima.init.body === JSON.stringify({ huella: 'h1' }) && r.tipo === 'descartada', ultima)
+    afirmar(`${accion}: la ruta existe`, existsSync(join(RAIZ, `src/app/api/propuestas/[id]/${accion}/route.ts`)))
+  }
+  globalThis.fetch = (async () => {
+    throw new Error('sin red')
+  }) as typeof fetch
+  afirmar('Sin red el error vuelve a la tarjeta', (await tocarTarjeta(tarjeta, 'aprobar')).tipo === 'error')
+  globalThis.fetch = original
 }
 
 try {
@@ -156,7 +197,7 @@ try {
     }
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of RECORRIDOS) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DEL_HILO]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

@@ -7,7 +7,7 @@ import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { Componentes } from './componentes'
 import { HiloDeMuestra, HiloQueRecibeUnaDecision } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, NEGOCIO_ARMANDOSE, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, TARJETAS_CON_UN_CASO } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_ARMANDOSE, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_FUNCIONANDO, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof Operacion>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial'>
@@ -61,5 +61,8 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'operacion-llega-decision', titulo: 'PC: llega una decisión y la conversación se abre sola', pinta: llegaUnaDecision },
   { id: 'telefono-tu-negocio', titulo: 'Teléfono: Tu negocio, con el punto en Tu agente', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { inicial: { pestana: 'negocio' } }) },
   { id: 'telefono-cajon', titulo: 'Teléfono: el sidebar como cajón', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { cajonAbierto: true, inicial: { pestana: 'negocio' } }) },
+  { id: 'hilo-constancias', titulo: 'Hilo: cada desenlace de una tarjeta resuelta', pinta: () => panel(NEGOCIO_FUNCIONANDO, 'listo', HILO_CONSTANCIAS, TARJETAS_CONSTANCIAS) },
+  { id: 'hilo-varias-decisiones', titulo: 'Hilo: tres decisiones a la vez', pinta: () => panel(NEGOCIO_CON_UN_CASO, 'listo', HILO_VARIAS_DECISIONES, TARJETAS_VARIAS_DECISIONES) },
+  { id: 'hilo-trabajando', titulo: 'Hilo: el agente trabajando', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_TRABAJANDO} estados={{}} estado="listo" status="streaming" />} /> },
   { id: 'componentes', titulo: 'Todos los componentes y colores', pinta: () => <Componentes /> },
 ]

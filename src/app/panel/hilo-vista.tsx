@@ -1,13 +1,14 @@
 'use client'
 
+import { ArrowUp, CaretUp, CheckCircle, Warning } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import { decisionQueEspera, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
+import { decisionesEnEspera, decisionQueEspera, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { HiloEnLaOperacion } from './disposicion'
-import { Tarjeta } from './tarjeta'
+import { etiquetaDe, Tarjeta } from './tarjeta'
+import type { TocarTarjeta } from './tocar-tarjeta'
 
 /** Lo que el Dueño ve mientras su Agente del dueño usa una herramienta. */
 const ETIQUETAS: Record<string, string> = {
@@ -24,11 +25,7 @@ const ETIQUETAS: Record<string, string> = {
 }
 
 const SUGERENCIAS_ARMANDO = ['No tengo página: vendo café de especialidad en Manizales', 'Tengo una panadería en Bogotá']
-const SUGERENCIAS_LISTO = [
-  'Cuando un pedido sea para fuera de mi ciudad, ábreme un Caso y no prometas fecha',
-  'Quiero ver los pedidos confirmados por día',
-  'Muéstrame los pedidos con novedad',
-]
+const SUGERENCIAS_LISTO = ['Quiero ver los pedidos confirmados por día', 'Muéstrame los pedidos con novedad']
 
 export type DatosDelHilo = {
   messages: UIMessage[]
@@ -38,10 +35,31 @@ export type DatosDelHilo = {
   error: Error | undefined
 }
 
-/** Pinta la conversación. Quien la conecta decide qué pasa al enviar: esta vista no habla con ninguna ruta. */
-export function VistaDelHilo({ messages, estados, estado, status, error, alEnviar, alCambiar }: DatosDelHilo & { alEnviar: (contenido: string) => void; alCambiar: () => void }) {
+function Puntos() {
+  return (
+    <span className="puntos inline-flex items-center">
+      <i />
+      <i />
+      <i />
+    </span>
+  )
+}
+
+function Rastro({ estado, children }: { estado: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+      {estado === 'output-available' ? <CheckCircle weight="fill" className="size-3.5 shrink-0" /> : estado === 'output-error' ? <Warning weight="fill" className="size-3.5 shrink-0 text-destructive" /> : <Puntos />}
+      <span>{children}</span>
+    </div>
+  )
+}
+
+/** Pinta la conversación. Quien la conecta decide qué pasa al enviar y al tocar una tarjeta: esta vista no habla con ninguna ruta. */
+export function VistaDelHilo({ messages, estados, estado, status, error, alEnviar, alTocar, alCambiar }: DatosDelHilo & { alEnviar: (contenido: string) => void; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const [texto, setTexto] = useState('')
   const final = useRef<HTMLDivElement>(null)
+  // Lo que ya estaba al abrir no entra con movimiento: solo lo que llega después.
+  const [yaEstaban] = useState(messages.length)
   const ocupado = status === 'submitted' || status === 'streaming'
   const { vista, controles, avisarDecision } = useContext(HiloEnLaOperacion)
 
@@ -61,48 +79,66 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
   }
 
   const sugerencias = estado === 'listo' ? SUGERENCIAS_LISTO : SUGERENCIAS_ARMANDO
+  const enEspera = decisionesEnEspera(messages, estados)
+  const posicionDe = (propuesta: string) => {
+    const i = enEspera.findIndex((t) => t.propuesta === propuesta)
+    return enEspera.length > 1 && i >= 0 ? `${i + 1} de ${enEspera.length}` : null
+  }
+  const tarjeta = (t: NonNullable<ReturnType<typeof tarjetaDeLaParte>>) => <Tarjeta tarjeta={t} estado={estados[t.propuesta]} posicion={posicionDe(t.propuesta)} alTocar={alTocar} alCambiar={alCambiar} />
 
   return (
     <div className="flex h-full min-h-0 flex-col flotante:h-auto">
-      <div data-conversacion className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 motion-safe:scroll-smooth flotante:mb-2 flotante:max-h-[58vh] flotante:flex-none flotante:rounded-lg flotante:border flotante:bg-background flotante:p-4 flotante:shadow-alzada plegada:hidden">
+      <div data-conversacion className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 motion-safe:scroll-smooth flotante:mb-2 flotante:max-h-[58vh] flotante:flex-none flotante:rounded-lg flotante:border flotante:bg-background flotante:p-4 flotante:shadow-alzada plegada:hidden">
+        {enEspera.length > 1 && (
+          <button type="button" onClick={() => document.getElementById(`tarjeta-${enEspera[0].propuesta}`)?.scrollIntoView({ block: 'start' })} className="sticky top-0 z-10 flex w-full shrink-0 items-center gap-2 rounded-[calc(var(--radius)-4px)] border border-border bg-card px-3 py-2 text-left text-xs">
+            <Warning weight="fill" className="size-3.5 shrink-0 text-ojo" />
+            <span className="shrink-0 font-medium tabular-nums">1 de {enEspera.length}</span>
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{etiquetaDe(enEspera[0], estados[enEspera[0].propuesta])}</span>
+            <CaretUp className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        )}
         {messages.length === 0 && (
-          <div className="rounded-lg bg-card p-4 text-sm">
+          <p className="text-(length:--texto-hilo) leading-normal text-pretty">
             Hola, soy tu agente. Trabajo para tu negocio todo el día. Si ya lo tienes publicado en una página o en Instagram,
             pégame el enlace y lo leo. Si no, cuéntame cómo se llama y qué vendes.
-          </div>
+          </p>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : ''}>
-            <div className={m.role === 'user' ? 'max-w-[85%] rounded-lg bg-primary px-4 py-2.5 text-primary-foreground' : 'max-w-full'}>
-              {m.parts.map((parte, i) => {
-                if (parte.type === 'text') return <p key={i} className="whitespace-pre-wrap leading-relaxed">{parte.text}</p>
+        {messages.map((m, indice) => (
+          <div key={m.id} className={[m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-3', indice >= yaEstaban ? 'motion-safe:animate-[sube_240ms_var(--ease-entra)]' : ''].join(' ')}>
+            {m.role === 'user' ? (
+              <div className="max-w-[85%] rounded-[calc(var(--radius)+2px)] bg-secondary px-3.5 py-2 text-(length:--texto-hilo) leading-[1.45] text-pretty whitespace-pre-wrap text-secondary-foreground">
+                {m.parts.map((parte, i) => (parte.type === 'text' ? <span key={i}>{parte.text}</span> : null))}
+              </div>
+            ) : (
+              m.parts.map((parte, i) => {
+                if (parte.type === 'text') return <p key={i} className="text-(length:--texto-hilo) leading-normal text-pretty whitespace-pre-wrap">{parte.text}</p>
                 const t = tarjetaDeLaParte(parte)
                 if (parte.type.startsWith('tool-')) {
                   const herramienta = parte.type.slice(5)
-                  const p = parte as { state: string }
                   return (
-                    <div key={i} className="my-2">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
-                        <span className={p.state === 'output-available' ? 'text-bien' : p.state === 'output-error' ? 'text-destructive' : 'animate-pulse text-ojo'}>●</span>
-                        {ETIQUETAS[herramienta] ?? herramienta}
-                      </span>
-                      {t && <Tarjeta tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} />}
+                    <div key={i} className="flex flex-col gap-3">
+                      <Rastro estado={(parte as { state: string }).state}>{ETIQUETAS[herramienta] ?? herramienta}</Rastro>
+                      {t && tarjeta(t)}
                     </div>
                   )
                 }
-                return t ? <Tarjeta key={i} tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} /> : null
-              })}
-            </div>
+                return t ? <div key={i}>{tarjeta(t)}</div> : null
+              })
+            )}
           </div>
         ))}
-        {status === 'submitted' && <p className="animate-pulse text-sm text-muted-foreground">Pensando…</p>}
+        {status === 'submitted' && (
+          <span role="status" aria-label="Tu agente está escribiendo" className="py-1">
+            <Puntos />
+          </span>
+        )}
         {error && <p className="text-sm text-destructive">Algo falló. Intenta de nuevo.</p>}
         <div ref={final} />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 flotante:hidden">
+      <div className="mt-3 flex flex-wrap gap-1.5 flotante:hidden">
         {sugerencias.map((s) => (
-          <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto max-w-full shrink rounded-full bg-card px-3 py-1 text-left font-normal whitespace-normal text-muted-foreground">
+          <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto max-w-full shrink rounded-full bg-background px-2.5 py-1 text-left font-normal whitespace-normal text-muted-foreground hover:text-foreground">
             {s}
           </Button>
         ))}
@@ -112,11 +148,24 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
           e.preventDefault()
           enviar(texto)
         }}
-        className="mt-3 flex items-center gap-2 flotante:mt-0 flotante:gap-1 flotante:rounded-lg flotante:border flotante:bg-card flotante:p-1 flotante:shadow-alzada"
+        className="mt-2 flex items-end gap-2 rounded-(--radius) border border-border bg-card p-2 flotante:mt-0 flotante:items-center flotante:gap-1 flotante:rounded-lg flotante:p-1 flotante:shadow-alzada"
       >
-        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a tu agente…" className="h-11 flex-1 rounded-full bg-card px-4 flotante:border-transparent flotante:bg-transparent" />
-        <Button type="submit" disabled={ocupado || !texto.trim()} className="h-11 rounded-full px-5">
-          Enviar
+        <textarea
+          rows={1}
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              enviar(texto)
+            }
+          }}
+          placeholder="Escríbele a tu agente"
+          aria-label="Escríbele a tu agente"
+          className="field-sizing-content max-h-32 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+        />
+        <Button type="submit" size="icon" aria-label="Enviar" disabled={ocupado || !texto.trim()} className="size-9 rounded-full not-disabled:bg-(image:--sol) not-disabled:text-(--sol-foreground)">
+          <ArrowUp weight="bold" className="size-4" />
         </Button>
         {controles}
       </form>

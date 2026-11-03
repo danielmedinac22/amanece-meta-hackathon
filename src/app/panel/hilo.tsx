@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { VistaDelHilo } from './hilo-vista'
+import { tocarTarjeta } from './tocar-tarjeta'
 
 type HiloLeido = { mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }
 
@@ -34,8 +35,13 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
 
   useEffect(() => {
     if (ocupado) return
+    // Sin esperar el intervalo: una tarjeta recién llegada en el stream todavía no trae su estado ni su Caso.
+    const primera = setTimeout(releer)
     const intervalo = setInterval(releer, 8000)
-    return () => clearInterval(intervalo)
+    return () => {
+      clearTimeout(primera)
+      clearInterval(intervalo)
+    }
   }, [ocupado, releer])
 
   /** Después de un clic: la línea del desenlace y el Panel, que pudo cambiar. */
@@ -44,5 +50,5 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
     router.refresh()
   }, [releer, router])
 
-  return <VistaDelHilo messages={messages} estados={estados} estado={estado} status={status} error={error} alEnviar={(contenido) => sendMessage({ text: contenido })} alCambiar={alCambiar} />
+  return <VistaDelHilo messages={messages} estados={estados} estado={estado} status={status} error={error} alEnviar={(contenido) => sendMessage({ text: contenido })} alTocar={tocarTarjeta} alCambiar={alCambiar} />
 }
