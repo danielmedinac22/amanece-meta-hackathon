@@ -43,6 +43,13 @@
       "when": 1793669626336,
       "tag": "0005_publicar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793732208245,
+      "tag": "0006_pedidos_confirmado",
+      "breakpoints": true
     }
   ]
 }

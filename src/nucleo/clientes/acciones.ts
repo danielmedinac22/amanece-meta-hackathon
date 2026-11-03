@@ -173,7 +173,7 @@ export function puertoDeLaBase(estado: EstadoPublicado, cliente: ClienteId): Pue
       const donde = and(deEsteCliente, eq(esquema.pedidos.numero, numero))
       const [confirmado] = await db
         .update(esquema.pedidos)
-        .set({ estado: 'confirmado' })
+        .set({ estado: 'confirmado', confirmado: sql`now()` })
         .where(and(donde, eq(esquema.pedidos.estado, 'pendiente')))
         .returning({ total: esquema.pedidos.total })
       if (confirmado) return { ok: true, total: comoMonto(confirmado.total) }

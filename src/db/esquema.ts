@@ -103,6 +103,8 @@ export const pedidos = pgTable(
     ciudad: text('ciudad').notNull().default(''),
     direccion: text('direccion').notNull().default(''),
     estado: text('estado', { enum: ESTADOS_DE_PEDIDO }).notNull().default('pendiente'),
+    /** `null` en uno sin confirmar y en uno que se confirmó antes de existir esta columna: esa hora no se reconstruye. */
+    confirmado: timestamp('confirmado', { withTimezone: true }),
     creado: creado(),
   },
   (t) => [index('pedidos_negocio').on(t.negocioId, t.creado), uniqueIndex('pedidos_negocio_numero').on(t.negocioId, t.numero)],
