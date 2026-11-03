@@ -17,7 +17,7 @@ export type ViolacionDeRegla = { readonly regla: Clave; readonly efecto: Efecto[
 export type Activa = { readonly regla: Clave; readonly porque: 'siempre' | 'pedido_abierto' } | PorPedidoNuevo
 export type PorPedidoNuevo = { readonly regla: Clave; readonly porque: 'pedido_nuevo'; readonly pedidos: readonly [number, ...number[]] }
 
-export type CasoPorAbrir = { readonly titulo: string; readonly pedido: number | null }
+export type CasoPorAbrir = { readonly titulo: string; readonly pedido: number | null; readonly regla: string }
 
 /** Qué partes de una regla cumple cada razón. `enSalida` no ramifica por `porque`. */
 const CUMPLE = {
@@ -39,6 +39,7 @@ export type ReglasCompiladas = {
     texto: string,
     casosDelModelo: readonly (number | null)[],
   ): { readonly violaciones: readonly ViolacionDeRegla[]; readonly casosPorAbrir: readonly CasoPorAbrir[] }
+  nombresDeLasReglasDelCaso(activas: readonly Activa[], pedido: number | null): readonly string[]
 }
 
 /** Sin repetir regla: si una vale por dos razones, gana la primera, así que quien llama pone primero la que más cumple. */
@@ -120,6 +121,10 @@ export function compilarReglas(estado: EstadoDelNegocio): ReglasCompiladas {
       const c = compiladas.find((x) => x.clave === a.regla)
       return c ? [{ a, c, cumple: CUMPLE[a.porque] }] : []
     })
+  const casosQuePiden = (activas: readonly Activa[]): readonly CasoPorAbrir[] =>
+    activasDe(activas).flatMap(({ a, c, cumple }) =>
+      cumple.caso ? c.partes.flatMap((p) => (p.en === 'caso' ? (a.porque === 'pedido_nuevo' ? a.pedidos : [null]).map((pedido) => ({ titulo: p.titulo, pedido, regla: c.nombre })) : [])) : [],
+    )
   const alPedido = compiladas.filter((c) => ACTIVACION[c.cuando.tipo]?.al === 'pedido')
   return {
     textoParaElPrompt: compiladas
@@ -139,19 +144,16 @@ export function compilarReglas(estado: EstadoDelNegocio): ReglasCompiladas {
     },
     enSalida(activas, texto, casosDelModelo) {
       const violaciones: ViolacionDeRegla[] = []
-      const casosPorAbrir: CasoPorAbrir[] = []
-      for (const { a, c, cumple } of activasDe(activas)) {
+      for (const { c, cumple } of activasDe(activas)) {
         for (const p of c.partes) {
           if (p.en === 'salida' && cumple.salida) {
             const detalle = p.detecta(texto)
             if (detalle) violaciones.push({ regla: c.clave, efecto: p.efecto, detalle })
           }
-          if (p.en === 'caso' && cumple.caso) {
-            for (const pedido of a.porque === 'pedido_nuevo' ? a.pedidos : [null]) if (!casosDelModelo.includes(pedido)) casosPorAbrir.push({ titulo: p.titulo, pedido })
-          }
         }
       }
-      return { violaciones, casosPorAbrir }
+      return { violaciones, casosPorAbrir: casosQuePiden(activas).filter((c) => !casosDelModelo.includes(c.pedido)) }
     },
+    nombresDeLasReglasDelCaso: (activas, pedido) => casosQuePiden(activas).flatMap((c) => (c.pedido === pedido ? [c.regla] : [])),
   }
 }

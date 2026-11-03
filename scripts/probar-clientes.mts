@@ -249,9 +249,9 @@ try {
     }
     const [uno, dos] = [await crear(7), await crear(8)]
     const titulo = `Pedido fuera de Manizales (prueba ${base})`
-    const a = await puerto.abrir_caso({ titulo, detalle: 'primero', pedido: uno, reusar: true })
-    const b = await puerto.abrir_caso({ titulo, detalle: 'otra vez', pedido: uno, reusar: true })
-    const c = await puerto.abrir_caso({ titulo, detalle: 'otro pedido', pedido: dos, reusar: true })
+    const a = await puerto.abrir_caso({ titulo, detalle: 'primero', pedido: uno, reusar: true, reglas: ['Regla uno'] })
+    const b = await puerto.abrir_caso({ titulo, detalle: 'otra vez', pedido: uno, reusar: true, reglas: ['Regla dos', 'Regla uno'] })
+    const c = await puerto.abrir_caso({ titulo, detalle: 'otro pedido', pedido: dos, reusar: true, reglas: [] })
     const filas = await db.select({ id: esquema.casos.id, pedido: esquema.pedidos.numero, detalle: esquema.casos.detalle }).from(esquema.casos).leftJoin(esquema.pedidos, eq(esquema.pedidos.id, esquema.casos.pedidoId)).where(eq(esquema.casos.titulo, titulo))
     afirmar('3b: el mismo pedido reusa su Caso y otro pedido abre otro, cada uno con su pedido', a.nuevo && !b.nuevo && b.caso === a.caso && c.nuevo && c.caso !== a.caso && filas.length === 2 && filas.find((f) => f.id === a.caso)?.pedido === uno && filas.find((f) => f.id === c.caso)?.pedido === dos, { a, b, c, filas })
   }
@@ -296,8 +296,8 @@ try {
 
   console.log('\n=== 5. Un Caso del núcleo se reusa y suma el mensaje nuevo ===')
   const puerto = puertoDeLaBase(await leerPublicado(marcar.negocio(ladera.id)), marcar.cliente(camila.id))
-  const primero = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «uno»', pedido: null, reusar: true })
-  const segundo = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «dos»', pedido: null, reusar: true })
+  const primero = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «uno»', pedido: null, reusar: true, reglas: [] })
+  const segundo = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «dos»', pedido: null, reusar: true, reglas: [] })
   const [reusado] = primero.caso ? await db.select().from(esquema.casos).where(eq(esquema.casos.id, primero.caso)) : []
   afirmar('reusar: el mismo Caso, con los dos mensajes en el detalle', primero.caso !== null && primero.caso === segundo.caso && reusado?.detalle.includes('«uno»') && reusado.detalle.includes('«dos»'), reusado)
 

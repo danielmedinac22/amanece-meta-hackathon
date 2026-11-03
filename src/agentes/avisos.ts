@@ -3,6 +3,7 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
+import { comoPropuesta } from '@/nucleo/caso-palabras'
 import { proponerRespuestaAlCaso, type ResultadoDeProponer } from '@/nucleo/cambios'
 import { leerPublicado, valorDelDato, type EstadoPublicado } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
@@ -20,6 +21,10 @@ const propuestaDelCaso = z.object({
   respuestaAlCliente: z.string().describe('El mensaje para el Cliente, listo para mandar por WhatsApp, en el tono del Negocio'),
   queHacer: z.string().describe('Lo que el Dueño o el Negocio tiene que hacer por su lado; vacío si no hay nada'),
 })
+
+export function columnasDeLaPropuesta(p: Pick<z.infer<typeof propuestaDelCaso>, 'respuestaAlCliente' | 'queHacer'> | null): { readonly propuesta: string; readonly porTuLado: string } {
+  return p ? { propuesta: comoPropuesta(p.respuestaAlCliente), porTuLado: p.queHacer.trim() } : { propuesta: '', porTuLado: '' }
+}
 
 export async function traerCasoAlDueno(negocio: NegocioId, casoId: string): Promise<void> {
   const [caso] = await db.select().from(esquema.casos).where(and(eq(esquema.casos.id, casoId), eq(esquema.casos.negocioId, negocio)))
@@ -65,11 +70,10 @@ ${contexto}`,
     console.warn('No pude armar la propuesta del Caso', casoId, e)
   }
 
-  const textoPropuesta = propuesta ? `Responderle: "${propuesta.respuestaAlCliente}"${propuesta.queHacer ? `\nPor tu lado: ${propuesta.queHacer}` : ''}` : ''
   // Se reclama el Caso al final: si dos avisos corrieron a la vez, solo uno llega al Hilo.
   const [reclamado] = await db
     .update(esquema.casos)
-    .set({ estado: 'esperando_dueno', propuesta: textoPropuesta })
+    .set({ estado: 'esperando_dueno', ...columnasDeLaPropuesta(propuesta) })
     .where(and(eq(esquema.casos.id, casoId), eq(esquema.casos.estado, 'abierto')))
     .returning({ id: esquema.casos.id })
   if (!reclamado) return

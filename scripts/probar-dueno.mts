@@ -365,6 +365,7 @@ try {
     console.log(`traerCasoAlDueno: ${Date.now() - inicio} ms`)
     const [conPropuesta] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, caso.id))
     afirmar('7 Caso: tras traerlo al Dueño espera su respuesta con una propuesta', conPropuesta.estado === 'esperando_dueno' && conPropuesta.propuesta.trim().length > 0, conPropuesta)
+    afirmar('7 Caso: la propuesta guarda solo la respuesta, y lo que le toca al Dueño va aparte', conPropuesta.propuesta.startsWith('Responderle:') && !conPropuesta.propuesta.includes('Por tu lado'), conPropuesta)
     const delCaso = await db
       .select()
       .from(esquema.propuestas)

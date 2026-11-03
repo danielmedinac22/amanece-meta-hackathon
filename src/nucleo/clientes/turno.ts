@@ -142,7 +142,7 @@ export async function turno<M extends Modo>(
   const reglas = compilarReglas(estado)
   const alEntrar = reglas.alEntrar(conversacion.cliente.pedidos.flatMap((p) => (p.paraReglas ? [p.paraReglas] : [])))
   let activas = alEntrar
-  const envuelto = envolver(entorno.acciones, estado, reglas)
+  const envuelto = envolver(entorno.acciones, estado, reglas, alEntrar)
   const { cliente, mensaje } = conversacion
   const detalle = `${cliente.nombre || 'El Cliente'} escribió: «${mensaje.texto}»`
   let llamadas = 0
@@ -162,7 +162,7 @@ export async function turno<M extends Modo>(
 
   const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
-    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, pedido: null })
+    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, pedido: null, reglas: [alDueno.nombre] })
     casosPorReglas++
     texto = alDueno.avisoAlCliente
   } else {
@@ -173,7 +173,7 @@ export async function turno<M extends Modo>(
     const borrador = b.texto.trim() || SIN_TEXTO
     activas = sinRepetir([...envuelto.activadas(), ...alEntrar])
     const deSalida = reglas.enSalida(activas, borrador, envuelto.casosDelModelo())
-    for (const { titulo, pedido } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido })
+    for (const { titulo, pedido, regla } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido, reglas: [regla] })
     casosPorReglas += deSalida.casosPorAbrir.length
     const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
     texto = borrador
@@ -191,7 +191,7 @@ export async function turno<M extends Modo>(
       } else {
         texto = RESPALDO
         corregido = 'respaldo'
-        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, pedido: null })
+        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, pedido: null, reglas: [] })
       }
     }
   }
