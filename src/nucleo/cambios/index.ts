@@ -427,7 +427,6 @@ export async function aprobar(ctx: ContextoDelDueno, propuesta: string, huella: 
 /** Lo que se le responde a un Cliente, ya revalidado dentro del reclamo. */
 type Respuesta = { readonly caso: CasoId; readonly cliente: ClienteId; readonly texto: string }
 
-/** A dónde llegó lo que se aplicó. */
 type Quedo = 'sin_clientes' | 'en_la_vista_previa' | 'con_los_clientes'
 
 type Reclamo =
@@ -662,8 +661,8 @@ async function dejarElDesenlace(negocio: NegocioId, r: Aplicada): Promise<Desenl
 // ══ Deshacer, descartar e historial ═══════════════════════════════════════════════════════════════════════
 
 /**
- * El botón de la tarjeta de algo del Panel ya aplicado. Solo suelta lo que el modelo no pudo pedir por su cuenta: exige
- * la huella de esa tarjeta, que esté aplicada y que todo sea de alcance Panel. No vence: la apaga que ya esté revertida.
+ * Solo suelta lo que el modelo no pudo pedir por su cuenta: exige la huella de la tarjeta, que esté aplicada y que todo
+ * sea de alcance Panel. No vence: la apaga que ya esté revertida.
  */
 export async function deshacer(ctx: ContextoDelDueno, propuesta: string, huella: string): Promise<ResultadoDeDeshacer> {
   if (!UUID.test(propuesta) || !HUELLA.test(huella)) return { tipo: 'no_existe' }

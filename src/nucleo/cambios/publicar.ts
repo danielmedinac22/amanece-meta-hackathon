@@ -1,6 +1,6 @@
 /**
- * Publicar: mandar al link lo que el Dueño ya aplicó en su vista previa. Solo lo llama el botón (`ACCIONES.publicar`):
- * el modelo no tiene herramienta y `QuienPuede` no le deja compilar a nadie más.
+ * Solo lo llama el botón (`ACCIONES.publicar`): el modelo no tiene herramienta y `QuienPuede` no le deja compilar a
+ * nadie más.
  */
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
@@ -54,7 +54,6 @@ export async function leerLoPendiente(aplicado: EstadoAplicado): Promise<LoPendi
   }
 }
 
-/** `vista` llega cruda de HTTP: mal formada es `no_existe`. Idempotente: el segundo clic no encuentra nada que sellar. */
 export async function publicar(quien: QuienPuede<'publicar'>, vista: string): Promise<ResultadoDePublicar> {
   if (!HUELLA.test(vista)) return { tipo: 'no_existe' }
   const r = await conTransaccion(async (tx) => {

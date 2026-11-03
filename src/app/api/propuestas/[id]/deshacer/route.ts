@@ -4,7 +4,6 @@ import { contextoDeLaSesion } from '@/negocio/sesion'
 /** El reclamo espera como mucho 10 s a otro clic (`lock_timeout`). */
 export const maxDuration = 30
 
-/** El botón Deshacer de lo que ya se aplicó en el Panel. El Dueño sale de la sesión y la huella del cuerpo. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await contextoDeLaSesion()
   if (!ctx) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })

@@ -36,9 +36,7 @@ export type Traduccion = {
   readonly alcance: Alcance
   /** Lo que lee el Dueño en la tarjeta: `describir(antes, despues)` de cada clave, y cada acto. */
   readonly lineas: readonly string[]
-  /** Lo que el código le advierte al Dueño arriba de las líneas, como que algo llega a los Clientes sin Publicar. */
   readonly advertencias: readonly string[]
-  /** De una reversión: lo que la tarjeta promete que solo sale de la vista previa. */
   readonly soloVistaPrevia: readonly Clave[]
   /** Lo que gastó el redactor; cero sin una Sección o un Indicador. */
   readonly gasto: Gasto
@@ -166,7 +164,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
 
 const SIN_PUBLICAR_DE_UNA = 'Esto les llega a tus Clientes de una, sin Publicar.'
 
-/** Cada clave vuelve a lo de antes si `comoSeRevierte` lo deja. La línea de lo que frena dice lo que notan los Clientes, no lo de la vista previa. */
+/** La línea de lo que frena dice lo que notan los Clientes, no lo de la vista previa. */
 async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[]; readonly advertencias: readonly string[]; readonly soloVistaPrevia: readonly Clave[] } | SinTraduccion> {
   const [p] = await db
     .select({ estado: esquema.propuestas.estado, actos: esquema.propuestas.actos, revierte: esquema.propuestas.revierte, escritura: esquema.propuestas.escritura, version: esquema.propuestas.version })

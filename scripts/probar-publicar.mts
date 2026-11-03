@@ -173,7 +173,6 @@ const filasSinPublicar = (N: NegocioId) => db.$count(esquema.elementos, and(eq(e
 const HORARIO = el.comoClave('dato:horario')
 const PAGOS = el.comoClave('dato:pagos')
 
-/** La reversión de una propuesta, con el botón. Devuelve la tarjeta y lo que respondió. */
 async function revertir(ctx: ContextoDelDueno, propuesta: import('../src/nucleo/identidad').PropuestaId) {
   const r = await pedir(ctx, { tipo: 'revertir', propuesta })
   if (r.desenlace !== 'espera_al_dueno') throw new Error(`revertir dio ${r.desenlace}: ${r.resumen}`)

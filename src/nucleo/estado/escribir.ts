@@ -40,12 +40,12 @@ export type ResultadoDeEscribir =
   /** No cabe en el estado de ahora (`validarEscritura`): quien llama hace ROLLBACK. */
   | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }
 
-/** Lo revertido: la versión que dejó su escritura y las claves que su tarjeta prometió que solo salían de la vista previa. */
+/** La versión que dejó su escritura y las claves que su tarjeta prometió que solo salían de la vista previa. */
 export type LoRevertido = { readonly version: VersionDelNegocio; readonly soloVistaPrevia: readonly Clave[] }
 
 /**
- * Pura. Con qué bit nace una fila. Lo decide solo `escribir`, bajo la fila del Negocio. Sin Clientes reales no hay nada
- * que retener, y lo de las tablas viejas ya lo notaban. `como`: la clave se está revirtiendo.
+ * Pura. Lo decide solo `escribir`, bajo la fila del Negocio. Sin Clientes reales no hay nada que retener, y lo de las
+ * tablas viejas ya lo notaban. `como`: la clave se está revirtiendo.
  */
 export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDelNegocio, como: ComoSeRevierte | null): boolean {
   if (origen === 'tablas_viejas' || modo !== 'atendiendo') return false
@@ -158,5 +158,4 @@ export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string)
 
 type Es<A extends true> = A
 export type _EscribirPideTransaccion = Es<Parameters<typeof escribir>[0] extends Transaccion ? true : false>
-/** Sin `.default()` en el esquema: todo INSERT en TypeScript tiene que decir el bit. */
 export type _TodoInsertDiceElBit = Es<undefined extends (typeof esquema.elementos.$inferInsert)['sinPublicar'] ? false : true>

@@ -208,7 +208,7 @@ try {
       reescribir: async () => ({ texto: 'Con gusto te ayudo.', uso: SIN_USO }),
     }
     const escritura = { elementos: [{ clave: el.claveNueva('regla'), base: 'nueva' as const, despues: manizales('Con tope') }], filas: [] as never[] }
-    // El tope tiene que dar para las lecturas de la preparación: con 300 ms, Neon a veces se los comía antes de la primera llamada y no había nada que abortar.
+    // El tope tiene que dar para las lecturas de la preparación: si Neon se lo come antes de la primera llamada, no hay nada que abortar.
     const TOPE_MS = 1500
     const estadoConTope = await leerAplicado(N)
     const inicio = Date.now()

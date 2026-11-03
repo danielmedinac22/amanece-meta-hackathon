@@ -6,7 +6,7 @@ import type { LoPendiente, ResultadoDePublicar } from '@/nucleo/cambios'
 
 const QUIEN_LO_NOTA = { clientes: 'Lo notan tus Clientes', equipo: 'Solo lo ven tú y tu equipo' } as const
 
-/** Mandar al link lo que ya está en la vista previa. La huella ata el clic a la lista que el Dueño tiene abierta. */
+/** La huella ata el clic a la lista que el Dueño tiene abierta. */
 export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
   const router = useRouter()
   const [enCurso, setEnCurso] = useState(false)

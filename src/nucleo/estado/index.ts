@@ -193,7 +193,6 @@ export async function leerPublicado(negocio: NegocioId, x: Lector = db): Promise
 export type ItemPendiente = {
   readonly clave: Clave
   readonly linea: string
-  /** `clientes` lo notan los Clientes; `equipo` solo lo ven el Dueño y su equipo. */
   readonly loNotan: 'clientes' | 'equipo'
 }
 
@@ -207,7 +206,6 @@ function diferencias(aplicado: EstadoAplicado, publicado: EstadoPublicado) {
   })
 }
 
-/** Pura. Lo que falta por publicar. */
 export function loPendiente(aplicado: EstadoAplicado, publicado: EstadoPublicado): readonly ItemPendiente[] {
   return diferencias(aplicado, publicado).map(({ clave, antes, despues }) => ({
     clave,
@@ -226,7 +224,7 @@ export function escrituraParaRetirar(aplicado: EstadoAplicado, publicado: Estado
   return { elementos: diferencias(aplicado, publicado).map(({ clave, despues, antes }) => ({ clave, base: despues ? aplicado.vigente(clave)!.version : 'nueva', despues: antes })), filas: [] }
 }
 
-/** La propuesta que escribió la última fila de cada clave, también si la quitó. */
+/** También si la quitó. */
 export async function quienEscribioLaUltima(negocio: NegocioId, claves: readonly Clave[]): Promise<ReadonlyMap<Clave, PropuestaId | null>> {
   if (!claves.length) return new Map()
   const filas = await ultimasDe(db, negocio, inArray(ultimas.clave, [...claves]))
@@ -277,7 +275,7 @@ function queCambiaLoAplicado(estado: EstadoDelNegocio, escritura: Escritura): Es
   return { ...escritura, elementos: escritura.elementos.filter((c) => c.despues !== null || estado.vigente(c.clave) !== null) }
 }
 
-/** Pura. `validarEscritura` para una reversión, con lo que aplica solo a ella. Lo que no cambia lo aplicado se valida contra lo publicado. */
+/** Pura. Lo que no cambia lo aplicado se valida contra lo publicado. */
 export function validarReversion(estado: EstadoDelNegocio, escritura: Escritura): ResultadoDeValidar {
   const v = validarEscritura(estado, queCambiaLoAplicado(estado, escritura))
   if (v.tipo === 'valida') return v
@@ -332,8 +330,7 @@ export type ComoSeRevierte =
 export type FilaDeUnaClave = { readonly version: number; readonly contenido: Elemento | null }
 
 /**
- * Pura. Por clave, qué pasa al revertir la propuesta que escribió `fila`. La llaman `reversion`, al proponer, y
- * `escribir`, con la fila del Negocio tomada, que es la que manda.
+ * Pura. La llaman `reversion`, al proponer, y `escribir`, con la fila del Negocio tomada, que es la que manda.
  */
 export function comoSeRevierte({ fila, sellada, ultima, ultimaSellada }: {
   readonly fila: FilaDeUnaClave
@@ -358,7 +355,7 @@ export type HistoriaDeClave = {
 
 const contenidoDe = (f: Parameters<typeof elementoDe>[0] & { readonly contenido: unknown }) => (f.contenido === null ? null : elementoDe(f))
 
-/** Para revertir: por clave, lo que escribió la propuesta de `version`, a lo que vuelve y cómo se revierte hoy. Una clave sin fila en `version` no viene. */
+/** Una clave sin fila en `version` no viene. */
 export async function historiaParaRevertir(negocio: NegocioId, claves: readonly Clave[], version: VersionDelNegocio, x: Lector = db): Promise<ReadonlyMap<Clave, HistoriaDeClave>> {
   if (!claves.length) return new Map()
   const deEstas = inArray(ultimas.clave, [...claves])

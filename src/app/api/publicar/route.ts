@@ -5,7 +5,6 @@ import { contextoDeLaSesion } from '@/negocio/sesion'
 /** Publicar espera como mucho 10 s a otro clic (`lock_timeout`). */
 export const maxDuration = 30
 
-/** El botón Publicar. El Dueño sale de la sesión y la huella de lo que vio, del cuerpo. */
 export async function POST(req: Request) {
   const ctx = await contextoDeLaSesion()
   if (!ctx) return Response.json({ error: 'Inicia sesión para continuar' }, { status: 401 })
