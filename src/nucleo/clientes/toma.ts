@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { MOTIVO_EN_PALABRAS } from '../caso-palabras'
 import { marcar, type ContextoDelDueno, type ClienteId } from '../identidad'
-import { despachar, intencion } from '../salida'
+import { despachar, fueRechazado, intencion } from '../salida'
 import { leerAtencion, soltarLaDeUnCliente, tomarFila } from '../salida/atencion'
 import { fueraDeVentana } from '../salida/compuerta'
 import { atenderLoDebido } from './atender'
@@ -17,8 +17,10 @@ export type ResultadoDeEscribir =
   | { readonly tipo: 'no_salio'; readonly porQue: string }
   /** Se le acabó el tiempo o la devolvieron. Nada salió. */
   | { readonly tipo: 'ya_no_la_tienes' }
-  /** Kapso falló: con otro `intento` se puede reintentar. */
+  /** Kapso lo rechazó: no salió, y con otro `intento` se puede reintentar. */
   | { readonly tipo: 'no_la_tomo' }
+  /** Pudo salir: una excepción puede llegar después de que Kapso aceptó, o sigue en camino. Reintentar con otro `intento` serían dos mensajes. */
+  | { readonly tipo: 'sin_saber' }
   | { readonly tipo: 'no_existe' }
 
 const delNegocio = async (ctx: ContextoDelDueno, cliente: string): Promise<ClienteId | null> => {
@@ -66,7 +68,7 @@ export async function escribirAlCliente(ctx: ContextoDelDueno, e: { readonly cli
     case 'simulado':
       return { tipo: 'salio' }
     case 'por_enviar':
-      return { tipo: 'no_la_tomo' }
+      return fueRechazado(r.error) ? { tipo: 'no_la_tomo' } : { tipo: 'sin_saber' }
     case 'no_salio':
       return r.motivo === 'no_le_toca' ? { tipo: 'ya_no_la_tienes' } : { tipo: 'no_salio', porQue: MOTIVO_EN_PALABRAS[r.motivo] }
   }

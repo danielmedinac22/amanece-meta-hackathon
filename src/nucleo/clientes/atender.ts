@@ -8,7 +8,7 @@ import { leerPublicado, NegocioInexistente, otrosNegocios, type EstadoPublicado 
 import { marcar, type CasoId, type ClienteId, type NegocioId } from '../identidad'
 import { nombreDelCliente } from '../listas-palabras'
 import { despachar, intencion, type AlCliente, type DelAgente } from '../salida'
-import { alEntrar, devolverLaDeuda, quienLaTiene, soltarLasVencidas, type Soltada } from '../salida/atencion'
+import { alEntrar, alNacer, quienLaTiene, soltarLasVencidas, type Soltada } from '../salida/atencion'
 import { fueraDeVentana } from '../salida/compuerta'
 import { entornoReal, pedidoDelCliente, turno, type ClienteDelTurno, type Conversacion, type Motores } from './turno'
 
@@ -44,7 +44,7 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId, mot
   const enviadoEn = new Date(m.enviadoEn)
   const [cliente] = await db
     .insert(esquema.clientes)
-    .values({ negocioId: negocio, telefono: m.telefono, nombre: m.nombre, ultimoMensajeEntrante: enviadoEn, sinContestar: m.wamid })
+    .values({ negocioId: negocio, telefono: m.telefono, nombre: m.nombre, ultimoMensajeEntrante: enviadoEn, ...alNacer(m.wamid) })
     .onConflictDoUpdate({
       target: [esquema.clientes.negocioId, esquema.clientes.telefono],
       set: {
@@ -64,29 +64,37 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId, mot
     .returning({ id: esquema.mensajesCliente.id })
   if (!guardado) return
 
-  if (cliente.tiene) return avisarAlQueLaTiene(negocio, cliente.tiene, marcar.cliente(cliente.id), false)
-  await correrTurno(
-    estado,
-    { id: marcar.cliente(cliente.id), nombre: cliente.nombre, telefono: cliente.telefono },
-    { texto: m.texto, wamid: m.wamid, enviadoEn: marcar.instante(enviadoEn) },
-    guardado.id,
-    { tipo: 'agente', vez: marcar.vez(cliente.vez), debida: false },
-    motores,
-  )
+  if (cliente.tiene) await avisarAlQueLaTiene(negocio, cliente.tiene, marcar.cliente(cliente.id), mensajeDeLaToma())
+  else
+    await correrTurno(
+      estado,
+      { id: marcar.cliente(cliente.id), nombre: cliente.nombre, telefono: cliente.telefono },
+      { texto: m.texto, wamid: m.wamid, enviadoEn: marcar.instante(enviadoEn) },
+      guardado.id,
+      { tipo: 'agente', vez: marcar.vez(cliente.vez), debida: false },
+      motores,
+    )
   // Otro Cliente del Negocio le presta el reloj a una toma vencida: no hay cron.
   await soltarVencidas(negocio, 1, motores).catch((e) => console.error('[atender] no pude soltar las tomas vencidas', negocio, e))
 }
 
 type ClienteDelMensaje = { readonly id: ClienteId; readonly nombre: string; readonly telefono: string }
 
+/** `nadie`: el Cliente se quedó sin respuesta y el Dueño no lo sabe. Con esto, quien sí sabe a quién contarle se lo cuenta. */
+type Desenlace = 'atendido' | 'nadie'
+
 /** Un solo camino para el turno del webhook y el de lo debido. Nunca lanza por el turno: el Cliente recibe `falla_tecnica`, salvo que ya no le toque al agente. */
-async function correrTurno(estado: EstadoPublicado, cliente: ClienteDelMensaje, mensaje: Conversacion['mensaje'], sinContar: string, habla: DelAgente, motores?: Motores): Promise<void> {
+async function correrTurno(estado: EstadoPublicado, cliente: ClienteDelMensaje, mensaje: Conversacion['mensaje'], sinContar: string, habla: DelAgente, motores?: Motores): Promise<Desenlace> {
   const negocio = estado.identidad.id
   const destinatario: AlCliente = { tipo: 'cliente', negocio, cliente: cliente.id }
-  const avisar = (hizoAlgo: boolean) => quienLaTiene(cliente.id).then((tiene) => (tiene ? avisarAlQueLaTiene(negocio, tiene, cliente.id, hizoAlgo) : undefined))
+  const avisar = async (texto: string) => {
+    const tiene = await quienLaTiene(cliente.id)
+    if (tiene) await avisarAlQueLaTiene(negocio, tiene, cliente.id, texto)
+  }
   let casos: readonly CasoId[] = []
   let entorno: ReturnType<typeof entornoReal> | null = null
   let kapsoFallo = false
+  let desenlace: Desenlace = 'atendido'
   try {
     const [anteriores, pedidos] = await db.batch([
       db
@@ -124,48 +132,67 @@ async function correrTurno(estado: EstadoPublicado, cliente: ClienteDelMensaje, 
       kapsoFallo = true
       throw new Error(`Kapso no tomó la respuesta: ${salida.error}`)
     }
-    if (salida.tipo === 'no_salio' && salida.motivo === 'no_le_toca') await avisar(entorno.hizoAlgo())
-    else if (salida.tipo === 'no_salio') console.error('[atender] la respuesta no salió', mensaje.wamid, salida.motivo)
+    if (salida.tipo === 'no_salio' && salida.motivo === 'no_le_toca') await avisar(mensajeDeLaToma(entorno.hizoAlgo()))
+    // En lo debido, este motivo dice que ya se encargó otro: el Cliente volvió a escribir o el Dueño le contestó.
+    else if (salida.tipo === 'no_salio' && !(habla.debida && salida.motivo === 'una_respuesta_por_mensaje')) {
+      console.error('[atender] la respuesta no salió', mensaje.wamid, salida.motivo)
+      desenlace = 'nadie'
+    }
     await registrarTurno('clientes', negocio, { inputTokens: t.gasto.entrada, outputTokens: t.gasto.salida }, t.gasto.ms).catch((e) => console.error('[atender] no se pudo registrar el turno', e))
   } catch (error) {
     console.error('[atender] no se pudo responder', error)
-    const aviso = await despachar(intencion.aviso({ destinatario, habla, aviso: { cual: 'falla_tecnica' }, enRespuestaA: mensaje.wamid })).catch((e) => void console.error('[atender] tampoco el aviso', e))
+    // Sin `debida`: esa marca haría cumplir `una_respuesta_por_mensaje`, y con el reclamo ya hecho no saldría nunca.
+    const aviso = await despachar(intencion.aviso({ destinatario, habla: { ...habla, debida: false }, aviso: { cual: 'falla_tecnica' }, enRespuestaA: mensaje.wamid })).catch((e) => void console.error('[atender] tampoco el aviso', e))
     if (aviso?.tipo === 'no_salio' && aviso.motivo === 'no_le_toca') {
-      if (kapsoFallo) await devolverLaDeuda(cliente.id, mensaje.wamid).catch((e) => console.error('[atender] no pude devolver la deuda', e))
-      await avisar(entorno?.hizoAlgo() ?? false).catch((e) => console.error('[atender] no pude avisarle al Dueño', e))
-    }
+      // No se reintenta lo que Kapso no tomó: una excepción puede llegar después de que aceptó, y serían dos respuestas.
+      await avisar(kapsoFallo ? 'WhatsApp no tomó la respuesta de tu agente a un Cliente de la conversación que tienes tomada. Escríbele tú.' : mensajeDeLaToma(entorno?.hizoAlgo() ?? false)).catch((e) => console.error('[atender] no pude avisarle al Dueño', e))
+    } else if (aviso?.tipo !== 'simulado' && aviso?.tipo !== 'enviado') desenlace = 'nadie'
   }
   // Después de responderle al Cliente: lo que el Agente del dueño tarda en armar no frena la respuesta.
   for (const caso of casos) await traerCasoAlDueno(negocio, caso).catch((e) => console.error('[atender] no pude traer el Caso al Dueño', caso, e))
+  return desenlace
 }
 
-/**
- * Solo a quien la tiene: es el único que puede responder. Sin el texto ni el nombre del Cliente en lo que lee el modelo:
- * los escribe el Cliente. `parteDeDatosParaElModelo` no conoce `data-toma`, así que el modelo no la ve.
- */
-async function avisarAlQueLaTiene(negocio: NegocioId, dueno: string, cliente: ClienteId, hizoAlgo: boolean): Promise<void> {
+/** Texto fijo: lo que escribe el Cliente, y su nombre, no entran a lo que lee el modelo. */
+const mensajeDeLaToma = (hizoAlgo = false) =>
+  [
+    'Un Cliente te escribió en la conversación que tienes tomada. Tu agente no le contesta. Si la conversación vuelve a él sin que le respondas, le contesta cuando abras el Panel o cuando escriba de nuevo.',
+    hizoAlgo ? 'Antes de que la tomaras, tu agente alcanzó a hacer algo por este Cliente. Revisa Pedidos y Casos.' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+/** Solo a quien la tiene: es el único que puede responder. `parteDeDatosParaElModelo` no conoce `data-toma`, así que el modelo no ve el nombre. */
+async function avisarAlQueLaTiene(negocio: NegocioId, dueno: string, cliente: ClienteId, texto: string): Promise<void> {
   const [c] = await db.select({ nombre: esquema.clientes.nombre, telefono: esquema.clientes.telefono }).from(esquema.clientes).where(eq(esquema.clientes.id, cliente))
-  const texto = [AVISO_DE_LA_TOMA, hizoAlgo ? `Antes de que la tomaras, tu agente alcanzó a hacer algo por este Cliente. Revisa Pedidos y Casos.` : ''].filter(Boolean).join(' ')
   await guardarEnElHilo(negocio, dueno, 'agente', mensajeDelAgente(texto, [{ type: 'data-toma', data: { cliente, nombre: c ? nombreDelCliente(c.nombre, c.telefono) : '' } }]))
 }
 
-const AVISO_DE_LA_TOMA = 'Un Cliente te escribió en la conversación que tienes tomada. Tu agente no le contesta. Si la conversación vuelve a él sin que le respondas, le contesta cuando abras el Panel o cuando escriba de nuevo.'
-
-/** Cobra lo que dejó sin contestar una toma que ya se soltó. Aquí no llega nadie más: solo quien ganó `soltar`. */
+/**
+ * Cobra lo que dejó sin contestar una toma que ya se soltó. Aquí no llega nadie más: solo quien ganó `soltar`, así que si
+ * no se puede, nadie más lo va a intentar y quien la tenía tiene que saberlo.
+ */
 export async function atenderLoDebido(s: Soltada, motores?: Motores): Promise<void> {
   if (!s.debe) return
+  const contar = (texto: string) => (s.laTenia ? avisarAlQueLaTiene(s.negocio, s.laTenia, s.cliente, texto) : Promise.resolve())
+  const SIN_RESPUESTA = 'Tu conversación volvió a tu agente, pero no pudo contestarle a un Cliente. Escríbele tú, o tu agente le contesta cuando vuelva a escribir.'
   if (fueraDeVentana(s.ultimoEntrante ? marcar.instante(s.ultimoEntrante) : null, marcar.instante(new Date()))) {
-    if (s.laTenia) await guardarEnElHilo(s.negocio, s.laTenia, 'agente', mensajeDelAgente('Tu conversación volvió a tu agente y un Cliente quedó sin respuesta. Ya pasaron 24 horas: WhatsApp no deja escribirle hasta que vuelva a escribir.', [{ type: 'data-toma', data: { cliente: s.cliente, nombre: '' } }]))
-    return
+    return contar('Tu conversación volvió a tu agente y un Cliente quedó sin respuesta. Ya pasaron 24 horas: WhatsApp no deja escribirle hasta que vuelva a escribir.')
   }
-  const estado = await leerPublicado(s.negocio)
-  if (estado.identidad.modo !== 'atendiendo' || estado.version === 0) return
-  const [[cliente], [mensaje]] = await db.batch([
-    db.select({ nombre: esquema.clientes.nombre, telefono: esquema.clientes.telefono }).from(esquema.clientes).where(and(eq(esquema.clientes.id, s.cliente), eq(esquema.clientes.negocioId, s.negocio))),
-    db.select({ id: esquema.mensajesCliente.id, texto: esquema.mensajesCliente.texto, creado: esquema.mensajesCliente.creado }).from(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.wamid, s.debe), eq(esquema.mensajesCliente.clienteId, s.cliente))),
-  ])
-  if (!cliente || !mensaje) return
-  await correrTurno(estado, { id: s.cliente, ...cliente }, { texto: mensaje.texto, wamid: s.debe, enviadoEn: marcar.instante(mensaje.creado) }, mensaje.id, { tipo: 'agente', vez: s.vez, debida: true }, motores)
+  try {
+    const estado = await leerPublicado(s.negocio)
+    if (estado.identidad.modo !== 'atendiendo' || estado.version === 0) return await contar(SIN_RESPUESTA)
+    const [[cliente], [mensaje]] = await db.batch([
+      db.select({ nombre: esquema.clientes.nombre, telefono: esquema.clientes.telefono }).from(esquema.clientes).where(and(eq(esquema.clientes.id, s.cliente), eq(esquema.clientes.negocioId, s.negocio))),
+      db.select({ id: esquema.mensajesCliente.id, texto: esquema.mensajesCliente.texto, creado: esquema.mensajesCliente.creado }).from(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.wamid, s.debe), eq(esquema.mensajesCliente.clienteId, s.cliente))),
+    ])
+    if (!cliente || !mensaje) return await contar(SIN_RESPUESTA)
+    const desenlace = await correrTurno(estado, { id: s.cliente, ...cliente }, { texto: mensaje.texto, wamid: s.debe, enviadoEn: marcar.instante(mensaje.creado) }, mensaje.id, { tipo: 'agente', vez: s.vez, debida: true }, motores)
+    if (desenlace === 'nadie') await contar(SIN_RESPUESTA)
+  } catch (e) {
+    console.error('[atender] no pude cobrar la deuda', s.cliente, e)
+    await contar(SIN_RESPUESTA)
+  }
 }
 
 /** Nada programado existe: la deuda de una toma vencida la cobra el sondeo del Hilo u otro mensaje del Negocio. */

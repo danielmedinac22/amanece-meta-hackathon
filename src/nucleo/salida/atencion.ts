@@ -4,8 +4,8 @@ import { marcar, type ClienteId, type DuenoId, type NegocioId, type VezDeToma, t
 import type { ClaseDeMensaje, Habla, MotivoDeSilencio } from './compuerta'
 
 /**
- * Quién atiende a un Cliente. Es el único archivo que escribe las cuatro columnas de `clientes`, y todo pasa por el
- * candado de esa fila: una toma, un reclamo y un vencimiento quedan en un orden total sin tabla, cola ni cron.
+ * Quién atiende a un Cliente. Todo cambio a las cuatro columnas de `clientes` sale de aquí, y pasa por el candado de esa
+ * fila: una toma, un reclamo y un vencimiento quedan en un orden total sin tabla, cola ni cron.
  */
 const c = esquema.clientes
 
@@ -16,6 +16,8 @@ export const TOMA_VIVA: SQL<boolean> = sql`(${c.tomadaPor} is not null and ${c.t
 export const QUIEN_LA_TIENE: SQL<string | null> = sql`case when ${TOMA_VIVA} then ${c.tomadaPor} end`
 
 /** Lo que el upsert del webhook escribe: la deuda, salvo si el mensaje es más viejo, y una toma vencida queda suelta. */
+export const alNacer = (wamid: Wamid) => ({ sinContestar: wamid })
+
 export function alEntrar(wamid: Wamid) {
   return {
     sinContestar: sql`case when ${c.ultimoMensajeEntrante} is null or excluded.ultimo_mensaje_entrante >= ${c.ultimoMensajeEntrante} then ${wamid} else ${c.sinContestar} end`,
@@ -37,14 +39,16 @@ export type FilaDeSaliente = {
 
 /**
  * El reclamo de quien le habla a un Cliente, en un solo statement. `tomar` sube `veces_tomada` sobre la misma fila: si
- * este statement esperó su candado, Postgres vuelve a evaluar el WHERE y no devuelve fila. `null`: no entró, por la
- * cerca o por un choque en `mensajes_salientes`.
+ * este statement esperó su candado, Postgres vuelve a evaluar el WHERE y no devuelve fila. Sin filas: no entró, por la
+ * cerca o por un choque en `mensajes_salientes`. El turno de lo debido además exige que siga debido: si el Cliente volvió a
+ * escribir, o el Dueño le contestó mientras tanto, ya se encargó otro.
  */
-export async function reclamarConCerca(f: FilaDeSaliente, habla: Habla): Promise<{ readonly id: string } | null> {
+export async function reclamarConCerca(f: FilaDeSaliente, habla: Habla): Promise<readonly { readonly id: string }[]> {
+  const sigueDebido = habla.tipo === 'agente' && habla.debida ? sql`and sin_contestar = ${f.enRespuestaA}` : sql``
   const cerca =
     habla.tipo === 'agente'
       ? sql`update clientes set sin_contestar = case when sin_contestar = ${f.enRespuestaA} then null else sin_contestar end
-            where id = ${f.clienteId} and veces_tomada = ${habla.vez} returning id`
+            where id = ${f.clienteId} and veces_tomada = ${habla.vez} ${sigueDebido} returning id`
       : sql`update clientes set tomada_hasta = now() + ${VIGENCIA}
             where id = ${f.clienteId} and veces_tomada = ${habla.vez} and tomada_por = ${habla.dueno} and tomada_hasta > now() returning id`
   const { rows } = await db.execute<{ id: string }>(sql`
@@ -53,7 +57,7 @@ export async function reclamarConCerca(f: FilaDeSaliente, habla: Habla): Promise
     select ${f.clave}, ${f.negocioId}::uuid, cerca.id, ${f.telefono}, ${f.clase}, ${f.enRespuestaA}, ${f.veredicto}, ${f.motivo}, 'por_enviar' from cerca
     on conflict do nothing
     returning id`)
-  return rows[0] ?? null
+  return rows
 }
 
 /** Va en el lote del envío: lo que escribió el Dueño salda la deuda solo si es la que él vio. */
@@ -61,14 +65,6 @@ export function saldarConMensajeDelDueno(cliente: ClienteId, visto: Wamid | null
   return db
     .update(c)
     .set({ sinContestar: sql`case when ${c.sinContestar} = ${visto} then null else ${c.sinContestar} end` })
-    .where(eq(c.id, cliente))
-}
-
-/** Kapso falló después de que el agente reclamó, y ya no puede disculparse: la deuda vuelve. */
-export async function devolverLaDeuda(cliente: ClienteId, wamid: Wamid): Promise<void> {
-  await db
-    .update(c)
-    .set({ sinContestar: sql`coalesce(${c.sinContestar}, ${wamid})` })
     .where(eq(c.id, cliente))
 }
 
@@ -142,7 +138,7 @@ export async function leerAtencion(negocio: NegocioId, cliente: string) {
       quedaMs: sql<number>`case when ${TOMA_VIVA} then ceil(extract(epoch from ${c.tomadaHasta} - now()) * 1000)::int else 0 end`,
       // Más que cualquier turno: `maxDuration` del webhook es 300 s. Antes de eso, el agente todavía puede estar contestando.
       esperaDeVerdad: sql<boolean>`${c.ultimoMensajeEntrante} < now() - interval '5 minutes'`,
-      agenteTerminando: sql<boolean>`exists (select 1 from ${s} where ${s.clienteId} = ${c.id} and ${s.estado} = 'por_enviar' and ${s.creado} > now() - interval '30 seconds')`,
+      agenteTerminando: sql<boolean>`exists (select 1 from ${s} where ${s.clienteId} = ${c.id} and ${s.estado} = 'por_enviar' and ${s.clase} <> 'del_dueno' and ${s.creado} > now() - interval '30 seconds')`,
     })
     .from(c)
     .leftJoin(esquema.duenos, eq(esquema.duenos.id, c.tomadaPor))

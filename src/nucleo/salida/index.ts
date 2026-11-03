@@ -191,14 +191,20 @@ async function reclamar(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: st
 async function intentarReclamo(i: IntencionDeEnvio, hechos: HechosDeEnvio, telefono: string | null, v: Veredicto): Promise<Reclamo | null> {
   const destino = destinoDe(v, i, telefono)
   const habla = hablaDe(i)
-  // Una fila frenada por la toma no puede ocupar la clave: bloquearía al turno que sí debe contestar ese mensaje.
-  const clave = !destino.sale && destino.motivo === 'no_le_toca' && habla ? `${i.clave}:frenada:${habla.vez}` : i.clave
+  // Una fila frenada no puede ocupar la clave de quien sí puede contestar ese mensaje después, con la toma devuelta o la emergencia levantada.
+  const apartada = !destino.sale && habla && (destino.motivo === 'no_le_toca' || (habla.tipo === 'agente' && habla.debida))
+  const clave = apartada ? `${i.clave}:frenada:${habla.vez}` : i.clave
+  // Reintentar lo que el Dueño ya envió, con la toma devuelta, tiene que decir lo que pasó con su mensaje, no que no salió.
+  if (apartada && habla.tipo === 'dueno') {
+    const [ya] = await filaDeLaClave(i.clave)
+    if (ya) return { tipo: 'ya_estaba', resultado: resultadoGuardado(ya) }
+  }
   const clienteId = i.destinatario.tipo === 'cliente' && hechos.cliente ? i.destinatario.cliente : null
   const enRespuestaA = enRespuestaADe(i)
   const motivo = destino.veredicto.tipo === 'no_sale' ? destino.veredicto.motivo : null
   const [fila] =
     destino.sale && habla && clienteId
-      ? [await reclamarConCerca({ clave, negocioId: i.destinatario.negocio, clienteId, telefono: destino.telefono, clase: i.clase, enRespuestaA, veredicto: destino.veredicto.tipo, motivo }, habla)].flatMap((f) => (f ? [f] : []))
+      ? await reclamarConCerca({ clave, negocioId: i.destinatario.negocio, clienteId, telefono: destino.telefono, clase: i.clase, enRespuestaA, veredicto: destino.veredicto.tipo, motivo }, habla)
       : await db
           .insert(esquema.mensajesSalientes)
           .values({
@@ -217,12 +223,15 @@ async function intentarReclamo(i: IntencionDeEnvio, hechos: HechosDeEnvio, telef
           .returning({ id: esquema.mensajesSalientes.id })
   if (fila) return destino.sale ? { tipo: 'a_kapso', id: fila.id, telefono: destino.telefono } : { tipo: 'frenado', motivo: destino.motivo }
 
-  const [guardada] = await db
+  const [guardada] = await filaDeLaClave(clave)
+  return guardada ? { tipo: 'ya_estaba', resultado: resultadoGuardado(guardada) } : null
+}
+
+const filaDeLaClave = (clave: string) =>
+  db
     .select({ estado: esquema.mensajesSalientes.estado, wamid: esquema.mensajesSalientes.wamid, motivo: esquema.mensajesSalientes.motivo, error: esquema.mensajesSalientes.error })
     .from(esquema.mensajesSalientes)
     .where(eq(esquema.mensajesSalientes.clave, clave))
-  return guardada ? { tipo: 'ya_estaba', resultado: resultadoGuardado(guardada) } : null
-}
 
 /** El error de una fila `por_enviar` que otro intento reclamó y todavía está enviando. */
 const EN_CURSO = 'en curso'
