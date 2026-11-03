@@ -638,6 +638,33 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('volver atrás: al revés, quitar-panel no ve la clave y queda viva: por eso retirar va primero', !alReves.includes(claveOtro) && (await leerAplicado(O)).vigente(claveOtro) !== null, alReves)
   },
 
+  async ensayoDelFreno() {
+    const N = await negocioAbierto('I')
+    const ana = await duenoDe(N, 'Ana')
+    const FRASE = `descuento-sin-publicar-${marca}`
+    const systems: string[] = []
+    const conGuion: Motores = {
+      responder: async ({ system }) => {
+        systems.push(system)
+        return { texto: 'Con gusto te ayudo.', uso: SIN_USO }
+      },
+      reescribir: async () => ({ texto: 'Con gusto te ayudo.', uso: SIN_USO }),
+    }
+    const [cliente] = await db.insert(esquema.clientes).values({ negocioId: N, telefono: `5735${marca}1`, nombre: 'Camilo', ultimoMensajeEntrante: new Date() }).returning({ id: esquema.clientes.id })
+    await db.insert(esquema.mensajesCliente).values({ negocioId: N, clienteId: cliente.id, rol: 'cliente', texto: '¿Tienen café?' })
+    const publicada = await aplicar(ana, poner(SIEMPRE_SIN_PLAZO))
+    await publicarTodo(ana)
+    await aplicar(ana, poner({ tipo: 'regla', nombre: 'Sin esa palabra', cuando: { tipo: 'siempre' }, efectos: [{ tipo: 'no_decir', frases: [FRASE] }], escenarios: { activan: [{ mensajeDelCliente: '¿Hay rebaja?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] } }))
+
+    const freno = await proponer(ana, { origen: 'hilo', palabrasDelDueno: 'quita esa regla', quiere: [{ tipo: 'revertir', propuesta: publicada }] }, conGuion)
+    afirmar('ensayo del freno: corre y la tarjeta avisa que llega de una', freno.desenlace === 'espera_al_dueno' && systems.length > 0 && freno.tarjeta.advertencias.some((a) => a.includes('de una')), { freno, systems: systems.length })
+    afirmar('ensayo del freno: una regla sin publicar no está en el prompt', !systems.some((s) => s.includes(FRASE)))
+
+    systems.length = 0
+    const normal = await proponer(ana, { origen: 'hilo', palabrasDelDueno: 'una regla más', quiere: [poner(CASO_FUERA_DE_MANIZALES)] }, conGuion)
+    afirmar('ensayo de una tarjeta normal: la regla sin publicar sí está en el prompt', normal.desenlace === 'espera_al_dueno' && systems.some((s) => s.includes(FRASE)), { desenlace: normal.desenlace, systems: systems.length })
+  },
+
   async candadoNoFrenaAlCliente() {
     const N = await negocioAbierto('G')
     const ana = await duenoDe(N, 'Ana')

@@ -15,7 +15,7 @@ import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
 import { avisarEnLosHilos } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { leerAplicado, type Escritura, type EstadoAplicado } from '../estado'
+import { leerAplicado, leerPublicado, type Escritura, type EstadoAplicado } from '../estado'
 import { alcanceDeLaClave, comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto, type LoRevertido } from '../estado/escribir'
 import {
@@ -283,9 +283,13 @@ async function proponerComo(quien: Quien, pedido: PedidoConSuClic, motores?: Mot
   const traducida = await traducirPedido(quien, pedido, redactor)
   if ('desenlace' in traducida) return traducida
 
+  // Lo que frena les llega a los Clientes de una: se ensaya sobre lo que ellos tienen, no sobre la vista previa.
+  const frenos = traducida.revierte ? traducida.escritura.elementos.filter((c) => !traducida.soloVistaPrevia.includes(c.clave)) : []
   const ensayo =
     traducida.escritura.elementos.length && pedido.origen === 'hilo'
-      ? await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
+      ? frenos.length
+        ? await vistaPreviaDe(await leerPublicado(quien.negocio), { elementos: frenos, filas: [] }, traducida.lineas, motores)
+        : await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
       : { guardada: { lineas: traducida.lineas, advertencias: [], conversaciones: null }, gasto: SIN_GASTO }
   const vistaPrevia: VistaPrevia = { ...ensayo.guardada, advertencias: [...traducida.advertencias, ...(ensayo.guardada.advertencias ?? [])], soloVistaPrevia: traducida.soloVistaPrevia }
   const t: Traducida = { ...traducida, lineas: vistaPrevia.lineas, advertencias: vistaPrevia.advertencias ?? [], gasto: sumarGasto(traducida.gasto, ensayo.gasto) }
