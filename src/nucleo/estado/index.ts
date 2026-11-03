@@ -348,24 +348,26 @@ export function comoSeRevierte({ fila, sellada, ultima, ultimaSellada }: {
 export type HistoriaDeClave = {
   /** Lo que escribió la propuesta que se revierte. */
   readonly fila: Elemento | null
-  /** Lo que valía justo antes. */
+  /** A lo que vuelve: si frena, la última fila sellada de abajo, que es lo que los Clientes tenían. Si no, la última de abajo. */
   readonly antes: Elemento | null
   readonly como: ComoSeRevierte
 }
 
 const contenidoDe = (f: Parameters<typeof elementoDe>[0] & { readonly contenido: unknown }) => (f.contenido === null ? null : elementoDe(f))
 
-/** Para revertir: por clave, lo que escribió la propuesta de `version`, lo que valía antes y cómo se revierte hoy. Una clave sin fila en `version` no viene. */
+/** Para revertir: por clave, lo que escribió la propuesta de `version`, a lo que vuelve y cómo se revierte hoy. Una clave sin fila en `version` no viene. */
 export async function historiaParaRevertir(negocio: NegocioId, claves: readonly Clave[], version: VersionDelNegocio, x: Lector = db): Promise<ReadonlyMap<Clave, HistoriaDeClave>> {
   if (!claves.length) return new Map()
   const deEstas = inArray(ultimas.clave, [...claves])
-  const [ahora, previas, suyas, selladas] = await Promise.all([
+  const [ahora, previas, previasSelladas, suyas, selladas] = await Promise.all([
     ultimasDe(x, negocio, deEstas),
     ultimasDe(x, negocio, and(deEstas, lt(ultimas.version, version))),
+    ultimasDe(x, negocio, and(deEstas, lt(ultimas.version, version), eq(ultimas.sinPublicar, false))),
     ultimasDe(x, negocio, and(deEstas, eq(ultimas.version, version))),
     ultimasDe(x, negocio, and(deEstas, eq(ultimas.sinPublicar, false))),
   ])
   const antes = new Map(previas.map((f) => [f.clave, contenidoDe(f)]))
+  const antesSellado = new Map(previasSelladas.map((f) => [f.clave, contenidoDe(f)]))
   const ultimaDe = new Map(ahora.map((f) => [f.clave, f]))
   const selladaDe = new Map(selladas.map((f) => [f.clave, f.version]))
   return new Map(
@@ -378,7 +380,7 @@ export async function historiaParaRevertir(negocio: NegocioId, claves: readonly 
         ultima: { version: u.version, contenido: contenidoDe(u) },
         ultimaSellada: selladaDe.get(f.clave) ?? null,
       })
-      return [comoClave(f.clave), { fila, antes: antes.get(f.clave) ?? null, como }]
+      return [comoClave(f.clave), { fila, antes: (como.tipo === 'frena' ? antesSellado : antes).get(f.clave) ?? null, como }]
     }),
   )
 }

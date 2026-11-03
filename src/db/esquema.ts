@@ -208,7 +208,8 @@ const ORIGENES_DE_ESCRITURA = ['propuesta', 'tablas_viejas', 'entrevista'] as co
 
 /**
  * Lo que un Cambio deja en un Negocio: por clave vale la versión más alta, y `contenido` null quiere decir que se
- * quitó. `contenido` nunca se edita y `sin_publicar` solo baja, de true a false. Solo escribe
+ * quitó. `contenido` nunca se edita y `sin_publicar` solo baja, de true a false: abajo quiere decir que les llegó a los
+ * Clientes. Una fila que nunca les llegó se queda arriba para siempre. Solo escribe
  * `src/nucleo/estado/escribir.ts`; solo lee `src/nucleo/estado/index.ts`.
  */
 export const elementos = pgTable(

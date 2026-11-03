@@ -266,14 +266,16 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('hecho 3: una edición cuenta', (await pendienteDe(N)).items.length === 1)
     await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
     const devuelta = await pendienteDe(N)
-    afirmar('hecho 3: editada y devuelta a lo publicado no cuenta, con versiones nuevas', devuelta.items.length === 0 && (await filasSinPublicar(N)) === 2, devuelta)
+    afirmar('hecho 3: editada y devuelta a lo publicado no cuenta, con versiones nuevas', devuelta.items.length === 0, devuelta)
     afirmar('hecho 3: el mismo contenido da la misma huella', devuelta.huella === huellaVacia)
     const r = await publicarComo(ana, devuelta.huella)
     afirmar('hecho 3: publicar sin nada da ya_estaba', r.tipo === 'ya_estaba', r)
     const nueva = await aplicar(ana, poner(dato('pagos', 'Nequi'), el.comoClave('dato:pagos')))
     afirmar('hecho 3: un cambio de verdad vuelve a contar', (await pendienteDe(N)).items.length === 1, nueva)
     await publicarTodo(ana)
-    afirmar('hecho 3: Publicar sella también las filas enterradas', (await filasSinPublicar(N)) === 0)
+    const publicado = await leerPublicado(N)
+    afirmar('hecho 3: Publicar manda el cambio de verdad, y la clave devuelta sigue igual para los Clientes', valor(publicado, PAGOS) === 'Nequi' && valor(publicado, HORARIO) === 'De 8 a 5', canon(publicado))
+    afirmar('hecho 3: después de Publicar no queda nada pendiente', (await pendienteDe(N)).items.length === 0)
   },
 
   async dosDuenos() {
@@ -358,6 +360,37 @@ const CASOS: Record<string, () => Promise<void>> = {
     const segundo = await revertir(ana, dos)
     afirmar('dos claves, una editada encima: las dos salen', segundo.boton.tipo === 'aplicado' && valor(await leerPublicado(N), HORARIO) === 'De 7 a 3' && valor(await leerPublicado(N), PAGOS) === 'Contraentrega', segundo.boton)
     afirmar('dos claves: lo aplicado queda igual a lo publicado', canon(await leerPublicado(N)) === canon(await leerAplicado(N)))
+  },
+
+  async frenoDevuelveLoQueTenian() {
+    const N = await negocioAbierto('M')
+    const ana = await duenoDe(N, 'Ana')
+    await aplicar(ana, poner(dato('horario', 'De 7 a 3')))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const c = await aplicar(ana, poner(dato('horario', 'De 9 a 6')))
+    await publicarTodo(ana)
+    afirmar('freno enterrado: Publicar manda solo lo último', valor(await leerPublicado(N), HORARIO) === 'De 9 a 6')
+    const { tarjeta, boton } = await revertir(ana, c)
+    afirmar('freno enterrado: la tarjeta avisa que llega de una', tarjeta.advertencias.some((a) => a.includes('de una')), tarjeta)
+    afirmar('freno enterrado: los Clientes vuelven a lo que tenían, y lo que nunca les llegó no sale', boton.tipo === 'aplicado' && valor(await leerPublicado(N), HORARIO) === 'De 7 a 3', { boton, publicado: valor(await leerPublicado(N), HORARIO) })
+    afirmar('freno enterrado: la vista previa queda igual a los Clientes', valor(await leerAplicado(N), HORARIO) === 'De 7 a 3' && (await pendienteDe(N)).items.length === 0)
+  },
+
+  async devueltaNoSeSella() {
+    const N = await negocioAbierto('N')
+    const ana = await duenoDe(N, 'Ana')
+    await aplicar(ana, poner(dato('horario', 'De 7 a 3')))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const deVuelta = await aplicar(ana, poner(dato('horario', 'De 7 a 3')))
+    await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
+    await publicarTodo(ana)
+    const { tarjeta, boton } = await revertir(ana, deVuelta)
+    afirmar('devuelta: revertirla no avisa que llega a los Clientes', !tarjeta.advertencias.some((a) => a.includes('de una')), tarjeta)
+    afirmar('devuelta: revertirla no les cambia nada a los Clientes', boton.tipo === 'aplicado' && valor(await leerPublicado(N), HORARIO) === 'De 7 a 3', { boton, publicado: valor(await leerPublicado(N), HORARIO) })
+    afirmar('devuelta: lo revertido vuelve a la vista previa y queda pendiente', valor(await leerAplicado(N), HORARIO) === 'De 8 a 5' && (await pendienteDe(N)).items.some((i) => i.clave === HORARIO))
+    afirmar('devuelta: lo otro sí se publicó', valor(await leerPublicado(N), PAGOS) === 'Nequi')
   },
 
   async lapidaDelFreno() {
@@ -541,7 +574,7 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('volver atrás: en seco lista y no escribe', enSeco.length === 3 && (await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))) === antes && (await filasSinPublicar(N)) > 0, enSeco)
     const deVerdad = await retirarSinPublicar(N, { deVerdad: true })
     afirmar('volver atrás: de verdad, lo que lee el código viejo es lo que los Clientes tenían', deVerdad.length === 3 && canon(await leerAplicado(N)) === publicado && canon(await leerPublicado(N)) === publicado, deVerdad)
-    afirmar('volver atrás: no queda ninguna fila sin sellar', (await filasSinPublicar(N)) === 0)
+    afirmar('volver atrás: nada queda pendiente, y una fila que nunca les llegó a los Clientes no se sella', (await pendienteDe(N)).items.length === 0 && (await filasSinPublicar(N)) > 0)
     const despues = await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))
     afirmar('volver atrás: otra vez escribe 0', (await retirarSinPublicar(N, { deVerdad: true })).length === 0 && (await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))) === despues)
     const quitadas = await quitarPanel(N, { deVerdad: true })

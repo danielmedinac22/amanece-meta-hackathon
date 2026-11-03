@@ -1,7 +1,7 @@
 /**
  * El único escritor del estado de un Negocio. Lo importan `src/nucleo/cambios/**` y `scripts/` (eslint).
  */
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, or } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
@@ -131,22 +131,13 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' ? filas.filter((c) => !nace(c)).length : 0, modo }
 }
 
-/**
- * El único que baja el bit. Toca también las filas enterradas: una versión más alta siempre gana, así que no cambia
- * nada más. Lo llaman `sellar` y `scripts/retirar-sin-publicar.mts`.
- */
-export async function bajarElBit(tx: Transaccion, negocio: NegocioId) {
-  await tx
-    .update(esquema.elementos)
-    .set({ sinPublicar: false })
-    .where(and(eq(esquema.elementos.negocioId, negocio), eq(esquema.elementos.sinPublicar, true)))
-}
-
 export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: readonly ItemPendiente[] } | { readonly tipo: 'sin_nada' } | { readonly tipo: 'cambio' }
 
 /**
  * Dentro de la transacción de quien llama, con la misma fila del Negocio que toma `escribir`. Solo sella lo que se vio.
- * No sube la versión del Negocio: no hay contenido nuevo.
+ * No sube la versión del Negocio: no hay contenido nuevo. Sellada quiere decir que les llegó a los Clientes: solo baja
+ * el bit de la última fila de cada clave de la lista. Una fila enterrada o una clave devuelta a lo publicado quedan
+ * arriba para siempre, y un freno nunca las devuelve.
  */
 export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string): Promise<ResultadoDeSellar> {
   const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
@@ -156,7 +147,11 @@ export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string)
   const items = loPendiente(aplicado, publicado)
   if (!items.length) return { tipo: 'sin_nada' }
   if (huellaDeLoPendiente(aplicado, publicado) !== vista) return { tipo: 'cambio' }
-  await bajarElBit(tx, negocio)
+  const ultimasFilas = await ultimasDe(tx, negocio, inArray(esquema.elementos.clave, items.map((i) => i.clave)))
+  await tx
+    .update(esquema.elementos)
+    .set({ sinPublicar: false })
+    .where(and(eq(esquema.elementos.negocioId, negocio), or(...ultimasFilas.map((u) => and(eq(esquema.elementos.clave, u.clave), eq(esquema.elementos.version, u.version))))))
   return { tipo: 'sellado', items }
 }
 
