@@ -33,7 +33,8 @@ const { puertoDeLaBase } = await import('../src/nucleo/clientes/acciones')
 const { cotizar } = await import('../src/nucleo/precios/cotizar')
 const { leerAplicado, leerPublicado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
-const { proponer, aprobar } = await import('../src/nucleo/cambios')
+const { proponer, aprobar, leerLoPendiente, publicar } = await import('../src/nucleo/cambios')
+const { actorDelBoton } = await import('../src/nucleo/acciones')
 const { marcar } = await import('../src/nucleo/identidad')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
 const { MODELO_ID } = await import('../src/lib/modelo')
@@ -278,6 +279,8 @@ try {
   })
   const aplicada = regla.tarjeta ? await aprobar(ctx, regla.tarjeta.propuesta, regla.tarjeta.huella) : null
   afirmar('regla: espera el botón y el botón la aplica', regla.desenlace === 'espera_al_dueno' && aplicada?.tipo === 'aplicado', { regla, aplicada })
+  const publicada = await publicar(actorDelBoton(ctx), (await leerLoPendiente(await leerAplicado(marcar.negocio(ladera.id)))).huella)
+  afirmar('regla: Publicar la manda a los Clientes', publicada.tipo === 'publicado', publicada)
   desde = envios.length
   await recibirMensaje(entrante({ wamid: `${base}.plazo`, telefono, nombre: 'Camila Rojas', texto: '¿Envían a Pasto? ¿En cuántos días me llega?' }))
   const conRegla = enviosA(telefono, desde)

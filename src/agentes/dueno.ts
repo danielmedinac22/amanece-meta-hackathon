@@ -17,6 +17,7 @@ import {
   guardarEnElAlta,
   historial,
   lecturaPendiente,
+  leerLoPendiente,
   problemaEnPalabras,
   proponer,
   proponerLectura,
@@ -101,12 +102,14 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
   })
 
   const verNegocio = tool({
-    description: 'Muestra cómo está el Negocio: datos, cómo habla el agente, preguntas frecuentes, productos y reglas, cada uno con su clave, y las secciones e indicadores del Panel.',
+    description:
+      'Muestra cómo está el Negocio en la vista previa del Dueño: datos, cómo habla el agente, preguntas frecuentes, productos y reglas, cada uno con su clave, y las secciones e indicadores del Panel. En sinPublicar viene lo que falta por publicar y si lo notan los clientes o solo lo ve el equipo.',
     inputSchema: z.object({}),
     execute: () =>
       seguro(async () => {
         const estado = await leerAplicado(negocioId)
         const { nombre, rubro, codigo, modo } = estado.identidad
+        const pendiente = await leerLoPendiente(estado)
         return {
           nombre,
           rubro,
@@ -118,6 +121,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
           productos: estado.vigentes('producto').map((v) => ({ clave: v.clave, nombre: v.elemento.nombre, descripcion: v.elemento.descripcion, precio: v.elemento.precio, activo: v.elemento.activo })),
           reglas: estado.vigentes('regla').map((v) => ({ clave: v.clave, enPalabras: reglaEnPalabras(v.elemento, estado), regla: v.elemento })),
           panel: [...estado.vigentes('indicador'), ...estado.vigentes('seccion')].map((v) => ({ clave: v.clave, tipo: v.elemento.tipo, nombre: v.elemento.nombre, enPalabras: v.elemento.consulta.enPalabras })),
+          sinPublicar: pendiente.items.map(({ linea, loNotan }) => ({ linea, loNotan })),
         }
       }),
   })
@@ -259,7 +263,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
 
   const proponerTool = tool({
     description:
-      'Prepara lo que el Dueño te pidió: una regla, datos o productos, una Sección o un Indicador del Panel, deshacer algo que ya se aplicó, o la respuesta a un Caso que él te dictó. Úsala solo cuando el Dueño lo pida; nunca por tu cuenta. Tú no aplicas nada: lo que llega a los clientes queda en una tarjeta que el Dueño aprueba con un botón; lo del Panel queda de una.',
+      'Prepara lo que el Dueño te pidió: una regla, datos o productos, una Sección o un Indicador del Panel, deshacer algo que ya se aplicó, o la respuesta a un Caso que él te dictó. Úsala solo cuando el Dueño lo pida; nunca por tu cuenta. Tú no aplicas nada: lo que llega a los clientes queda en una tarjeta que el Dueño aprueba con un botón; lo del Panel queda de una en su vista previa, con un botón para deshacerlo. Nada le llega a los clientes hasta que el Dueño toque Publicar.',
     inputSchema: ESQUEMA_DEL_PEDIDO,
     execute: async (pedido): Promise<SalidaConTarjeta> => {
       try {
@@ -399,7 +403,9 @@ Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp.
   - Deshacer algo que ya se aplicó: revertir, con el id de listar_propuestas. Lo que una regla ya hizo con clientes no se deshace.
   - La respuesta a un Caso que el Dueño te dictó: responder_caso, con el id del Caso (aparece como [Caso id] en el aviso) y el texto exacto.
   - Si no encaja en nada de esto: dilo con honestidad y llama registrar_capacidad_faltante.
-- Tú no aplicas nada ni le escribes a nadie. Lo que llega a los clientes (reglas, datos, voz, preguntas, productos, respuestas a Casos) queda en una tarjeta y se aplica o se envía solo cuando el Dueño toca el botón. Lo del Panel (secciones e indicadores) queda de una.
+- Tú no aplicas nada ni le escribes a nadie. Lo que llega a los clientes (reglas, datos, voz, preguntas, productos, respuestas a Casos) queda en una tarjeta y se aplica o se envía solo cuando el Dueño toca el botón. Lo del Panel (secciones e indicadores) queda de una en su vista previa, con un botón para deshacerlo.
+- Lo aplicado queda en la vista previa del Dueño: a sus clientes no les cambia nada hasta que él toque Publicar. Publicar es un botón del Dueño en su Panel: tú no lo tocas ni tienes cómo, así que si te lo pide, dile dónde está. Lo que falta por publicar sale en sinPublicar de ver_negocio: si te pregunta qué les está diciendo tu agente de clientes a los clientes, responde con eso en cuenta.
+- Responder un Caso no espera Publicar: sale con Enviar. Revertir algo que los clientes ya tienen les llega de una, y la tarjeta lo dice.
 - Después de proponer, cuéntale en palabras sencillas lo que te devolvió proponer, sin código. Si dice que otro Dueño cambió lo mismo, vuelve a mirar ver_negocio y propónlo de nuevo si todavía lo quiere. Si quedó en una tarjeta, dile que la revise y toque el botón; no digas que ya quedó. Si te dice "sí" por escrito, recuérdale que toque el botón de la tarjeta: tú no puedes aplicarlo.
 - Casos: el aviso ya trae la respuesta lista en su tarjeta. Para verlos usa listar_casos. Si el Dueño prefiere otra respuesta, propónla con responder_caso.
 - Para saber qué pasó con una tarjeta, mira el Hilo (cuando alguien toca el botón queda una línea) o usa listar_propuestas.

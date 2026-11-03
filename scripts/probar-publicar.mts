@@ -21,7 +21,7 @@ console.info = (...args: unknown[]) => {
 
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
-const { abrirEnElAlta, aprobar, leerLoPendiente, proponer, proponerRespuestaAlCaso, publicar } = await import('../src/nucleo/cambios')
+const { abrirEnElAlta, aprobar, descartar, deshacer, leerLoPendiente, proponer, proponerRespuestaAlCaso, publicar } = await import('../src/nucleo/cambios')
 const { ACCIONES, actorDelBoton } = await import('../src/nucleo/acciones')
 const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
 const { comoSeRevierte, leerAplicado, leerPublicado } = await import('../src/nucleo/estado')
@@ -39,6 +39,8 @@ type ContextoDelDueno = import('../src/nucleo/identidad').ContextoDelDueno
 type Motores = import('../src/nucleo/clientes/turno').Motores
 type Pedido = Parameters<typeof proponer>[1]
 type Quiere = Extract<Pedido, { origen: 'hilo' | 'panel' }>['quiere'][number]
+type SalidaDelRedactor = import('../src/nucleo/cambios').SalidaDelRedactor
+type MotorDelRedactor = import('../src/nucleo/cambios').MotorDelRedactor
 
 const marca = String(Date.now()).slice(-7)
 const creados: string[] = []
@@ -138,6 +140,21 @@ async function clienteQuePide(N: NegocioId, sufijo: string) {
   return { pedido, casos, reglas: new Set(reglas), salidos: envios.slice(desdeEnvio).filter((e) => e.telefono === telefono) }
 }
 
+const SALIDA_DE_NUMERO: SalidaDelRedactor = {
+  decision: 'consulta',
+  sql: 'select count(*) as valor from pedidos where cuenta_como_venta',
+  enPalabras: 'pedidos confirmados',
+  ventana: 'no_aplica',
+  supuestos: [],
+  unidad: 'cantidad',
+  nombreDeLaUnidad: 'pedidos',
+  titulos: [],
+  faltaEn: 'ninguna',
+  falta: '',
+}
+const REDACTOR: MotorDelRedactor = async () => ({ salida: SALIDA_DE_NUMERO, uso: SIN_USO })
+const pedirIndicador = (ctx: ContextoDelDueno, nombre: string) =>
+  proponer(ctx, { palabrasDelDueno: `Quiero ver ${nombre}`, origen: 'hilo', quiere: [{ tipo: 'panel', que: 'indicador', nombre, queQuiereVer: nombre, salida: 'numero', reemplaza: null }] }, SIN_MODELO, REDACTOR)
 const pendienteDe = async (N: NegocioId) => leerLoPendiente(await leerAplicado(N))
 const publicarComo = (ctx: ContextoDelDueno, vista: string) => publicar(actorDelBoton(ctx), vista)
 
@@ -429,6 +446,66 @@ const CASOS: Record<string, () => Promise<void>> = {
     const vista2 = (await pendienteDe(N)).huella
     const [pub2, rev2] = await Promise.all([publicarComo(ana, vista2), aprobar(ana, carta2.tarjeta.propuesta, carta2.tarjeta.huella)])
     afirmar('a la vez, sin publicar: en cualquier orden, los Clientes no se quedan con lo revertido', rev2.tipo === 'aplicado' && (await leerPublicado(N)).vigente(HORARIO) === null, { pub2, rev2 })
+  },
+
+  async botonDeshacer() {
+    const N = await negocioAbierto('K')
+    const [ana, beto] = [await duenoDe(N, 'Ana'), await duenoDe(N, 'Beto')]
+    const r = await pedirIndicador(ana, `Confirmados ${marca}`)
+    if (r.desenlace !== 'aplicado' || !r.tarjeta) throw new Error(`pedirIndicador dio ${r.desenlace}: ${r.resumen}`)
+    const { tarjeta } = r
+    afirmar('Deshacer: un Indicador queda aplicado, con su tarjeta de Deshacer', tarjeta.accion === 'deshacer')
+    const lista = await pendienteDe(N)
+    afirmar('Deshacer: cuenta como pendiente y solo lo ve el equipo', lista.items.length === 1 && lista.items[0].loNotan === 'equipo' && lista.items[0].aplicadoPor === 'Ana', lista.items)
+    afirmar('Deshacer: una huella ajena no suelta nada', (await deshacer(ana, tarjeta.propuesta, 'f'.repeat(64))).tipo === 'no_existe')
+    const otroNegocio = await duenoDe(await negocioAbierto('J'), 'Julia')
+    afirmar('Deshacer: desde otro Negocio no suelta nada', (await deshacer(otroNegocio, tarjeta.propuesta, tarjeta.huella)).tipo === 'no_existe')
+    const [a, b] = await Promise.all([deshacer(ana, tarjeta.propuesta, tarjeta.huella), deshacer(beto, tarjeta.propuesta, tarjeta.huella)])
+    afirmar('doble Deshacer: los dos clics dicen deshecho', a.tipo === 'deshecho' && b.tipo === 'deshecho', { a, b })
+    const aplicadas = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.revierte, tarjeta.propuesta), eq(esquema.propuestas.estado, 'aplicada')))
+    afirmar('doble Deshacer: queda una sola reversión aplicada', aplicadas === 1, aplicadas)
+    afirmar('Deshacer: creado y deshecho no deja nada pendiente', (await pendienteDe(N)).items.length === 0)
+    afirmar('Deshacer: un clic después sigue diciendo deshecho', (await deshacer(ana, tarjeta.propuesta, tarjeta.huella)).tipo === 'deshecho')
+    const [quien] = await db.select({ por: esquema.propuestas.aprobadoPor }).from(esquema.propuestas).where(and(eq(esquema.propuestas.revierte, tarjeta.propuesta), eq(esquema.propuestas.estado, 'aplicada')))
+    afirmar('Deshacer: queda quién tocó', quien?.por === ana.dueno || quien?.por === beto.dueno, quien)
+
+    const regla = await pedir(ana, poner(SIEMPRE_SIN_PLAZO))
+    if (regla.desenlace !== 'espera_al_dueno') throw new Error(regla.resumen)
+    afirmar('Deshacer: una regla espera Aplicar y Descartar, no Deshacer', regla.tarjeta.accion === 'aplicar')
+    await aprobar(ana, regla.tarjeta.propuesta, regla.tarjeta.huella)
+    afirmar('Deshacer: este botón no suelta una regla', (await deshacer(ana, regla.tarjeta.propuesta, regla.tarjeta.huella)).tipo === 'no_existe' && (await leerAplicado(N)).vigentes('regla').length === 1)
+    await publicarTodo(ana)
+
+    const r2 = await pedirIndicador(ana, `Publicado ${marca}`)
+    if (r2.desenlace !== 'aplicado' || !r2.tarjeta) throw new Error(r2.resumen)
+    await publicarTodo(ana)
+    const clave = (await leerPublicado(N)).vigentes('indicador')[0].clave
+    const d = await deshacer(ana, r2.tarjeta.propuesta, r2.tarjeta.huella)
+    afirmar('Deshacer lo publicado: sale también de lo publicado, sin Publicar', d.tipo === 'deshecho' && (await leerPublicado(N)).vigente(clave) === null && (await leerAplicado(N)).vigente(clave) === null, d)
+  },
+
+  async botonDescartar() {
+    const N = await negocioAbierto('X')
+    const ana = await duenoDe(N, 'Ana')
+    const filas = () => db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))
+    const antes = await filas()
+    const r = await pedir(ana, poner(dato('horario', 'De 8 a 5')))
+    if (r.desenlace !== 'espera_al_dueno') throw new Error(r.resumen)
+    afirmar('Descartar: la tarjeta de un conocimiento ofrece Aplicar y no ha escrito nada', r.tarjeta.accion === 'aplicar' && (await filas()) === antes)
+    const d = await descartar(ana, r.tarjeta.propuesta)
+    afirmar('Descartar: sin fila en elementos y sin nada pendiente', d.tipo === 'descartada' && (await filas()) === antes && (await pendienteDe(N)).items.length === 0, d)
+  },
+
+  async verNegocio() {
+    const N = await negocioAbierto('W')
+    const ana = await duenoDe(N, 'Ana')
+    const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, N))
+    const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, ana.dueno))
+    const agente = crearAgenteDelDueno(ana, { negocio, dueno })
+    await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const r = (await (agente.tools.ver_negocio as { execute: (i: object, o: object) => Promise<{ sinPublicar: { linea: string; loNotan: string }[] }> }).execute({}, {}))
+    afirmar('ver_negocio: dice lo que falta por publicar y si lo notan los Clientes', r.sinPublicar.length === 1 && r.sinPublicar[0].loNotan === 'clientes', r.sinPublicar)
+    afirmar('instrucciones: dice que Publicar es del Dueño', /Publicar/.test(agente.system))
   },
 
   async aislamiento() {

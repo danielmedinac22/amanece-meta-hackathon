@@ -406,7 +406,7 @@ try {
 
     const panel = await turno(negocio.id, dueno.id, 'Quiero ver cuántos pedidos tengo con novedad, en una lista.')
     const aplicadas = (await propuestasDelDueno()).filter((p) => p.estado === 'aplicada' && p.aprobadoPor === null)
-    afirmar('8 Panel: lo que solo ve el Dueño queda aplicado sin botón', aplicadas.length > 0 && tarjetasDe([panel]).length === 0, { aplicadas, herramientas: herramientasDe(panel) })
+    afirmar('8 Panel: lo que solo ve el Dueño queda aplicado, y su única tarjeta es la de Deshacer', aplicadas.length > 0 && tarjetasDe([panel]).every((t) => t.accion === 'deshacer'), { aplicadas, herramientas: herramientasDe(panel) })
 
     const reglasDe = async () => (await leerAplicado(N)).vigentes('regla').length
     const reglasAntes = await reglasDe()

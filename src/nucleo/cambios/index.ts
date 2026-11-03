@@ -49,7 +49,7 @@ export { abrirEnElAlta, guardarEnElAlta, type ResultadoDelAlta } from './alta'
 export { queFaltaParaAbrir, type Falta } from './politica'
 export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 export type { Ensayo, LoQuePaso, Muestra, VistaPreviaDeConversaciones, VistaPreviaGuardada } from './ensayar'
-export { leerLoPendiente, publicar, type LoPendiente, type ResultadoDePublicar } from './publicar'
+export { leerLoPendiente, publicar, type ItemDeLoPendiente, type LoPendiente, type ResultadoDePublicar } from './publicar'
 export { armarLectura, buscarProducto, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
@@ -141,8 +141,8 @@ export const ESQUEMA_DEL_PEDIDO = z.object({
 })
 
 /**
- * `panel`: el Dueño editó con su mano; su clic es la aprobación. Hoy nadie lo produce. `lectura` la arma solo
- * `proponerLectura`: el modelo no tiene esquema para ella.
+ * `panel`: el clic del Dueño es la aprobación; solo lo produce `deshacer`. `lectura` la arma solo `proponerLectura`:
+ * el modelo no tiene esquema para ella.
  */
 export type PedidoDelDueno =
   | { readonly origen: 'hilo' | 'panel'; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
