@@ -18,7 +18,7 @@ import { AlbaHastaElArmado } from './alba-de-muestra'
 import { ArmadoDeMuestra } from './armado-de-muestra'
 import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { Componentes } from './componentes'
-import { GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
+import { ADJUNTOS_EN_EL_REDACTOR, GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_CON_ARCHIVOS, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
 import { ConfirmarDeMuestra, EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
 import { GUION_WHATSAPP_NO_LA_TOMA, HILO_CASO_CON_REGLA, HILO_CASO_VIEJO, HILO_DESENLACES_DEL_ENVIO, NEGOCIO_CASOS_CON_ENVIO, TARJETAS_CASO_CON_REGLA, TARJETAS_CASO_VIEJO, TARJETAS_DESENLACES_DEL_ENVIO } from './datos-del-caso'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
@@ -116,6 +116,8 @@ const ESCENAS_DE_ESTADOS: readonly Escena[] = [
   { id: 'error-de-verdad', titulo: 'Error: el archivo que usa Next, con su Volver a intentar', pinta: () => <QueFallaDeVerdad /> },
   { id: 'seccion-no-esta', titulo: 'Una Sección que ya no está en el Negocio', pinta: () => conLaPagina('/panel/secciones/ya-no-esta', <SeccionQueNoEsta />) },
   { id: 'hilo-capacidad-faltante', titulo: 'Hilo: lo que el agente no sabe hacer queda anotado', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CAPACIDAD_FALTANTE) },
+  { id: 'hilo-con-archivos', titulo: 'Hilo: una lista, una foto sin texto y un PDF recortado', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CON_ARCHIVOS) },
+  { id: 'hilo-adjuntando', titulo: 'Hilo: subiendo, listo y con error en el redactor', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_ARMANDOSE.slice(0, 1)} adjuntos={ADJUNTOS_EN_EL_REDACTOR} />} /> },
   { id: 'hilo-tarjeta-vencio', titulo: 'Hilo: tocar tarjetas que vencieron sin refrescar', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} tarjetas={TARJETAS_QUE_VENCIERON} guion={GUION_TARJETAS_QUE_VENCIERON} hilo={<HiloDeMuestra messages={HILO_TARJETAS_QUE_VENCIERON} />} /> },
   { id: 'hilo-error', titulo: 'Hilo: se cortó la respuesta', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_ARMANDOSE.slice(0, 1)} seCorto />} /> },
 ]

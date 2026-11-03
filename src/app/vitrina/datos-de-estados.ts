@@ -4,6 +4,8 @@ import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { QUEDO_ANOTADO } from '@/negocio/partes-del-hilo'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
+import type { EnElRedactor } from '@/app/panel/adjuntos'
+import type { Adjunto } from '@/nucleo/archivos'
 import type { GuionDePublicar } from './hilo-de-muestra'
 
 const mensaje = (id: string, role: 'user' | 'assistant', ...parts: object[]) => ({ id, role, parts }) as UIMessage
@@ -49,3 +51,33 @@ export const GUION_TARJETAS_QUE_VENCIERON: GuionDePublicar = {
     'v-red': { respuesta: { tipo: 'error', mensaje: 'No me pude conectar. Intenta de nuevo.' } },
   },
 }
+
+const LISTA_DE_PRECIOS: Adjunto = { id: 'a1', clase: 'pdf', nombre: 'Lista de precios noviembre.pdf', paginas: 2, paginasDelOriginal: null }
+const CATALOGO_LARGO: Adjunto = { id: 'a2', clase: 'pdf', nombre: 'Catálogo completo de cafés, molinos y accesorios de la temporada 2026.pdf', paginas: 20, paginasDelOriginal: 64 }
+const FOTO_DEL_MENU: Adjunto = { id: 'a3', clase: 'foto', nombre: 'menu.jpg', paginas: null, paginasDelOriginal: null }
+const archivo = (data: Adjunto) => ({ type: 'data-archivo', data })
+
+const TARJETA_DE_UN_ARCHIVO = tarjeta('p-archivo', 'confirmar', 'Tu agente de clientes no lo usa hasta que lo confirmes.')
+
+export const HILO_CON_ARCHIVOS: UIMessage[] = [
+  mensaje('f1', 'user', texto('Estos son mis precios de este mes'), archivo(LISTA_DE_PRECIOS)),
+  mensaje(
+    'f2',
+    'assistant',
+    salida('leer_archivo', {
+      resumen: 'Leí 2 cosas de tu PDF.',
+      tarjeta: { ...TARJETA_DE_UN_ARCHIVO, lineas: ['Esto leí de tu PDF. Tu agente de clientes no lo usa hasta que lo confirmes.', 'Compara cada precio con tu PDF: leer un archivo puede fallar.', 'Tueste medio, grano 500 g · $38.000 · lo leí', 'Molino manual · $96.000 · lo leí', 'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.'] },
+    }),
+    texto('Leí tu lista: trae 2 productos. Compáralos con tu PDF y toca el botón si están bien.'),
+  ),
+  mensaje('f3', 'user', archivo(FOTO_DEL_MENU)),
+  mensaje('f4', 'assistant', salida('leer_archivo', { resumen: 'Es: una foto del menú.', tarjeta: null }), texto('Es tu menú del local. ¿Quieres que lo cargue a tu catálogo?')),
+  mensaje('f5', 'user', texto('Y este es el catálogo entero'), archivo(CATALOGO_LARGO)),
+  mensaje('f6', 'assistant', salida('leer_archivo', { resumen: 'Solo leí las primeras 20 de 64 páginas.', tarjeta: null }), texto('Leí las primeras 20 de 64 páginas. Si los precios están más adelante, mándame esas páginas.')),
+]
+
+export const ADJUNTOS_EN_EL_REDACTOR: readonly EnElRedactor[] = [
+  { local: 'l1', nombre: 'Lista de precios noviembre.pdf', clase: 'pdf', estado: 'subiendo' },
+  { local: 'l2', nombre: 'menu.jpg', clase: 'foto', estado: 'listo', adjunto: FOTO_DEL_MENU },
+  { local: 'l3', nombre: 'Catálogo completo de cafés, molinos y accesorios de la temporada 2026.pdf', clase: 'pdf', estado: 'fallo', error: 'Pesa más de 4 MB. Prueba con uno más liviano.' },
+]

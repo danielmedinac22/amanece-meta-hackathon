@@ -15,7 +15,8 @@ import type { DatosDelArmado, FilaQueYaSe, ProductoEnElPanel } from '@/nucleo/ar
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { plantillaDelHilo } from '@/nucleo/plantillas'
 import { useHilo } from './hilo'
-import { MensajeDelHilo, Puntos, RastroDePlantilla, Redactor } from './hilo-vista'
+import { MensajeDelHilo, Puntos, RastroDePlantilla, Redactor, type AlEnviar } from './hilo-vista'
+import { subirArchivo, type SubirArchivo } from './subir-archivo'
 import { SECCIONES } from './secciones'
 import { Tarjeta } from './tarjeta'
 import { tocarTarjeta, type TocarTarjeta } from './tocar-tarjeta'
@@ -54,7 +55,7 @@ export function ArmadoEnLaRuta({ datos, inicial, tarjetas, salir }: { datos: Dat
     if (ocupado && guardo) router.refresh()
   }, [ocupado, guardo, router])
   const alSalir = useCallback(() => router.refresh(), [router])
-  return <VistaDelArmado salir={salir} datos={datos} messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alTocar={tocarTarjeta} alCambiar={alCambiar} alAbrir={abrir} alSalir={alSalir} />
+  return <VistaDelArmado salir={salir} datos={datos} messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alSubir={subirArchivo} alTocar={tocarTarjeta} alCambiar={alCambiar} alAbrir={abrir} alSalir={alSalir} />
 }
 
 async function abrir(): Promise<RespuestaDeAbrir | { error: string }> {
@@ -63,7 +64,7 @@ async function abrir(): Promise<RespuestaDeAbrir | { error: string }> {
 }
 
 /** Pinta la carta y Tu Panel. Quien la conecta decide qué pasa al enviar, al tocar y al abrir: esta vista no habla con ninguna ruta. */
-export function VistaDelArmado({ datos, messages, estados, status, error, alEnviar, alTocar, alCambiar, alAbrir, alSalir, salir }: DatosDeLaCarta & { salir?: ReactNode; alEnviar: (contenido: string) => void; alTocar: TocarTarjeta; alCambiar: () => void; alAbrir: () => Promise<RespuestaDeAbrir | { error: string }>; alSalir: () => void }) {
+export function VistaDelArmado({ datos, messages, estados, status, error, alEnviar, alSubir, alTocar, alCambiar, alAbrir, alSalir, salir }: DatosDeLaCarta & { salir?: ReactNode; alEnviar: AlEnviar; alSubir: SubirArchivo; alTocar: TocarTarjeta; alCambiar: () => void; alAbrir: () => Promise<RespuestaDeAbrir | { error: string }>; alSalir: () => void }) {
   const ocupado = status === 'submitted' || status === 'streaming'
   const [pospusoElCobro, setPospusoElCobro] = useState(false)
   const [abierto, setAbierto] = useState(false)
@@ -124,7 +125,7 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
               </motion.section>
             </main>
             <div className="sticky bottom-0 mt-auto bg-linear-to-t from-background from-70% to-transparent pt-5 pb-4">
-              <Redactor ocupado={ocupado} alEnviar={alEnviar} />
+              <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} />
             </div>
           </div>
           <aside className="pb-8 lg:sticky lg:top-4 lg:self-start lg:pt-8">
