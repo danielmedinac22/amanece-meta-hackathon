@@ -131,11 +131,21 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' ? filas.filter((c) => !nace(c)).length : 0, modo }
 }
 
+/**
+ * El único que baja el bit. Toca también las filas enterradas: una versión más alta siempre gana, así que no cambia
+ * nada más. Lo llaman `sellar` y `scripts/retirar-sin-publicar.mts`.
+ */
+export async function bajarElBit(tx: Transaccion, negocio: NegocioId) {
+  await tx
+    .update(esquema.elementos)
+    .set({ sinPublicar: false })
+    .where(and(eq(esquema.elementos.negocioId, negocio), eq(esquema.elementos.sinPublicar, true)))
+}
+
 export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: readonly ItemPendiente[] } | { readonly tipo: 'sin_nada' } | { readonly tipo: 'cambio' }
 
 /**
  * Dentro de la transacción de quien llama, con la misma fila del Negocio que toma `escribir`. Solo sella lo que se vio.
- * Baja el bit de todas las filas, también las enterradas: una versión más alta siempre gana, así que no cambia nada más.
  * No sube la versión del Negocio: no hay contenido nuevo.
  */
 export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string): Promise<ResultadoDeSellar> {
@@ -146,12 +156,11 @@ export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string)
   const items = loPendiente(aplicado, publicado)
   if (!items.length) return { tipo: 'sin_nada' }
   if (huellaDeLoPendiente(aplicado, publicado) !== vista) return { tipo: 'cambio' }
-  await tx
-    .update(esquema.elementos)
-    .set({ sinPublicar: false })
-    .where(and(eq(esquema.elementos.negocioId, negocio), eq(esquema.elementos.sinPublicar, true)))
+  await bajarElBit(tx, negocio)
   return { tipo: 'sellado', items }
 }
 
 type Es<A extends true> = A
 export type _EscribirPideTransaccion = Es<Parameters<typeof escribir>[0] extends Transaccion ? true : false>
+/** Sin `.default()` en el esquema: todo INSERT en TypeScript tiene que decir el bit. */
+export type _TodoInsertDiceElBit = Es<undefined extends (typeof esquema.elementos.$inferInsert)['sinPublicar'] ? false : true>

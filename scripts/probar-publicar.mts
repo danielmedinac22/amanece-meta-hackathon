@@ -6,7 +6,7 @@
  *   pnpm tsx scripts/probar-publicar.mts [--solo=central,tablas]
  */
 import { config } from 'dotenv'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { afirmar, capturarEnvios, eventoDeKapso, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -31,6 +31,8 @@ const { marcar } = await import('../src/nucleo/identidad')
 const { canonico } = await import('../src/lib/canonico')
 const { leerMensajeEntrante } = await import('../src/nucleo/entrada')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
+const { retirarSinPublicar } = await import('./retirar-sin-publicar.mjs')
+const { quitarPanel } = await import('./quitar-panel.mjs')
 
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type Clave = import('../src/nucleo/estado/elementos').Clave
@@ -506,6 +508,55 @@ const CASOS: Record<string, () => Promise<void>> = {
     const r = (await (agente.tools.ver_negocio as { execute: (i: object, o: object) => Promise<{ sinPublicar: { linea: string; loNotan: string }[] }> }).execute({}, {}))
     afirmar('ver_negocio: dice lo que falta por publicar y si lo notan los Clientes', r.sinPublicar.length === 1 && r.sinPublicar[0].loNotan === 'clientes', r.sinPublicar)
     afirmar('instrucciones: dice que Publicar es del Dueño', /Publicar/.test(agente.system))
+  },
+
+  async corte() {
+    const N = await negocioAbierto('Z')
+    const { rows } = await db.execute(sql`select column_default, is_nullable from information_schema.columns where table_name = 'elementos' and column_name = 'sin_publicar'`)
+    afirmar('corte: la columna nace en false, sin nulos', rows[0]?.column_default === 'false' && rows[0]?.is_nullable === 'NO', rows)
+    const [n] = await db.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, N))
+    // Como escribe el código viejo: sin nombrar la columna.
+    await db.execute(sql`insert into elementos (negocio_id, clave, version, tipo, contrato, contenido, origen) values (${N}, 'dato:horario', ${n.version + 1}, 'dato', 1, ${JSON.stringify(dato('horario', 'De 8 a 5'))}::jsonb, 'propuesta')`)
+    await db.update(esquema.negocios).set({ version: n.version + 1 }).where(eq(esquema.negocios.id, N))
+    afirmar('corte: lo que escribe el código viejo se ve en lo publicado', valor(await leerPublicado(N), HORARIO) === 'De 8 a 5')
+    afirmar('corte: y no queda pendiente', (await pendienteDe(N)).items.length === 0)
+  },
+
+  async volverAtras() {
+    const N = await negocioAbierto('R')
+    const ana = await duenoDe(N, 'Ana')
+    const creado = await pedirIndicador(ana, `Publicado ${marca}`)
+    if (creado.desenlace !== 'aplicado') throw new Error(creado.resumen)
+    await publicarTodo(ana)
+    const clave = (await leerPublicado(N)).vigentes('indicador')[0].clave
+    await aplicar(ana, { tipo: 'quitar', claves: [clave] })
+    await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
+    await aplicar(ana, poner(dato('ciudad', 'Pereira'), el.comoClave('dato:ciudad')))
+    await aplicar(ana, poner(dato('ciudad', 'Manizales'), el.comoClave('dato:ciudad')))
+    const antes = await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))
+    const publicado = canon(await leerPublicado(N))
+
+    const enSeco = await retirarSinPublicar(N, { deVerdad: false })
+    afirmar('volver atrás: en seco lista y no escribe', enSeco.length === 3 && (await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))) === antes && (await filasSinPublicar(N)) > 0, enSeco)
+    const deVerdad = await retirarSinPublicar(N, { deVerdad: true })
+    afirmar('volver atrás: de verdad, lo que lee el código viejo es lo que los Clientes tenían', deVerdad.length === 3 && canon(await leerAplicado(N)) === publicado && canon(await leerPublicado(N)) === publicado, deVerdad)
+    afirmar('volver atrás: no queda ninguna fila sin sellar', (await filasSinPublicar(N)) === 0)
+    const despues = await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))
+    afirmar('volver atrás: otra vez escribe 0', (await retirarSinPublicar(N, { deVerdad: true })).length === 0 && (await db.$count(esquema.elementos, eq(esquema.elementos.negocioId, N))) === despues)
+    const quitadas = await quitarPanel(N, { deVerdad: true })
+    afirmar('volver atrás: después, quitar-panel ve el Indicador que revivió', quitadas.includes(clave) && (await leerAplicado(N)).vigentes('indicador').length === 0, quitadas)
+
+    const O = await negocioAbierto('O')
+    const beto = await duenoDe(O, 'Beto')
+    const otro = await pedirIndicador(beto, `Otro ${marca}`)
+    if (otro.desenlace !== 'aplicado') throw new Error(otro.resumen)
+    await publicarTodo(beto)
+    const claveOtro = (await leerPublicado(O)).vigentes('indicador')[0].clave
+    await aplicar(beto, { tipo: 'quitar', claves: [claveOtro] })
+    const alReves = await quitarPanel(O, { deVerdad: true })
+    await retirarSinPublicar(O, { deVerdad: true })
+    afirmar('volver atrás: al revés, quitar-panel no ve la clave y queda viva: por eso retirar va primero', !alReves.includes(claveOtro) && (await leerAplicado(O)).vigente(claveOtro) !== null, alReves)
   },
 
   async aislamiento() {

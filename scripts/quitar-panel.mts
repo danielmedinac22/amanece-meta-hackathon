@@ -2,7 +2,8 @@
  * Va antes de cualquier vuelta a un despliegue anterior: ese código no conoce los tipos `seccion` e `indicador`, su
  * `leerAplicado` lanza con una sola fila viva de esas y el Negocio queda sin atender. Deja la lápida (`contenido` null,
  * versión siguiente, por `escribir`) en cada clave `seccion:` e `indicador:`. En seco por defecto. Una transacción por
- * Negocio, y uno que falla no corta la corrida. Correrlo otra vez escribe 0.
+ * Negocio, y uno que falla no corta la corrida. Correrlo otra vez escribe 0. Va después de `retirar-sin-publicar.mts`,
+ * que puede revivir una clave que aquí todavía no se ve viva.
  *
  *   pnpm tsx scripts/quitar-panel.mts [--de-verdad] [--negocio=<id>]
  */
