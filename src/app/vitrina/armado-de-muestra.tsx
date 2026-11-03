@@ -2,6 +2,7 @@
 
 import type { ChatStatus, UIMessage } from 'ai'
 import { useState, type ReactNode } from 'react'
+import { useRecogerLoEscrito } from '@/app/lo-escrito'
 import { VistaDelArmado } from '@/app/panel/armado'
 import type { TocarTarjeta } from '@/app/panel/tocar-tarjeta'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
@@ -24,9 +25,10 @@ type Props = {
 export function ArmadoDeMuestra({ datos, messages, tarjetas = {}, status = 'ready', siguiente, despues }: Props) {
   const [ahora, setAhora] = useState({ datos, messages, estados: tarjetas })
   const [salio, setSalio] = useState(false)
+  const alEnviar = (t: string) => setAhora((a) => ({ ...a, datos: siguiente ?? a.datos, messages: [...a.messages, { id: `m-${a.messages.length}`, role: 'user', parts: [{ type: 'text', text: t }] }] }))
+  useRecogerLoEscrito(true, alEnviar)
   if (salio) return despues
   const avanzar = () => setAhora((a) => ({ ...a, datos: siguiente ?? a.datos }))
-  const alEnviar = (t: string) => setAhora((a) => ({ ...a, datos: siguiente ?? a.datos, messages: [...a.messages, { id: `m-${a.messages.length}`, role: 'user', parts: [{ type: 'text', text: t }] }] }))
   const alTocar: TocarTarjeta = async (tarjeta, accion) => {
     const estado = accion === 'aprobar' ? 'aplicada' : 'descartada'
     setAhora((a) => ({ ...a, estados: { ...a.estados, [tarjeta.propuesta]: { ...a.estados[tarjeta.propuesta], estado } } }))

@@ -1,7 +1,7 @@
 /**
  * Captura una escena de la vitrina en Chrome sin ventana, en el modo y el ancho que se pidan, y sale con 1 si la
  * página se desborda a lo ancho o falla un paso. Necesita `pnpm dev` corriendo. `--menos-movimiento` pide
- * `prefers-reduced-motion`. Pasos, en el orden en que se escriben: `--clic=texto` toca un botón por su texto o su aria-label, `--espera=ms`, `--ve=texto` y `--no-ve=texto` afirman lo
+ * `prefers-reduced-motion`. Pasos, en el orden en que se escriben: `--clic=texto` toca un botón por su texto o su aria-label, `--escribe=texto` escribe en la primera caja de texto, `--espera=ms`, `--ve=texto` y `--no-ve=texto` afirman lo
  * visible, `--evalua=js` imprime una expresión y `--cierto=js` falla si no da `true`.
  *
  *   pnpm tsx scripts/mirar-vitrina.mts panel-un-caso /tmp/caso.png 390 844 --oscuro --clic="Tu negocio"
@@ -67,6 +67,10 @@ try {
       if (!punto) throw new Error(`No encontré: ${valor}`)
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await cdp('Input.dispatchMouseEvent', { type, ...punto, button: 'left', clickCount: 1 })
       await espera(600)
+    } else if (paso === 'escribe') {
+      await evaluar(`document.querySelector('textarea').focus()`)
+      await cdp('Input.insertText', { text: valor })
+      await espera(100)
     } else if (paso === 'espera') {
       await espera(+valor)
     } else if (paso === 've' || paso === 'no-ve') {
@@ -79,7 +83,7 @@ try {
     }
   }
   // Un paño recorta lo que se le sale, así que el documento no se entera.
-  const desbordes = await evaluar<string[]>(`[document.documentElement, ...document.querySelectorAll('body *')].filter((e) => e === document.documentElement ? e.scrollWidth > innerWidth : e.scrollWidth - e.clientWidth > 1 && ['auto', 'scroll', 'hidden', 'clip'].includes(getComputedStyle(e).overflowX) && getComputedStyle(e).textOverflow !== 'ellipsis' && e.clientWidth > 40).map((e) => e.tagName + ' ' + String(e.className).slice(0, 60) + ': ' + (e.scrollWidth - (e === document.documentElement ? innerWidth : e.clientWidth)) + ' px')`)
+  const desbordes = await evaluar<string[]>(`[document.documentElement, ...document.querySelectorAll('body *')].filter((e) => e === document.documentElement ? e.scrollWidth > innerWidth : e.scrollWidth - e.clientWidth > 1 && ['auto', 'scroll', 'hidden', 'clip'].includes(getComputedStyle(e).overflowX) && getComputedStyle(e).textOverflow !== 'ellipsis' && e.clientWidth > 40 && !e.hasAttribute('data-carrusel')).map((e) => e.tagName + ' ' + String(e.className).slice(0, 60) + ': ' + (e.scrollWidth - (e === document.documentElement ? innerWidth : e.clientWidth)) + ' px')`)
   if (desbordes.length) {
     console.error(`Se desborda a lo ancho:\n${desbordes.join('\n')}`)
     process.exitCode = 1

@@ -6,6 +6,8 @@ import { SinNegocio, VistaDelTablero, VistaDeUnaSeccion } from '@/app/panel/vist
 import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { Alba } from '@/app/alba'
+import { AlbaHastaElArmado } from './alba-de-muestra'
 import { ArmadoDeMuestra } from './armado-de-muestra'
 import { Componentes } from './componentes'
 import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
@@ -58,6 +60,8 @@ function llegaUnaDecision() {
 
 /** Agregar una pantalla a la vitrina es agregar una fila aquí. */
 export const ESCENAS: readonly Escena[] = [
+  { id: 'alba', titulo: 'Alba: lo primero que ve el Dueño, con la caja de verdad', pinta: () => <Alba /> },
+  { id: 'alba-al-armado', titulo: 'Alba: de la caja al armado, ya con cuenta', pinta: () => <AlbaHastaElArmado /> },
   { id: 'panel-vacio', titulo: 'Armado: un Dueño recién entrado', pinta: () => <ArmadoDeMuestra datos={ARMADO_VACIO} messages={[]} /> },
   { id: 'panel-armandose', titulo: 'Armado: conversando, sin enlace', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_CONOCIENDO} /> },
   { id: 'armado-leyendo', titulo: 'Armado: leyendo su página', pinta: () => <ArmadoDeMuestra datos={ARMADO_LEYENDO} messages={HILO_LEYENDO} status="streaming" /> },

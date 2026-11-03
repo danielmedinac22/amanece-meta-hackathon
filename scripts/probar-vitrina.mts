@@ -20,6 +20,7 @@ const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
+const ESCENAS_DE_ALBA = ['alba', 'alba-al-armado']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -142,6 +143,30 @@ const RECORRIDOS_DEL_ARMADO: typeof RECORRIDOS = [
   ['Armado: en PC Tu Panel queda a la derecha', 'armado-listo', '1024', `--cierto=document.querySelector('aside').getBoundingClientRect().left >= document.querySelector('main').getBoundingClientRect().right`],
 ]
 
+const CAJA = `document.querySelector('textarea')`
+const CLAVE_ESCRITO = `localStorage.getItem('amanece:lo-escrito')`
+const SIN_RUTA_DEL_AGENTE = `--cierto=performance.getEntriesByType('resource').every((r) => !r.name.includes('/api/dueno'))`
+const MARCADOR_FIJO = `--cierto=${CAJA}.placeholder === 'Pega el link de tu negocio o cuéntame qué haces'`
+const EN_ENTRAR = `--cierto=location.pathname === '/entrar'`
+
+const RECORRIDOS_DE_ALBA: typeof RECORRIDOS = [
+  ['Alba: pestañas, las tres plantillas y un solo botón por tarjeta, sin Remixear todavía', 'alba', '1440', '--ve=¿Qué hace tu negocio?', '--ve=Venta contra entrega', '--ve=Envíos y paquetería', '--ve=Servicios con agenda', '--no-ve=Remixear', '--cierto=!!document.querySelector(\'a[href="/panel"]\')'],
+  ['Alba: el título sobre el cielo va con --foreground', 'alba', '1440', `--cierto=getComputedStyle(document.querySelector('h1')).color === getComputedStyle(document.body).color`],
+  ['Alba: la caja escribe ejemplos sola y se detiene cuando el Dueño escribe', 'alba', '1440', '--espera=1200', `--cierto=${CAJA}.placeholder !== 'Pega el link de tu negocio o cuéntame qué haces' && 'cafeladera.co'.startsWith(${CAJA}.placeholder)`, '--escribe=Vendo café', MARCADOR_FIJO, '--espera=1000', MARCADOR_FIJO],
+  ['Alba: con prefers-reduced-motion no hay máquina de escribir', 'alba', '1440', '--menos-movimiento', '--espera=1500', MARCADOR_FIJO],
+  ['Alba: Lo que puede hacer dice cuatro cosas', 'alba', '390', '--clic=Lo que puede hacer', '--espera=600', '--ve=Tomo pedidos y los confirmo', '--ve=Te busco solo cuando algo necesita tu decisión', `--cierto=document.querySelectorAll('[role=tabpanel] li').length === 4`],
+  ['Alba: Ver abre lo que ve el Dueño junto a lo que ve el Cliente', 'alba', '390', '--clic=Ver', '--ve=Lo que ve tu Cliente en WhatsApp', '--ve=es un negocio de ejemplo', '--clic=Cerrar', '--espera=400', '--no-ve=Lo que ve tu Cliente en WhatsApp'],
+  ['Alba: en teléfono las plantillas son un carrusel y la página no se desborda', 'alba', '390', `--cierto=(() => { const c = document.querySelector('[data-carrusel]'); return c.scrollWidth > c.clientWidth && document.documentElement.scrollWidth <= innerWidth })()`],
+  ['Alba: sin texto no se empieza', 'alba', '1440', `--cierto=document.querySelector('button[aria-label=Empezar]').disabled`],
+  ['Alba: lo escrito pasa por la puerta de sesión, llega a pedir la cuenta y no toca al agente', 'alba', '1440', '--escribe=Vendo café en Manizales', '--clic=Empezar', '--espera=4000', EN_ENTRAR, '--ve=Crear cuenta', '--ve=Vendo café en Manizales', '--ve=Crea tu cuenta y sigo', SIN_RUTA_DEL_AGENTE],
+  ['Alba: quien ya tiene cuenta está a un toque y lo escrito sigue ahí', 'alba', '1440', '--escribe=Vendo café en Manizales', '--clic=Empezar', '--espera=4000', '--clic=¿Ya tienes cuenta', '--ve=Entra a tu negocio', '--ve=Entra y sigo', '--ve=Vendo café en Manizales'],
+  ['Alba: Entrar con algo escrito tampoco lo pierde', 'alba', '1440', '--escribe=Agendo citas', '--clic=Entrar', '--espera=4000', EN_ENTRAR, '--ve=Agendo citas'],
+  ['Alba: Entrar sin nada escrito lleva a entrar, no a registrarse', 'alba', '1440', '--clic=Entrar', '--espera=4000', EN_ENTRAR, '--ve=Entra a tu negocio', `--cierto=${CLAVE_ESCRITO} === null`],
+  ['Alba: volver atrás trae lo escrito a la caja, y borrarlo lo olvida', 'alba', '1440', '--escribe=Vendo café', '--clic=Empezar', '--espera=4000', '--clic=Amanece', '--espera=2500', `--cierto=location.pathname === '/' && ${CAJA}.value === 'Vendo café'`, `--evalua=(() => { const c = ${CAJA}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(c, ''); c.dispatchEvent(new Event('input', { bubbles: true })); return 'borrado' })()`, '--espera=200', `--cierto=${CLAVE_ESCRITO} === null`],
+  ['Alba: lo de hace más de un día ya no vuelve', 'alba', '1440', `--evalua=(() => { localStorage.setItem('amanece:lo-escrito', JSON.stringify({ texto: 'De ayer', hasta: Date.now() - 1 })); location.reload(); return 'recargando' })()`, '--espera=2500', `--cierto=${CAJA}.value === ''`],
+  ['Alba: lo escrito llega al armado sin volver a escribir, una sola vez', 'alba-al-armado', '1440', '--escribe=Vendo café en Manizales', '--clic=Empezar', '--espera=800', '--ve=Vendo café en Manizales', TITULAR('Cuéntame de tu negocio.'), `--cierto=${CLAVE_ESCRITO} === null`, `--cierto=[...document.querySelectorAll('main *')].filter((e) => e.children.length === 0 && e.textContent === 'Vendo café en Manizales').length === 1`],
+]
+
 const hijos = new Set<ChildProcess>()
 
 function matarHijos() {
@@ -248,7 +273,7 @@ try {
   const ids = [...html.matchAll(/href="\/vitrina\/([\w-]+)"/g)].map((m) => m[1])
   afirmar('dev: el índice enlaza las escenas esperadas', [...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO].every((id) => ids.includes(id)), ids)
 
-  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO])) {
+  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA])) {
     const r = await ver(`${desarrollo.base}/vitrina/${id}`)
     afirmar(`dev: /vitrina/${id} da 200`, r.status === 200, { estado: r.status, servidor: desarrollo.salida() })
   }
@@ -266,14 +291,14 @@ try {
 
   // Teléfono y PC valen igual: ninguna escena se desborda a lo ancho a ninguno de los dos anchos.
   const captura = join(mkdtempSync(join(tmpdir(), 'vitrina-')), 'escena.png')
-  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO])) {
+  for (const id of new Set([...ids, ...ESCENAS_ESPERADAS, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA])) {
     for (const [ancho, alto] of [['390', '844'], ['1440', '900']]) {
       const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), id, captura, ancho, alto], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
       afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
     }
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DEL_ARMADO]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
     const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }
@@ -295,6 +320,9 @@ try {
 
   console.log('\nnext start')
   const produccion = await servir('start')
+  const portada = await ver(`${produccion.base}/`)
+  const portadaEnTexto = await portada.text()
+  afirmar('start: / es Alba, público y sin sesión', portada.status === 200 && portadaEnTexto.includes('¿Qué hace tu negocio?') && !portadaEnTexto.includes('Escríbele a Café Ladera'), portada.status)
   for (const ruta of ['/vitrina', '/vitrina/componentes']) {
     const r = await ver(`${produccion.base}${ruta}`)
     afirmar(`start: ${ruta} da 404`, r.status === 404, r.status)
