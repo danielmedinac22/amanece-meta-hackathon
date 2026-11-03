@@ -105,7 +105,7 @@ export function CasosDeMuestra(datos: DatosDeCasos) {
   const conEstado = datos.esperan.map((c) => (c.decision ? { ...c, decision: { ...c.decision, estado: estados[c.decision.tarjeta.propuesta] ?? c.decision.estado } } : c))
   const enviados = conEstado.filter((c) => c.decision?.estado.estado === 'aplicada')
   const esperan = conEstado.filter((c) => !enviados.includes(c))
-  const resueltos = enviados.map((c) => ({ id: c.id, titulo: c.titulo, resolucion: c.decision?.estado.asunto?.tipo === 'caso' ? c.decision.estado.asunto.respuesta : '', hace: 'ahora', noSalio: false }))
+  const resueltos = enviados.map((c) => ({ id: c.id, titulo: c.titulo, resolucion: c.decision?.estado.asunto?.tipo === 'caso' ? c.decision.estado.asunto.respuesta : '', hace: 'ahora', pedido: c.pedido, noSalio: false }))
   return <VistaDeCasos {...datos} cuentaQueEspera={datos.cuentaQueEspera - enviados.length} esperan={esperan} resueltos={[...resueltos, ...datos.resueltos]} alTocar={tocar} alCambiar={nada} />
 }
 

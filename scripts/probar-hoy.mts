@@ -168,7 +168,7 @@ try {
   afirmar('Ojo: el pendiente dice monto', hoy.ojo.some((o) => o.titulo === 'Daniela todavía no confirma su pedido' && o.detalle.includes('$76.000')), hoy.ojo)
   afirmar('Ojo: un pedido con Caso abierto sale una sola vez', !titulos.some((t) => t.includes('Cali')), titulos)
   afirmar('Ojo: un pendiente de hace dos semanas ya no', hoy.ojo.length === 4, titulos)
-  afirmar('Ojo: el Caso lleva a Casos y el pedido a Pedidos', hoy.ojo.every((o) => o.ruta === (o.accion === 'Decidir' ? '/panel/casos' : '/panel/pedidos')))
+  afirmar('Ojo: el Caso lleva a Casos y el pedido a ese pedido', hoy.ojo.every((o) => (o.accion === 'Decidir' ? o.ruta === '/panel/casos' : o.ruta === `/panel/pedidos/${o.clave.replace('pedido-', '')}`)), hoy.ojo)
 
   const ultimos = hoy.ultimo.map((u) => u.texto)
   afirmar('Lo último: cinco, lo más reciente primero', hoy.ultimo.length === 5 && ultimos[0] === 'Tu agente le tomó un pedido a Daniela Quintero', ultimos)

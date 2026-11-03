@@ -4,6 +4,7 @@ import { CUENTA_COMO_VENTA } from './consultas/catalogo'
 import { pesos } from './estado/elementos'
 import { haceCuanto, vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
 import type { NegocioId } from './identidad'
+import { rutaDePedido } from './listas-palabras'
 
 export type CosaDelOjo = { clave: string; titulo: string; detalle: string; accion: 'Decidir' | 'Ver el pedido'; ruta: string }
 export type CosaReciente = { clave: string; texto: string; cuando: string }
@@ -119,7 +120,7 @@ async function leerElOjo(negocio: NegocioId, ahora: Date, zona: string): Promise
           titulo: p.estado === 'novedad' ? COSA_DE_UN_PEDIDO.novedad(nombre(p.cliente), p.ciudad) : COSA_DE_UN_PEDIDO.pendiente(nombre(p.cliente)),
           detalle: [`Pedido #${p.numero}`, p.estado === 'pendiente' && pesos(p.total), haceCuanto(p.creado, ahora, zona)].filter(Boolean).join(' · '),
           accion: 'Ver el pedido',
-          ruta: '/panel/pedidos',
+          ruta: rutaDePedido(p.id),
         }),
       ),
   ]
