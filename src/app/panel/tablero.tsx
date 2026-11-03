@@ -85,8 +85,7 @@ function Recientes({ filas }: { filas: readonly PedidoReciente[] }) {
   )
 }
 
-export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonly SeccionPintada[]; tablero: DatosDelTablero | null }) {
-  if (!tablero) return indicadores.length ? <Indicadores indicadores={indicadores} /> : <p className="text-muted-foreground">Todavía no tienes indicadores. Pídele a tu agente el número que quieres mirar.</p>
+export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonly SeccionPintada[]; tablero: DatosDelTablero }) {
   const grafica = graficaDe(
     tablero.porDia.map((d) => ({ etiqueta: d.dia, valor: d.pedidos })),
     { tipo: 'cantidad', nombre: '' },

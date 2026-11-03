@@ -94,7 +94,7 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
 }
 
 /** El Hilo de la vitrina: pinta la conversación inventada y sus sugerencias, botones y envíos no llegan a ninguna ruta. */
-export function HiloDeMuestra({ status = 'ready', seCorto, messages, ...datos }: Pick<DatosDelHilo, 'messages' | 'estado'> & { status?: DatosDelHilo['status']; seCorto?: boolean }) {
+export function HiloDeMuestra({ status = 'ready', seCorto, messages, ...datos }: Pick<DatosDelHilo, 'messages'> & { status?: DatosDelHilo['status']; seCorto?: boolean }) {
   const { estados, tocar, avisos } = useContext(LasDecisiones)
   return <VistaDelHilo {...datos} messages={[...messages, ...avisos]} estados={estados} status={status} error={seCorto ? new Error('Se cortó') : undefined} alEnviar={nada} alTocar={tocar} alCambiar={nada} />
 }
@@ -110,7 +110,7 @@ export function CasosDeMuestra(datos: DatosDeCasos) {
 }
 
 /** Como el sondeo del Hilo de verdad: un rato después de abrir, llega un mensaje con una decisión. */
-export function HiloQueRecibeUnaDecision({ messages, llega, ...datos }: Pick<DatosDelHilo, 'messages' | 'estado'> & { llega: DatosDelHilo['messages'][number] }) {
+export function HiloQueRecibeUnaDecision({ messages, llega, ...datos }: Pick<DatosDelHilo, 'messages'> & { llega: DatosDelHilo['messages'][number] }) {
   const [llegada, setLlegada] = useState(false)
   useEffect(() => {
     const espera = setTimeout(() => setLlegada(true), 2500)

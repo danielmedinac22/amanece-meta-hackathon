@@ -28,8 +28,7 @@ export type DatosDeLaOperacion = {
         nombre: string
         ciudad: string
         propias: readonly SeccionPropia[]
-        /** Lo que hay por publicar; `null` es Armándose, donde todavía no se publica. */
-        publicar: (LoPendiente & { link: string; nuevos: readonly SeccionPintada[] }) | null
+        publicar: LoPendiente & { link: string; nuevos: readonly SeccionPintada[] }
       })
     | null
 }
@@ -103,7 +102,7 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
           <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border px-2 lg:hidden">
             <SidebarTrigger />
             <span className="min-w-0 truncate font-heading font-semibold">{negocio?.nombre ?? 'Tu negocio'}</span>
-            {negocio?.publicar && (
+            {negocio && (
               <span className="ml-auto">
                 <BotonPublicar pendiente={negocio.publicar} link={negocio.publicar.link} publicador={publicador} />
               </span>
@@ -135,7 +134,7 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
                 <h1 className="min-w-0 truncate font-heading text-[15px] font-semibold">{nombreDeLaRuta(ruta, negocio?.propias ?? [])}</h1>
                 <div className="ml-auto flex items-center gap-2">
                   {negocio && <EstadoDelNegocio publicar={negocio.publicar} />}
-                  {negocio?.publicar && (
+                  {negocio && (
                     <span className="hidden lg:contents">
                       <BotonPublicar pendiente={negocio.publicar} link={negocio.publicar.link} publicador={publicador} />
                     </span>
@@ -170,8 +169,8 @@ export function OperacionEnLaRuta(props: Omit<Props, 'ruta' | 'alIr' | 'inicial'
   return <Operacion {...props} ruta={usePathname()} />
 }
 
-function EstadoDelNegocio({ publicar }: { publicar: LoPendiente | null }) {
-  const { texto, color } = !publicar ? { texto: 'Armándose', color: 'bg-ojo-suave text-ojo' } : publicar.items.length ? { texto: 'Vista previa', color: 'bg-ojo-suave text-ojo' } : { texto: 'Atendiendo', color: 'bg-bien-suave text-bien' }
+function EstadoDelNegocio({ publicar }: { publicar: LoPendiente }) {
+  const { texto, color } = publicar.items.length ? { texto: 'Vista previa', color: 'bg-ojo-suave text-ojo' } : { texto: 'Atendiendo', color: 'bg-bien-suave text-bien' }
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.span key={texto} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}>

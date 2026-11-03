@@ -3,19 +3,19 @@ import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { db, esquema } from '@/db'
 import { ajustesDe } from '@/nucleo/ajustes'
-import { leerLoPendiente } from '@/nucleo/cambios'
+import { ARMADO_SIN_NEGOCIO, armadoDe } from '@/nucleo/armado'
+import { lecturaPendiente, leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import { leerHoy } from '@/nucleo/hoy'
 import { leerClientes as clientesDe, leerConversaciones as conversacionesDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
-import { pintarPanel, pintarUna } from '@/nucleo/panel'
+import { pintarUna } from '@/nucleo/panel'
 import { leerTablero as tableroDe } from '@/nucleo/tablero'
 import { casosDe } from '@/negocio/casos'
 import { duenoActual } from '@/negocio/sesion'
 import type { DatosDeHoy } from './inicio-hoy'
 import type { DatosDeLaOperacion } from './operacion'
-import type { DatosDelNegocio } from './vista'
 
 /**
  * La puerta de cada página del Panel, no solo del layout: navegar entre Secciones no vuelve a correr el layout.
@@ -50,10 +50,9 @@ export const leerCasos = cache(async () => {
 export async function leerOperacion(): Promise<DatosDeLaOperacion> {
   const { usuario, dueno } = await duenoDelPanel()
   const [leido, pendiente, casos] = await Promise.all([negocioDelPanel(), pendienteDelPanel(), leerCasos()])
-  const listo = leido?.negocio.estado === 'listo'
   const sinPublicar = new Set<string>(pendiente?.items.map((i) => i.clave))
   // Solo corre consultas mientras hay algo sin publicar: lo pintan la tarjeta del Hilo, Inicio y Pedidos.
-  const nuevos = listo ? await Promise.all(leido.estado.vigentes('indicador').filter((v) => sinPublicar.has(v.clave)).map((v) => pintarUna(leido.estado, v.clave, v.elemento))) : []
+  const nuevos = leido ? await Promise.all(leido.estado.vigentes('indicador').filter((v) => sinPublicar.has(v.clave)).map((v) => pintarUna(leido.estado, v.clave, v.elemento))) : []
   return {
     dueno: dueno?.nombre || usuario.name || usuario.email,
     negocio:
@@ -63,36 +62,25 @@ export async function leerOperacion(): Promise<DatosDeLaOperacion> {
             ciudad: valorDelDato(leido.estado, 'ciudad'),
             casosAbiertos: casos.length,
             propias: leido.estado.vigentes('seccion').map((s) => ({ clave: s.clave, nombre: s.elemento.nombre })),
-            publicar: listo ? { ...pendiente, link: linkDeWhatsapp(leido.negocio.nombre, leido.negocio.codigo), nuevos } : null,
+            publicar: { ...pendiente, link: linkDeWhatsapp(leido.negocio.nombre, leido.negocio.codigo), nuevos },
           }
         : null,
   }
 }
 
-export type Inicio = { tipo: 'hoy'; datos: DatosDeHoy } | { tipo: 'armando'; datos: DatosDelNegocio }
-
-export async function leerInicio(): Promise<Inicio | null> {
-  const [leido, casos] = await Promise.all([negocioDelPanel(), leerCasos()])
-  if (!leido || !casos) return null
+/** Solo un Negocio abierto tiene Inicio: uno armándose ve la carta en toda ruta del Panel. */
+export async function leerInicio(): Promise<DatosDeHoy | null> {
+  const leido = await negocioDelPanel()
+  if (!leido || leido.negocio.estado !== 'listo') return null
   const { negocio, id, estado } = leido
   const reglas = estado.vigentes('regla').map((r) => ({ clave: r.clave, texto: reglaEnPalabras(r.elemento, estado) }))
-  if (negocio.estado === 'listo') {
-    const hoy = await leerHoy(id, negocio.zonaHoraria, estado.identidad.rubro)
-    return { tipo: 'hoy', datos: { hoy, link: linkDeWhatsapp(negocio.nombre, negocio.codigo), reglas } }
-  }
-  const productos = estado.vigentes('producto').filter((v) => v.elemento.activo)
-  const pintadas = await pintarPanel(estado)
-  return {
-    tipo: 'armando',
-    datos: {
-      nombre: estado.identidad.nombre,
-      detalle: `${[estado.identidad.rubro, valorDelDato(estado, 'ciudad')].filter(Boolean).join(' · ') || 'Armándose'} · ${productos.length} productos`,
-      indicadores: pintadas.filter((p) => p.tipo === 'indicador'),
-      secciones: pintadas.filter((p) => p.tipo === 'seccion'),
-      casos: casos.slice(0, 10),
-      reglas,
-    },
-  }
+  const hoy = await leerHoy(id, negocio.zonaHoraria, estado.identidad.rubro)
+  return { hoy, link: linkDeWhatsapp(negocio.nombre, negocio.codigo), reglas }
+}
+
+export async function leerArmado() {
+  const leido = await negocioDelPanel()
+  return leido ? armadoDe(leido.estado, (await lecturaPendiente(leido.id))?.escritura ?? null) : ARMADO_SIN_NEGOCIO
 }
 
 export async function leerPedidos() {
@@ -120,12 +108,12 @@ export async function leerAjustes() {
   return leido && ajustesDe(leido.estado)
 }
 
-/** `tablero` es `null` mientras el Negocio se arma: todavía no hay nada que contar, solo los Indicadores que pidió. */
+/** Solo un Negocio abierto tiene Tablero: uno armándose ve la carta en toda ruta del Panel. */
 export async function leerTablero() {
   const leido = await negocioDelPanel()
-  if (!leido) return null
+  if (!leido || leido.negocio.estado !== 'listo') return null
   const { negocio, id, estado } = leido
-  const [indicadores, tablero] = await Promise.all([Promise.all(estado.vigentes('indicador').map((v) => pintarUna(estado, v.clave, v.elemento))), negocio.estado === 'listo' ? tableroDe(id, negocio.zonaHoraria, estado.identidad.rubro) : null])
+  const [indicadores, tablero] = await Promise.all([Promise.all(estado.vigentes('indicador').map((v) => pintarUna(estado, v.clave, v.elemento))), tableroDe(id, negocio.zonaHoraria, estado.identidad.rubro)])
   return { indicadores, tablero }
 }
 

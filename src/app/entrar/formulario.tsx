@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState, type ComponentProps, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useLoEscrito } from '../lo-escrito'
 import { PALABRAS_DE_ENTRADA, type MotivoDeEntrada } from './errores'
 
 export type ModoDeEntrada = 'entrar' | 'registro'
@@ -29,7 +30,10 @@ function Campo({ etiqueta, nota, ...props }: ComponentProps<typeof Input> & { et
 
 /** El mismo cielo de Alba: el titular arriba y el formulario en la hoja que sube. En teléfono la hoja llega hasta abajo. */
 export function PantallaDeEntrada({ modoInicial, entrar, alEntrar }: { modoInicial: ModoDeEntrada; entrar: Entrador; alEntrar: () => void }) {
-  const [modo, setModo] = useState(modoInicial)
+  const loEscrito = useLoEscrito()
+  const [eleccion, setEleccion] = useState<ModoDeEntrada | null>(null)
+  // Quien viene de la caja casi siempre es nuevo. Un Dueño que ya tiene cuenta está a un toque de entrar.
+  const modo = eleccion ?? (loEscrito !== null ? 'registro' : modoInicial)
   const [motivo, setMotivo] = useState<MotivoDeEntrada | null>(null)
   const [enviando, setEnviando] = useState(false)
   const textos = TEXTOS[modo]
@@ -51,7 +55,7 @@ export function PantallaDeEntrada({ modoInicial, entrar, alEntrar }: { modoInici
   }
 
   function cambiarDeModo() {
-    setModo(registro ? 'entrar' : 'registro')
+    setEleccion(registro ? 'entrar' : 'registro')
     setMotivo(null)
   }
 
@@ -66,6 +70,12 @@ export function PantallaDeEntrada({ modoInicial, entrar, alEntrar }: { modoInici
         <h1 className="my-auto px-5 py-8 font-heading text-[clamp(34px,5.6vw,52px)] leading-[1.04] font-semibold tracking-tight text-balance sm:my-0 sm:px-0 sm:pt-0 sm:pb-7 sm:text-center">{textos.titulo}</h1>
         <section className="w-full rounded-t-[calc(var(--radius)*1.6)] bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-card-foreground shadow-alzada motion-safe:animate-[sube_240ms_var(--ease-entra)] sm:max-w-sm sm:rounded-[calc(var(--radius)*1.6)] sm:p-6">
           <p className="text-sm text-pretty text-muted-foreground">{textos.nota}</p>
+          {loEscrito && (
+            <div className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm">
+              <p className="text-muted-foreground">{registro ? 'Crea tu cuenta y sigo con lo que me contaste:' : 'Entra y sigo con lo que me contaste:'}</p>
+              <p className="mt-0.5 line-clamp-3 break-words">{loEscrito}</p>
+            </div>
+          )}
           <form onSubmit={enviar} className="mt-4 flex flex-col gap-3.5">
             {registro && <Campo etiqueta="Tu nombre" name="nombre" autoComplete="name" />}
             <Campo etiqueta="Correo" name="email" type="email" autoComplete="email" inputMode="email" />

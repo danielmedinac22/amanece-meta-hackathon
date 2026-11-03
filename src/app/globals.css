@@ -235,6 +235,16 @@
   }
 }
 
+.cielo {
+  background: var(--alba);
+  mask-image: linear-gradient(to bottom, black 20%, transparent);
+}
+
+.alba-llena {
+  background: var(--alba);
+  mask-image: linear-gradient(to bottom, black 62%, transparent);
+}
+
 .puntos i {
   display: inline-block;
   width: 5px;

@@ -1,7 +1,6 @@
 /** Datos inventados para pintar la vitrina. Solo `src/app/vitrina/` los importa: ninguna pantalla real los toca. */
 import type { UIMessage } from 'ai'
 import type { DatosDeHoy } from '@/app/panel/inicio-hoy'
-import type { DatosDelNegocio } from '@/app/panel/vista'
 import type { GuionDePublicar } from './hilo-de-muestra'
 import type { CasoResuelto, DatosDeCasos } from '@/negocio/casos'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
@@ -17,8 +16,8 @@ const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
-/** Lo que la cáscara de la vitrina necesita además de las páginas. `hoy` en `null` es Armándose. */
-export type NegocioDeMuestra = DatosDelNegocio & { pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy | null; tablero: DatosDelTablero | null; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+/** Lo que la cáscara de la vitrina necesita además de las páginas. */
+export type NegocioDeMuestra = { nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -302,25 +301,8 @@ const seccionSinFilas: SeccionPintada = {
   advertencias: [],
 }
 
-export const NEGOCIO_ARMANDOSE: NegocioDeMuestra = {
-  nombre: 'Café Ladera',
-  detalle: 'Armándose · 0 productos',
-  pendiente: NADA_PENDIENTE,
-  hoy: null,
-  tablero: null,
-  pedidos: SIN_PEDIDOS,
-  clientes: SIN_CLIENTES,
-  seccionDeCasos: SIN_CASOS,
-  ...SIN_CONVERSACIONES,
-  indicadores: [],
-  secciones: [],
-  casos: [],
-  reglas: [],
-}
-
 export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   nombre: 'Café Ladera',
-  detalle: 'Café de especialidad · Manizales · 12 productos',
   pendiente: NADA_PENDIENTE,
   hoy: { hoy: HOY_FUNCIONANDO, link: LINK, reglas: REGLAS },
   tablero: TABLERO,
@@ -331,7 +313,6 @@ export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   indicadores: [pedidosDeHoy, ventasPorDia],
   secciones: [pedidosConNovedad, fallo, seccionSinFilas],
   casos: [],
-  reglas: REGLAS,
 }
 
 const CASO_DE_MUESTRA = { id: 'caso-1', titulo: 'Quiere 20 bolsas de café para un evento en Cali', propuesta: 'Ofrecerle 10% de descuento y entrega en 4 días' }
