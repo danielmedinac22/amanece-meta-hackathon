@@ -1,0 +1,275 @@
+# DESIGN.md
+
+Cómo se ve, se mueve y habla Amanece. Lo cumple toda pantalla nueva y toda pantalla que se toque.
+
+- **Decidido** es lo que Daniel eligió frente a un prototipo el 2 de noviembre de 2026. Cambiarlo es decisión suya.
+- **Derivado** es lo que sale de lo decidido, sin ronda propia. Sigue la regla hasta que Daniel la revise.
+- **Destino** es lo decidido que todavía no existe en el código.
+
+El vocabulario es el de `docs/diseno.md`. Los ejemplos en vivo están en el prototipo de la rama `prototipo/diseno` de `danielmedinac22/amanece`, que es privado.
+
+## La idea
+
+Amanece se ve como un buen producto de hoy y le habla a quien vende por WhatsApp, no a quien programa. Cuatro reglas ordenan todo:
+
+1. **El agente trae, el Dueño decide.** Lo que espera una decisión llega como tarjeta, con la acción a la vista.
+2. **Ver antes de que cuente.** Todo Cambio se muestra con datos del Negocio antes de llegar a un Cliente.
+3. **El color significa algo.** La tinta lleva la lectura, y el color queda para el cielo, el botón de enviar y los estados.
+4. **Teléfono y PC valen igual.** Cada pantalla se termina en los dos.
+
+## Pila
+
+| Pieza | Qué se usa |
+|---|---|
+| Componentes | shadcn, estilo `base-nova`, sobre Base UI. Partir de un componente suyo y de shadcn studio antes de escribir uno a mano. |
+| Estilos | Tailwind 4, con los tokens de abajo y consultas de contenedor dentro del lienzo |
+| Íconos | `@phosphor-icons/react`. Peso `regular`; `fill` para el activo y los estados |
+| Movimiento | `motion`, con `MotionConfig reducedMotion="user"` en la raíz |
+| Letras | `next/font/google`: Bricolage Grotesque y Hanken Grotesk |
+
+Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de referencia para Tablero, tablas y bandeja. Hoy este repo tiene otros tokens y Geist: la migración es **Destino**.
+
+## Tokens
+
+**Decidido.** Mirada Alba, con modo oscuro opcional que sigue la configuración del sistema. Al migrar, `src/app/globals.css` pasa a ser la fuente y este bloque se borra.
+
+```css
+:root {
+  --fuente: 'Hanken Grotesk', system-ui, sans-serif;
+  --fuente-titulo: 'Bricolage Grotesque', system-ui, sans-serif;
+  --texto-hilo: 14.5px;
+  --radius: 0.875rem;
+
+  --background: oklch(0.992 0.002 250);
+  --foreground: oklch(0.23 0.035 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.23 0.035 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.23 0.035 265);
+  --primary: oklch(0.28 0.05 265);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.006 250);
+  --secondary-foreground: oklch(0.23 0.035 265);
+  --muted: oklch(0.965 0.005 250);
+  --muted-foreground: oklch(0.49 0.025 265);
+  --accent: oklch(0.955 0.007 250);
+  --accent-foreground: oklch(0.23 0.035 265);
+  --border: oklch(0.92 0.007 250);
+  --input: oklch(0.92 0.007 250);
+  --ring: oklch(0.7 0.12 45);
+  --sidebar: oklch(0.975 0.004 250);
+  --sidebar-foreground: oklch(0.35 0.03 265);
+  --sidebar-accent: oklch(0.94 0.007 250);
+  --sidebar-accent-foreground: oklch(0.23 0.035 265);
+  --sidebar-border: oklch(0.92 0.007 250);
+  --sidebar-primary: oklch(0.28 0.05 265);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.7 0.12 45);
+
+  --bien: oklch(0.5 0.12 160);
+  --bien-suave: oklch(0.95 0.035 160);
+  --ojo: oklch(0.52 0.15 50);
+  --ojo-suave: oklch(0.95 0.05 65);
+  --alba: linear-gradient(180deg, #a9c7f2 0%, #d5d3ee 38%, #fbd6c6 72%, #ffe9c9 100%);
+  --sol: linear-gradient(120deg, #ff9a5c, #ff6b8b);
+}
+
+:root.dark {
+  --background: oklch(0.17 0.025 265);
+  --foreground: oklch(0.95 0.008 250);
+  --card: oklch(0.21 0.028 265);
+  --card-foreground: oklch(0.95 0.008 250);
+  --popover: oklch(0.23 0.03 265);
+  --popover-foreground: oklch(0.95 0.008 250);
+  --primary: oklch(0.86 0.09 70);
+  --primary-foreground: oklch(0.2 0.03 265);
+  --secondary: oklch(0.27 0.03 265);
+  --secondary-foreground: oklch(0.95 0.008 250);
+  --muted: oklch(0.25 0.03 265);
+  --muted-foreground: oklch(0.74 0.02 260);
+  --accent: oklch(0.28 0.03 265);
+  --accent-foreground: oklch(0.95 0.008 250);
+  --border: oklch(0.31 0.03 265);
+  --input: oklch(0.31 0.03 265);
+  --sidebar: oklch(0.15 0.024 265);
+  --sidebar-foreground: oklch(0.8 0.015 260);
+  --sidebar-accent: oklch(0.25 0.03 265);
+  --sidebar-accent-foreground: oklch(0.95 0.008 250);
+  --sidebar-border: oklch(0.27 0.03 265);
+  --sidebar-primary: oklch(0.86 0.09 70);
+  --sidebar-primary-foreground: oklch(0.2 0.03 265);
+
+  --bien: oklch(0.78 0.13 160);
+  --bien-suave: oklch(0.3 0.05 160);
+  --ojo: oklch(0.82 0.13 65);
+  --ojo-suave: oklch(0.33 0.06 60);
+  --alba: linear-gradient(180deg, #151a3a 0%, #2a2a5c 45%, #6b4468 80%, #b5665a 100%);
+}
+```
+
+### Para qué es cada color
+
+| Token | Se usa en |
+|---|---|
+| `--primary` | El botón principal, el activo y las barras. Un solo botón principal por tarjeta. |
+| `--bien` | Lo resuelto o funcionando: `Atendiendo`, `Confirmado`, el check de una constancia |
+| `--ojo` | Lo que espera al Dueño o está en vista previa: `Vista previa`, `Con novedad`, el número de Casos |
+| `--alba` | Solo el cielo de la entrada y del armado |
+| `--sol` | Solo el botón de enviar activo, siempre con ícono en tinta `oklch(0.23 0.035 265)` |
+| `--destructive` | **Derivado.** Errores y acciones que borran. Usa el valor de `base-nova` y mide su contraste al adoptarlo. |
+
+### Contraste
+
+Medido sobre estos tokens, en claro y oscuro:
+
+| Par | Claro | Oscuro |
+|---|---|---|
+| Texto sobre fondo | 16,5 | 16,5 |
+| Texto tenue sobre fondo | 6,1 | 8,3 |
+| Texto tenue sobre `--muted` | 5,7 | 7,0 |
+| Texto sobre `--primary` | 14,2 | 11,7 |
+| `--bien` sobre `--bien-suave` | 4,9 | 7,0 |
+| `--ojo` sobre `--ojo-suave` | 4,9 | 6,9 |
+| Tinta sobre `--sol` | de 6,2 a 8,1 | de 6,2 a 8,1 |
+
+- Sobre `--alba` escribe con `--foreground` o `text-foreground/75`. `--muted-foreground` se queda corto en la parte alta del cielo (3,6).
+- El blanco sobre `--sol` no llega a 3:1, por eso el ícono va en tinta.
+- `--border` es decorativo (1,2). Un campo se distingue también por su marcador, su sombra o su posición.
+
+## Letras
+
+**Decidido**: las familias. **Derivado**: la escala, tomada del prototipo.
+
+| Uso | Letra | Tamaño |
+|---|---|---|
+| Título de la entrada | Bricolage, 600 | `clamp(34px, 5.6vw, 58px)`, interlínea 1.04 |
+| Título del armado | Bricolage, 600 | `clamp(32px, 4.4vw, 50px)` |
+| Frase de Inicio | Bricolage, 500 con cifras en 600 | de 20 a 28 px, interlínea 1.28 |
+| Cifra de Tablero | Bricolage, 600 | 24 px |
+| Título de un paño | Bricolage, 600 | 15 px |
+| Mensaje del Hilo | Hanken | 14,5 px, interlínea 1.5 |
+| Interfaz | Hanken | 13 a 14 px |
+| Apoyo | Hanken | 11 a 12 px, el mínimo |
+| Link | Mono del sistema | 12 a 13 px |
+
+Usa `tabular-nums` en cifras dentro de tablas, listas y tarjetas. En una frase corrida, deja los números normales. Balancea los títulos con `text-balance` y los párrafos con `text-pretty`.
+
+## Forma
+
+**Derivado.** Tarjetas y marcos con `--radius`; piezas dentro de una tarjeta con `calc(var(--radius) - 4px)`; chips y el botón de enviar redondos. Relleno de 12 a 16 px en tarjetas, 16 px en teléfono y 24 px en el lienzo de PC. La sombra alzada, `0 1px 2px rgb(0 0 0 / .04), 0 16px 40px -16px rgb(30 30 60 / .18)`, es solo para lo que flota sobre otra cosa: la caja de la entrada, popovers y el chat flotante.
+
+## Movimiento
+
+Cada animación informa algo: de dónde salió una cosa o que una acción funcionó.
+
+| Qué | Duración | Curva |
+|---|---|---|
+| Entrada de un elemento | 240 ms, sube 6 px | `cubic-bezier(0.22, 1, 0.36, 1)` |
+| Paños y desplazamientos | de 160 a 280 ms | `cubic-bezier(0.25, 1, 0.5, 1)` |
+| Plegar una tarjeta | 260 ms en altura | la de entrada |
+| Cambio de texto en un botón | 140 ms, 3 px | la de entrada |
+| Confirmación (check, número nuevo) | 350 ms | resorte, `bounce: 0.35` |
+| Cielo al abrir el Negocio | 500 ms, sale hacia arriba | la de entrada |
+
+- Confirma en el lugar donde se tocó: el botón o la tarjeta cambia, sin avisos en una esquina.
+- Lo que aparece sale de donde estaba: una Sección nueva entra al sidebar, una tarjeta se pliega en su sitio.
+- Anima `transform` y `opacity`. Altura y ancho solo para plegar tarjetas y ocultar el Hilo.
+- Respeta `prefers-reduced-motion`: el cambio de estado se queda y el movimiento se va.
+- Las acciones del teclado no llevan animación.
+
+## Estructura
+
+### Entrada: Alba
+
+**Decidido.** Como Lovable: cielo completo, `¿Qué hace tu negocio?` al centro y una caja grande que escribe ejemplos sola mientras está vacía y se detiene cuando el Dueño escribe. Debajo sube una hoja con dos pestañas: `Plantillas` y `Lo que puede hacer`.
+
+**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Destino**: hoy el armado no parte de plantillas.
+
+### Armado
+
+**Decidido.** A la izquierda, la carta del agente: un paso a la vez, con un titular que cambia, la decisión en tarjeta y `Lo que ya sé` marcándose fila por fila. A la derecha, **Tu Panel**, que se va armando con lo que el agente sabe: primero en gris, luego con datos reales, en ceros hasta abrir. En teléfono el Panel queda debajo. Termina en una tarjeta con el link y `Abrir [Negocio]`, que lleva a la operación.
+
+### Operación: tres paños
+
+**Decidido.** En PC, de izquierda a derecha:
+
+1. **Sidebar** abierto, de 216 px, que colapsa a íconos.
+2. **Hilo**, de 348 px.
+3. **Lienzo**, enmarcado, con el nombre de la Sección, el estado y Publicar.
+
+**Ocultar** pliega el Hilo y deja una caja flotante centrada abajo. Un caret abre la conversación encima del lienzo, y un pin lo fija de nuevo. Si llega una decisión, la conversación se abre sola.
+
+**En teléfono** (menos de 1024 px): el sidebar es un cajón, Publicar va arriba, y `Tu agente` y `Tu negocio` son dos pestañas abajo. Un punto `--ojo` en `Tu agente` avisa que algo espera decisión.
+
+### Sidebar
+
+**Decidido.** Lista simple: Inicio, Casos, Conversaciones, Pedidos, Clientes y Tablero. Debajo, `Tus secciones`, con las propias del Negocio. Un número solo donde algo espera decisión. Arriba, el Negocio; abajo, los Créditos de la Prueba gratis y el Dueño.
+
+### Inicio: Hoy
+
+**Decidido.** Una frase con las cifras en negrita, `Necesita tu ojo` con cada cosa y su acción, y `Lo último`. Lo resuelto sale de la lista enseguida. Recién abierto el Negocio, muestra `Todavía no te ha escrito nadie.` con el link para copiar.
+
+La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y una agenda de citas. Cada cifra sale de un dato real, nunca del modelo.
+
+### Tablero
+
+**Decidido.** Sección aparte. Cuatro tarjetas de Indicadores, gráfica, reparto y tabla reciente, en la forma de Eurocolombia.
+
+### Pedidos: Lista
+
+**Decidido.** Agrupados por lo que falta hacer, con este orden: Con novedad, Por confirmar, Confirmado, Enviado y Entregado. Encabezados pegajosos con su cuenta. Filas densas, sin gráficas. En teléfono se esconden número, ciudad y tiempo.
+
+**Derivado.** Conversaciones y Clientes siguen esta densidad. Conversaciones es lista y detalle en dos columnas, y en teléfono una pantalla a la vez. Las tablas esconden columnas según el ancho, de modo que el nombre y el estado quepan sin desplazar.
+
+## Hilo: Nota
+
+**Decidido.** El agente escribe sin globo, en `--texto-hilo`. El Dueño, en un globo `--secondary` a la derecha. El trabajo del agente es un **rastro**: una línea tenue con un check, o tres puntos mientras trabaja. Encima del redactor van hasta dos sugerencias como chips.
+
+### Tarjeta de decisión
+
+**Decidido.** Queda en medio de la conversación, y hay tarjeta siempre. El botón depende de quién lo nota:
+
+| Caso | La tarjeta muestra | Acciones | Al resolver |
+|---|---|---|---|
+| Caso | Lo que escribió el Cliente, la respuesta en `--muted` y la regla que aplica | `Enviar`, `Descartar` | `Enviada a [Cliente]`, `Descartada` |
+| Indicador o Sección | El resultado con datos reales, ya en la vista previa | `Deshacer` | `Deshecha`, `Publicada` |
+| Regla o conocimiento | La regla y una conversación de prueba | `Aplicar`, `Descartar` | `Aplicada`, `Publicada`, `Descartada` |
+| Lo leído de una página | Lo encontrado | `Están bien y no falta ninguno`, `Corregir` | `Confirmada` |
+
+Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una línea que dice a quién le llega.
+
+**Constancia.** Al resolver, el cuerpo se pliega y quedan dos líneas: de qué se trataba y qué pasó, con un caret para volver a verlo. Desenlaces que ya existen en el código: `Aplicada por [Dueño]`, `y revertida después` y `Venció sin aplicarse. Pídela de nuevo si todavía la quieres.`
+
+**Hoy el código** aplica un Indicador o una Sección sin tarjeta, y una regla aplicada queda funcionando de una vez. La tarjeta y la vista previa de esta tabla llegan con el ticket de Publicar.
+
+### Redactor
+
+**Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto.
+
+## Publicar
+
+**Destino**, se construye en [Publicar](https://github.com/danielmedinac22/amanece/issues/34). Lo aplicado queda en vista previa hasta que el Dueño lo manda a su link.
+
+| Estado | Botón | Lienzo |
+|---|---|---|
+| Nada pendiente | `Publicado`, con punto `--bien`, contorno | `Atendiendo` |
+| Con cambios | `Publicar` con su número, principal | `Vista previa`; el bloque nuevo con borde punteado `--ojo` |
+| Mientras corre | `Publicando` con indicador | `Vista previa` |
+
+Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, por cada cosa, si la notan los Clientes o solo la ve el equipo. Después, el agente lo confirma en el Hilo.
+
+## Palabras
+
+- Escribe de tú, en español de Colombia, con frases cortas y como le hablarías a quien atiende su negocio.
+- Usa los nombres de `docs/diseno.md` y los sinónimos evitados se quedan fuera, también los técnicos: Panel, nunca dashboard ni CRM; Publicar, nunca deploy.
+- Cada acción conserva su nombre de principio a fin: `Aplicar` termina en `Aplicada`, `Enviar` en `Enviada`, `Publicar` en `Publicado`.
+- **Derivado.** Un error dice qué pasó y qué hacer, sin disculpas. Un estado vacío dice qué sigue.
+- Las cifras son datos del Negocio. Las promesas de precio y tiempo salen de lo que el Dueño confirmó.
+- Plata con punto de mil, sin decimales: `$1.284.000`.
+
+## Lo que falta decidir
+
+- **Portada pública.** Alba es la entrada del armado. Si la portada comparte esa pantalla o lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
+- **Clientes, formularios, ajustes y errores** no tuvieron ronda. Son **Derivado**.
+- **Varias decisiones a la vez** en el Hilo.
+- **Lo que ve el equipo** cuando exista un rol distinto del Dueño.
