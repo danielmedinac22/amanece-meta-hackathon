@@ -6,15 +6,16 @@
  *
  *   pnpm tsx scripts/probar-sesion.mts
  *   pnpm tsx scripts/probar-sesion.mts --capturas=/ruta/a/carpeta
+ *   pnpm tsx scripts/probar-sesion.mts --start     con `next build` y `next start`
  */
-import { spawn } from 'node:child_process'
-import { randomBytes, scryptSync } from 'node:crypto'
+import { execSync, spawn } from 'node:child_process'
+import { randomBytes, randomUUID, scryptSync } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { config } from 'dotenv'
 import { eq, inArray, like, sql } from 'drizzle-orm'
 import { afirmar, terminar } from './afirmar.mjs'
-import { clerkConLlave, CUENTAS_VIEJAS_SQL, decidir, digestDeClerk, importar, type CuentaVieja } from './importar-cuentas.mjs'
+import { clerkConLlave, CUENTAS_VIEJAS_SQL, decidir, digestDeClerk, DUENOS_SIN_CUENTA_SQL, importar, type CuentaVieja } from './importar-cuentas.mjs'
 import { abrirNavegador } from './navegador.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -33,6 +34,8 @@ const correo = (quien: string) => `sesion-${quien}-${marca}+clerk_test@example.c
 const clerk = clerkConLlave(LLAVE)
 const usuarios: string[] = []
 const negocios: string[] = []
+const filasDeNeon: string[] = []
+let cuentaSinVerificar: { clerkId: string; email: string; negocio: string; duenoId: string; idViejo: string } | null = null
 
 type UsuarioCreado = { id: string }
 
@@ -70,7 +73,9 @@ const cuantosNegocios = () => db.$count(esquema.negocios)
 
 const puerto = 3400 + Math.floor(Math.random() * 400)
 const base = `http://localhost:${puerto}`
-const servidor = spawn('pnpm', ['exec', 'next', 'dev', '-p', String(puerto)], {
+const conStart = process.argv.includes('--start')
+if (conStart) execSync('pnpm exec next build', { stdio: 'pipe' })
+const servidor = spawn('pnpm', ['exec', 'next', conStart ? 'start' : 'dev', '-p', String(puerto)], {
   stdio: ['ignore', 'pipe', 'pipe'],
   detached: true,
   env: { ...process.env, ENVIO_SIMULADO: '1', EQUIPO_DE_AMANECE: correo('equipo') + ',' + correo('equipo-sin') },
@@ -91,12 +96,16 @@ function archivos(carpeta: string): string[] {
 }
 
 async function limpiar() {
-  for (const id of usuarios) await clerk.pedir(`/users/${id}`, 'DELETE').catch(() => {})
-  const creados = await db.select({ id: esquema.negocios.id }).from(esquema.negocios).where(inArray(esquema.negocios.id, negocios))
-  // Los Dueños nuevos de esta corrida nacen con su propio Negocio: se encuentran por el correo de la corrida.
+  // Por el correo de la corrida, para borrar también lo que se creó en el navegador o quedó a medias.
+  const deLaCorrida = (await clerk.pedir(`/users?query=${encodeURIComponent(marca)}&limit=100`)) as UsuarioCreado[]
+  for (const id of new Set([...usuarios, ...deLaCorrida.map((u) => u.id)])) await clerk.pedir(`/users/${id}`, 'DELETE').catch(() => {})
   const nuevos = await db.select({ negocio: esquema.duenos.negocioId }).from(esquema.duenos).where(like(esquema.duenos.email, `sesion-%-${marca}+clerk_test@example.com`))
-  const todos = [...new Set([...creados.map((n) => n.id), ...nuevos.map((d) => d.negocio)])]
+  const todos = [...new Set([...negocios, ...nuevos.map((d) => d.negocio)])]
   if (todos.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, todos))
+  for (const id of filasDeNeon) {
+    await db.execute(sql`delete from neon_auth.account where "userId" = ${id}::uuid`)
+    await db.execute(sql`delete from neon_auth."user" where id = ${id}::uuid`)
+  }
 }
 
 try {
@@ -159,9 +168,12 @@ try {
   for (const accion of ['aprobar', 'descartar', 'deshacer']) {
     const r = await ver(`/api/propuestas/${propuestaDeBeto.id}/${accion}`, tokenDeAna, { method: 'POST', body: '{}' })
     const [fila] = await db.select({ estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.id, propuestaDeBeto.id))
-    afirmar(`Ana no puede ${accion} la propuesta de Beto`, fila.estado === 'espera_al_dueno', { estado: r.status, fila })
-    console.log(`    responde ${r.status}: ${(await r.text()).slice(0, 120)}`)
+    const respuesta = (await r.json()) as { tipo?: string }
+    afirmar(`Ana no puede ${accion} la propuesta de Beto: para ella no existe`, r.status === 200 && respuesta.tipo === 'no_existe' && fila.estado === 'espera_al_dueno', { estado: r.status, respuesta, fila })
   }
+  const deBeto = await ver(`/api/propuestas/${propuestaDeBeto.id}/descartar`, tokenDeBeto, { method: 'POST', body: '{}' })
+  const [yaDescartada] = await db.select({ estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.id, propuestaDeBeto.id))
+  afirmar('Control: Beto sí puede descartar la suya, con la misma ruta', deBeto.status === 200 && yaDescartada.estado !== 'espera_al_dueno', { estado: deBeto.status, yaDescartada })
   const r401 = await ver('/api/dueno/chat', `${tokenDeAna.slice(0, -2)}xx`)
   afirmar('Un token alterado responde 401', r401.status === 401, r401.status)
 
@@ -175,8 +187,9 @@ try {
   afirmar('La fila no se tocó', (await usuarioIdDe(c.dueno.id)) === c.idViejo)
   afirmar('No nació un Negocio', (await cuantosNegocios()) === antes)
   const panelEnEspera = await (await ver('/panel', tokenSinVerificar)).text()
-  afirmar('El Panel pinta la espera, sin el Negocio', panelEnEspera.includes('Estoy pasando tu cuenta') && !panelEnEspera.includes(c.negocio.nombre))
-  afirmar('Tampoco actúa', !(await ver(`/api/publicar`, tokenSinVerificar, { method: 'POST', body: '{}' })).ok)
+  afirmar('El Panel pinta la espera, sin el Negocio', panelEnEspera.includes('Confirma tu correo') && !panelEnEspera.includes(c.negocio.nombre))
+  const publicarSinVerificar = await ver('/api/publicar', tokenSinVerificar, { method: 'POST', body: '{}' })
+  afirmar('Tampoco actúa: para las rutas del Negocio no hay Dueño', publicarSinVerificar.status === 401, publicarSinVerificar.status)
 
   console.log('Un Dueño viejo que se registra antes de importar no termina en un Negocio vacío')
   const d = await sembrar('dora')
@@ -187,14 +200,10 @@ try {
   afirmar('Espera con 409', doraEspera.status === 409, doraEspera.status)
   afirmar('No nació un Negocio y su fila sigue igual', (await cuantosNegocios()) === antesDeDora && (await usuarioIdDe(d.dueno.id)) === d.idViejo)
   const cuentaDeDora: CuentaVieja = { id: d.idViejo, nombre: 'Dora', email: d.email, verificado: true, contrasena: null, correoDelDueno: d.email }
-  const importada = await importar([cuentaDeDora], clerk, true)
+  const importada = await importar([cuentaDeDora], clerk, { deVerdad: true })
   afirmar('El importador le pone el id viejo a su cuenta de Clerk', importada.poner_id_viejo.length === 1, importada)
   const hiloDeDora = await (await ver('/api/dueno/chat', tokenDeDora)).text()
   afirmar('Y al siguiente sondeo llega a su Negocio', hiloDeDora.includes(d.linea) && (await usuarioIdDe(d.dueno.id)) === dora)
-
-  console.log('Quien se registra con el correo de un Dueño sin external_id no entra a su Negocio')
-  const hiloDeOtro = await (await ver('/api/dueno/chat', tokenDeDora)).text()
-  afirmar('Nadie más ve la línea de Ana', !hiloDeOtro.includes(a.linea))
 
   console.log('Quien es nuevo')
   const nuevo = await crearUsuario({ email_address: [correo('nuevo')], first_name: 'Nueva' })
@@ -230,9 +239,9 @@ try {
     { id: `vieja-rara-${marca}`, nombre: null, email: correo('vieja-rara'), verificado: true, contrasena: '$2b$10$otra-forma', correoDelDueno: correo('otro-correo') },
     { id: `vieja-sin-${marca}`, nombre: null, email: correo('vieja-sin'), verificado: false, contrasena: hashDeLaPrueba, correoDelDueno: null },
   ]
-  const simulada = await importar(viejas, clerk, false)
+  const simulada = await importar(viejas, clerk, { deVerdad: false })
   afirmar('Sin --de-verdad no escribe en Clerk', simulada.crear.length === 3 && (await clerk.porCorreo(viejas[0].email)) === null, simulada)
-  const primera = await importar(viejas, clerk, true)
+  const primera = await importar(viejas, clerk, { deVerdad: true })
   afirmar('Crea las verificadas y omite la otra', primera.crear.length === 3 && primera.omitir_sin_verificar.length === 1, primera)
   afirmar('Avisa de la contraseña que no puede pasar y del correo distinto', primera.sinDigest.length === 2 && primera.correoDistintoDelDueno.length === 1, primera)
   for (const v of viejas) {
@@ -240,15 +249,38 @@ try {
     if (u) usuarios.push(u.id)
   }
   afirmar('La sin verificar no llegó a Clerk', (await clerk.porCorreo(viejas[3].email)) === null)
-  const segunda = await importar(viejas, clerk, true)
+  const segunda = await importar(viejas, clerk, { deVerdad: true })
   afirmar('La segunda corrida no cambia nada', segunda.ya_estaba.length === 3 && segunda.crear.length === 0 && segunda.omitir_sin_verificar.length === 1, segunda)
   const conClave = await clerk.porIdViejo(viejas[0].id, viejas[0].email)
   const verifica = (await clerk.pedir(`/users/${conClave?.id}/verify_password`, 'POST', { password: CLAVE })) as { verified: boolean }
   afirmar('La contraseña vieja sirve en Clerk', verifica.verified === true)
-  afirmar('Una cuenta de Clerk con otro id viejo choca', decidir(viejas[1], null, { id: 'u', idViejo: 'otro', correoVerificado: true }).accion === 'choca')
-  afirmar('Un correo sin verificar en Clerk choca', decidir(viejas[1], null, { id: 'u', idViejo: null, correoVerificado: false }).accion === 'choca')
-  const lectura = await db.execute(sql.raw(CUENTAS_VIEJAS_SQL))
-  afirmar('La lectura de cuentas viejas corre contra el esquema de verdad', Array.isArray(lectura.rows), lectura)
+  afirmar('Una cuenta de Clerk con otro id viejo choca', decidir(viejas[1], null, { id: 'u', idViejo: 'otro', correoVerificado: true, tieneDueno: false }).accion === 'choca')
+  afirmar('Un correo sin verificar en Clerk choca', decidir(viejas[1], null, { id: 'u', idViejo: null, correoVerificado: false, tieneDueno: false }).accion === 'choca')
+  afirmar('Una cuenta de Clerk que ya tiene su Negocio choca, y no deja huérfano el de antes', decidir(viejas[1], null, { id: 'u', idViejo: null, correoVerificado: true, tieneDueno: true }).accion === 'choca')
+  afirmar('Sin verificar y con la bandera, se crea por confirmar', (() => { const d = decidir(viejas[3], null, null, true); return d.accion === 'crear' && d.confirmaAlEntrar })())
+
+  console.log('La lectura de cuentas viejas, con filas de verdad en neon_auth')
+  const idDeNeon = randomUUID()
+  await db.execute(sql`insert into neon_auth."user" (id, name, email, "emailVerified") values (${idDeNeon}::uuid, ${'Fila Vieja'}, ${correo('fila-vieja')}, ${false})`)
+  await db.execute(sql`insert into neon_auth.account (id, "accountId", "providerId", "userId", password, "updatedAt") values (${randomUUID()}::uuid, ${idDeNeon}, ${'credential'}, ${idDeNeon}::uuid, ${hashDeLaPrueba}, now())`)
+  filasDeNeon.push(idDeNeon)
+  const f = await sembrar('fila', correo('fila-vieja'))
+  await db.update(esquema.duenos).set({ usuarioId: idDeNeon }).where(eq(esquema.duenos.id, f.dueno.id))
+  const huerfano = await sembrar('huerfano')
+  const filas = (await db.execute(sql.raw(CUENTAS_VIEJAS_SQL))).rows as CuentaVieja[]
+  const leida = filas.find((x) => x.id === idDeNeon)
+  afirmar('Lee la cuenta, su contraseña y el correo de su Dueño', leida?.verificado === false && digestDeClerk(leida.contrasena) !== null && leida.correoDelDueno === correo('fila-vieja'), leida)
+  const sinCuenta = (await db.execute(sql.raw(DUENOS_SIN_CUENTA_SQL))).rows as { id: string }[]
+  afirmar('Reporta al Dueño que no tiene cuenta vieja', sinCuenta.some((x) => x.id === huerfano.dueno.id) && !sinCuenta.some((x) => x.id === f.dueno.id), sinCuenta.length)
+  if (leida) {
+    const sinBandera = await importar([leida], clerk, { deVerdad: true })
+    afirmar('Sin la bandera, la cuenta sin verificar se queda afuera', sinBandera.omitir_sin_verificar.length === 1 && (await clerk.porCorreo(leida.email)) === null, sinBandera)
+    const conBandera = await importar([leida], clerk, { deVerdad: true, conSinVerificar: true })
+    afirmar('Con la bandera se crea con el correo por confirmar', conBandera.crear.length === 1, conBandera)
+    const importadaSinVerificar = await clerk.porIdViejo(leida.id, leida.email)
+    afirmar('Y en Clerk el correo sigue sin verificar', importadaSinVerificar?.correoVerificado === false, importadaSinVerificar)
+    if (importadaSinVerificar) cuentaSinVerificar = { clerkId: importadaSinVerificar.id, email: leida.email, negocio: f.negocio.nombre, duenoId: f.dueno.id, idViejo: idDeNeon }
+  }
 
   console.log('En un navegador')
   const nav = await abrirNavegador()
@@ -256,6 +288,7 @@ try {
   const { token: testingToken } = (await clerk.pedir('/testing_tokens', 'POST')) as { token: string }
   const dominio = atob(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!.split('_')[2]).replace(/\$$/, '')
   await nav.conTestingToken(testingToken, dominio)
+  await nav.ajustar(1440, 900, false)
   const capturar = async (nombre: string) => {
     if (!carpetaDeCapturas) return
     await nav.captura(join(carpetaDeCapturas, `${nombre}-pc-claro.png`), 1440, 900, false)
@@ -302,16 +335,17 @@ try {
     const claveDelRegistro = filaDelRegistro?.usuarioId
     if (claveDelRegistro) usuarios.push(claveDelRegistro)
     const llegoElMensaje = async () => {
-      if (!filaDelRegistro) return false
+      if (!filaDelRegistro) return 0
       const filas = await db.select({ rol: esquema.mensajesDueno.rol, mensaje: esquema.mensajesDueno.mensaje }).from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.negocioId, filaDelRegistro.negocioId))
-      return filas.some((m) => m.rol === 'dueno' && JSON.stringify(m.mensaje).includes(palabras))
+      return filas.filter((m) => m.rol === 'dueno' && JSON.stringify(m.mensaje).includes(palabras)).length
     }
-    let llego = false
+    let llego = 0
     for (let i = 0; i < 60 && !llego; i++) {
-      llego = await llegoElMensaje()
+      llego = Number(await llegoElMensaje())
       if (!llego) await new Promise((r) => setTimeout(r, 1000))
     }
-    afirmar('El texto llegó una vez al Hilo como mensaje del Dueño', llego)
+    await new Promise((r) => setTimeout(r, 3000))
+    afirmar('El texto llegó una sola vez al Hilo como mensaje del Dueño', Number(await llegoElMensaje()) === 1, await llegoElMensaje())
     afirmar('Ya no queda guardado en el navegador', await nav.hastaQue(`!Object.values(localStorage).some((v) => String(v).includes(${JSON.stringify(palabras)}))`, 60_000))
     await capturar('armado')
 
@@ -350,6 +384,32 @@ try {
     afirmar('Volver atrás no muestra el Panel', await nav.hastaQue(`location.pathname === '/entrar' && !document.body.innerText.includes(${JSON.stringify(a.negocio.nombre)})`, 30_000), await nav.ruta())
     await nav.ir(`${base}/panel`)
     afirmar('/panel ya no deja pasar', await nav.hastaQue(`location.pathname === '/entrar'`), await nav.ruta())
+
+    if (cuentaSinVerificar) {
+      const c = cuentaSinVerificar
+      await nav.ir(`${base}/entrar`)
+      await nav.escribe('email', c.email)
+      await nav.escribe('password', CLAVE)
+      await nav.clic('Entrar')
+      afirmar('Una cuenta sin verificar entra con su contraseña y pide confirmar el correo', await nav.ve('Confirma tu correo', 60_000), await nav.texto())
+      afirmar('Sin confirmar no llega a su Negocio', !(await nav.texto()).includes(c.negocio) && (await usuarioIdDe(c.duenoId)) === c.idViejo)
+      await capturar('cuenta-por-confirmar')
+      await nav.clic('Mandarme el código')
+      afirmar('Le manda el código', await nav.ve('Escríbelo aquí'), await nav.texto())
+      await nav.escribe('codigo', CODIGO_DE_PRUEBA)
+      await nav.clic('Confirmar')
+      afirmar('Con el código llega a su Negocio', await nav.ve(c.negocio, 90_000), (await nav.texto()).slice(0, 300))
+      afirmar('Y su fila pasó al id de Clerk', (await usuarioIdDe(c.duenoId)) === c.clerkId)
+
+      await nav.ir(`${base}/`)
+      await nav.hastaQue(`Boolean(document.querySelector('textarea'))`)
+      await nav.evalua(`(() => { for (const c of document.cookie.split(';')) { const n = c.split('=')[0].trim(); if (n.startsWith('__session')) document.cookie = n + '=; Max-Age=0; path=/' } return true })()`)
+      await nav.clic('Entrar')
+      afirmar('Con la sesión viva y el token vencido, Entrar en Alba vuelve a su Negocio', await nav.ve(c.negocio, 90_000), await nav.ruta())
+      await nav.hastaQue(`window.Clerk?.loaded === true`)
+      await nav.evalua(`window.Clerk.signOut({ redirectUrl: '/entrar' })`)
+      await nav.hastaQue(`location.pathname === '/entrar'`)
+    }
 
     await nav.clic('Seguir con Google')
     afirmar('Seguir con Google lleva a Google', await nav.hastaQue(`location.hostname === 'accounts.google.com'`), await nav.evalua('location.hostname'))

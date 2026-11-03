@@ -31,12 +31,13 @@ const [ladera] = await db.select().from(esquema.negocios).where(eq(esquema.negoc
 if (!ladera) throw new Error('LADERA no está sembrado en esta base.')
 const usuario = (await clerk.pedir('/users', 'POST', { email_address: [email], password: clave, first_name: 'Recorrido' })) as { id: string }
 const [dueno] = await db.insert(esquema.duenos).values({ negocioId: ladera.id, usuarioId: usuario.id, nombre: 'Recorrido', email }).returning()
+const turnosAntes = await db.$count(esquema.turnos, eq(esquema.turnos.negocioId, ladera.id))
 
 const nav = await abrirNavegador()
-const { token } = (await clerk.pedir('/testing_tokens', 'POST')) as { token: string }
-await nav.conTestingToken(token, atob(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!.split('_')[2]).replace(/\$$/, ''))
 
 try {
+  const { token } = (await clerk.pedir('/testing_tokens', 'POST')) as { token: string }
+  await nav.conTestingToken(token, atob(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!.split('_')[2]).replace(/\$$/, ''))
   await nav.ir(`${base}/entrar`)
   await nav.escribe('email', email)
   await nav.escribe('password', clave)
@@ -116,11 +117,14 @@ try {
   afirmar('recorrer-panel terminó sin lanzar', false, e)
 } finally {
   nav.cerrar()
+  await clerk.pedir(`/users/${usuario.id}`, 'DELETE').catch((e) => afirmar('recorrer-panel borró su usuario', false, e))
+  await db.delete(esquema.turnos).where(and(eq(esquema.turnos.negocioId, ladera.id), gte(esquema.turnos.creado, inicio)))
+  await db.delete(esquema.capacidadesFaltantes).where(and(eq(esquema.capacidadesFaltantes.negocioId, ladera.id), gte(esquema.capacidadesFaltantes.creado, inicio)))
   await db.delete(esquema.elementos).where(and(eq(esquema.elementos.negocioId, ladera.id), gt(esquema.elementos.version, ladera.version)))
   await db.update(esquema.negocios).set({ version: ladera.version }).where(eq(esquema.negocios.id, ladera.id))
   await db.delete(esquema.propuestas).where(and(eq(esquema.propuestas.negocioId, ladera.id), gte(esquema.propuestas.creado, inicio)))
   await db.delete(esquema.cambios).where(and(eq(esquema.cambios.negocioId, ladera.id), gte(esquema.cambios.creado, inicio)))
   await db.delete(esquema.duenos).where(eq(esquema.duenos.id, dueno.id))
-  await clerk.pedir(`/users/${usuario.id}`, 'DELETE')
+  afirmar('LADERA queda con sus turnos de antes', (await db.$count(esquema.turnos, eq(esquema.turnos.negocioId, ladera.id))) === turnosAntes)
 }
 terminar()

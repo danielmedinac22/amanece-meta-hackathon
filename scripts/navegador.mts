@@ -3,7 +3,7 @@
  * un Chrome por escena y aquí la sesión tiene que sobrevivir de una página a otra.
  */
 import { spawn } from 'node:child_process'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -111,6 +111,7 @@ export async function abrirNavegador() {
     },
     cerrar: () => {
       ws.close()
+      chrome.once('exit', () => rmSync(perfil, { recursive: true, force: true }))
       chrome.kill()
     },
   }
