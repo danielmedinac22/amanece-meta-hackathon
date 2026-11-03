@@ -50,6 +50,13 @@
       "when": 1793732208245,
       "tag": "0006_pedidos_confirmado",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793736049870,
+      "tag": "0007_casos_regla_y_lado",
+      "breakpoints": true
     }
   ]
 }

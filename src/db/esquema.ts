@@ -120,8 +120,9 @@ export const casos = pgTable(
     pedidoId: uuid('pedido_id').references(() => pedidos.id, { onDelete: 'set null' }),
     titulo: text('titulo').notNull(),
     detalle: text('detalle').notNull().default(''),
-    /** Lo que el Agente del dueño propone: la respuesta al Cliente y lo que hay que hacer. */
     propuesta: text('propuesta').notNull().default(''),
+    porTuLado: text('por_tu_lado').notNull().default(''),
+    reglas: text('reglas').array().notNull().default(sql`'{}'::text[]`),
     estado: text('estado', { enum: ['abierto', 'esperando_dueno', 'resuelto'] })
       .notNull()
       .default('abierto'),
@@ -362,6 +363,7 @@ export const mensajesSalientes = pgTable(
     uniqueIndex('mensajes_salientes_una_respuesta').on(t.enRespuestaA).where(sql`${t.veredicto} = 'sale'`),
     index('mensajes_salientes_negocio').on(t.negocioId, t.creado),
     index('mensajes_salientes_telefono').on(t.telefono, t.creado),
+    index('mensajes_salientes_caso').on(t.casoId).where(sql`${t.casoId} is not null`),
     check('mensajes_salientes_motivo', sql`(${t.veredicto} = 'sale') = (${t.motivo} is null)`),
   ],
 )
