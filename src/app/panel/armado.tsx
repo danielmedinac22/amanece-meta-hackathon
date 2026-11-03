@@ -13,8 +13,9 @@ import { decisionesEnEspera } from '@/negocio/partes-del-hilo'
 import { abrioElAgente, cuantoGuardo, estaLeyendo, pasoDelArmado, titularDe, ultimoTurno } from '@/nucleo/armado-paso'
 import type { DatosDelArmado, FilaQueYaSe, ProductoEnElPanel } from '@/nucleo/armado'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { plantillaDelHilo } from '@/nucleo/plantillas'
 import { useHilo } from './hilo'
-import { MensajeDelHilo, Puntos, Redactor } from './hilo-vista'
+import { MensajeDelHilo, Puntos, RastroDePlantilla, Redactor } from './hilo-vista'
 import { SECCIONES } from './secciones'
 import { Tarjeta } from './tarjeta'
 import { tocarTarjeta, type TocarTarjeta } from './tocar-tarjeta'
@@ -153,6 +154,8 @@ function Conversacion({ messages, yaEstaban, tarjeta }: { messages: UIMessage[];
   const [verAntes, setVerAntes] = useState(false)
   const { antes, turno } = ultimoTurno(messages)
   const entra = (m: UIMessage) => messages.indexOf(m) >= yaEstaban
+  // La línea de la plantilla queda antes del último turno, y el rastro se ve aunque lo anterior esté plegado.
+  const plantillaPlegada = verAntes ? null : plantillaDelHilo(antes)
   if (!messages.length)
     return (
       <p className="text-(length:--texto-hilo) leading-normal text-pretty">
@@ -167,6 +170,7 @@ function Conversacion({ messages, yaEstaban, tarjeta }: { messages: UIMessage[];
           <CaretDown className={cn('size-3 transition-transform duration-200 motion-reduce:transition-none', verAntes && 'rotate-180')} />
         </button>
       )}
+      {plantillaPlegada && <RastroDePlantilla id={plantillaPlegada} />}
       {verAntes && antes.map((m) => <MensajeDelHilo key={m.id} m={m} entra={false} tarjeta={tarjeta} />)}
       {turno.map((m) => (
         <MensajeDelHilo key={m.id} m={m} entra={entra(m)} tarjeta={tarjeta} />

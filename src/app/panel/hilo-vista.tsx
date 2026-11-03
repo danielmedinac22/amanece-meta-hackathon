@@ -1,11 +1,12 @@
 'use client'
 
-import { ArrowUp, CaretUp, CheckCircle, Warning } from '@phosphor-icons/react'
+import { ArrowsClockwise, ArrowUp, CaretUp, CheckCircle, Warning } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { PARTE_DE_PLANTILLA, PARTIDAS, plantillaDelHilo, type IdDePlantilla } from '@/nucleo/plantillas'
 import { decisionesEnEspera, decisionQueEspera, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { HiloEnLaOperacion } from './disposicion'
 import { etiquetaDe, Tarjeta } from './tarjeta'
@@ -52,6 +53,16 @@ function etiquetaDelRastro(herramienta: string, parte: { state: string; input?: 
   return typeof url === 'string' ? `Leyendo ${url}` : (ETIQUETAS[herramienta] ?? herramienta)
 }
 
+/** El rastro de que el armado partió de una plantilla. */
+export function RastroDePlantilla({ id }: { id: IdDePlantilla }) {
+  return (
+    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+      <ArrowsClockwise className="size-3.5 shrink-0" />
+      <span>Parto de {PARTIDAS[id].nombre}</span>
+    </div>
+  )
+}
+
 function Rastro({ estado, children }: { estado: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
@@ -78,7 +89,8 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
     avisarDecision(decisionQueEspera(messages, estados))
   }, [messages, estados, avisarDecision])
 
-  const sugerencias = estado === 'listo' ? SUGERENCIAS_LISTO : SUGERENCIAS_ARMANDO
+  const plantilla = plantillaDelHilo(messages)
+  const sugerencias = estado !== 'listo' ? SUGERENCIAS_ARMANDO : plantilla ? PARTIDAS[plantilla].alAbrir : SUGERENCIAS_LISTO
   const enEspera = decisionesEnEspera(messages, estados)
   const posicionDe = (propuesta: string) => {
     const i = enEspera.findIndex((t) => t.propuesta === propuesta)
@@ -140,6 +152,10 @@ export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boo
       ) : (
         m.parts.map((parte, i) => {
           if (parte.type === 'text') return <p key={i} className="text-(length:--texto-hilo) leading-normal text-pretty whitespace-pre-wrap">{parte.text}</p>
+          if (parte.type === PARTE_DE_PLANTILLA) {
+            const id = plantillaDelHilo([m])
+            return id && <RastroDePlantilla key={i} id={id} />
+          }
           const t = tarjetaDeLaParte(parte)
           if (parte.type.startsWith('tool-')) {
             const herramienta = parte.type.slice(5)

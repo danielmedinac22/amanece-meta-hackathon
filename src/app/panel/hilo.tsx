@@ -5,7 +5,7 @@ import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import { useRecogerLoEscrito } from '../lo-escrito'
+import { useRecogerLoEscrito, type LoEscrito } from '../lo-escrito'
 import { VistaDelHilo } from './hilo-vista'
 import { tocarTarjeta } from './tocar-tarjeta'
 
@@ -59,8 +59,19 @@ export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[
   }, [releer, router])
 
   const alEnviar = useCallback((contenido: string) => void sendMessage({ text: contenido }), [sendMessage])
+  const alRecoger = useCallback(
+    async ({ texto, plantilla }: LoEscrito) => {
+      // Si la plantilla falla, el Dueño no pierde lo que escribió: el armado sigue sin ella.
+      const r = plantilla ? await fetch('/api/dueno/plantilla', { method: 'POST', body: JSON.stringify({ plantilla }) }).catch(() => null) : null
+      const linea = r?.ok ? ((await r.json()) as { mensaje: UIMessage | null }).mensaje : null
+      // El sondeo pudo traerla mientras tanto.
+      if (linea) setMessages((ms) => (ms.some((m) => m.id === linea.id) ? ms : [...ms, linea]))
+      alEnviar(texto)
+    },
+    [alEnviar, setMessages],
+  )
   // Se espera el saludo: el primer sondeo da de alta al Dueño, y lo escrito debe quedar en el Hilo después de saludar.
-  useRecogerLoEscrito(messages.length > 0, alEnviar)
+  useRecogerLoEscrito(messages.length > 0, alRecoger)
 
   return { messages, estados, status, error, ocupado, alEnviar, alCambiar }
 }

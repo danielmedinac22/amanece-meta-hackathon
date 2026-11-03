@@ -1,13 +1,14 @@
 'use client'
 
-import { ArrowUp } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { ArrowsClockwise, ArrowUp, X } from '@phosphor-icons/react'
+import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { buttonVariants, Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { guardarLoEscrito, olvidarLoEscrito, useLoEscrito } from './lo-escrito'
+import { PARTIDAS, type IdDePlantilla } from '@/nucleo/plantillas'
+import { guardarLoEscrito, olvidarLoEscrito, useLaPlantillaEscrita, useLoEscrito } from './lo-escrito'
 import { TarjetaPlantilla } from './plantillas'
 import { PLANTILLAS } from './plantillas-datos'
 
@@ -63,17 +64,39 @@ function useMaquina(pausa: boolean) {
   return pausa ? null : t
 }
 
-function Caja({ texto, alCambiar, alEmpezar }: { texto: string; alCambiar: (t: string) => void; alEmpezar: () => void }) {
+function Caja({ texto, plantilla, alCambiar, alEmpezar, alQuitarPlantilla }: { texto: string; plantilla: IdDePlantilla | null; alCambiar: (t: string) => void; alEmpezar: () => void; alQuitarPlantilla: () => void }) {
   const marcador = useMaquina(!!texto) ?? MARCADOR
+  const raiz = useRef<HTMLFormElement>(null)
+  const area = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (!plantilla) return
+    raiz.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
+    area.current?.focus({ preventScroll: true })
+  }, [plantilla])
   return (
     <form
+      ref={raiz}
       onSubmit={(e) => {
         e.preventDefault()
         alEmpezar()
       }}
       className="mt-7 w-full rounded-[calc(var(--radius)+4px)] border border-border bg-card p-3 text-left shadow-alzada transition-[border-color] duration-150 focus-within:border-ring"
     >
+      <AnimatePresence initial={false}>
+        {plantilla && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: ENTRA }} className="overflow-hidden">
+            <div className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-muted py-1 pr-1 pl-2.5 text-[13px]">
+              <ArrowsClockwise className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">Parte de {PARTIDAS[plantilla].nombre}</span>
+              <button type="button" aria-label="Quitar la plantilla" onClick={alQuitarPlantilla} className="flex size-5 items-center justify-center rounded-md hover:bg-background">
+                <X className="size-3" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <textarea
+        ref={area}
         rows={2}
         value={texto}
         onChange={(e) => alCambiar(e.target.value)}
@@ -106,9 +129,13 @@ export function Alba({ alSeguir }: { alSeguir?: () => void }) {
   const guardado = useLoEscrito()
   const [escrito, setEscrito] = useState<string | null>(null)
   const texto = escrito ?? guardado ?? ''
+  const plantillaGuardada = useLaPlantillaEscrita()
+  // `undefined`: el Dueño no ha tocado nada aquí, y vale lo que venía guardado de antes de pedir la cuenta.
+  const [elegida, setElegida] = useState<IdDePlantilla | null>()
+  const plantilla = elegida === undefined ? plantillaGuardada : elegida
 
   const guardar = () => {
-    if (texto.trim()) guardarLoEscrito(texto)
+    if (texto.trim()) guardarLoEscrito(texto, plantilla)
   }
   const empezar = () => {
     if (!texto.trim()) return
@@ -131,11 +158,14 @@ export function Alba({ alSeguir }: { alSeguir?: () => void }) {
         <p className="mt-2 text-lg text-pretty text-foreground/75">Tu agente lo atiende por WhatsApp. Cuéntale y lo arma.</p>
         <Caja
           texto={texto}
+          plantilla={plantilla}
           alCambiar={(t) => {
             setEscrito(t)
+            setElegida(plantilla)
             if (!t.trim()) olvidarLoEscrito()
           }}
           alEmpezar={empezar}
+          alQuitarPlantilla={() => setElegida(null)}
         />
       </main>
       <section className="relative mx-auto w-full max-w-[1120px] px-3 pb-12 sm:px-6">
@@ -149,7 +179,7 @@ export function Alba({ alSeguir }: { alSeguir?: () => void }) {
               <div data-carrusel className="-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto px-5 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
                 {PLANTILLAS.map((p) => (
                   <div key={p.id} className="flex w-[82%] shrink-0 snap-start sm:w-auto">
-                    <TarjetaPlantilla p={p} />
+                    <TarjetaPlantilla p={p} elegida={plantilla === p.id} alRemixear={setElegida} />
                   </div>
                 ))}
               </div>

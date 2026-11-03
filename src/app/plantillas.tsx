@@ -1,10 +1,11 @@
 'use client'
 
-import { Eye, X } from '@phosphor-icons/react'
+import { ArrowsClockwise, Eye, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import type { IdDePlantilla } from '@/nucleo/plantillas'
 import { AEscala } from './panel/armado'
 import type { Plantilla, Tono } from './plantillas-datos'
 
@@ -63,15 +64,23 @@ function PanelDePlantilla({ p }: { p: Plantilla }) {
   )
 }
 
-function VerPlantilla({ p, abierta, alCerrar }: { p: Plantilla; abierta: boolean; alCerrar: () => void }) {
+function VerPlantilla({ p, abierta, alCerrar, alRemixear }: { p: Plantilla; abierta: boolean; alCerrar: () => void; alRemixear: () => void }) {
   return (
     <Dialog open={abierta} onOpenChange={(a) => !a && alCerrar()}>
       <DialogContent className="max-h-[92dvh] gap-0 overflow-y-auto p-0 sm:max-w-4xl" showCloseButton={false}>
-        <div className="flex items-center gap-3 border-b border-border p-4">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
           <div className="min-w-0 flex-1">
             <DialogTitle className="font-heading text-lg font-semibold tracking-tight">{p.nombre}</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">{p.promesa}</DialogDescription>
           </div>
+          <Button
+            onClick={() => {
+              alRemixear()
+              alCerrar()
+            }}
+          >
+            <ArrowsClockwise className="size-4" /> Remixear
+          </Button>
           <Button variant="ghost" size="icon" aria-label="Cerrar" onClick={alCerrar}>
             <X className="size-4" />
           </Button>
@@ -96,16 +105,16 @@ function VerPlantilla({ p, abierta, alCerrar }: { p: Plantilla; abierta: boolean
             </div>
           </div>
         </div>
-        <p className="p-4 text-sm text-pretty text-muted-foreground">{p.negocio} es un negocio de ejemplo.</p>
+        <p className="p-4 text-sm text-pretty text-muted-foreground">{p.negocio} es un negocio de ejemplo. Al remixear, tu agente arma el tuyo con tus datos, y nada de este ejemplo entra a tu negocio.</p>
       </DialogContent>
     </Dialog>
   )
 }
 
-export function TarjetaPlantilla({ p }: { p: Plantilla }) {
+export function TarjetaPlantilla({ p, elegida, alRemixear }: { p: Plantilla; elegida: boolean; alRemixear: (id: IdDePlantilla | null) => void }) {
   const [viendo, setViendo] = useState(false)
   return (
-    <article className="flex w-full min-w-0 flex-col overflow-hidden rounded-(--radius) border border-border bg-card transition-shadow duration-200 hover:shadow-alzada">
+    <article className={cn('flex w-full min-w-0 flex-col overflow-hidden rounded-(--radius) border bg-card transition-[border-color,box-shadow] duration-200', elegida ? 'border-primary shadow-[0_0_0_1px_var(--primary)]' : 'border-border hover:shadow-alzada')}>
       <button type="button" onClick={() => setViendo(true)} className="relative block w-full cursor-zoom-in overflow-hidden border-b border-border text-left" aria-label={`Ver cómo queda ${p.nombre}`}>
         <AEscala ancho={640} alto={400}>
           <PanelDePlantilla p={p} />
@@ -123,11 +132,16 @@ export function TarjetaPlantilla({ p }: { p: Plantilla }) {
           <h3 className="font-heading text-[15.5px] font-semibold tracking-tight">{p.nombre}</h3>
           <p className="mt-0.5 text-[13px] text-pretty text-muted-foreground">{p.promesa}</p>
         </div>
-        <Button size="sm" variant="ghost" className="self-start" onClick={() => setViendo(true)}>
-          <Eye className="size-3.5" /> Ver
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant={elegida ? 'default' : 'secondary'} className="flex-1" onClick={() => alRemixear(elegida ? null : p.id)}>
+            <ArrowsClockwise className="size-3.5" /> {elegida ? 'Elegida' : 'Remixear'}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setViendo(true)}>
+            <Eye className="size-3.5" /> Ver
+          </Button>
+        </div>
       </div>
-      <VerPlantilla p={p} abierta={viendo} alCerrar={() => setViendo(false)} />
+      <VerPlantilla p={p} abierta={viendo} alCerrar={() => setViendo(false)} alRemixear={() => alRemixear(p.id)} />
     </article>
   )
 }
