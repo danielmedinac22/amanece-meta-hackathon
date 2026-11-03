@@ -16,7 +16,7 @@ const { lectorDeGuion } = await import('../src/lib/leer-enlace')
 const { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
 const { mensajesParaElModelo } = await import('../src/negocio/dueno-chat')
 const { aprobar, guardarEnElAlta, proponerLectura, queFaltaParaAbrir, lecturaPendiente } = await import('../src/nucleo/cambios')
-const { armarLectura, buscarProducto, MAXIMO_DE_PRODUCTOS_LEIDOS } = await import('../src/nucleo/cambios/lectura')
+const { armarLectura, buscarProducto, corregirEscritura, corregirLectura, MAXIMO_DE_PRODUCTOS_LEIDOS } = await import('../src/nucleo/cambios/lectura')
 const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
 const { armarEstado, leerAplicado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
@@ -177,6 +177,100 @@ try {
     const comoLoVe = JSON.stringify(await mensajesParaElModelo(hilo, abierto))
     afirmar('Hilo en modo abierto: no trae huella ni líneas, sí el resumen', !comoLoVe.includes('f'.repeat(64)) && !comoLoVe.includes('lo leí') && comoLoVe.includes('Leí 3 cosas'), comoLoVe)
     afirmar('Hilo en modo abierto: al modelo no se le ofrece leer_enlace', !('leer_enlace' in abierto.tools) && 'proponer' in abierto.tools)
+  }
+
+  console.log('\n=== Corregir la tarjeta: quitar y renombrar, sin guardar nada ===')
+  {
+    const c = await negocioArmando('C')
+    await dice(c, `Mi página es ${URL_DE_LA_PAGINA}`)
+    const lectura = await proponerLectura(c, armarLectura(await leerAplicado(c.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
+    const pendiente = async () => (await propuestasDe(c)).filter((f) => f.estado === 'espera_al_dueno')
+    const lineas = (f: { escritura: { elementos: readonly { despues: Elemento | null }[] } } | undefined) => (f?.escritura.elementos ?? []).flatMap((x) => (x.despues?.tipo === 'producto' ? [`${x.despues.nombre} ${x.despues.precio}`] : x.despues?.tipo === 'dato' ? [x.despues.campo] : []))
+    const estadoVacio = async () => (await leerAplicado(c.negocio)).vigentes('producto').length === 0 && (await leerAplicado(c.negocio)).vigentes('dato').length === 0
+
+    const [antes] = await pendiente()
+    const nada = await corregirLectura(c, { quitar: ['Bicicleta'], renombrar: [] })
+    const [igual] = await pendiente()
+    afirmar('corregir: lo que no coincide no cambia la fila ni trae la tarjeta', nada.tarjeta === null && igual?.id === antes?.id, nada)
+    afirmar('corregir: lo que no coincide no le lleva al modelo lo que leyó de la página', !/capuchino|latte|molido/i.test(nada.resumen), nada.resumen)
+
+    const quitado = await corregirLectura(c, { quitar: ['capuchino'], renombrar: [] })
+    const [sinCapuchino] = await pendiente()
+    afirmar('corregir: quitar deja otra tarjeta sin eso y con lo demás', quitado.tarjeta?.propuesta === sinCapuchino?.id && !lineas(sinCapuchino).some((l) => l.startsWith('Capuchino')) && lineas(sinCapuchino).includes('Latte 8000'), lineas(sinCapuchino))
+    afirmar('corregir: quitar no guarda nada', await estadoVacio())
+    const conLaVieja = await aprobar(c, lectura.tarjeta!.propuesta, lectura.tarjeta!.huella)
+    afirmar('corregir: la tarjeta vieja ya no se puede confirmar', conLaVieja.tipo !== 'aplicado' && (await estadoVacio()), conLaVieja)
+
+    const otraVez = await corregirLectura(c, { quitar: ['capuchino'], renombrar: [] })
+    const [mismaFila] = await pendiente()
+    afirmar('corregir: quitar dos veces no crea otra fila', otraVez.tarjeta === null && mismaFila?.id === sinCapuchino?.id, otraVez)
+
+    const renombrado = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'latte', a: 'Café con leche' }] })
+    const [conNombre] = await pendiente()
+    const claveDe = (f: typeof conNombre | undefined, nombre: string) => f?.escritura.elementos.find((x) => x.despues?.tipo === 'producto' && x.despues.nombre === nombre)?.clave
+    afirmar('corregir: renombrar conserva el precio leído y la clave, y sigue esperando el botón', renombrado.tarjeta !== null && lineas(conNombre).includes('Café con leche 8000') && !lineas(conNombre).some((l) => l.startsWith('Latte')) && claveDe(conNombre, 'Café con leche') === claveDe(sinCapuchino, 'Latte'), lineas(conNombre))
+    afirmar('corregir: renombrar no guarda nada', await estadoVacio())
+    afirmar('corregir: la tarjeta nueva muestra el nombre nuevo', renombrado.tarjeta?.lineas.some((l) => l.startsWith('Café con leche · $8.000')) === true, renombrado.tarjeta?.lineas)
+
+    const conCifra = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Molido 500 g', a: 'Molido a 99.000' }] })
+    const [sinCifra] = await pendiente()
+    afirmar('corregir: un nombre no mete una cifra que nadie escribió', conCifra.tarjeta === null && sinCifra?.id === conNombre?.id && !lineas(sinCifra).some((l) => l.includes('99.000')), lineas(sinCifra))
+    await dice(c, 'Se llama Molido fino 500 g')
+    const conSuCifra = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Molido 500 g', a: 'Molido fino 500 g' }] })
+    afirmar('corregir: una cifra que ya traía el nombre sí pasa', conSuCifra.tarjeta !== null, conSuCifra)
+
+    const sinCiudad = await corregirLectura(c, { quitar: ['Ciudad'], renombrar: [] })
+    afirmar('corregir: también quita un dato por su etiqueta', sinCiudad.tarjeta !== null && !lineas((await pendiente())[0]).includes('ciudad'), lineas((await pendiente())[0]))
+
+    await dice(c, 'El espresso vale 7.000')
+    await guardarEnElAlta(c, { nombre: null, rubro: null, quiere: [poner({ tipo: 'producto', nombre: 'Espresso', descripcion: '', precio: el.comoMonto(7000), activo: true })] })
+    const yaEscrito = await corregirLectura(c, { quitar: [], renombrar: [{ de: 'Café con leche', a: 'Espresso' }] })
+    const trasEscrito = await productosDe(c)
+    afirmar('corregir: si el nombre nuevo ya está guardado, la línea leída sale y manda lo que escribió el Dueño', yaEscrito.tarjeta !== null && !lineas((await pendiente())[0]).some((l) => l.startsWith('Café con leche')) && trasEscrito.length === 1 && trasEscrito[0].elemento.precio === 7000, trasEscrito.map((v) => [v.elemento.nombre, v.elemento.precio]))
+
+    const [ultima] = await pendiente()
+    const r = await aprobar(c, ultima!.id, ultima!.huella)
+    const productos = await productosDe(c)
+    afirmar('corregir: el botón guarda lo corregido, con el nombre nuevo y el precio leído, y lo quitado nunca entra', r.tipo === 'aplicado' && productos.some((v) => v.elemento.nombre === 'Molido fino 500 g' && v.elemento.precio === 32000) && !productos.some((v) => /capuchino|latte/i.test(v.elemento.nombre)), productos.map((v) => [v.elemento.nombre, v.elemento.precio]))
+    const sinTarjeta = await corregirLectura(c, { quitar: ['Molido fino 500 g'], renombrar: [] })
+    afirmar('corregir: sin tarjeta esperando no cambia nada, y lo guardado sigue', sinTarjeta.tarjeta === null && (await productosDe(c)).length === productos.length, sinTarjeta)
+
+    const pa = await negocioArmando('E')
+    await proponerLectura(pa, armarLectura(await leerAplicado(pa.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
+    await Promise.all([corregirLectura(pa, { quitar: ['Capuchino'], renombrar: [] }), corregirLectura(pa, { quitar: ['Latte'], renombrar: [] })])
+    const dePa = (await propuestasDe(pa)).filter((f) => f.estado === 'espera_al_dueno')
+    afirmar('corregir: dos a la vez se aplican las dos, sobre una sola tarjeta', dePa.length === 1 && !lineas(dePa[0]).some((l) => /capuchino|latte/i.test(l)), dePa.map(lineas))
+
+    const vacia = await negocioArmando('F')
+    const unaSola: LoExtraido = { productos: [{ nombre: 'Latte', precio: 8000 }], datos: {} }
+    await proponerLectura(vacia, armarLectura(await leerAplicado(vacia.negocio), await leer(URL_DE_LA_PAGINA), unaSola))
+    const vaciada = await corregirLectura(vacia, { quitar: ['Latte'], renombrar: [] })
+    afirmar('corregir: quitar lo último deja sin tarjeta, sin fila esperando y sin guardar', vaciada.tarjeta === null && (await lecturaPendiente(vacia.negocio)) === null && (await productosDe(vacia)).length === 0, vaciada)
+
+    const abierto = await negocioArmando('G')
+    await proponerLectura(abierto, armarLectura(await leerAplicado(abierto.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
+    await db.update(esquema.negocios).set({ estado: 'listo' }).where(eq(esquema.negocios.id, abierto.negocio))
+    const [negocioAbierto] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, abierto.negocio))
+    const [duenoAbierto] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, abierto.dueno))
+    const agenteAbierto = crearAgenteDelDueno(abierto, { negocio: negocioAbierto, dueno: duenoAbierto })
+    const salidaAbierta = (await agenteAbierto.tools.corregir_tarjeta.execute!({ quitar: ['Latte'] }, { toolCallId: 'prueba', messages: [], context: {} })) as { resumen: string; tarjeta: unknown }
+    afirmar('corregir: con el Negocio abierto y una tarjeta esperando también funciona, y no habla de lo que falta para abrir', salidaAbierta.tarjeta !== null && !salidaAbierta.resumen.includes('Para abrir') && !lineas((await propuestasDe(abierto)).find((f) => f.estado === 'espera_al_dueno')).some((l) => /latte/i.test(l)), salidaAbierta)
+
+    const identidad = { id: marcar.negocio('00000000-0000-4000-8000-0000000000f3'), nombre: 'Pura', rubro: 'café', codigo: 'PURB', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'armando' } as unknown as Parameters<typeof armarEstado>[0]
+    const linea = (clave: string, nombre: string, precio: number) => ({ clave: el.comoClave(clave), base: 'nueva' as const, despues: { tipo: 'producto' as const, nombre, descripcion: '', precio: el.comoMonto(precio), activo: true } })
+    const tarjeta = { elementos: [linea('producto:a', 'Tostado claro', 1000), linea('producto:b', 'Tostado oscuro', 2000), linea('producto:c', 'Molino', 3000)], filas: [] as const }
+    const puro = (quitar: string[], renombrar: { de: string; a: string }[]) => corregirEscritura(armarEstado(identidad, el.comoVersion(1), []), tarjeta, { quitar, renombrar }, { escritoPorElDueno: new Set(), vetados: new Set(['Prohibido']) })
+    const dos = puro(['Tostado'], [])
+    afirmar('corregir: dos candidatos no se adivinan', !dos.cambio && dos.resultados[0].tipo === 'varias', dos.resultados)
+    const exacto = puro(['tostado claro'], [])
+    afirmar('corregir: el nombre igual gana', exacto.cambio && exacto.escritura.elementos.length === 2 && exacto.resultados[0].tipo === 'quitada', exacto.resultados)
+    const ocupado = puro([], [{ de: 'Molino', a: 'Tostado claro' }])
+    afirmar('corregir: un nombre de otra línea no se repite', !ocupado.cambio && ocupado.resultados[0].tipo === 'nombre_ocupado', ocupado.resultados)
+    const vetado = puro([], [{ de: 'Molino', a: 'Prohibido' }])
+    afirmar('corregir: un nombre que la validación no deja no entra', !vetado.cambio && vetado.resultados[0].tipo === 'nombre_no_cabe', vetado.resultados)
+    const cifras = (e: typeof tarjeta | ReturnType<typeof puro>['escritura']) => e.elementos.flatMap((x) => (x.despues?.tipo === 'producto' ? [x.despues.precio] : []))
+    const mezcla = puro(['Tostado claro'], [{ de: 'Molino', a: 'Molino de mano' }])
+    afirmar('corregir: ningún precio sale de otro lado que la fila', cifras(mezcla.escritura).every((p) => cifras(tarjeta).includes(p)), cifras(mezcla.escritura))
   }
 
   console.log('\n=== Una segunda lectura descarta la primera ===')

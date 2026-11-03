@@ -17,6 +17,7 @@ const ETIQUETAS: Record<string, string> = {
   leer_enlace: 'Leyó lo que publicaste',
   guardar_conocimiento: 'Guardó lo que sabe de tu negocio',
   guardar_productos: 'Actualizó tu catálogo',
+  corregir_tarjeta: 'Corrigió lo que leyó',
   abrir_negocio: 'Dejó listo a tu agente de clientes',
   ver_negocio: 'Revisó tu negocio',
   proponer: 'Preparó lo que pediste',
