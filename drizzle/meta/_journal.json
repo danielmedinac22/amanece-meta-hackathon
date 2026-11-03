@@ -57,6 +57,13 @@
       "when": 1793736049870,
       "tag": "0007_casos_regla_y_lado",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793744793269,
+      "tag": "0008_toma_de_la_conversacion",
+      "breakpoints": true
     }
   ]
 }
