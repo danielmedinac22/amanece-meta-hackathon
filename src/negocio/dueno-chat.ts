@@ -112,14 +112,18 @@ export type AsuntoDeTarjeta =
  */
 export async function leerHiloConTarjetas(ctx: ContextoDelDueno): Promise<{ mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }> {
   const mensajes = await leerHilo(ctx.dueno)
-  const entradas = await historial(ctx, { propuestas: tarjetasDe(mensajes).map((t) => t.propuesta) })
+  return { mensajes, tarjetas: await estadosDeTarjetas(ctx, tarjetasDe(mensajes).map((t) => t.propuesta)) }
+}
+
+/** La única lectura del estado de una tarjeta: la del Hilo y la de Casos dicen lo mismo porque salen de aquí. */
+export async function estadosDeTarjetas(ctx: ContextoDelDueno, propuestas: readonly string[]): Promise<Record<string, EstadoDeTarjeta>> {
+  const entradas = await historial(ctx, { propuestas })
   const ids = [...new Set(entradas.map((e) => e.aprobadoPor).filter((id) => id !== null))]
   const duenos = ids.length ? await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(and(eq(esquema.duenos.negocioId, ctx.negocio), inArray(esquema.duenos.id, ids))) : []
   const asuntos = await asuntosDe(ctx, entradas.map((e) => e.propuesta))
-  const tarjetas = Object.fromEntries(
+  return Object.fromEntries(
     entradas.map((e) => [e.propuesta, { estado: e.estado, accion: e.accion, aprobadaPor: e.aprobadoPor ? duenos.find((d) => d.id === e.aprobadoPor)?.nombre || 'un Dueño' : null, asunto: asuntos.get(e.propuesta) ?? null } satisfies EstadoDeTarjeta]),
   )
-  return { mensajes, tarjetas }
 }
 
 /** Una sola lectura por sondeo, porque el Hilo la repite cada pocos segundos. Las propuestas ya vienen del Negocio de `ctx`. */
