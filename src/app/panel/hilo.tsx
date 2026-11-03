@@ -5,6 +5,7 @@ import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { useRecogerLoEscrito } from '../lo-escrito'
 import { VistaDelHilo } from './hilo-vista'
 import { tocarTarjeta } from './tocar-tarjeta'
 
@@ -57,7 +58,11 @@ export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[
     router.refresh()
   }, [releer, router])
 
-  return { messages, estados, status, error, ocupado, alEnviar: (contenido: string) => void sendMessage({ text: contenido }), alCambiar }
+  const alEnviar = useCallback((contenido: string) => void sendMessage({ text: contenido }), [sendMessage])
+  // Se espera el saludo: el primer sondeo da de alta al Dueño, y lo escrito debe quedar en el Hilo después de saludar.
+  useRecogerLoEscrito(messages.length > 0, alEnviar)
+
+  return { messages, estados, status, error, ocupado, alEnviar, alCambiar }
 }
 
 export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; estado: 'armando' | 'listo' | null }) {
