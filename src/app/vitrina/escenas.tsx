@@ -10,7 +10,7 @@ import { Alba } from '@/app/alba'
 import { AlbaHastaElArmado } from './alba-de-muestra'
 import { ArmadoDeMuestra } from './armado-de-muestra'
 import { Componentes } from './componentes'
-import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
+import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
 import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
@@ -62,6 +62,8 @@ function llegaUnaDecision() {
 export const ESCENAS: readonly Escena[] = [
   { id: 'alba', titulo: 'Alba: lo primero que ve el Dueño, con la caja de verdad', pinta: () => <Alba /> },
   { id: 'alba-al-armado', titulo: 'Alba: de la caja al armado, ya con cuenta', pinta: () => <AlbaHastaElArmado /> },
+  { id: 'armado-desde-plantilla', titulo: 'Armado: parte de una plantilla', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_DESDE_PLANTILLA} /> },
+  { id: 'hilo-desde-plantilla', titulo: 'Hilo: ya abierto, lo que la plantilla ofrece pedir', pinta: () => <div className="mx-auto h-dvh max-w-md p-4"><HiloDeMuestra messages={HILO_DESDE_PLANTILLA} estado="listo" /></div> },
   { id: 'panel-vacio', titulo: 'Armado: un Dueño recién entrado', pinta: () => <ArmadoDeMuestra datos={ARMADO_VACIO} messages={[]} /> },
   { id: 'panel-armandose', titulo: 'Armado: conversando, sin enlace', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_CONOCIENDO} /> },
   { id: 'armado-leyendo', titulo: 'Armado: leyendo su página', pinta: () => <ArmadoDeMuestra datos={ARMADO_LEYENDO} messages={HILO_LEYENDO} status="streaming" /> },

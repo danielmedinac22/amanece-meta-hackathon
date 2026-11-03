@@ -4,6 +4,7 @@ import type { DatoQueSe, DatosDelArmado, FilaQueYaSe } from '@/nucleo/armado'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
+import { PARTE_DE_PLANTILLA, PARTIDAS, type IdDePlantilla } from '@/nucleo/plantillas'
 
 const mensaje = (id: string, role: 'user' | 'assistant', ...partes: object[]) => ({ id, role, parts: partes }) as UIMessage
 const texto = (text: string) => ({ type: 'text', text })
@@ -78,3 +79,13 @@ export const ARMADO_TEXTOS_LARGOS: DatosDelArmado = {
   filas: filas({ ...SABIDO, Nombre: 'Tostadora y Cafetería de Especialidad La Ladera de Manizales', Envíos: 'A todo el país con Servientrega e Interrapidísimo, de 2 a 8 días hábiles según la ciudad, y el envío cuesta entre $9.000 y $18.000', 'Cómo cobras': 'Contra entrega', Tono: 'De tú, con cariño' }),
   productos: [{ nombre: 'Micro lote Honey de la finca El Mirador, grano entero en bolsa de 250 g', precio: '$132.000', estado: 'Listo' }],
 }
+
+/** La línea que deja `partirDePlantilla`, con el mismo texto. */
+export const lineaDePlantilla = (id: IdDePlantilla): UIMessage => mensaje(`plantilla-${id}`, 'assistant', { type: PARTE_DE_PLANTILLA, data: { id } }, texto(PARTIDAS[id].primero))
+
+export const HILO_DESDE_PLANTILLA: UIMessage[] = [
+  mensaje('t1', 'assistant', texto('¡Hola! Soy tu Agente en Amanece.')),
+  lineaDePlantilla('agenda'),
+  mensaje('t2', 'user', texto('Tengo un consultorio de fisioterapia en Pereira.')),
+  mensaje('t3', 'assistant', texto('Qué bien. ¿Cómo se llama el consultorio y qué servicios das, con su precio?')),
+]

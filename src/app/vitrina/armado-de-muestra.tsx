@@ -7,6 +7,7 @@ import { VistaDelArmado } from '@/app/panel/armado'
 import type { TocarTarjeta } from '@/app/panel/tocar-tarjeta'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { DatosDelArmado } from '@/nucleo/armado'
+import { lineaDePlantilla } from './datos-armado'
 
 const nada = () => {}
 
@@ -26,7 +27,10 @@ export function ArmadoDeMuestra({ datos, messages, tarjetas = {}, status = 'read
   const [ahora, setAhora] = useState({ datos, messages, estados: tarjetas })
   const [salio, setSalio] = useState(false)
   const alEnviar = (t: string) => setAhora((a) => ({ ...a, datos: siguiente ?? a.datos, messages: [...a.messages, { id: `m-${a.messages.length}`, role: 'user', parts: [{ type: 'text', text: t }] }] }))
-  useRecogerLoEscrito(true, alEnviar)
+  useRecogerLoEscrito(true, ({ texto, plantilla }) => {
+    if (plantilla) setAhora((a) => ({ ...a, messages: [...a.messages, lineaDePlantilla(plantilla)] }))
+    alEnviar(texto)
+  })
   if (salio) return despues
   const avanzar = () => setAhora((a) => ({ ...a, datos: siguiente ?? a.datos }))
   const alTocar: TocarTarjeta = async (tarjeta, accion) => {
