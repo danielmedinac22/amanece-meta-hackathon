@@ -213,10 +213,10 @@ const CASOS: Record<string, () => Promise<void>> = {
       ['sellada, con una edición sin publicar encima', { fila: f(5, x), sellada: true, ultima: f(6, y), ultimaSellada: 5 }, { tipo: 'frena', pierde: { hoy: y } }],
       ['sellada, quitada sin publicar encima', { fila: f(5, x), sellada: true, ultima: f(6, null), ultimaSellada: 5 }, { tipo: 'frena', pierde: { hoy: null } }],
       ['sellada, con una edición ya deshecha encima', { fila: f(5, x), sellada: true, ultima: f(7, x), ultimaSellada: 5 }, { tipo: 'frena', pierde: null }],
-      ['sellada, con otra sellada encima', { fila: f(5, x), sellada: true, ultima: f(6, y), ultimaSellada: 6 }, { tipo: 'no_se_puede', porQue: 'la_cambio_otra_publicada' }],
+      ['sellada, con otra sellada encima', { fila: f(5, x), sellada: true, ultima: f(6, y), ultimaSellada: 6 }, { tipo: 'no_se_puede' }],
       ['sin sellar y última', { fila: f(6, x), sellada: false, ultima: f(6, x), ultimaSellada: 5 }, { tipo: 'solo_vista_previa' }],
       ['sin sellar, y la última vale lo mismo', { fila: f(6, x), sellada: false, ultima: f(8, x), ultimaSellada: 5 }, { tipo: 'solo_vista_previa' }],
-      ['sin sellar, con otra distinta encima', { fila: f(6, x), sellada: false, ultima: f(7, y), ultimaSellada: 5 }, { tipo: 'no_se_puede', porQue: 'la_cambio_otra_sin_publicar' }],
+      ['sin sellar, con otra distinta encima', { fila: f(6, x), sellada: false, ultima: f(7, y), ultimaSellada: 5 }, { tipo: 'no_se_puede' }],
       ['una lápida sin sellar y última (D1)', { fila: f(7, null), sellada: false, ultima: f(7, null), ultimaSellada: null }, { tipo: 'solo_vista_previa' }],
     ] as const
     for (const [nombre, entrada, espera] of tabla) {
@@ -307,7 +307,10 @@ const CASOS: Record<string, () => Promise<void>> = {
 
     await aplicar(ana, poner(dato('horario', 'De 6 a 2')))
     const [pub, apl] = await Promise.all([publicarComo(ana, (await pendienteDe(N)).huella), aplicar(beto, poner(dato('pagos', 'Daviplata'), el.comoClave('dato:pagos')))])
-    afirmar('publicar y aplicar a la vez: terminan los dos', pub.tipo === 'publicado' || pub.tipo === 'cambio', { pub, apl })
+    const [alFinal, enLaVista] = [await leerPublicado(N), await leerAplicado(N)]
+    const horarioEsperado = pub.tipo === 'publicado' ? 'De 6 a 2' : 'De 7 a 3'
+    afirmar('publicar y aplicar a la vez: los Clientes tienen lo que Ana vio, o lo de antes si llegó tarde', (pub.tipo === 'publicado' || pub.tipo === 'cambio') && valor(alFinal, HORARIO) === horarioEsperado, { pub, apl, horario: valor(alFinal, HORARIO) })
+    afirmar('publicar y aplicar a la vez: lo que aplicó Beto queda en la vista previa y no les llega a los Clientes', valor(alFinal, PAGOS) === 'Nequi' && valor(enLaVista, PAGOS) === 'Daviplata', { publicado: valor(alFinal, PAGOS), aplicado: valor(enLaVista, PAGOS) })
   },
 
   async frenoConOtraPendiente() {

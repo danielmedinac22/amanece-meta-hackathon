@@ -34,7 +34,7 @@ import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDe
 import { fueraDeVentana } from '../salida/compuerta'
 import type { Motores } from '../clientes/turno'
 import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
-import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
+import { accionDe, filaNueva, HUELLA, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import type { MotorDelRedactor } from './redactar-consulta'
@@ -213,7 +213,6 @@ function estadoDe(f: { readonly estado: EstadoGuardado; readonly vence: Date }, 
 const REVERTIDA = sql<boolean>`exists (select 1 from propuestas r where r.revierte = "propuestas"."id" and r.estado = 'aplicada')`
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const HUELLA = /^[0-9a-f]{64}$/
 const SIN_GASTO: Gasto = { llamadas: 0, usd: 0, ms: 0 }
 const ahora = () => marcar.instante(new Date())
 const instanteDe = (d: Date | null) => (d ? marcar.instante(d) : null)
@@ -460,7 +459,7 @@ async function aplicarConReclamo(a: {
   readonly aprobadoPor: DuenoId | null
   readonly sinBoton: SinBoton | null
 }): Promise<Aplicada | Exclude<ResultadoDeAprobar, { tipo: 'aplicado' }> | { readonly tipo: 'sigue_esperando' }> {
-  const reclamo = await conTransaccion<Reclamo>(async (tx, deshacer) => {
+  const reclamo = await conTransaccion<Reclamo>(async (tx, abortar) => {
     // Un primer clic colgado no deja esperando al segundo para siempre.
     await tx.execute(sql`set local lock_timeout = '10s'`)
     const [fila] = await tx
@@ -480,21 +479,21 @@ async function aplicarConReclamo(a: {
     if (a.sinBoton) {
       // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
       const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
-      if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return deshacer({ tipo: 'sigue_esperando' })
+      if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return abortar({ tipo: 'sigue_esperando' })
     }
     const [acto] = fila.actos
     if (acto) {
       const r = await cerrarCaso(tx, a.negocio, acto)
-      return 'problema' in r ? deshacer({ tipo: 'ya_no_cabe', problemas: [r.problema] }) : { tipo: 'reclamada', fila, respuesta: r, quedo: null }
+      return 'problema' in r ? abortar({ tipo: 'ya_no_cabe', problemas: [r.problema] }) : { tipo: 'reclamada', fila, respuesta: r, quedo: null }
     }
     if (fila.escritura.elementos.length) {
       const r = await escribir(tx, a.negocio, { tipo: 'propuesta', propuesta: a.propuesta }, fila.escritura, await loRevertidoPor(tx, fila))
-      if (r.tipo === 'conflicto') return deshacer(r)
-      if (r.tipo === 'invalida') return deshacer({ tipo: 'ya_no_cabe', problemas: r.problemas })
+      if (r.tipo === 'conflicto') return abortar(r)
+      if (r.tipo === 'invalida') return abortar({ tipo: 'ya_no_cabe', problemas: r.problemas })
       const [conVersion] = await tx.update(esquema.propuestas).set({ version: r.version }).where(eq(esquema.propuestas.id, a.propuesta)).returning()
       return { tipo: 'reclamada', fila: conVersion, respuesta: null, quedo: r.modo !== 'atendiendo' ? 'sin_clientes' : r.deUna ? 'con_los_clientes' : 'en_la_vista_previa' }
     }
-    return deshacer({ tipo: 'ya_no_cabe', problemas: [{ tipo: 'valor_invalido', campo: 'propuesta', porQue: 'Eso se pidió antes del cambio de sistema: pídelo de nuevo' }] })
+    return abortar({ tipo: 'ya_no_cabe', problemas: [{ tipo: 'valor_invalido', campo: 'propuesta', porQue: 'Eso se pidió antes del cambio de sistema: pídelo de nuevo' }] })
   })
   switch (reclamo.tipo) {
     case 'sigue_esperando':

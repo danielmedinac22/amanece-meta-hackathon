@@ -43,18 +43,16 @@ export type ResultadoDeEscribir =
 /** Lo revertido: la versión que dejó su escritura y las claves que su tarjeta prometió que solo salían de la vista previa. */
 export type LoRevertido = { readonly version: VersionDelNegocio; readonly soloVistaPrevia: readonly Clave[] }
 
-const BIT_DE_LA_REVERSION = { frena: false, solo_vista_previa: true, no_se_puede: true } as const satisfies Record<ComoSeRevierte['tipo'], boolean>
-
 /**
  * Pura. Con qué bit nace una fila. Lo decide solo `escribir`, bajo la fila del Negocio. Sin Clientes reales no hay nada
  * que retener, y lo de las tablas viejas ya lo notaban. `como`: la clave se está revirtiendo.
  */
 export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDelNegocio, como: ComoSeRevierte | null): boolean {
   if (origen === 'tablas_viejas' || modo !== 'atendiendo') return false
-  return como ? BIT_DE_LA_REVERSION[como.tipo] : true
+  return como?.tipo !== 'frena'
 }
 
-const NO_SE_PUEDE: ComoSeRevierte = { tipo: 'no_se_puede', porQue: 'la_cambio_otra_publicada' }
+const NO_SE_PUEDE: ComoSeRevierte = { tipo: 'no_se_puede' }
 
 /**
  * Dentro de la transacción de quien llama, después de tomar la fila del Negocio: ahí relee el estado y valida, así
@@ -108,7 +106,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   const nace = (c: { readonly clave: Clave }) => naceSinPublicar(origen.tipo, modo, comoDe(c.clave))
   const deFreno = revierte ? filas.filter((c) => modo === 'atendiendo' && !nace(c)) : []
   if (deFreno.length) {
-    // Lo publicado es válido por inducción: nace igual a un aplicado válido, sellar lo iguala a otro, y solo lo cambian estas filas.
+    // Lo que los Clientes tienen puede no parecerse a lo aplicado, y el freno también tiene que caber ahí.
     const w = validarEscritura(await leerPublicado(negocio, tx), { elementos: deFreno, filas: [] })
     if (w.tipo === 'invalida') return { tipo: 'invalida', problemas: w.problemas.map((problema) => ({ tipo: 'rompe_lo_publicado', problema })) }
   }
@@ -143,7 +141,7 @@ export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: read
  * arriba para siempre, y un freno nunca las devuelve.
  */
 export async function sellar(tx: Transaccion, negocio: NegocioId, vista: string): Promise<ResultadoDeSellar> {
-  const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
+  const [n] = await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
   const aplicado = await leerAplicado(negocio, tx)
   const publicado = await leerPublicado(negocio, tx)

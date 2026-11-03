@@ -2,7 +2,7 @@
  * Publicar: mandar al link lo que el Dueño ya aplicó en su vista previa. Solo lo llama el botón (`ACCIONES.publicar`):
  * el modelo no tiene herramienta y `QuienPuede` no le deja compilar a nadie más.
  */
-import { eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { conTransaccion } from '@/db/pool'
 import { avisarEnLosHilos } from '@/negocio/dueno-hilo'
@@ -10,6 +10,7 @@ import type { QuienPuede } from '../acciones'
 import { huellaDeLoPendiente, leerAplicado, leerPublicado, loPendiente, quienEscribioLaUltima, type EstadoAplicado, type ItemPendiente } from '../estado'
 import { sellar } from '../estado/escribir'
 import type { DuenoId, Huella, NegocioId, PropuestaId } from '../identidad'
+import { HUELLA } from './fila'
 
 export type ItemDeLoPendiente = ItemPendiente & { readonly aplicadoPor: string | null }
 export type LoPendiente = { readonly items: readonly ItemDeLoPendiente[]; readonly huella: Huella }
@@ -22,8 +23,6 @@ export type ResultadoDePublicar =
   | { readonly tipo: 'cambio'; readonly pendiente: LoPendiente }
   | { readonly tipo: 'no_existe' }
 
-const HUELLA = /^[0-9a-f]{64}$/
-
 /** Lo primero que se lee es lo que notan los Clientes. */
 const lineasEnOrden = (items: readonly ItemPendiente[]) => [...items.filter((i) => i.loNotan === 'clientes'), ...items.filter((i) => i.loNotan === 'equipo')].map((i) => i.linea)
 
@@ -35,7 +34,7 @@ async function nombresDeQuienAplico(negocio: NegocioId, propuestas: readonly Pro
     .select({ propuesta: p.id, nombre: d.nombre })
     .from(p)
     .innerJoin(d, eq(d.id, sql`coalesce(${p.aprobadoPor}, ${p.pedidoPor})`))
-    .where(inArray(p.id, [...propuestas]))
+    .where(and(eq(p.negocioId, negocio), inArray(p.id, [...propuestas])))
   return new Map(filas.filter((f) => f.nombre).map((f) => [f.propuesta, f.nombre]))
 }
 

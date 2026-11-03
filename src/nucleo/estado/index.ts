@@ -327,7 +327,7 @@ export type ComoSeRevierte =
   /** Les llega a los Clientes de una. `pierde`: lo que hay sin publicar encima, que también se va de la vista previa. */
   | { readonly tipo: 'frena'; readonly pierde: { readonly hoy: Elemento | null } | null }
   | { readonly tipo: 'solo_vista_previa' }
-  | { readonly tipo: 'no_se_puede'; readonly porQue: 'la_cambio_otra_publicada' | 'la_cambio_otra_sin_publicar' }
+  | { readonly tipo: 'no_se_puede' }
 
 export type FilaDeUnaClave = { readonly version: number; readonly contenido: Elemento | null }
 
@@ -343,10 +343,10 @@ export function comoSeRevierte({ fila, sellada, ultima, ultimaSellada }: {
 }): ComoSeRevierte {
   const nadaEncima = canonico(ultima.contenido) === canonico(fila.contenido)
   if (sellada) {
-    if (ultimaSellada !== fila.version) return { tipo: 'no_se_puede', porQue: 'la_cambio_otra_publicada' }
+    if (ultimaSellada !== fila.version) return { tipo: 'no_se_puede' }
     return { tipo: 'frena', pierde: nadaEncima ? null : { hoy: ultima.contenido } }
   }
-  return nadaEncima ? { tipo: 'solo_vista_previa' } : { tipo: 'no_se_puede', porQue: 'la_cambio_otra_sin_publicar' }
+  return nadaEncima ? { tipo: 'solo_vista_previa' } : { tipo: 'no_se_puede' }
 }
 
 export type HistoriaDeClave = {
