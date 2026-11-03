@@ -17,7 +17,7 @@ const { conTransaccion } = await import('../src/db/pool')
 const { descartar, proponer, proponerLectura } = await import('../src/nucleo/cambios')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const { vistaPreviaDe } = await import('../src/nucleo/cambios/ensayar')
-const { armarEstado, leerEstado } = await import('../src/nucleo/estado')
+const { armarEstado, leerAplicado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
 
@@ -91,7 +91,7 @@ try {
         { clave: MOLINO, base: 'nueva', despues: { tipo: 'producto', nombre: 'Molino manual', descripcion: '', precio: el.comoMonto(120000), activo: true } },
       ],
       filas: [],
-    }),
+    }, null),
   )
   const clientes = await db
     .insert(esquema.clientes)
@@ -209,7 +209,7 @@ try {
     }
     const escritura = { elementos: [{ clave: el.claveNueva('regla'), base: 'nueva' as const, despues: manizales('Con tope') }], filas: [] as never[] }
     const inicio = Date.now()
-    const conTope = await vistaPreviaDe(await leerEstado(N), escritura, [], lento, 300)
+    const conTope = await vistaPreviaDe(await leerAplicado(N), escritura, [], lento, 300)
     const ms = Date.now() - inicio
     const c = conTope.guardada.conversaciones
     afirmar(`tope total: a los 300 ms lo que no terminó cuenta como no ensayado (${ms} ms)`, ms < 2000 && c !== null && c !== undefined && c.fallaron === c.ensayos.length && c.ensayos.length === 5 && (conTope.guardada.advertencias?.[0] ?? '').startsWith('No pude ensayar 5 de 5'), { ms, c, advertencias: conTope.guardada.advertencias })

@@ -5,7 +5,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { MotivoDeFaltante } from '../capacidades'
-import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoVigente } from '../estado'
+import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
 import { claveNueva, comoVersion, definicionDe, describirCambio, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
@@ -54,7 +54,7 @@ const ahora = () => marcar.instante(new Date())
  * Varias `Quiere` se suman en una sola Escritura; dos sobre la misma clave se corrigen. Una Sección o un Indicador va
  * solo y es lo único que llama a un modelo: el redactor (`redactor` solo lo cambian los `probar`).
  */
-export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeElementos[], redactor: MotorDelRedactor = MOTOR_DEL_REDACTOR): Promise<Traduccion | SinTraduccion> {
+export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDeElementos[], redactor: MotorDelRedactor = MOTOR_DEL_REDACTOR): Promise<Traduccion | SinTraduccion> {
   const negocio = estado.identidad.id
   const cambios: CambioDeElemento[] = []
   const actos: Acto[] = []
@@ -159,7 +159,7 @@ export async function traducir(estado: EstadoVigente, quiere: readonly QuiereDeE
 }
 
 /** Cada clave que la propuesta escribió y nadie tocó después vuelve a lo de antes. */
-async function reversion(estado: EstadoVigente, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[] } | SinTraduccion> {
+async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[] } | SinTraduccion> {
   const [p] = await db
     .select({ estado: esquema.propuestas.estado, actos: esquema.propuestas.actos, revierte: esquema.propuestas.revierte, escritura: esquema.propuestas.escritura, version: esquema.propuestas.version })
     .from(esquema.propuestas)

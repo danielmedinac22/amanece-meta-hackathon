@@ -17,7 +17,7 @@ const errores = capturarErrores()
 
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
-const { leerEstado, ultimasDe, valorDelDato } = await import('../src/nucleo/estado')
+const { leerAplicado, ultimasDe, valorDelDato } = await import('../src/nucleo/estado')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
@@ -74,11 +74,11 @@ try {
   const primera = await pasarAElementos(N, deseados)
   const segunda = await pasarAElementos(N, deseados)
   afirmar('primera corrida: escribe todo en una versión', primera.escritas.length === deseados.length && primera.version === 1, primera)
-  afirmar('segunda corrida: escribe 0 y no sube la versión', segunda.escritas.length === 0 && segunda.quitadas.length === 0 && segunda.version === 1 && (await leerEstado(N)).version === 1, segunda)
+  afirmar('segunda corrida: escribe 0 y no sube la versión', segunda.escritas.length === 0 && segunda.quitadas.length === 0 && segunda.version === 1 && (await leerAplicado(N)).version === 1, segunda)
 
   const otraCiudad = deseados.map((d) => (d.clave === 'dato:ciudad' ? { ...d, elemento: { tipo: 'dato' as const, campo: 'ciudad' as const, valor: 'Pereira' } } : d))
   const enSeco = await pasarAElementos(N, otraCiudad, { enSeco: true })
-  afirmar('en seco: dice lo que escribiría y no escribe', enSeco.escritas.length === 1 && valorDelDato(await leerEstado(N), 'ciudad') === 'Manizales' && (await leerEstado(N)).version === 1, enSeco)
+  afirmar('en seco: dice lo que escribiría y no escribe', enSeco.escritas.length === 1 && valorDelDato(await leerAplicado(N), 'ciudad') === 'Manizales' && (await leerAplicado(N)).version === 1, enSeco)
 
   const [propuesta] = await db
     .insert(esquema.propuestas)
@@ -86,18 +86,18 @@ try {
     .returning({ id: esquema.propuestas.id })
   const pagos = el.comoClave('dato:pagos')
   await conTransaccion((tx) =>
-    escribir(tx, N, { tipo: 'propuesta', propuesta: marcar.propuesta(propuesta.id) }, { elementos: [{ clave: pagos, base: el.comoVersion(1), despues: { tipo: 'dato', campo: 'pagos', valor: 'Nequi' } }], filas: [] }),
+    escribir(tx, N, { tipo: 'propuesta', propuesta: marcar.propuesta(propuesta.id) }, { elementos: [{ clave: pagos, base: el.comoVersion(1), despues: { tipo: 'dato', campo: 'pagos', valor: 'Nequi' } }], filas: [] }, null),
   )
   const sinUnaPregunta = deseados.filter((d) => !(d.elemento.tipo === 'pregunta' && d.elemento.pregunta === '¿Venden por mayor?'))
   const borrada = deseados.find((d) => d.elemento.tipo === 'pregunta' && d.elemento.pregunta === '¿Venden por mayor?')!.clave
   const tercera = await pasarAElementos(N, sinUnaPregunta)
-  const tras = await leerEstado(N)
+  const tras = await leerAplicado(N)
   afirmar('no pisa una clave escrita por una propuesta', tercera.respetadas.includes(pagos) && valorDelDato(tras, 'pagos') === 'Nequi', tercera)
   afirmar('una pregunta que ya no está en la tabla vieja se quita', tercera.quitadas.length === 1 && tercera.quitadas[0] === borrada && tras.vigente(borrada) === null && tercera.escritas.length === 0, tercera)
   const cuarta = await pasarAElementos(N, sinUnaPregunta)
   afirmar('después de quitar, otra corrida escribe 0', cuarta.escritas.length === 0 && cuarta.quitadas.length === 0 && cuarta.version === tercera.version, cuarta)
   await db.delete(esquema.propuestas).where(eq(esquema.propuestas.id, propuesta.id))
-  const huerfana = (await leerEstado(N)).vigente(pagos)
+  const huerfana = (await leerAplicado(N)).vigente(pagos)
   afirmar('una propuesta borrada deja el origen sin id, no un id vacío', huerfana?.origen.tipo === 'propuesta' && huerfana.origen.propuesta === null, huerfana?.origen)
 
   console.log('\n=== Reglas viejas: Capacidad faltante y una línea en el Hilo de cada Dueño ===')
@@ -135,20 +135,20 @@ try {
     { clave: seccion, base: 'nueva' as const, despues: { tipo: 'seccion', nombre: `Lista ${marca}`, queQuiereVer: 'x', consulta: { ...consulta, salida: { tipo: 'filas', columnas: [{ columna: 'valor', titulo: 'Valor' }] } } } as unknown as Elemento },
     { clave: ciudad, base: 'nueva' as const, despues: { tipo: 'dato', campo: 'ciudad', valor: 'Pasto' } as Elemento },
   ]
-  await conTransaccion((tx) => escribir(tx, conPanel, { tipo: 'entrevista' }, { elementos: delPanelVivo, filas: [] }))
+  await conTransaccion((tx) => escribir(tx, conPanel, { tipo: 'entrevista' }, { elementos: delPanelVivo, filas: [] }, null))
   const quitar = (...argumentos: string[]) => spawnSync('tsx', ['scripts/quitar-panel.mts', `--negocio=${conPanel}`, ...argumentos], { encoding: 'utf8' })
-  const versionAntes = (await leerEstado(conPanel)).version
+  const versionAntes = (await leerAplicado(conPanel)).version
   const enSecoPanel = quitar()
-  const trasElSeco = await leerEstado(conPanel)
+  const trasElSeco = await leerAplicado(conPanel)
   afirmar('quitar-panel en seco: nombra las dos claves y no escribe', enSecoPanel.status === 0 && enSecoPanel.stdout.includes(indicador) && enSecoPanel.stdout.includes(seccion) && !enSecoPanel.stdout.includes('dato:') && trasElSeco.version === versionAntes && trasElSeco.vigente(indicador) !== null && trasElSeco.vigente(seccion) !== null, { status: enSecoPanel.status, stdout: enSecoPanel.stdout.slice(0, 300), stderr: enSecoPanel.stderr.slice(0, 300) })
   const deVerdad = quitar('--de-verdad')
-  const trasLaLapida = await leerEstado(conPanel)
+  const trasLaLapida = await leerAplicado(conPanel)
   const ultimasDelPanel = await ultimasDe(db, conPanel)
   const lapidas = ultimasDelPanel.filter((u) => u.clave === indicador || u.clave === seccion)
   afirmar('quitar-panel --de-verdad: la última fila de cada clave tiene contenido null y la versión siguiente', deVerdad.status === 0 && lapidas.length === 2 && lapidas.every((u) => u.contenido === null && u.version === versionAntes + 1), { status: deVerdad.status, stderr: deVerdad.stderr.slice(0, 300), lapidas })
   afirmar('quitar-panel --de-verdad: el estado ya no las ve, y lo demás sigue', trasLaLapida.version === versionAntes + 1 && trasLaLapida.vigente(indicador) === null && trasLaLapida.vigente(seccion) === null && valorDelDato(trasLaLapida, 'ciudad') === 'Pasto', trasLaLapida.version)
   const otraVez = quitar('--de-verdad')
-  afirmar('quitar-panel otra vez: escribe 0 y no sube la versión', otraVez.status === 0 && otraVez.stdout.includes('Resumen: 0 claves') && (await leerEstado(conPanel)).version === versionAntes + 1, otraVez.stdout.slice(0, 200))
+  afirmar('quitar-panel otra vez: escribe 0 y no sube la versión', otraVez.status === 0 && otraVez.stdout.includes('Resumen: 0 claves') && (await leerAplicado(conPanel)).version === versionAntes + 1, otraVez.stdout.slice(0, 200))
 
   console.log('\n=== Una pieza activa detiene a-elementos ===')
   const conPieza = await negocioDesechable('P')

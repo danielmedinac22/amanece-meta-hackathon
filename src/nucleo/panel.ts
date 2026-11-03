@@ -89,7 +89,7 @@ export async function pintarUna(estado: EstadoDelNegocio, clave: Clave, e: Eleme
   }
 }
 
-/** Las Secciones y los Indicadores vigentes, de `leerEstado`, en paralelo. */
+/** Las Secciones y los Indicadores vigentes, de `leerAplicado`, en paralelo. */
 export function pintarPanel(estado: EstadoDelNegocio): Promise<readonly SeccionPintada[]> {
   const delPanel: readonly { readonly clave: Clave; readonly elemento: ElementoDelPanel }[] = [...estado.vigentes('indicador'), ...estado.vigentes('seccion')]
   return Promise.all(delPanel.map((v) => pintarUna(estado, v.clave, v.elemento)))

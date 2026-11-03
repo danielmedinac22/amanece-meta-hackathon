@@ -18,7 +18,7 @@ const { mensajesParaElModelo } = await import('../src/negocio/dueno-chat')
 const { aprobar, guardarEnElAlta, proponerLectura, queFaltaParaAbrir, lecturaPendiente } = await import('../src/nucleo/cambios')
 const { armarLectura, buscarProducto, MAXIMO_DE_PRODUCTOS_LEIDOS } = await import('../src/nucleo/cambios/lectura')
 const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
-const { armarEstado, leerEstado } = await import('../src/nucleo/estado')
+const { armarEstado, leerAplicado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
 
@@ -57,7 +57,7 @@ const leer = async (url: string) => {
   if (r.tipo !== 'leida') throw new Error(`no se leyó la página de guion: ${r.tipo}`)
   return r
 }
-const productosDe = async (ctx: { negocio: ReturnType<typeof marcar.negocio> }) => (await leerEstado(ctx.negocio)).vigentes('producto')
+const productosDe = async (ctx: { negocio: ReturnType<typeof marcar.negocio> }) => (await leerAplicado(ctx.negocio)).vigentes('producto')
 const propuestasDe = (ctx: { negocio: ReturnType<typeof marcar.negocio> }) => db.select().from(esquema.propuestas).where(eq(esquema.propuestas.negocioId, ctx.negocio))
 const poner = (elemento: Elemento) => ({ tipo: 'poner' as const, elemento, reemplaza: null })
 
@@ -108,14 +108,14 @@ try {
   console.log('\n=== Lo leído espera el botón aunque el Negocio se esté armando ===')
   const ctx = await negocioArmando('A')
   await dice(ctx, `Mi página es ${URL_DE_LA_PAGINA}`)
-  const primera = await proponerLectura(ctx, armarLectura(await leerEstado(ctx.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
+  const primera = await proponerLectura(ctx, armarLectura(await leerAplicado(ctx.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
   const [fila] = await propuestasDe(ctx)
   afirmar('la tarjeta de lectura queda espera_al_dueno, con origen lectura', primera.tarjeta !== null && fila?.estado === 'espera_al_dueno' && fila.origen === 'lectura', fila)
   afirmar('ningún producto leído está vigente antes del botón', (await productosDe(ctx)).length === 0, await productosDe(ctx))
   afirmar('la tarjeta se confirma con "Están bien y no falta ninguno"', primera.tarjeta?.accion === 'confirmar', primera.tarjeta)
   const precios = new Set(fila?.escritura.elementos.flatMap((c) => (c.despues?.tipo === 'producto' ? [c.despues.precio] : [])))
   afirmar('el precio que inventó el extractor no llega a la escritura de la propuesta', !precios.has(el.comoMonto(4500)) && precios.has(el.comoMonto(8000)), [...precios])
-  const conTarjeta = queFaltaParaAbrir(await leerEstado(ctx.negocio), (await lecturaPendiente(ctx.negocio))?.escritura ?? null)
+  const conTarjeta = queFaltaParaAbrir(await leerAplicado(ctx.negocio), (await lecturaPendiente(ctx.negocio))?.escritura ?? null)
   afirmar('queFaltaParaAbrir: el producto bloquea, marcado enLaTarjeta', conTarjeta.bloquea.some((f) => f.que === 'producto_con_precio' && f.enLaTarjeta), conTarjeta)
 
   console.log('\n=== Lo que el Dueño no escribió no entra por la entrevista ===')
@@ -125,7 +125,7 @@ try {
   afirmar('un precio que no está en ningún lado vuelve sinFuente', 'sinFuente' in inventado && inventado.sinFuente.length === 1 && (await productosDe(ctx)).length === 0, inventado)
   const envio = await guardarEnElAlta(ctx, { nombre: null, rubro: null, quiere: [poner({ tipo: 'dato', campo: 'envios', valor: 'A todo el país, el envío cuesta $10.000' })] })
   const envios = el.comoClave('dato:envios')
-  afirmar('un monto en un dato que el Dueño no escribió no entra: el envío a $10.000 es porConfirmar', 'porConfirmar' in envio && envio.porConfirmar.length === 1 && !(await leerEstado(ctx.negocio)).vigente(envios), envio)
+  afirmar('un monto en un dato que el Dueño no escribió no entra: el envío a $10.000 es porConfirmar', 'porConfirmar' in envio && envio.porConfirmar.length === 1 && !(await leerAplicado(ctx.negocio)).vigente(envios), envio)
 
   console.log('\n=== El Dueño corrige y la tarjeta se rearma en la misma transacción ===')
   await dice(ctx, 'El latte ya no es a 8.000, ahora es a 9.000')
@@ -150,7 +150,7 @@ try {
   const ultima = (await leerHilo(ctx.dueno)).at(-1)
   const textoDeLaUltima = ultima?.parts.flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('') ?? ''
   afirmar('la línea del Hilo dice que el Dueño confirmó lo leído de su página', textoDeLaUltima === 'Dueño de prueba confirmó lo que leí de tu página (cafetrigo.co).', textoDeLaUltima)
-  const falta = queFaltaParaAbrir(await leerEstado(ctx.negocio), null)
+  const falta = queFaltaParaAbrir(await leerAplicado(ctx.negocio), null)
   afirmar('queFaltaParaAbrir ya no bloquea por producto_con_precio', !falta.bloquea.some((f) => f.que === 'producto_con_precio'), falta)
 
   console.log('\n=== guardar_productos encuentra el producto con la misma identidad que la lectura ===')
@@ -181,8 +181,8 @@ try {
 
   console.log('\n=== Una segunda lectura descarta la primera ===')
   const otro = await negocioArmando('B')
-  const una = await proponerLectura(otro, armarLectura(await leerEstado(otro.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
-  const dos = await proponerLectura(otro, armarLectura(await leerEstado(otro.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
+  const una = await proponerLectura(otro, armarLectura(await leerAplicado(otro.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
+  const dos = await proponerLectura(otro, armarLectura(await leerAplicado(otro.negocio), await leer(URL_DE_LA_PAGINA), EXTRAIDO))
   const deOtro = await propuestasDe(otro)
   afirmar('una lectura nueva deja descartada la pendiente anterior', deOtro.find((f) => f.id === una.tarjeta?.propuesta)?.estado === 'descartada' && deOtro.find((f) => f.id === dos.tarjeta?.propuesta)?.estado === 'espera_al_dueno', deOtro.map((f) => [f.id, f.estado]))
 } catch (e) {

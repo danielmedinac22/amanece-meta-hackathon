@@ -20,7 +20,7 @@ const INTENCION = {
 };
 const VIEJO = {
   regex: String.raw`(^|/)db/viejo` + EXTENSION,
-  message: "Las tablas viejas no tienen lector: el estado de un Negocio se lee con leerEstado (@/nucleo/estado).",
+  message: "Las tablas viejas no tienen lector: el estado de un Negocio se lee con leerAplicado (@/nucleo/estado).",
 };
 /** Atrapa `@/nucleo/cambios/politica` y `../cambios/politica`, pero no el `./politica` de adentro de la carpeta. */
 const INTERNOS_DE_CAMBIOS = {
@@ -56,7 +56,7 @@ const eslintConfig = defineConfig([
     ignores: ["src/nucleo/cambios/**", "src/nucleo/salida/index.ts", "src/nucleo/estado/escribir.ts", "src/nucleo/estado/index.ts"],
     rules: prohibir(KAPSO, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON),
   },
-  // `escribir` y `leerEstado` reciben la transacción de quien reclama: importan el tipo, nunca la abren.
+  // `escribir` y `leerAplicado` reciben la transacción de quien reclama: importan el tipo, nunca la abren.
   { files: ["src/nucleo/estado/escribir.ts"], rules: prohibir(KAPSO, INTERNOS_DE_CAMBIOS, VIEJO, LIBPG, NEON) },
   { files: ["src/nucleo/estado/index.ts"], rules: prohibir(KAPSO, INTERNOS_DE_CAMBIOS, ESCRIBIR, VIEJO, LIBPG, NEON) },
   { files: ["src/nucleo/cambios/**/*.ts"], rules: prohibir(KAPSO, VIEJO, LIBPG, NEON) },

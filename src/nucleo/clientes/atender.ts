@@ -3,7 +3,7 @@ import { db, esquema } from '@/db'
 import { traerCasoAlDueno } from '@/agentes/avisos'
 import { registrarTurno } from '@/negocio/medir'
 import type { MensajeEntrante } from '../entrada'
-import { leerEstado, NegocioInexistente, otrosNegocios, type EstadoVigente } from '../estado'
+import { leerPublicado, NegocioInexistente, otrosNegocios, type EstadoPublicado } from '../estado'
 import { marcar, type CasoId, type NegocioId } from '../identidad'
 import { despachar, intencion, type AlCliente } from '../salida'
 import { entornoReal, pedidoDelCliente, turno, type ClienteDelTurno } from './turno'
@@ -12,9 +12,9 @@ const HISTORIAL = 20
 
 /** El único que junta `turno` y `despachar`. Nunca lanza por el turno: el Cliente recibe el aviso `falla_tecnica`. */
 export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Promise<void> {
-  let estado: EstadoVigente
+  let estado: EstadoPublicado
   try {
-    estado = await leerEstado(negocio)
+    estado = await leerPublicado(negocio)
   } catch (e) {
     if (e instanceof NegocioInexistente) return void console.error('[atender] el Negocio ya no está', negocio, m.wamid)
     console.error('[atender] no pude leer el Negocio', negocio, e)

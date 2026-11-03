@@ -31,7 +31,7 @@ const { db, esquema } = await import('../src/db')
 const { turno, entornoDeEnsayo } = await import('../src/nucleo/clientes/turno')
 const { puertoDeLaBase } = await import('../src/nucleo/clientes/acciones')
 const { cotizar } = await import('../src/nucleo/precios/cotizar')
-const { leerEstado, valorDelDato } = await import('../src/nucleo/estado')
+const { leerAplicado, leerPublicado, valorDelDato } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 const { proponer, aprobar } = await import('../src/nucleo/cambios')
 const { marcar } = await import('../src/nucleo/identidad')
@@ -115,7 +115,7 @@ try {
 
   console.log(`\n=== 1. Agente de clientes en ensayo (${MODELO_ID}) ===`)
   const antes = await filasDeLadera(ladera.id)
-  const estado = await leerEstado(marcar.negocio(ladera.id))
+  const estado = await leerAplicado(marcar.negocio(ladera.id))
   const deEnsayo = { id: marcar.cliente(camila.id), nombre: 'Camila', telefono: null, pedidos: [] }
   const ensayo = entornoDeEnsayo(estado, deEnsayo)
   const historial: { rol: 'cliente' | 'agente'; texto: string }[] = []
@@ -236,7 +236,7 @@ try {
     afirmar('Caso: pedir hablar con una persona deja un Caso sin resolver de Camila', casosNuevos.length > 0, casos)
 
     console.log('\n=== 3b. El Caso de un pedido guarda su pedido y solo se reusa con ese pedido ===')
-    const puerto = puertoDeLaBase(estado, marcar.cliente(camila.id))
+    const puerto = puertoDeLaBase(await leerPublicado(marcar.negocio(ladera.id)), marcar.cliente(camila.id))
     const [producto] = estado.vigentes('producto').filter((v) => v.elemento.activo)
     const crear = async (cantidad: number) => {
       const borrador = { items: [{ producto: producto.clave, cantidad }], ciudad: 'Pereira' }
@@ -283,7 +283,7 @@ try {
   const conRegla = enviosA(telefono, desde)
   console.log(`Agente: ${conRegla[0]?.texto}`)
   // El oráculo no es el detector que se prueba: los rangos de días del dato de envíos sembrado, y cualquier "N días".
-  const rangos = [...valorDelDato(await leerEstado(marcar.negocio(ladera.id)), 'envios').matchAll(/(\d+) a (\d+) días/g)].map((m) => [m[1], m[2]])
+  const rangos = [...valorDelDato(await leerAplicado(marcar.negocio(ladera.id)), 'envios').matchAll(/(\d+) a (\d+) días/g)].map((m) => [m[1], m[2]])
   const prometePlazo = (texto: string) => rangos.some(([a, b]) => new RegExp(`\\b${a}\\b\\D{1,12}\\b${b}\\b`).test(texto)) || /\b\d+\s*(d[ií]as|horas)\b/i.test(texto)
   afirmar('regla: sale una respuesta y no cita los plazos del dato de envíos', rangos.length >= 2 && conRegla.length === 1 && !prometePlazo(conRegla[0].texto), { rangos, conRegla })
 
@@ -292,7 +292,7 @@ try {
   afirmar('medir: cada turno deja una línea con wamid, corregido y reglas activas, sin texto ni teléfono', deLaRegla !== undefined && /"corregido":"(no|si|respaldo)"/.test(deLaRegla) && /"reglas":\["regla:/.test(deLaRegla) && medidas.every((l) => !l.includes(telefono) && !l.includes('Pasto')), medidas)
 
   console.log('\n=== 5. Un Caso del núcleo se reusa y suma el mensaje nuevo ===')
-  const puerto = puertoDeLaBase(await leerEstado(marcar.negocio(ladera.id)), marcar.cliente(camila.id))
+  const puerto = puertoDeLaBase(await leerPublicado(marcar.negocio(ladera.id)), marcar.cliente(camila.id))
   const primero = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «uno»', pedido: null, reusar: true })
   const segundo = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «dos»', pedido: null, reusar: true })
   const [reusado] = primero.caso ? await db.select().from(esquema.casos).where(eq(esquema.casos.id, primero.caso)) : []

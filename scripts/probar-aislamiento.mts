@@ -21,7 +21,7 @@ const errores = capturarErrores()
 const { db, esquema } = await import('../src/db')
 const { leerMensajeEntrante, recibirMensaje } = await import('../src/nucleo/entrada')
 const { mensajeDelDueno } = await import('../src/negocio/dueno-chat')
-const { leerEstado } = await import('../src/nucleo/estado')
+const { leerAplicado } = await import('../src/nucleo/estado')
 const { marcar } = await import('../src/nucleo/identidad')
 const { esErrorDeConsulta, validarConsulta } = await import('../src/nucleo/consultas/validar')
 const { armarLote, ejecutar, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
@@ -198,8 +198,8 @@ try {
   console.log('\n=== 7. Consultas del Panel: A nunca ve a B ===')
   const A = await sembrarNegocio('A', 3)
   const B = await sembrarNegocio('B', 4)
-  const estadoA = await leerEstado(marcar.negocio(A.id))
-  const estadoB = await leerEstado(marcar.negocio(B.id))
+  const estadoA = await leerAplicado(marcar.negocio(A.id))
+  const estadoB = await leerAplicado(marcar.negocio(B.id))
   const ve = (filas: unknown, ids: readonly string[]) => ids.filter((id) => JSON.stringify(filas).includes(id))
   const LISTADOS: [string, string, number, number][] = [
     ['pedidos', 'select id, cliente_id, numero from pedidos', A.pedidos, B.pedidos],
@@ -232,7 +232,7 @@ try {
   console.log('\n=== 7 bis. Un Negocio sin pedidos no recibe la falsa alarma ===')
   const [vacio] = await db.insert(esquema.negocios).values({ nombre: `Consultas vacío ${marca}`, codigo: `CONSV${marca}` }).returning()
   negociosDeConsultas.push(vacio.id)
-  const estadoVacio = await leerEstado(marcar.negocio(vacio.id))
+  const estadoVacio = await leerAplicado(marcar.negocio(vacio.id))
   const conVentana = (sql: string) => ({ tipo: 'seccion', nombre: 'Prueba', queQuiereVer: 'x', consulta: { sql, enPalabras: 'x', supuestos: [], catalogo: 1, usa: [], salida: { tipo: 'filas', columnas: [{ columna: 'numero', titulo: 'Número' }] } } }) as unknown as ElementoDelPanel
   const VACIA = 'select p.numero from pedidos p, hoy h where p.dia_local > h.hoy_local - 30'
   const enElVacio = await pintarUna(estadoVacio, 'seccion:prueba' as Clave, conVentana(VACIA))

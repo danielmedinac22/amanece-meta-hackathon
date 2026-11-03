@@ -6,7 +6,7 @@ import { generateText, isStepCount, tool, type LanguageModelUsage, type ModelMes
 import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
 import type { CasoId, ClienteId, Instante, Wamid } from '../identidad'
-import type { EstadoDelNegocio, EstadoVigente } from '../estado'
+import type { EstadoDelNegocio, EstadoPublicado } from '../estado'
 import type { EstadoDePedido, ItemDePedido } from '@/db/esquema'
 import { claveDeProducto, comoClave, comoMonto, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
@@ -56,7 +56,7 @@ export type Conversacion = {
 
 export type Entorno<M extends Modo> = { readonly modo: M; readonly acciones: PuertoDeAcciones; readonly otrosNegocios: readonly string[] }
 
-export function entornoReal(estado: EstadoVigente, cliente: ClienteId, otrosNegocios: readonly string[]): Entorno<'real'> {
+export function entornoReal(estado: EstadoPublicado, cliente: ClienteId, otrosNegocios: readonly string[]): Entorno<'real'> {
   return { modo: 'real', acciones: puertoDeLaBase(estado, cliente), otrosNegocios }
 }
 
@@ -132,7 +132,7 @@ export type TurnoResuelto<M extends Modo> = {
 }
 
 export async function turno<M extends Modo>(
-  estado: M extends 'real' ? EstadoVigente : EstadoDelNegocio,
+  estado: M extends 'real' ? EstadoPublicado : EstadoDelNegocio,
   conversacion: Conversacion,
   entorno: Entorno<M>,
   motores: Motores = MOTORES,

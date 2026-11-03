@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { db, esquema } from '@/db'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
-import { leerEstado, valorDelDato } from '@/nucleo/estado'
+import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import type { NegocioId } from '@/nucleo/identidad'
 import { pintarPanel } from '@/nucleo/panel'
@@ -54,7 +54,7 @@ export default async function Panel() {
 
 async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$inferSelect; id: NegocioId }) {
   const [estado, casos] = await Promise.all([
-    leerEstado(id),
+    leerAplicado(id),
     db
       .select()
       .from(esquema.casos)

@@ -8,7 +8,7 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { costoUsd } from '@/lib/modelo'
-import { conPropuesta, type CambioDeElemento, type EstadoBorrador, type EstadoDelNegocio, type Escritura, type EstadoVigente } from '../estado'
+import { conPropuesta, type CambioDeElemento, type EstadoBorrador, type EstadoDelNegocio, type Escritura, type EstadoAplicado } from '../estado'
 import { VISTA_PREVIA, type Clave, type ElementoDe, type ProfundidadDeVistaPrevia } from '../estado/elementos'
 import type { ClienteId, Marca, Wamid } from '../identidad'
 import type { AccionHecha } from '../clientes/acciones'
@@ -230,7 +230,7 @@ const NO_SE_ENSAYO = 'No pude ensayar este cambio con conversaciones: revisa con
  * alcanzó cuenta como no ensayado.
  */
 export async function vistaPreviaDe(
-  vigente: EstadoVigente,
+  vigente: EstadoAplicado,
   escritura: Escritura,
   lineas: readonly string[],
   motores: Motores = MOTORES,
@@ -247,7 +247,7 @@ export async function vistaPreviaDe(
   }
 }
 
-async function ensayarConversaciones(vigente: EstadoVigente, escritura: Escritura, lineas: readonly string[], motores: Motores, fin: number) {
+async function ensayarConversaciones(vigente: EstadoAplicado, escritura: Escritura, lineas: readonly string[], motores: Motores, fin: number) {
   const inicio = Date.now()
   const [pendientes, reales] = await Promise.all([pendientesDe(vigente), conversacionesReales(vigente)])
   const { hoy, conElCambio } = estadosDelEnsayo(vigente, escritura, pendientes)

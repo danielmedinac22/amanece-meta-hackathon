@@ -4,9 +4,9 @@
 import { eq, inArray } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
-import { marcar, type DuenoId, type Instante, type NegocioId } from '../identidad'
+import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import { comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
-import { elementoDe, leerEstado, origenDe, ultimasDe, validarEscritura, type Escritura, type OrigenDeEscritura } from './index'
+import { elementoDe, leerAplicado, origenDe, ultimasDe, validarEscritura, type Escritura, type OrigenDeEscritura } from './index'
 
 /** Quién tocó la clave después de la `base` que vio quien propuso. Todo null si la clave ya no tiene filas. */
 export type ClaveEnConflicto = {
@@ -19,22 +19,36 @@ export type ClaveEnConflicto = {
 }
 
 export type ResultadoDeEscribir =
-  | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio }
+  /** `deUna`: cuántas filas les llegan a los Clientes sin pasar por Publicar. */
+  | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio; readonly deUna: number }
   | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
   /** No cabe en el estado de ahora (`validarEscritura`): quien llama hace ROLLBACK. */
   | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }
+
+/** Lo revertido: la propuesta y la versión que dejó su escritura. */
+export type LoRevertido = { readonly propuesta: PropuestaId; readonly version: VersionDelNegocio }
+
+/**
+ * Pura. Con qué bit nace una fila. Lo decide solo `escribir`, bajo la fila del Negocio. Sin Clientes reales no hay nada
+ * que retener, y lo de las tablas viejas ya lo notaban.
+ */
+export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDelNegocio): boolean {
+  if (origen === 'tablas_viejas') return false
+  return modo === 'atendiendo'
+}
 
 /**
  * Dentro de la transacción de quien llama, después de tomar la fila del Negocio: ahí relee el estado y valida, así
  * dos escrituras a la vez no dejan dos productos con el mismo nombre. Una escritura vacía no sube la versión. Si
  * una clave cambió desde la `base` que vio quien propuso, no escribe nada y devuelve `conflicto`.
  */
-export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura): Promise<ResultadoDeEscribir> {
-  const [n] = await tx.select({ version: esquema.negocios.version }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura, revierte: LoRevertido | null): Promise<ResultadoDeEscribir> {
+  const [n] = await tx.select({ version: esquema.negocios.version, modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
-  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version) }
+  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0 }
+  const modo = n.modo ?? 'armando'
 
-  const estado = await leerEstado(negocio, tx)
+  const estado = await leerAplicado(negocio, tx)
   const claves = escritura.elementos.map((c) => c.clave)
   const ultimaDe = new Map((await ultimasDe(tx, negocio, inArray(esquema.elementos.clave, claves))).map((u) => [u.clave, u]))
   const chocan = escritura.elementos.flatMap((c) => {
@@ -66,6 +80,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   if (v.tipo === 'invalida') return v
 
   const version = n.version + 1
+  const sinPublicar = naceSinPublicar(origen.tipo, modo)
   await tx.insert(esquema.elementos).values(
     v.escritura.elementos.map((c) => {
       const tipo = c.despues?.tipo ?? ultimaDe.get(c.clave)!.tipo
@@ -78,11 +93,12 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
         contenido: c.despues,
         origen: origen.tipo,
         propuestaId: origen.tipo === 'propuesta' ? origen.propuesta : null,
+        sinPublicar,
       }
     }),
   )
   await tx.update(esquema.negocios).set({ version }).where(eq(esquema.negocios.id, negocio))
-  return { tipo: 'escrito', version: comoVersion(version) }
+  return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' && !sinPublicar ? v.escritura.elementos.length : 0 }
 }
 
 type Es<A extends true> = A

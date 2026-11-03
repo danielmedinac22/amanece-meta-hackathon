@@ -19,7 +19,7 @@ const { db, esquema } = await import('../src/db')
 const { marcar } = await import('../src/nucleo/identidad')
 const { proponer, proponerRespuestaAlCaso, aprobar, descartar, historial, guardarEnElAlta } = await import('../src/nucleo/cambios')
 const { politicaDeAprobacion } = await import('../src/nucleo/cambios/politica')
-const { leerEstado } = await import('../src/nucleo/estado')
+const { leerAplicado } = await import('../src/nucleo/estado')
 const el = await import('../src/nucleo/estado/elementos')
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 
@@ -61,7 +61,7 @@ async function nuevoDueno(negocio: string, nombre: string) {
 
 const filaDe = async (id: string) => (await db.select().from(propuestas).where(eq(propuestas.id, id)))[0]
 const productosLlamados = async (nombre: string) =>
-  (await leerEstado(LADERA))
+  (await leerAplicado(LADERA))
     .vigentes('producto')
     .filter((v) => v.elemento.nombre === nombre)
     .map((v) => ({ clave: v.clave, ...v.elemento }))
@@ -201,7 +201,7 @@ try {
   const [clave3] = await productosLlamados(nombre3)
   const [fila7] = clave3 ? await db.select().from(elementos).where(and(eq(elementos.negocioId, ladera.id), eq(elementos.clave, clave3.clave))) : []
   const f7 = await filaDe(p3.propuesta)
-  afirmar('versión: la fila del Elemento lleva la propuesta y la misma versión que la propuesta', r7.tipo === 'aplicado' && fila7?.origen === 'propuesta' && fila7.propuestaId === p3.propuesta && fila7.version === f7.version && (await leerEstado(LADERA)).version === f7.version, { fila7, f7 })
+  afirmar('versión: la fila del Elemento lleva la propuesta y la misma versión que la propuesta', r7.tipo === 'aplicado' && fila7?.origen === 'propuesta' && fila7.propuestaId === p3.propuesta && fila7.version === f7.version && (await leerAplicado(LADERA)).version === f7.version, { fila7, f7 })
 
   console.log('\n=== 8. Vencida y descartada ===')
   const p4 = await proponerProducto(A, `Café de prueba ${marca} cuatro`)
@@ -293,13 +293,13 @@ try {
   afirmar('Caso ya resuelto: ya_no_cabe por caso_resuelto y sin envío', r12.tipo === 'ya_no_cabe' && r12.problemas.some((p) => p.tipo === 'caso_resuelto') && envios.length === desde, r12)
 
   console.log('\n=== 13. Dos Dueños sobre la misma clave: el segundo da conflicto ===')
-  const antesDelHorario = (await leerEstado(LADERA)).version
+  const antesDelHorario = (await leerAplicado(LADERA)).version
   const deAna = await proponer(A, { palabrasDelDueno: 'abrimos los domingos', origen: 'hilo', quiere: [poner(horario(`Todos los días (${marca})`))] })
   const deBeto = await proponer(B, { palabrasDelDueno: 'cerramos los sábados', origen: 'hilo', quiere: [poner(horario(`Lunes a viernes (${marca})`))] })
   if (deAna.desenlace !== 'espera_al_dueno' || deBeto.desenlace !== 'espera_al_dueno') throw new Error('las propuestas de horario no quedaron en espera')
   const r13a = await aprobar(A, deAna.propuesta, deAna.tarjeta.huella)
   const r13b = await aprobar(B, deBeto.propuesta, deBeto.tarjeta.huella)
-  const tras13 = await leerEstado(LADERA)
+  const tras13 = await leerAplicado(LADERA)
   const vale = tras13.vigente(el.comoClave('dato:horario'))
   afirmar('conflicto: la de Ana se aplica', r13a.tipo === 'aplicado', r13a)
   afirmar('conflicto: la de Beto da conflicto en dato:horario, con quién la tocó', r13b.tipo === 'conflicto' && r13b.claves[0]?.clave === 'dato:horario' && r13b.claves[0].dueno === A.dueno, r13b)
@@ -339,10 +339,10 @@ try {
     origen: 'hilo',
     quiere: [poner({ tipo: 'regla', nombre: `Sin fechas (${marca})`, cuando: { tipo: 'siempre' }, efectos: [{ tipo: 'no_prometer', que: 'plazo' }], escenarios })],
   })
-  afirmar('Manizales: espera el botón y todavía no está vigente', manizales.desenlace === 'espera_al_dueno' && (await leerEstado(LADERA)).vigentes('regla').every((v) => v.elemento.nombre !== `Sin fechas (${marca})`), manizales)
+  afirmar('Manizales: espera el botón y todavía no está vigente', manizales.desenlace === 'espera_al_dueno' && (await leerAplicado(LADERA)).vigentes('regla').every((v) => v.elemento.nombre !== `Sin fechas (${marca})`), manizales)
   if (manizales.tarjeta) {
     const r15 = await aprobar(B, manizales.tarjeta.propuesta, manizales.tarjeta.huella)
-    const regla = (await leerEstado(LADERA)).vigentes('regla').find((v) => v.elemento.nombre === `Sin fechas (${marca})`)
+    const regla = (await leerAplicado(LADERA)).vigentes('regla').find((v) => v.elemento.nombre === `Sin fechas (${marca})`)
     afirmar('Manizales: el botón la deja vigente, escrita por esa propuesta', r15.tipo === 'aplicado' && regla?.origen.tipo === 'propuesta' && regla.origen.propuesta === manizales.tarjeta.propuesta, { r15, regla })
   }
 
@@ -357,7 +357,7 @@ try {
   console.log(`dos Torta a la vez: ${dosTortas.map((r) => r.desenlace).join(', ')}; filas descartadas: ${await db.$count(propuestas, and(eq(propuestas.negocioId, armando.id), eq(propuestas.estado, 'descartada')))}`)
   afirmar('armando: dos Torta a la vez dan una aplicada y una corregir, sin tarjeta ni propuesta esperando', JSON.stringify(dosTortas.map((r) => r.desenlace).sort()) === JSON.stringify(['aplicado', 'corregir']) && dosTortas.every((r) => r.tarjeta === null) && esperan === 0, { dosTortas, esperan })
   const alta = await guardarEnElAlta(A, { nombre: null, rubro: null, quiere: [poner(horario(`De alta (${marca})`))] })
-  afirmar('alta con el Negocio abierto: solo mientras se arma, sin escribir', 'problemas' in alta && alta.problemas.some((p) => p.tipo === 'solo_mientras_se_arma') && !(await leerEstado(LADERA)).todos().some((v) => v.elemento.tipo === 'dato' && v.elemento.valor.startsWith('De alta')), alta)
+  afirmar('alta con el Negocio abierto: solo mientras se arma, sin escribir', 'problemas' in alta && alta.problemas.some((p) => p.tipo === 'solo_mientras_se_arma') && !(await leerAplicado(LADERA)).todos().some((v) => v.elemento.tipo === 'dato' && v.elemento.valor.startsWith('De alta')), alta)
 
   console.log('\n=== 18. Una tarjeta de antes del corte dice que se pida de nuevo ===')
   const huellaVieja = 'e'.repeat(64)

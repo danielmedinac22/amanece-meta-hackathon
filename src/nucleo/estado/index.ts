@@ -60,8 +60,10 @@ export interface EstadoDelNegocio extends Vigentes {
   todos(): readonly ElementoVigente[]
 }
 
-/** Lo que está funcionando ahora. Solo lo produce `leerEstado`. */
-export type EstadoVigente = Marca<EstadoDelNegocio, 'EstadoVigente'>
+/** Lo que ve el Dueño: su vista previa. Solo lo produce `leerAplicado`. */
+export type EstadoAplicado = Marca<EstadoDelNegocio, 'EstadoAplicado'>
+/** Lo que notan los Clientes. Solo lo produce `leerPublicado`. */
+export type EstadoPublicado = Marca<EstadoDelNegocio, 'EstadoPublicado'>
 
 export type CambioDeElemento = {
   readonly clave: Clave
@@ -136,6 +138,7 @@ export function ultimasDe(x: Lector, negocio: NegocioId, filtro?: SQL) {
       contenido: ultimas.contenido,
       origen: ultimas.origen,
       propuestaId: ultimas.propuestaId,
+      sinPublicar: ultimas.sinPublicar,
       creado: ultimas.creado,
     })
     .from(ultimas)
@@ -143,34 +146,48 @@ export function ultimasDe(x: Lector, negocio: NegocioId, filtro?: SQL) {
     .orderBy(ultimas.clave, desc(ultimas.version))
 }
 
-/**
- * Sin caché: un Cambio vale desde el siguiente mensaje. Son dos lecturas en READ COMMITTED, no una sola foto: quien
- * escribe no confía en esta, relee con `x = tx` después de tomar la fila del Negocio.
- */
-export async function leerEstado(negocio: NegocioId, x: Lector = db): Promise<EstadoVigente> {
-  const [negocios, filas] = await Promise.all([
-    x
-      .select({
-        nombre: esquema.negocios.nombre,
-        rubro: esquema.negocios.rubro,
-        codigo: esquema.negocios.codigo,
-        pais: esquema.negocios.pais,
-        moneda: esquema.negocios.moneda,
-        zonaHoraria: esquema.negocios.zonaHoraria,
-        modo: esquema.negocios.modo,
-        version: esquema.negocios.version,
-      })
-      .from(esquema.negocios)
-      .where(eq(esquema.negocios.id, negocio)),
-    ultimasDe(x, negocio),
-  ])
-  const [n] = negocios
+async function identidadDe(x: Lector, negocio: NegocioId): Promise<IdentidadDelNegocio & { readonly versionDelNegocio: number }> {
+  const [n] = await x
+    .select({
+      nombre: esquema.negocios.nombre,
+      rubro: esquema.negocios.rubro,
+      codigo: esquema.negocios.codigo,
+      pais: esquema.negocios.pais,
+      moneda: esquema.negocios.moneda,
+      zonaHoraria: esquema.negocios.zonaHoraria,
+      modo: esquema.negocios.modo,
+      versionDelNegocio: esquema.negocios.version,
+    })
+    .from(esquema.negocios)
+    .where(eq(esquema.negocios.id, negocio))
   if (!n) throw new NegocioInexistente(`No existe el Negocio ${negocio}`)
-  const vigentes = filas
-    .filter((f) => f.contenido !== null)
-    .map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
-  const identidad: IdentidadDelNegocio = { id: negocio, nombre: n.nombre, rubro: n.rubro, codigo: n.codigo, pais: n.pais, moneda: n.moneda, zonaHoraria: n.zonaHoraria, modo: n.modo ?? 'armando' }
-  return armarEstado(identidad, comoVersion(n.version), vigentes) as EstadoVigente
+  return { ...n, id: negocio, modo: n.modo ?? 'armando' }
+}
+
+const vivasDe = (filas: Awaited<ReturnType<typeof ultimasDe>>) =>
+  filas.filter((f) => f.contenido !== null).map((f) => vigenteDe(comoClave(f.clave), comoVersion(f.version), origenDe(f), elementoDe(f)))
+
+function sinVersion({ versionDelNegocio: _, ...identidad }: Awaited<ReturnType<typeof identidadDe>>): IdentidadDelNegocio {
+  return identidad
+}
+
+/**
+ * La última fila de cada clave. Sin caché: un Cambio se ve desde la siguiente lectura. Son dos lecturas en READ
+ * COMMITTED, no una sola foto: quien escribe no confía en esta, relee con `x = tx` después de tomar la fila del Negocio.
+ */
+export async function leerAplicado(negocio: NegocioId, x: Lector = db): Promise<EstadoAplicado> {
+  const [identidad, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio)])
+  return armarEstado(sinVersion(identidad), comoVersion(identidad.versionDelNegocio), vivasDe(filas)) as EstadoAplicado
+}
+
+/**
+ * La última fila sellada de cada clave. Las filas salen de un solo SELECT: un Cliente nunca ve una publicación a medias.
+ * `version` es la más alta de esas filas, lápidas incluidas: 0 quiere decir que no hay Elementos.
+ */
+export async function leerPublicado(negocio: NegocioId, x: Lector = db): Promise<EstadoPublicado> {
+  const [identidad, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio, eq(ultimas.sinPublicar, false))])
+  const version = filas.reduce((max, f) => Math.max(max, f.version), 0)
+  return armarEstado(sinVersion(identidad), comoVersion(version), vivasDe(filas)) as EstadoPublicado
 }
 
 /**

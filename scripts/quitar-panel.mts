@@ -1,6 +1,6 @@
 /**
  * Va antes de cualquier vuelta a un despliegue anterior: ese código no conoce los tipos `seccion` e `indicador`, su
- * `leerEstado` lanza con una sola fila viva de esas y el Negocio queda sin atender. Deja la lápida (`contenido` null,
+ * `leerAplicado` lanza con una sola fila viva de esas y el Negocio queda sin atender. Deja la lápida (`contenido` null,
  * versión siguiente, por `escribir`) en cada clave `seccion:` e `indicador:`. En seco por defecto. Una transacción por
  * Negocio, y uno que falla no corta la corrida. Correrlo otra vez escribe 0.
  *
@@ -28,7 +28,7 @@ export function quitarPanel(negocio: NegocioId, opciones: { readonly deVerdad: b
     const vivas = (await ultimasDe(tx, negocio, or(like(t.clave, 'seccion:%'), like(t.clave, 'indicador:%')))).filter((u) => u.contenido !== null)
     const claves = vivas.map((u) => el.comoClave(u.clave))
     if (!opciones.deVerdad || !claves.length) return deshacer(claves)
-    const r = await escribir(tx, negocio, { tipo: 'tablas_viejas' }, { elementos: vivas.map((u) => ({ clave: el.comoClave(u.clave), base: el.comoVersion(u.version), despues: null })), filas: [] })
+    const r = await escribir(tx, negocio, { tipo: 'tablas_viejas' }, { elementos: vivas.map((u) => ({ clave: el.comoClave(u.clave), base: el.comoVersion(u.version), despues: null })), filas: [] }, null)
     if (r.tipo === 'conflicto') throw new Error(`conflicto en ${r.claves.map((c) => c.clave).join(', ')}; vuelve a correrlo`)
     if (r.tipo === 'invalida') throw new Error(`no cabe: ${r.problemas.map((p) => p.tipo).join(', ')}`)
     return claves

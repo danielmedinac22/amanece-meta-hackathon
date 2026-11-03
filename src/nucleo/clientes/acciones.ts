@@ -5,7 +5,7 @@ import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { ItemDePedido } from '@/db/esquema'
 import { marcar, type CasoId, type ClienteId } from '../identidad'
-import type { EstadoDelNegocio, EstadoVigente } from '../estado'
+import type { EstadoAplicado, EstadoDelNegocio, EstadoPublicado } from '../estado'
 import { ciudadDe, claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
 import { cotizar, type Cotizacion } from '../precios/cotizar'
 import type { PorPedidoNuevo, ReglasCompiladas } from './reglas'
@@ -131,7 +131,7 @@ function buscarEn(estado: EstadoDelNegocio, texto: string) {
 const huellaDeItems = (items: readonly { productoId: string; cantidad: number }[]) => JSON.stringify(items.map((i) => [i.productoId, i.cantidad]).sort())
 
 /** Solo los pedidos y Casos de este Cliente en este Negocio. Los productos salen del estado, no de la base. */
-export function puertoDeLaBase(estado: EstadoVigente, cliente: ClienteId): PuertoDeAcciones {
+export function puertoDeLaBase(estado: EstadoPublicado, cliente: ClienteId): PuertoDeAcciones {
   const negocio = estado.identidad.id
   const deEsteCliente = and(eq(esquema.pedidos.negocioId, negocio), eq(esquema.pedidos.clienteId, cliente))
   return {
@@ -254,4 +254,5 @@ export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTur
 type Es<A extends true> = A
 export type _PasarAlDuenoNoEsAccion = Es<'pasar_al_dueno' extends NombreDeAccion ? false : true>
 export type _EscenariosNombranLasAcciones = Es<[NombreDeAccion] extends [AccionDeEscenario] ? ([AccionDeEscenario] extends [NombreDeAccion] ? true : false) : false>
-export type _PuertoRealSoloVigente = Es<EstadoDelNegocio extends Parameters<typeof puertoDeLaBase>[0] ? false : true>
+export type _PuertoRealSoloPublicado = Es<EstadoDelNegocio extends Parameters<typeof puertoDeLaBase>[0] ? false : true>
+export type _PuertoRealSinLoAplicado = Es<EstadoAplicado extends Parameters<typeof puertoDeLaBase>[0] ? false : true>

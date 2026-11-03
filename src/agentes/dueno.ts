@@ -27,7 +27,7 @@ import {
   type ResultadoDelAlta,
   type TarjetaDeAprobacion,
 } from '@/nucleo/cambios'
-import { leerEstado } from '@/nucleo/estado'
+import { leerAplicado } from '@/nucleo/estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, LARGO_DEL_ESTILO, normalizar, reglaEnPalabras, tratoDelTono } from '@/nucleo/estado/elementos'
 import { revisarTextoDelDueno } from '@/nucleo/salida/revisar'
 import type { ContextoDelDueno } from '@/nucleo/identidad'
@@ -105,7 +105,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     inputSchema: z.object({}),
     execute: () =>
       seguro(async () => {
-        const estado = await leerEstado(negocioId)
+        const estado = await leerAplicado(negocioId)
         const { nombre, rubro, codigo, modo } = estado.identidad
         return {
           nombre,
@@ -126,7 +126,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
 
   const preguntaFrecuente = z.object({ pregunta: z.string(), respuesta: z.string() })
 
-  const faltaAhora = async () => faltaEnElResumen(queFaltaParaAbrir(await leerEstado(negocioId), (await lecturaPendiente(negocioId))?.escritura ?? null))
+  const faltaAhora = async () => faltaEnElResumen(queFaltaParaAbrir(await leerAplicado(negocioId), (await lecturaPendiente(negocioId))?.escritura ?? null))
 
   /** El resumen lo escribe el código: qué se guardó, qué espera la tarjeta, qué hay que preguntar y qué falta. */
   async function enPalabras(r: ResultadoDelAlta, nota: string | null = null): Promise<SalidaConTarjeta> {
@@ -164,7 +164,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         const inicio = Date.now()
         const { extraido, uso } = await puertos.extractor(pagina)
         await registrarTurno('dueno', negocioId, { inputTokens: uso.entrada, outputTokens: uso.salida }, Date.now() - inicio).catch((e) => console.warn('[dueno] no pude registrar el extractor', e))
-        const r = await proponerLectura(ctx, armarLectura(await leerEstado(negocioId), pagina, extraido))
+        const r = await proponerLectura(ctx, armarLectura(await leerAplicado(negocioId), pagina, extraido))
         const leido = r.tarjeta
           ? `Leí ${cosas(r.leidos)} de ${pagina.fuente} y quedaron en una tarjeta que el Dueño confirma con el botón «Están bien y no falta ninguno». No las guardes tú.`
           : r.noSeArmo
@@ -192,7 +192,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     }),
     execute: (parche) =>
       conTarjeta(async () => {
-        const estado = await leerEstado(negocioId)
+        const estado = await leerAplicado(negocioId)
         const quiere: QuierePoner[] = CAMPOS_DE_CONOCIMIENTO.flatMap((campo): QuierePoner[] => {
           const valor = parche[campo]?.trim()
           return valor ? [{ tipo: 'poner', elemento: { tipo: 'dato', campo, valor }, reemplaza: null }] : []
@@ -232,7 +232,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     }),
     execute: ({ productos }) =>
       conTarjeta(async () => {
-        const estado = await leerEstado(negocioId)
+        const estado = await leerAplicado(negocioId)
         const quiere = productos.map((p): QuierePoner => {
           const mismo = buscarProducto(estado, p.nombre)
           return { tipo: 'poner', elemento: { tipo: 'producto', nombre: p.nombre, descripcion: p.descripcion ?? mismo?.elemento.descripcion ?? '', precio: comoMonto(Math.round(p.precio)), activo: true }, reemplaza: mismo?.clave ?? null }
@@ -250,7 +250,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       seguro(async () => {
         const r = await abrirEnElAlta(ctx)
         if (!r.abierto) return { ok: false as const, falta: r.falta.map(faltaEnPalabras), convieneCompletar: r.avisos.map(faltaEnPalabras) }
-        const { nombre, codigo } = (await leerEstado(negocioId)).identidad
+        const { nombre, codigo } = (await leerAplicado(negocioId)).identidad
         return { ok: true as const, link: linkDeWhatsapp(nombre, codigo), codigo, convieneCompletar: r.avisos.map(faltaEnPalabras) }
       }),
   })

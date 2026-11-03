@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { proponerRespuestaAlCaso, type ResultadoDeProponer } from '@/nucleo/cambios'
-import { leerEstado, valorDelDato } from '@/nucleo/estado'
+import { leerPublicado, valorDelDato, type EstadoPublicado } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
 import type { NegocioId } from '@/nucleo/identidad'
 import { modeloEstructurado } from '@/negocio/dueno-modelo'
@@ -26,10 +26,9 @@ export async function traerCasoAlDueno(negocio: NegocioId, casoId: string): Prom
   if (!caso || caso.estado !== 'abierto') return
   const negocioId = caso.negocioId
 
-  const estado = await leerEstado(negocio)
+  const estado = await leerPublicado(negocio)
   const [cliente] = caso.clienteId ? await db.select().from(esquema.clientes).where(and(eq(esquema.clientes.id, caso.clienteId), eq(esquema.clientes.negocioId, negocioId))) : []
   const [pedido] = caso.pedidoId ? await db.select().from(esquema.pedidos).where(and(eq(esquema.pedidos.id, caso.pedidoId), eq(esquema.pedidos.negocioId, negocioId))) : []
-  const reglas = estado.vigentes('regla').map((v) => reglaEnPalabras(v.elemento, estado))
   const ultimos = caso.clienteId
     ? (
         await db
@@ -42,18 +41,7 @@ export async function traerCasoAlDueno(negocio: NegocioId, casoId: string): Prom
     : []
 
   const nombreDelCliente = cliente?.nombre || 'el Cliente'
-  const contexto = [
-    `Negocio: ${estado.identidad.nombre} (${estado.identidad.rubro || 'sin rubro'}). Ciudad: ${valorDelDato(estado, 'ciudad') || 'sin dato'}. Tono: ${estado.vigentes('voz')[0]?.elemento.estilo || 'cercano y respetuoso'}.`,
-    valorDelDato(estado, 'envios') ? `Envíos: ${valorDelDato(estado, 'envios')}` : '',
-    reglas.length ? `Reglas del Dueño:\n${reglas.map((r) => `- ${r}`).join('\n')}` : '',
-    `Caso: ${caso.titulo}\nDetalle: ${caso.detalle || '(sin detalle)'}`,
-    pedido
-      ? `Pedido #${pedido.numero} (${pedido.estado}): ${pedido.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}. Total $${pedido.total.toLocaleString('es-CO')}. Ciudad: ${pedido.ciudad || 'sin dato'}. Dirección: ${pedido.direccion || 'sin dato'}.`
-      : 'Sin pedido relacionado.',
-    `Últimos mensajes de ${nombreDelCliente}:\n${ultimos.map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Agente'}: ${m.texto}`).join('\n') || '(sin mensajes)'}`,
-  ]
-    .filter(Boolean)
-    .join('\n\n')
+  const contexto = contextoDelCaso(estado, { caso, pedido, ultimos, nombreDelCliente })
 
   const inicio = Date.now()
   let propuesta: z.infer<typeof propuestaDelCaso> | null = null
@@ -110,6 +98,31 @@ ${contexto}`,
   for (const dueno of duenos) {
     await guardarEnElHilo(negocioId, dueno.id, 'agente', mensajeDelAgente(texto, partes))
   }
+}
+
+/** Lo que se le propone a un Cliente sale de lo que ese Cliente vive: lo publicado, no la vista previa del Dueño. */
+function contextoDelCaso(
+  estado: EstadoPublicado,
+  { caso, pedido, ultimos, nombreDelCliente }: {
+    readonly caso: typeof esquema.casos.$inferSelect
+    readonly pedido: typeof esquema.pedidos.$inferSelect | undefined
+    readonly ultimos: readonly { readonly rol: string; readonly texto: string }[]
+    readonly nombreDelCliente: string
+  },
+): string {
+  const reglas = estado.vigentes('regla').map((v) => reglaEnPalabras(v.elemento, estado))
+  return [
+    `Negocio: ${estado.identidad.nombre} (${estado.identidad.rubro || 'sin rubro'}). Ciudad: ${valorDelDato(estado, 'ciudad') || 'sin dato'}. Tono: ${estado.vigentes('voz')[0]?.elemento.estilo || 'cercano y respetuoso'}.`,
+    valorDelDato(estado, 'envios') ? `Envíos: ${valorDelDato(estado, 'envios')}` : '',
+    reglas.length ? `Reglas del Dueño:\n${reglas.map((r) => `- ${r}`).join('\n')}` : '',
+    `Caso: ${caso.titulo}\nDetalle: ${caso.detalle || '(sin detalle)'}`,
+    pedido
+      ? `Pedido #${pedido.numero} (${pedido.estado}): ${pedido.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}. Total $${pedido.total.toLocaleString('es-CO')}. Ciudad: ${pedido.ciudad || 'sin dato'}. Dirección: ${pedido.direccion || 'sin dato'}.`
+      : 'Sin pedido relacionado.',
+    `Últimos mensajes de ${nombreDelCliente}:\n${ultimos.map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Agente'}: ${m.texto}`).join('\n') || '(sin mensajes)'}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 /** Por qué el aviso llega sin botón: lo dice el código, no el modelo. */

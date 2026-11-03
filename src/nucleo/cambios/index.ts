@@ -15,7 +15,7 @@ import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
 import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { leerEstado, type Escritura, type EstadoVigente } from '../estado'
+import { leerAplicado, type Escritura, type EstadoAplicado } from '../estado'
 import { comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto } from '../estado/escribir'
 import {
@@ -241,7 +241,7 @@ export async function proponerLectura(
   ctx: ContextoDelDueno,
   lectura: Lectura,
 ): Promise<{ readonly tarjeta: TarjetaDeAprobacion | null; readonly leidos: number; readonly descartados: number; readonly noSeArmo: string | null }> {
-  const estado = await leerEstado(ctx.negocio)
+  const estado = await leerAplicado(ctx.negocio)
   const quedan: QuierePoner[] = []
   for (const q of lectura.quiere) if (!('tipo' in (await traducir(estado, [q])))) quedan.push(q)
   const descartados = lectura.descartados + lectura.quiere.length - quedan.length
@@ -263,7 +263,7 @@ type Traducida = {
   /** La versión del Negocio que vio quien propuso: entra en la huella. */
   readonly version: VersionDelNegocio | null
   /** Lo que leyó `traducir`. */
-  readonly estado: EstadoVigente
+  readonly estado: EstadoAplicado
   /** Las del ensayo: el código las escribe y van arriba de la tarjeta y primero en el resumen. */
   readonly advertencias: readonly string[]
 }
@@ -323,7 +323,7 @@ function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelP
 const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
 async function traducirPedido(quien: Quien, pedido: PedidoDelDueno, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
-  const estado = await leerEstado(quien.negocio)
+  const estado = await leerAplicado(quien.negocio)
   const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[], redactor)
   if (!('tipo' in t)) return { ...t, advertencias: [], version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
   if (t.tipo === 'corregir') return corregir(t.problemas)
@@ -454,7 +454,7 @@ async function aplicarConReclamo(a: {
       return 'problema' in r ? deshacer({ tipo: 'ya_no_cabe', problemas: [r.problema] }) : { tipo: 'reclamada', fila, respuesta: r }
     }
     if (fila.escritura.elementos.length) {
-      const r = await escribir(tx, a.negocio, { tipo: 'propuesta', propuesta: a.propuesta }, fila.escritura)
+      const r = await escribir(tx, a.negocio, { tipo: 'propuesta', propuesta: a.propuesta }, fila.escritura, null)
       if (r.tipo === 'conflicto') return deshacer(r)
       if (r.tipo === 'invalida') return deshacer({ tipo: 'ya_no_cabe', problemas: r.problemas })
       const [conVersion] = await tx.update(esquema.propuestas).set({ version: r.version }).where(eq(esquema.propuestas.id, a.propuesta)).returning()

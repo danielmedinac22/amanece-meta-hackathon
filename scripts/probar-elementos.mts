@@ -1,5 +1,5 @@
 /**
- * El estado de un Negocio contra la base real, sin modelo: `escribir`, `leerEstado` y `cotizar`. Crea tres Negocios
+ * El estado de un Negocio contra la base real, sin modelo: `escribir`, `leerAplicado` y `cotizar`. Crea tres Negocios
  * desechables y los borra al final, también si falla.
  *
  *   pnpm tsx scripts/probar-elementos.mts
@@ -16,7 +16,7 @@ process.env.ENVIO_SIMULADO = '1'
 
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
-const { armarEstado, leerEstado, EstadoIlegible } = await import('../src/nucleo/estado')
+const { armarEstado, leerAplicado, EstadoIlegible } = await import('../src/nucleo/estado')
 const { ESQUEMA_DEL_PEDIDO, queFaltaParaAbrir } = await import('../src/nucleo/cambios')
 const { politicaDeAprobacion } = await import('../src/nucleo/cambios/politica')
 const { escribir } = await import('../src/nucleo/estado/escribir')
@@ -49,11 +49,11 @@ async function negocioDesechable(letra: string): Promise<NegocioId> {
 }
 
 const escribirEn = (negocio: NegocioId, elementos: readonly CambioDeElemento[]) =>
-  conTransaccion((tx) => escribir(tx, negocio, { tipo: 'entrevista' }, { elementos, filas: [] }))
+  conTransaccion((tx) => escribir(tx, negocio, { tipo: 'entrevista' }, { elementos, filas: [] }, null))
 const filasDe = async (negocio: NegocioId, c?: string) =>
   db.$count(esquema.elementos, c ? and(eq(esquema.elementos.negocioId, negocio), eq(esquema.elementos.clave, c)) : eq(esquema.elementos.negocioId, negocio))
 const foto = async (negocio: NegocioId) => {
-  const e = await leerEstado(negocio)
+  const e = await leerAplicado(negocio)
   return JSON.stringify({ version: e.version, todos: e.todos() })
 }
 const horario = (valor: string): Elemento => ({ tipo: 'dato', campo: 'horario', valor })
@@ -77,7 +77,7 @@ try {
   const v1 = await escribirEn(A, [{ clave: h, base: 'nueva', despues: horario('uno') }])
   const v2 = v1.tipo === 'escrito' ? await escribirEn(A, [{ clave: h, base: v1.version, despues: horario('dos') }]) : v1
   const v3 = v2.tipo === 'escrito' ? await escribirEn(A, [{ clave: h, base: v2.version, despues: horario('tres') }]) : v2
-  const e1 = await leerEstado(A)
+  const e1 = await leerAplicado(A)
   const vigente = e1.vigente(h)
   afirmar('E1: las tres escrituras quedan, con versiones 1, 2 y 3', v1.tipo === 'escrito' && v1.version === 1 && v2.tipo === 'escrito' && v2.version === 2 && v3.tipo === 'escrito' && v3.version === 3, { v1, v2, v3 })
   afirmar('E1: vale la última', vigente?.elemento.tipo === 'dato' && vigente.elemento.valor === 'tres' && vigente.version === 3 && e1.version === 3, vigente)
@@ -85,21 +85,21 @@ try {
 
   console.log('\n=== E2. Quitar: desaparece y la versión anterior sigue en la tabla ===')
   const q = await escribirEn(A, [{ clave: h, base: version(3), despues: null }])
-  const e2 = await leerEstado(A)
+  const e2 = await leerAplicado(A)
   afirmar('E2: quitar sube la versión y el dato ya no está vigente', q.tipo === 'escrito' && q.version === 4 && e2.vigente(h) === null && e2.vigentes('dato').length === 0, { q, todos: e2.todos() })
   afirmar('E2: las versiones anteriores siguen en la tabla', (await filasDe(A, h)) === 4)
   const deNuevo = await escribirEn(A, [{ clave: h, base: 'nueva', despues: horario('cinco') }])
-  afirmar('E2: una clave quitada se vuelve a poner con base nueva', deNuevo.tipo === 'escrito' && (await leerEstado(A)).vigente(h)?.version === 5, deNuevo)
+  afirmar('E2: una clave quitada se vuelve a poner con base nueva', deNuevo.tipo === 'escrito' && (await leerAplicado(A)).vigente(h)?.version === 5, deNuevo)
 
   console.log('\n=== E3. Dos propuestas sobre la misma clave: la segunda da conflicto ===')
-  const base = (await leerEstado(A)).vigente(h)!.version
+  const base = (await leerAplicado(A)).vigente(h)!.version
   const primera = await escribirEn(A, [{ clave: h, base, despues: horario('de Juan') }])
   const filasAntes = await filasDe(A)
   const segunda = await escribirEn(A, [
     { clave: h, base, despues: horario('de Ana') },
     { clave: clave('dato:pagos'), base: 'nueva', despues: { tipo: 'dato', campo: 'pagos', valor: 'Nequi' } },
   ])
-  const e3 = await leerEstado(A)
+  const e3 = await leerAplicado(A)
   afirmar('E3: la primera escribe', primera.tipo === 'escrito', primera)
   afirmar('E3: la segunda da conflicto en dato:horario, con quién y cuándo', segunda.tipo === 'conflicto' && segunda.claves.length === 1 && segunda.claves[0].clave === h && segunda.claves[0].tocadaPor?.tipo === 'entrevista' && segunda.claves[0].resumen.includes('de Juan'), segunda)
   afirmar('E3: la segunda no escribe nada, ni la clave que no chocaba', (await filasDe(A)) === filasAntes && e3.vigente(clave('dato:pagos')) === null && e3.version === 6, { version: e3.version })
@@ -111,34 +111,34 @@ try {
   const aLaVez = await Promise.allSettled([escribirEn(A, [ciudad('Manizales')]), escribirEn(A, [ciudad('Pereira')])])
   const desenlaces = aLaVez.map((r) => (r.status === 'fulfilled' ? r.value.tipo : `lanzó: ${r.reason}`)).sort()
   afirmar('E4: uno escribe y el otro da conflicto, sin excepción', JSON.stringify(desenlaces) === JSON.stringify(['conflicto', 'escrito']), desenlaces)
-  afirmar('E4: una sola fila de dato:ciudad y la versión subió una vez', (await filasDe(A, 'dato:ciudad')) === 1 && (await leerEstado(A)).version === 7)
+  afirmar('E4: una sola fila de dato:ciudad y la versión subió una vez', (await filasDe(A, 'dato:ciudad')) === 1 && (await leerAplicado(A)).version === 7)
 
   console.log('\n=== E5. Una escritura vacía no sube la versión ===')
   const vacia = await escribirEn(A, [])
-  afirmar('E5: escrito con la misma versión', vacia.tipo === 'escrito' && vacia.version === 7 && (await leerEstado(A)).version === 7, vacia)
+  afirmar('E5: escrito con la misma versión', vacia.tipo === 'escrito' && vacia.version === 7 && (await leerAplicado(A)).version === 7, vacia)
 
   console.log('\n=== E6. Contratos ===')
   const viejo = clave('dato:envios')
-  await db.insert(esquema.elementos).values({ negocioId: C, clave: viejo, version: 1, tipo: 'dato', contrato: 0, contenido: { tipo: 'dato', campo: 'envios', valor: 'Todo el país' }, origen: 'tablas_viejas' })
+  await db.insert(esquema.elementos).values({ negocioId: C, clave: viejo, version: 1, tipo: 'dato', contrato: 0, contenido: { tipo: 'dato', campo: 'envios', valor: 'Todo el país' }, origen: 'tablas_viejas', sinPublicar: false })
   await db.update(esquema.negocios).set({ version: 1 }).where(eq(esquema.negocios.id, C))
-  const conViejo = await leerEstado(C)
+  const conViejo = await leerAplicado(C)
   afirmar('E6: un contrato viejo se lee con el esquema de hoy', conViejo.vigente(viejo)?.elemento.tipo === 'dato', conViejo.todos())
-  await db.insert(esquema.elementos).values({ negocioId: C, clave: viejo, version: 2, tipo: 'dato', contrato: 99, contenido: { tipo: 'dato', campo: 'envios', valor: 'Del futuro' }, origen: 'tablas_viejas' })
-  const futuro = await leerEstado(C).then(
+  await db.insert(esquema.elementos).values({ negocioId: C, clave: viejo, version: 2, tipo: 'dato', contrato: 99, contenido: { tipo: 'dato', campo: 'envios', valor: 'Del futuro' }, origen: 'tablas_viejas', sinPublicar: false })
+  const futuro = await leerAplicado(C).then(
     () => 'se leyó',
     (e: unknown) => e,
   )
   afirmar('E6: un contrato del futuro es EstadoIlegible', futuro instanceof EstadoIlegible, futuro)
   await db.delete(esquema.elementos).where(and(eq(esquema.elementos.negocioId, C), eq(esquema.elementos.version, 2)))
-  await db.insert(esquema.elementos).values({ negocioId: C, clave: viejo, version: 2, tipo: 'dato', contrato: 1, contenido: { tipo: 'dato', campo: 'envios' }, origen: 'tablas_viejas' })
-  const roto = await leerEstado(C).then(
+  await db.insert(esquema.elementos).values({ negocioId: C, clave: viejo, version: 2, tipo: 'dato', contrato: 1, contenido: { tipo: 'dato', campo: 'envios' }, origen: 'tablas_viejas', sinPublicar: false })
+  const roto = await leerAplicado(C).then(
     () => 'se leyó',
     (e: unknown) => e,
   )
   afirmar('E6: un contenido que no parsea es EstadoIlegible', roto instanceof EstadoIlegible, roto)
 
   console.log('\n=== E7. Escribir en A no toca B ===')
-  afirmar('E7: leerEstado(B) quedó idéntico', (await foto(B)) === fotoDeB)
+  afirmar('E7: leerAplicado(B) quedó idéntico', (await foto(B)) === fotoDeB)
 
   console.log('\n=== E9. escribir no deja entrar lo que hoy nada hace cumplir ===')
   const antesDeE9 = await filasDe(A)
@@ -167,7 +167,7 @@ try {
   const torta = (): CambioDeElemento => ({ clave: el.claveNueva('producto'), base: 'nueva', despues: { tipo: 'producto', nombre: 'Torta', descripcion: '', precio: monto(30000), activo: true } })
   const dosTortas = await Promise.all([escribirEn(B, [torta()]), escribirEn(B, [torta()])])
   afirmar('E10: dos Torta nuevas a la vez: una se escribe y la otra no cabe', JSON.stringify(dosTortas.map((r) => r.tipo).sort()) === JSON.stringify(['escrito', 'invalida']), dosTortas)
-  afirmar('E10: queda una sola Torta activa', (await leerEstado(B)).vigentes('producto').filter((v) => v.elemento.nombre === 'Torta').length === 1)
+  afirmar('E10: queda una sola Torta activa', (await leerAplicado(B)).vigentes('producto').filter((v) => v.elemento.nombre === 'Torta').length === 1)
 
   console.log('\n=== E11. Lo que escribir revisa de cada clave ===')
   const antesDeE11 = await filasDe(A)
@@ -175,7 +175,7 @@ try {
   afirmar('E11: una base numérica sobre una clave sin filas es conflicto', sinFilas.tipo === 'conflicto' && sinFilas.claves[0].tocadaPor === null, sinFilas)
   const quitarMuerta = await escribirEn(A, [{ clave: clave('dato:descripcion'), base: 'nueva', despues: null }])
   afirmar('E11: quitar lo que no está vigente es invalida', quitarMuerta.tipo === 'invalida', quitarMuerta)
-  const otraClave = await escribirEn(A, [{ clave: clave('dato:ciudad'), base: (await leerEstado(A)).vigente(clave('dato:ciudad'))!.version, despues: { tipo: 'dato', campo: 'pagos', valor: 'Nequi' } }])
+  const otraClave = await escribirEn(A, [{ clave: clave('dato:ciudad'), base: (await leerAplicado(A)).vigente(clave('dato:ciudad'))!.version, despues: { tipo: 'dato', campo: 'pagos', valor: 'Nequi' } }])
   const productoEnVoz = await escribirEn(A, [{ clave: clave('voz'), base: 'nueva', despues: { tipo: 'producto', nombre: 'Café', descripcion: '', precio: monto(1000), activo: true } }])
   afirmar('E11: un dato bajo la clave de otro campo y un producto bajo voz son invalida', otraClave.tipo === 'invalida' && productoEnVoz.tipo === 'invalida', { otraClave, productoEnVoz })
   afirmar('E11: nada de eso dejó filas', (await filasDe(A)) === antesDeE11)
@@ -197,8 +197,8 @@ try {
     { clave: ki, base: 'nueva', despues: indicador('Confirmados por día') },
     { clave: ks, base: 'nueva', despues: seccion },
   ])
-  const eD = await leerEstado(D)
-  afirmar('E12: una Sección y un Indicador se escriben y leerEstado los devuelve iguales', puestos.tipo === 'escrito' && canonico(eD.vigente(ki)?.elemento) === canonico(indicador('Confirmados por día')) && canonico(eD.vigente(ks)?.elemento) === canonico(seccion), eD.todos())
+  const eD = await leerAplicado(D)
+  afirmar('E12: una Sección y un Indicador se escriben y leerAplicado los devuelve iguales', puestos.tipo === 'escrito' && canonico(eD.vigente(ki)?.elemento) === canonico(indicador('Confirmados por día')) && canonico(eD.vigente(ks)?.elemento) === canonico(seccion), eD.todos())
   const repetido = await escribirEn(D, [{ clave: el.claveNueva('indicador'), base: 'nueva', despues: indicador('confirmados  por DÍA') }])
   afirmar('E12: dos con el mismo nombre en el Panel no caben', repetido.tipo === 'invalida' && repetido.problemas.some((p) => p.tipo === 'valor_invalido' && p.campo === 'nombre'), repetido)
   const rota = await escribirEn(D, [{ clave: el.claveNueva('indicador'), base: 'nueva', despues: indicador('Teléfonos', consulta('select count(*) as valor from clientes', ['clientes.telefono'], { tipo: 'numero', unidad: { tipo: 'cantidad', nombre: 'clientes' } })) }])
@@ -207,7 +207,7 @@ try {
   afirmar('E12: una consulta de otro catálogo no cabe', deOtroCatalogo.tipo === 'invalida', deOtroCatalogo)
   const quitada = await escribirEn(D, [{ clave: ks, base: eD.vigente(ks)!.version, despues: null }])
   const vuelta = await escribirEn(D, [{ clave: ks, base: 'nueva', despues: seccion }])
-  afirmar('E12: quitar la Sección la saca del estado y se puede volver a poner', quitada.tipo === 'escrito' && vuelta.tipo === 'escrito' && (await leerEstado(D)).vigentes('seccion').length === 1, { quitada, vuelta })
+  afirmar('E12: quitar la Sección la saca del estado y se puede volver a poner', quitada.tipo === 'escrito' && vuelta.tipo === 'escrito' && (await leerAplicado(D)).vigentes('seccion').length === 1, { quitada, vuelta })
   afirmar('E12: lo del Panel no lleva texto que llegue a un Cliente', el.definicionDe('seccion').textos(seccion).length === 0 && el.definicionDe('indicador').textos(indicador('x')).length === 0)
   afirmar(
     'E12: Sección e Indicador tienen alcance panel y con el Negocio atendiendo se aplican sin botón',
@@ -240,7 +240,7 @@ try {
     { clave: cafe, base: 'nueva', despues: { tipo: 'producto', nombre: 'Café 500 g', descripcion: '', precio: monto(38000), activo: true } },
     { clave: molino, base: 'nueva', despues: { tipo: 'producto', nombre: 'Molino', descripcion: '', precio: monto(119000), activo: false } },
   ])
-  const eB = await leerEstado(B)
+  const eB = await leerAplicado(B)
   const c1 = cotizar({ items: [{ producto: cafe, cantidad: 1 }, { producto: cafe, cantidad: 1 }], ciudad: 'Pasto' }, eB)
   afirmar('cotizar: un producto repetido se suma y el total sale del precio', 'total' in c1 && c1.total === 76000 && c1.lineas.length === 1 && c1.lineas[0].cantidad === 2, c1)
   afirmar('cotizar: un producto que no se vende no cubre', 'noCubre' in cotizar({ items: [{ producto: molino, cantidad: 1 }], ciudad: 'Pasto' }, eB))

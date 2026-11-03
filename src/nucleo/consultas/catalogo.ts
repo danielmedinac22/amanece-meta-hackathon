@@ -30,7 +30,7 @@ export type DefinicionDeFuente = {
   readonly noTrae: readonly string[]
   /** Las columnas físicas que lee la CTE: de aquí salen los GRANT. */
   readonly lee: { readonly [T in TablaLeida]?: readonly string[] }
-  /** `$1` el Negocio (uuid), `$2` su zona (texto), `$3` sus productos (jsonb de `leerEstado`). Lee `public.<tabla>` con `WHERE negocio_id = $1`. */
+  /** `$1` el Negocio (uuid), `$2` su zona (texto), `$3` sus productos (jsonb de `leerAplicado`). Lee `public.<tabla>` con `WHERE negocio_id = $1`. */
   readonly cte: string
 }
 

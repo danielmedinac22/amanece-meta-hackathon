@@ -26,7 +26,7 @@ const { ensayarPanel } = await import('../src/nucleo/cambios/ensayar')
 const { definicionDe } = await import('../src/nucleo/estado/elementos')
 const { redactarConsulta } = await import('../src/nucleo/cambios/redactar-consulta')
 const { traducir } = await import('../src/nucleo/cambios/traducir')
-const { leerEstado } = await import('../src/nucleo/estado')
+const { leerAplicado } = await import('../src/nucleo/estado')
 const { marcar } = await import('../src/nucleo/identidad')
 const { ataqueDe8, BUENAS_DE_M2, ESCAPES_DE_12, variantesDelAtaque } = await import('./consultas-de-prueba.mjs')
 type TipoDeSalida = import('../src/nucleo/consultas/tipos').TipoDeSalida
@@ -304,7 +304,7 @@ try {
 
   console.log('\n=== 5. Lo que vuelve de Postgres, saneado ===')
   const [ladera] = (await q.query(`select id from negocios where codigo = 'LADERA'`)) as { id: string }[]
-  const estado = await leerEstado(marcar.negocio(ladera.id))
+  const estado = await leerAplicado(marcar.negocio(ladera.id))
   const nombres = ((await q.query(`select nombre from clientes where negocio_id = $1 and nombre <> '' limit 50`, [ladera.id])) as { nombre: string }[]).map((c) => c.nombre)
   const correr = async (sql: string, salida: TipoDeSalida) => {
     const v = await valida(sql, salida)

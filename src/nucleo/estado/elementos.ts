@@ -294,7 +294,7 @@ const regla = (e: typeof escenario | typeof escenarioDeEntrada) =>
 
 const unidad = z.discriminatedUnion('tipo', [z.object({ tipo: z.literal('cantidad'), nombre: z.string() }), z.object({ tipo: z.literal('dinero') }), z.object({ tipo: z.literal('porcentaje') })])
 
-/** Lo guardado de una consulta. No lo ve ningún modelo: lo lee `leerEstado` del jsonb y lo revisa `escribir`. */
+/** Lo guardado de una consulta. No lo ve ningún modelo: lo lee `leerAplicado` del jsonb y lo revisa `escribir`. */
 function consultaGuardada<S extends 'filas' | 'numero' | 'serie'>(salida: z.ZodType<ConsultaGuardada<S>['salida']>) {
   return z
     .object({ sql: z.string(), enPalabras: z.string(), supuestos: z.array(z.string()), catalogo: z.number().int(), usa: z.array(z.string()), salida })
@@ -351,7 +351,7 @@ const ENTRADAS = {
   }),
 } as const
 
-/** Un Elemento completo: lo usan `escribir` antes de guardar y `leerEstado` al leer el jsonb. */
+/** Un Elemento completo: lo usan `escribir` antes de guardar y `leerAplicado` al leer el jsonb. */
 export const ESQUEMA_DE_ELEMENTO = z.discriminatedUnion('tipo', [
   regla(escenario).extend({ tipo: z.literal('regla') }),
   ENTRADAS.voz.extend({ tipo: z.literal('voz') }),
