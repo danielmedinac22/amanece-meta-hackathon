@@ -48,7 +48,7 @@ function puertoLibre(): Promise<number> {
 async function servir(modo: 'start' | 'dev', env: Record<string, string> = {}) {
   const puerto = await puertoLibre()
   const salida: string[] = []
-  const hijo = spawn(process.execPath, [NEXT, modo, '-p', String(puerto), '-H', '127.0.0.1'], {
+  const hijo = spawn(process.execPath, [NEXT, modo, '-p', String(puerto), '-H', 'localhost'], {
     cwd: RAIZ,
     env: { ...process.env, ...env },
     detached: true,
@@ -56,7 +56,7 @@ async function servir(modo: 'start' | 'dev', env: Record<string, string> = {}) {
   })
   hijos.add(hijo)
   for (const flujo of [hijo.stdout, hijo.stderr]) flujo.on('data', (d: Buffer) => salida.push(String(d)))
-  const base = `http://127.0.0.1:${puerto}`
+  const base = `http://localhost:${puerto}`
   const limite = Date.now() + 180_000
   while (Date.now() < limite) {
     if (hijo.exitCode !== null) throw new Error(`next ${modo} salió con ${hijo.exitCode}:\n${salida.join('').slice(-2000)}`)

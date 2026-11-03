@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { LoPendiente, ResultadoDePublicar } from '@/nucleo/cambios'
 
 const QUIEN_LO_NOTA = { clientes: 'Lo notan tus Clientes', equipo: 'Solo lo ven tú y tu equipo' } as const
@@ -35,8 +36,8 @@ export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
   }
 
   return (
-    <details className="relative">
-      <summary className={`flex cursor-pointer list-none items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium ${cuantos ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'}`}>
+    <Popover>
+      <PopoverTrigger render={<Button variant={cuantos ? 'default' : 'outline'} />}>
         {enCurso ? (
           'Publicando'
         ) : cuantos ? (
@@ -46,32 +47,34 @@ export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
         ) : (
           'Publicado'
         )}
-      </summary>
-      <div className="absolute right-0 z-10 mt-2 w-[min(340px,calc(100vw-48px))] rounded-lg border border-border bg-card p-3 text-sm shadow-lg">
-        {cuantos ? (
-          <>
-            <p className="text-xs font-medium">Sin publicar</p>
-            {otraLista && <p className="mt-2 rounded-md bg-ojo-suave px-2 py-1 text-ojo">Alguien aplicó algo más. Revísalo y vuelve a tocar Publicar.</p>}
-            <ul className="mt-2 space-y-2">
-              {lista.items.map((i) => (
-                <li key={i.clave}>
-                  <span className="block whitespace-pre-wrap">{i.linea}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {QUIEN_LO_NOTA[i.loNotan]}
-                    {i.aplicadoPor ? ` · Aplicada por ${i.aplicadoPor}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-            <Button disabled={enCurso} onClick={publicar} className="mt-3 w-full">
-              {enCurso ? 'Publicando' : 'Publicar'}
-            </Button>
-          </>
-        ) : (
-          <p className="text-muted-foreground">Todo está en tu link. No hay nada sin publicar.</p>
-        )}
-      </div>
-    </details>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(340px,calc(100vw-32px))] text-sm">
+        <div>
+          {cuantos ? (
+            <>
+              <p className="text-xs font-medium">Sin publicar</p>
+              {otraLista && <p className="mt-2 rounded-md bg-ojo-suave px-2 py-1 text-ojo">Alguien aplicó algo más. Revísalo y vuelve a tocar Publicar.</p>}
+              <ul className="mt-2 space-y-2">
+                {lista.items.map((i) => (
+                  <li key={i.clave}>
+                    <span className="block whitespace-pre-wrap">{i.linea}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {QUIEN_LO_NOTA[i.loNotan]}
+                      {i.aplicadoPor ? ` · Aplicada por ${i.aplicadoPor}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+              <Button disabled={enCurso} onClick={publicar} className="mt-3 w-full">
+                {enCurso ? 'Publicando' : 'Publicar'}
+              </Button>
+            </>
+          ) : (
+            <p className="text-muted-foreground">Todo está en tu link. No hay nada sin publicar.</p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
