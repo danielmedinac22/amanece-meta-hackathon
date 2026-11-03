@@ -1,7 +1,7 @@
 /**
  * Las invariantes del tramo que viven en los tipos: aplica una por una cada mutación sobre el código real y afirma
  * que `tsc --noEmit` falla con cada una y pasa sin ninguna. Restaura cada archivo, también si algo lanza. Fuera de
- * `pnpm probar`: tarda lo que tardan ocho `tsc`.
+ * `pnpm probar`: tarda lo que tardan todas las mutaciones en `tsc`.
  *
  *   pnpm tsx scripts/mutar-tipos.mts
  */
@@ -97,8 +97,8 @@ const MUTACIONES: readonly Mutacion[] = [
   {
     nombre: 'filas de una consulta en lo que se guarda de la vista previa del Panel',
     archivo: 'src/nucleo/cambios/ensayar.ts',
-    antes: "  readonly fallo: ErrorDeConsulta['tipo'] | null\n}",
-    despues: "  readonly fallo: ErrorDeConsulta['tipo'] | null\n  readonly filas: readonly Record<string, string>[]\n}",
+    antes: '  readonly fallo: PorQueNoSePudo | null\n}',
+    despues: '  readonly fallo: PorQueNoSePudo | null\n  readonly filas: readonly Record<string, string>[]\n}',
   },
   {
     nombre: 'un motivo de Capacidad faltante sin su lugar en el CHECK',
@@ -117,6 +117,39 @@ const MUTACIONES: readonly Mutacion[] = [
     archivo: 'src/nucleo/clientes/turno.ts',
     antes: 'enviado: true, novedad: true, entregado: false,',
     despues: 'enviado: true, entregado: false,',
+  },
+  {
+    nombre: 'atender con lo aplicado',
+    archivo: 'src/nucleo/clientes/atender.ts',
+    antes: 'estado = await leerPublicado(negocio)',
+    despues: 'estado = await leerAplicado(negocio)',
+    tambien: { antes: 'import { leerPublicado, NegocioInexistente,', despues: 'import { leerAplicado, NegocioInexistente,' },
+  },
+  {
+    nombre: 'entornoReal con lo aplicado',
+    archivo: 'src/nucleo/clientes/turno.ts',
+    antes: 'export function entornoReal(estado: EstadoPublicado,',
+    despues: 'export function entornoReal(estado: EstadoAplicado,',
+    tambien: { antes: "import type { EstadoDelNegocio, EstadoPublicado } from '../estado'", despues: "import type { EstadoAplicado, EstadoDelNegocio, EstadoPublicado } from '../estado'" },
+  },
+  {
+    nombre: 'el bit con default en el esquema',
+    archivo: 'src/db/esquema.ts',
+    antes: "sinPublicar: boolean('sin_publicar').notNull(),",
+    despues: "sinPublicar: boolean('sin_publicar').notNull().default(false),",
+  },
+  {
+    nombre: 'publicar libre para el agente',
+    archivo: 'src/nucleo/acciones.ts',
+    antes: "actores: { agente: 'nunca', vigilancia: 'nunca', boton: 'libre', panel: 'nunca' },",
+    despues: "actores: { agente: 'libre', vigilancia: 'nunca', boton: 'libre', panel: 'nunca' },",
+  },
+  {
+    nombre: 'el contexto de un Caso con lo aplicado',
+    archivo: 'src/agentes/avisos.ts',
+    antes: '  estado: EstadoPublicado,\n',
+    despues: '  estado: EstadoAplicado,\n',
+    tambien: { antes: 'type EstadoPublicado }', despues: 'type EstadoAplicado }' },
   },
 ]
 
