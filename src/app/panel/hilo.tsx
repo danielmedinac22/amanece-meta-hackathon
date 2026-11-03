@@ -13,6 +13,12 @@ type HiloLeido = { mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarje
 export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; estado: 'armando' | 'listo' | null }) {
   const router = useRouter()
   const [estados, setEstados] = useState(tarjetas)
+  // El layout vuelve a leer con cada `router.refresh`: una decisión tomada en Casos llega sin esperar el sondeo.
+  const [leidas, setLeidas] = useState(tarjetas)
+  if (leidas !== tarjetas) {
+    setLeidas(tarjetas)
+    setEstados(tarjetas)
+  }
   const { messages, sendMessage, setMessages, status, error } = useChat({
     messages: inicial,
     transport: new DefaultChatTransport({ api: '/api/dueno/chat' }),

@@ -84,7 +84,7 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
     const i = enEspera.findIndex((t) => t.propuesta === propuesta)
     return enEspera.length > 1 && i >= 0 ? `${i + 1} de ${enEspera.length}` : null
   }
-  const tarjeta = (t: NonNullable<ReturnType<typeof tarjetaDeLaParte>>) => <Tarjeta tarjeta={t} estado={estados[t.propuesta]} posicion={posicionDe(t.propuesta)} alTocar={alTocar} alCambiar={alCambiar} />
+  const tarjeta = (t: NonNullable<ReturnType<typeof tarjetaDeLaParte>>) => <Tarjeta tarjeta={t} estado={estados[t.propuesta]} posicion={posicionDe(t.propuesta)} ancla={`tarjeta-${t.propuesta}`} alTocar={alTocar} alCambiar={alCambiar} />
 
   return (
     <div className="flex h-full min-h-0 flex-col flotante:h-auto">

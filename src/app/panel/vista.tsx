@@ -70,24 +70,10 @@ function CasosParaTi({ casos }: { casos: DatosDelNegocio['casos'] }) {
   )
 }
 
-export function VistaDeCasos({ casos }: { casos: DatosDelNegocio['casos'] }) {
-  return casos.length ? <CasosParaTi casos={casos} /> : <p className="text-muted-foreground">Nada espera tu decisión. Cuando algo la necesite, aparece aquí y tu agente te avisa.</p>
-}
-
 export function VistaDelTablero({ indicadores }: { indicadores: SeccionPintada[] }) {
   return indicadores.length ? <Indicadores indicadores={indicadores} /> : <p className="text-muted-foreground">Todavía no tienes indicadores. Pídele a tu agente el número que quieres mirar.</p>
 }
 
 export function VistaDeUnaSeccion({ p }: { p: SeccionPintada }) {
   return p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo nombre={p.nombre} /> : <Seccion p={p} />
-}
-
-/** Las Secciones cuyo ticket no está hecho: dicen que faltan en vez de pintar nada inventado. */
-export function FaltaEstaSeccion({ que }: { que: string }) {
-  return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-2 text-center">
-      <p className="font-heading text-xl font-semibold">Aquí van a estar {que}.</p>
-      <p className="text-muted-foreground">Esta Sección todavía falta. Mientras tanto, pídele a tu agente lo que necesites ver.</p>
-    </div>
-  )
 }

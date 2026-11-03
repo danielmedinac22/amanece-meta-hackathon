@@ -76,12 +76,12 @@ function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarj
 }
 
 /** La forma de toda decisión: etiqueta, cuerpo y pie. Resuelta, el cuerpo se pliega en su sitio y queda la constancia. */
-function Decision({ id, etiqueta, constancia, icono, posicion, cuerpo, acciones, hecho }: { id: string; etiqueta: string; constancia: string; icono: ReactNode; posicion: string | null; cuerpo: ReactNode; acciones: ReactNode; hecho: ReactNode }) {
+function Decision({ ancla, etiqueta, constancia, icono, posicion, cuerpo, acciones, hecho }: { ancla: string | undefined; etiqueta: string; constancia: string; icono: ReactNode; posicion: string | null; cuerpo: ReactNode; acciones: ReactNode; hecho: ReactNode }) {
   const [verDetalle, setVerDetalle] = useState(false)
   const quieto = useReducedMotion()
   const plegada = !!hecho && !verDetalle
   return (
-    <div id={`tarjeta-${id}`} className="scroll-mt-12 overflow-hidden rounded-(--radius) border border-border bg-card text-card-foreground">
+    <div id={ancla} className="scroll-mt-12 overflow-hidden rounded-(--radius) border border-border bg-card text-card-foreground">
       <AnimatePresence initial={false}>
         {!plegada && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={quieto ? { duration: 0 } : { duration: 0.26, ease: ENTRA }}>
@@ -158,8 +158,8 @@ function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: Est
   )
 }
 
-/** Una propuesta dentro del Hilo. Después de un clic muestra lo que respondió la ruta. */
-export function Tarjeta({ tarjeta, estado, posicion = null, alTocar, alCambiar }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; alTocar: TocarTarjeta; alCambiar: () => void }) {
+/** Una propuesta en el Hilo o en Casos. Después de un clic muestra lo que respondió la ruta. `ancla` es solo del Hilo: la misma tarjeta puede estar en los dos a la vez. */
+export function Tarjeta({ tarjeta, estado, posicion = null, ancla, alTocar, alCambiar }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; ancla?: string; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const [enCurso, setEnCurso] = useState(false)
   const [respuesta, setRespuesta] = useState<RespuestaDeTarjeta | null>(null)
 
@@ -183,7 +183,7 @@ export function Tarjeta({ tarjeta, estado, posicion = null, alTocar, alCambiar }
 
   return (
     <Decision
-      id={tarjeta.propuesta}
+      ancla={ancla}
       etiqueta={etiquetaDe(tarjeta, estado)}
       constancia={etiquetaDe(tarjeta, estado, 'constancia')}
       icono={tarjeta.accion === 'enviar' ? <Warning weight="fill" className="size-3.5 shrink-0 text-ojo" /> : <Eye weight="fill" className="size-3.5 shrink-0" />}

@@ -1,7 +1,8 @@
-import { leerCasos } from '../leer'
-import { SinNegocio, VistaDeCasos } from '../vista'
+import { CasosEnLaRuta } from '../casos'
+import { leerLosCasos } from '../leer'
+import { SinNegocio } from '../vista'
 
 export default async function Casos() {
-  const casos = await leerCasos()
-  return casos ? <VistaDeCasos casos={casos} /> : <SinNegocio />
+  const datos = await leerLosCasos()
+  return datos ? <CasosEnLaRuta {...datos} /> : <SinNegocio />
 }
