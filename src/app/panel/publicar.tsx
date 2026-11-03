@@ -32,7 +32,7 @@ export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
   }
 
   return (
-    <details className="relative">
+    <details>
       <summary className={`flex cursor-pointer list-none items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium ${cuantos ? 'bg-sol text-white' : 'border border-borde text-suave'}`}>
         {enCurso ? (
           'Publicando'
@@ -44,7 +44,8 @@ export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
           'Publicado'
         )}
       </summary>
-      <div className="absolute right-0 z-10 mt-2 w-[min(340px,calc(100vw-48px))] rounded-2xl border border-borde bg-tarjeta p-3 text-sm shadow-lg">
+      {/* Se ancla a la fila de quien lo pinta, no al botón: en un teléfono el botón queda a la izquierda y la lista se saldría de la pantalla. */}
+      <div className="absolute right-0 z-10 mt-2 w-full max-w-[340px] rounded-2xl border border-borde bg-tarjeta p-3 text-sm shadow-lg">
         {cuantos ? (
           <>
             <p className="text-xs font-medium">Sin publicar</p>

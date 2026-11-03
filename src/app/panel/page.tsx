@@ -82,7 +82,7 @@ async function Negocio({ negocio, id }: { negocio: typeof esquema.negocios.$infe
             </p>
           </div>
           {negocio.estado === 'listo' ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-3 py-1 text-xs ${pendiente.items.length ? 'bg-sol-claro text-sol' : 'border border-borde text-verde'}`}>{pendiente.items.length ? 'Vista previa' : 'Atendiendo'}</span>
               <BotonPublicar pendiente={pendiente} />
               <a href={linkDeWhatsapp(negocio.nombre, negocio.codigo)} target="_blank" className="rounded-full bg-verde px-4 py-2 text-sm font-medium text-white">
