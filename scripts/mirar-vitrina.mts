@@ -7,7 +7,7 @@
  *   pnpm tsx scripts/mirar-vitrina.mts panel-un-caso /tmp/caso.png 390 844 --oscuro --clic="Tu negocio"
  */
 import { spawn } from 'node:child_process'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -17,32 +17,68 @@ const banderas = process.argv.slice(2).filter((a) => a.startsWith('--'))
 const [escena, salida, ancho = '1440', alto = '900'] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 if (!escena || !salida) throw new Error('Uso: mirar-vitrina.mts <escena> <salida.png> [ancho] [alto] [--oscuro]')
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const CHROME_RESPONDE_MS = 30_000
+const LLEGA_MS = 10_000
 
-const puerto = 9300 + Math.floor(Math.random() * 500)
-const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${puerto}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'vitrina-'))}`, '--no-first-run'], { stdio: 'ignore' })
+/** Lo que se afirma llega tras una animación o tras `router.refresh`, que en `next dev` tarda lo que tarde el servidor: se espera la condición, no un tiempo fijo. */
+async function hastaQue<T>(valor: () => Promise<T>): Promise<T> {
+  const limite = Date.now() + LLEGA_MS
+  let ultimo = await valor()
+  while (!ultimo && Date.now() < limite) {
+    await espera(50)
+    ultimo = await valor()
+  }
+  return ultimo
+}
+
+// Puerto 0: lo elige el sistema. Con un número al azar, dos Chrome a la vez podían sacar el mismo: el segundo se queda en `::1`, y este script terminaba manejando la pestaña del otro por `127.0.0.1`.
+const perfil = mkdtempSync(join(tmpdir(), 'vitrina-'))
+const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${perfil}`, '--no-first-run'], { stdio: 'ignore' })
+
+function puertoDeEsteChrome() {
+  try {
+    return readFileSync(join(perfil, 'DevToolsActivePort'), 'utf8').split('\n')[0] || null
+  } catch {
+    return null
+  }
+}
 
 try {
   let pestana: { type: string; webSocketDebuggerUrl: string } | undefined
   for (let i = 0; i < 40 && !pestana; i++) {
     await espera(250)
+    const puerto = puertoDeEsteChrome()
+    if (!puerto) continue
     const lista = (await fetch(`http://127.0.0.1:${puerto}/json`).then((r) => r.json(), () => [])) as { type: string; webSocketDebuggerUrl: string }[]
     pestana = lista.find((t) => t.type === 'page')
   }
   if (!pestana) throw new Error('Chrome no abrió')
   const ws = new WebSocket(pestana.webSocketDebuggerUrl)
-  await new Promise((r) => (ws.onopen = r))
+  await new Promise((abierta, fallo) => {
+    ws.onopen = abierta
+    ws.onerror = fallo
+  })
   let id = 0
   const pendientes = new Map<number, (resultado: Record<string, never>) => void>()
   ws.onmessage = (e) => {
     const m = JSON.parse(String(e.data))
     pendientes.get(m.id)?.(m.result ?? m.error)
   }
+  // Sin esto, si Chrome se va la promesa nunca termina, y el Chrome hijo mantiene vivo el proceso para siempre.
+  const seCerro = new Promise<never>((_, fallo) => {
+    ws.onclose = () => fallo(new Error('Chrome cerró la conexión'))
+  })
+  seCerro.catch(() => {})
   const cdp = (method: string, params: object = {}) =>
-    new Promise<Record<string, never>>((r) => {
-      const n = ++id
-      pendientes.set(n, r)
-      ws.send(JSON.stringify({ id: n, method, params }))
-    })
+    Promise.race([
+      seCerro,
+      new Promise<Record<string, never>>((r, fallo) => {
+        const n = ++id
+        pendientes.set(n, r)
+        setTimeout(() => fallo(new Error(`Chrome no respondió a ${method}`)), CHROME_RESPONDE_MS).unref()
+        ws.send(JSON.stringify({ id: n, method, params }))
+      }),
+    ])
 
   await cdp('Emulation.setDeviceMetricsOverride', { width: +ancho, height: +alto, deviceScaleFactor: 1, mobile: false })
   await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: banderas.includes('--oscuro') ? 'dark' : 'light' }, { name: 'prefers-reduced-motion', value: banderas.includes('--menos-movimiento') ? 'reduce' : 'no-preference' }] })
@@ -51,7 +87,7 @@ try {
   await cdp('Page.enable')
   await cdp('Page.navigate', { url: `${BASE}/vitrina/${escena}` })
   // Next bloquea su JavaScript de desarrollo fuera de `localhost`: la página se pinta pero ningún botón responde.
-  const evaluar = async <T,>(expression: string) => ((await cdp('Runtime.evaluate', { expression, returnByValue: true })) as unknown as { result: { value: T } }).result.value
+  const evaluar = async <T,>(expression: string) => ((await cdp('Runtime.evaluate', { expression, returnByValue: true })) as unknown as { result?: { value: T } }).result?.value as T
   let viva = false
   for (let i = 0; i < 80 && !viva; i++) {
     await espera(250)
@@ -65,7 +101,8 @@ try {
     const [, paso, valor] = bandera.match(/^--(\w[\w-]*)=([\s\S]*)$/) ?? []
     if (paso === 'clic') {
       // Un clic de verdad: Base UI abre sus menús con los eventos del puntero, y `element.click()` no los dispara.
-      const punto = await evaluar<{ x: number; y: number } | null>(`(() => { const e = [...document.querySelectorAll('button,summary,a,[role=tab]')].find((x) => x.checkVisibility() && (x.textContent.trim().startsWith(${JSON.stringify(valor)}) || x.getAttribute('aria-label')?.startsWith(${JSON.stringify(valor)}))); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`)
+      // `__reactProps`: React ya hidrató ese botón. `viva` solo dice que empezó por la raíz, y a un botón sin hidratar el clic se le pierde.
+      const punto = await hastaQue(() => evaluar<{ x: number; y: number } | null>(`(() => { const e = [...document.querySelectorAll('button,summary,a,[role=tab]')].find((x) => x.checkVisibility() && Object.keys(x).some((k) => k.startsWith('__reactProps')) && (x.textContent.trim().startsWith(${JSON.stringify(valor)}) || x.getAttribute('aria-label')?.startsWith(${JSON.stringify(valor)}))); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`))
       if (!punto) throw new Error(`No encontré: ${valor}`)
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await cdp('Input.dispatchMouseEvent', { type, ...punto, button: 'left', clickCount: 1 })
       await espera(600)
@@ -76,12 +113,12 @@ try {
     } else if (paso === 'espera') {
       await espera(+valor)
     } else if (paso === 've' || paso === 'no-ve') {
-      const lo = await evaluar<boolean>(`document.body.innerText.includes(${JSON.stringify(valor)})`)
-      if (lo !== (paso === 've')) throw new Error(`${paso === 've' ? 'No se ve' : 'Se ve'}: ${valor}`)
+      const lo = await hastaQue(() => evaluar<boolean>(`document.body.innerText.includes(${JSON.stringify(valor)}) === ${paso === 've'}`))
+      if (!lo) throw new Error(`${paso === 've' ? 'No se ve' : 'Se ve'}: ${valor}`)
     } else if (paso === 'evalua') {
       console.log(JSON.stringify(await evaluar<unknown>(valor)))
     } else if (paso === 'cierto') {
-      if ((await evaluar<unknown>(valor)) !== true) throw new Error(`No es cierto: ${valor}`)
+      if ((await hastaQue(() => evaluar<unknown>(`(${valor}) === true`))) !== true) throw new Error(`No es cierto: ${valor}`)
     }
   }
   // Un paño recorta lo que se le sale, así que el documento no se entera.

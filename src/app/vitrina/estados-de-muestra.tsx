@@ -5,6 +5,9 @@ import type { MotivoDeEntrada } from '@/app/entrar/errores'
 import { PantallaDeEntrada, type ModoDeEntrada } from '@/app/entrar/formulario'
 import { ErrorDeLaPantalla } from '@/app/panel/estados'
 
+// `--clic` espera 600 ms antes de su siguiente paso: el recorrido tiene que alcanzar a ver `Entrando…` aunque la máquina vaya lenta.
+const ENTRAR_TARDA_MS = 2000
+
 /** Entrar sin proveedor: cada intento responde lo que sigue en la lista, y `null` es que entró. */
 export function EntradaDeMuestra({ modoInicial, responde }: { modoInicial: ModoDeEntrada; responde: readonly (MotivoDeEntrada | null)[] }) {
   const intento = useRef(0)
@@ -14,7 +17,7 @@ export function EntradaDeMuestra({ modoInicial, responde }: { modoInicial: ModoD
     <PantallaDeEntrada
       modoInicial={modoInicial}
       entrar={async () => {
-        await new Promise((r) => setTimeout(r, 800))
+        await new Promise((r) => setTimeout(r, ENTRAR_TARDA_MS))
         return responde[intento.current++] ?? null
       }}
       alEntrar={() => setEntro(true)}

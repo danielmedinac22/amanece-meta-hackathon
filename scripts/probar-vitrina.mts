@@ -76,7 +76,7 @@ const VENTANA_DE_PUBLICAR = '[data-slot=popover-content]'
 /** El botón de abajo de la lista, no el que la abre: los dos dicen Publicar. */
 const TOCAR_PUBLICAR = `--cierto=(() => { const b = [...document.querySelectorAll('${VENTANA_DE_PUBLICAR} button')].find((x) => x.textContent.trim() === 'Publicar'); if (!b) return false; b.click(); return true })()`
 const PUNTEADOS = (n: number) => `--cierto=document.querySelectorAll('[data-pano=lienzo] .border-dashed').length === ${n}`
-const HASTA_PUBLICADO = [TOCAR_PUBLICAR, '--espera=300', '--ve=Publicando', '--espera=3000', '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Atendiendo', '--no-ve=Vista previa']
+const HASTA_PUBLICADO = [TOCAR_PUBLICAR, '--ve=Publicando', '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Atendiendo', '--no-ve=Vista previa']
 
 const RECORRIDOS_DE_PUBLICAR: typeof RECORRIDOS = [
   ['Publicar, PC: un Indicador en la vista previa hasta Publicado', 'publicar-indicador', '1440', '--ve=Vista previa', '--ve=Deshacer', PUNTEADOS(1), '--clic=Publicar', '--ve=Solo lo ven tú y tu equipo', ...HASTA_PUBLICADO, '--ve=Lucía publicó: Indicador nuevo', '--ve=Publicada', '--no-ve=Deshacer', PUNTEADOS(0), `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
@@ -84,15 +84,15 @@ const RECORRIDOS_DE_PUBLICAR: typeof RECORRIDOS = [
   ['Publicar: en el Tablero el Indicador se queda, ya sin puntear', 'publicar-indicador-tablero', '1440', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, PUNTEADOS(0), `--cierto=document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
   ['Publicar: encima de Pedidos sale al publicarlo', 'publicar-indicador-pedidos', '1440', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
   ['Publicar: una regla, de Aplicar a Publicada', 'publicar-regla', '1440', '--ve=Publicado', '--ve=Atendiendo', '--clic=Aplicar', '--ve=Aplicada', '--ve=Vista previa', '--ve=Queda en la vista previa', '--clic=Publicar', '--ve=Lo notan tus Clientes', ...HASTA_PUBLICADO, '--ve=Lucía publicó: Regla nueva', '--ve=Publicada'],
-  ['Publicar, teléfono: una regla, de Aplicar a Publicada', 'publicar-regla', '390', '--clic=Aplicar', '--ve=Aplicada', '--clic=Publicar', '--ve=Lo notan tus Clientes', TOCAR_PUBLICAR, '--espera=3000', '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Publicada', '--clic=Tu negocio', '--ve=Atendiendo'],
+  ['Publicar, teléfono: una regla, de Aplicar a Publicada', 'publicar-regla', '390', '--clic=Aplicar', '--ve=Aplicada', '--clic=Publicar', '--ve=Lo notan tus Clientes', TOCAR_PUBLICAR, '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Publicada', '--clic=Tu negocio', '--ve=Atendiendo'],
   ['Publicar: Descartar una regla no deja nada sin publicar', 'publicar-regla', '1440', '--clic=Descartar', '--ve=Descartada', '--ve=Atendiendo', '--no-ve=Vista previa'],
   ['Publicar: Deshacer deja todo como estaba', 'publicar-indicador', '1440', '--clic=Deshacer', '--ve=Deshecha', '--ve=Atendiendo', '--no-ve=Vista previa', PUNTEADOS(0)],
   ['Publicar: sin movimiento, el estado cambia igual', 'publicar-indicador', '1440', '--menos-movimiento', '--clic=Publicar', ...HASTA_PUBLICADO, '--ve=Publicada'],
   ['Publicar: el único link es el de WhatsApp, con copiar y abrir', 'panel-con-cambios', '1440', '--clic=Publicar', '--ve=Tus Clientes te escriben aquí', '--no-ve=amanece.co', '--no-ve=Tu Panel', `--cierto=(() => { const a = document.querySelectorAll('${VENTANA_DE_PUBLICAR} a'); return a.length === 1 && a[0].href.startsWith('https://wa.me/') && a[0].target === '_blank' })()`, `--cierto=(() => { navigator.clipboard.writeText = async (t) => { window.copiado = t }; return true })()`, '--clic=Copiar Tus Clientes', `--cierto=window.copiado.startsWith('https://wa.me/') && window.copiado.includes('%20') && !!document.querySelector('[aria-label=Copiado]')`, `--ve=wa.me/000000000000?text=(LADERA) Hola Café Ladera`],
   ['Publicar: sin nada pendiente dice que está todo', 'panel-funcionando', '1440', '--ve=Publicado', '--ve=Atendiendo', '--clic=Publicado', '--ve=Todo está en tu link. No hay nada sin publicar.', '--no-ve=Sin publicar'],
   ['Publicar: la lista pone primero lo que notan los Clientes', 'panel-con-cambios', '1440', '--clic=Publicar', `--cierto=(() => { const t = document.querySelector('${VENTANA_DE_PUBLICAR} ul').innerText; return t.indexOf('Lo notan tus Clientes') < t.indexOf('Solo lo ven tú y tu equipo') })()`],
-  ['Publicar: si otro Dueño aplicó algo, no publica y vuelve la lista nueva', 'publicar-otro-dueno', '1440', '--clic=Publicar', TOCAR_PUBLICAR, '--espera=1500', '--ve=Alguien aplicó algo más', '--ve=Aplicada por Julián', '--ve=Vista previa', ...HASTA_PUBLICADO, '--no-ve=Alguien aplicó'],
-  ['Publicar: si falla lo dice, y se vuelve a tocar', 'publicar-falla', '1440', '--clic=Publicar', TOCAR_PUBLICAR, '--espera=1500', '--ve=No pude publicar. Vuelve a tocar el botón en un momento.', '--ve=Vista previa', ...HASTA_PUBLICADO, '--no-ve=No pude publicar'],
+  ['Publicar: si otro Dueño aplicó algo, no publica y vuelve la lista nueva', 'publicar-otro-dueno', '1440', '--clic=Publicar', TOCAR_PUBLICAR, '--ve=Alguien aplicó algo más', '--ve=Aplicada por Julián', '--ve=Vista previa', ...HASTA_PUBLICADO, '--no-ve=Alguien aplicó'],
+  ['Publicar: si falla lo dice, y se vuelve a tocar', 'publicar-falla', '1440', '--clic=Publicar', TOCAR_PUBLICAR, '--ve=No pude publicar. Vuelve a tocar el botón en un momento.', '--ve=Vista previa', ...HASTA_PUBLICADO, '--no-ve=No pude publicar'],
   ['Publicar: una lista larga no se sale de la pantalla del teléfono', 'publicar-muchos', '390', '--clic=Publicar', `--cierto=(() => { const r = document.querySelector('${VENTANA_DE_PUBLICAR}').getBoundingClientRect(); return r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth })()`, `--cierto=(() => { const u = document.querySelector('${VENTANA_DE_PUBLICAR} ul'); return u.scrollHeight > u.clientHeight })()`],
   ['Publicar: la primera Sección entra al sidebar con su animación y se ve punteada', 'publicar-seccion', '1440', `--no-ve=Tus secciones`, `--cierto=(() => { new MutationObserver(() => { const e = [...document.querySelectorAll('[data-sidebar=menu-item],[data-slot=sidebar-menu-item]')].find((x) => x.textContent.includes('Pedidos por ciudad')); if (e && window.entrada === undefined) window.entrada = e.style.opacity }).observe(document.body, { childList: true, subtree: true }); return true })()`, '--espera=3200', '--ve=Tus secciones', `--cierto=window.entrada === '0'`, '--ve=Vista previa', '--clic=Pedidos por ciudad', PUNTEADOS(1)],
   ['Publicar: una Sección sin publicar se ve punteada en su ruta', 'publicar-seccion-sin-publicar', '1440', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, PUNTEADOS(0)],
@@ -281,6 +281,9 @@ const RECORRIDOS_DE_ALBA: typeof RECORRIDOS = [
   ['Alba: lo escrito llega al armado sin volver a escribir, una sola vez', 'alba-al-armado', '1440', '--escribe=Vendo café en Manizales', '--clic=Empezar', '--espera=800', '--ve=Vendo café en Manizales', TITULAR('Cuéntame de tu negocio.'), `--cierto=${CLAVE_ESCRITO} === null`, `--cierto=[...document.querySelectorAll('main *')].filter((e) => e.children.length === 0 && e.textContent === 'Vendo café en Manizales').length === 1`],
 ]
 
+/** Con su límite: un recorrido colgado es una falla, no una suite esperando para siempre. */
+const mirar = (base: string, ...argumentos: string[]) => spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), ...argumentos], { cwd: RAIZ, encoding: 'utf8', timeout: 180_000, env: { ...process.env, VITRINA_URL: base } })
+
 const hijos = new Set<ChildProcess>()
 
 function matarHijos() {
@@ -420,24 +423,24 @@ try {
   const captura = join(mkdtempSync(join(tmpdir(), 'vitrina-')), 'escena.png')
   for (const id of new Set([...ids, ...TODAS_LAS_ESCENAS])) {
     for (const [ancho, alto] of [['390', '844'], ['1440', '900']]) {
-      const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), id, captura, ancho, alto], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
+      const r = mirar(desarrollo.base, id, captura, ancho, alto)
       afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
     }
   }
   for (const id of ESCENAS_DE_320) {
-    const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), id, captura, '320', '700'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
+    const r = mirar(desarrollo.base, id, captura, '320', '700')
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
   for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
-    const r = spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', ...pasos], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } })
+    const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }
 
   for (const { vista, esqueleto, arriba } of ESQUELETOS_QUE_NO_SALTAN) {
     for (const anchoDeLaVentana of ['1440', '390']) {
       const medir = `--evalua=${JSON.stringify(arriba)}.map((s) => { const e = document.querySelector('[data-pano=lienzo] ' + s); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)] })`
-      const medidas = [vista, esqueleto].map((escena) => JSON.parse(spawnSync('tsx', [join(RAIZ, 'scripts/mirar-vitrina.mts'), escena, captura, anchoDeLaVentana, '900', medir], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, VITRINA_URL: desarrollo.base } }).stdout.split('\n')[0]) as ([number, number] | null)[])
+      const medidas = [vista, esqueleto].map((escena) => JSON.parse(mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', medir).stdout.split('\n')[0]) as ([number, number] | null)[])
       const iguales = arriba.every((_, i) => medidas[0][i] && medidas[1][i] && Math.abs(medidas[0][i][0] - medidas[1][i][0]) <= 1 && Math.abs(medidas[0][i][1] - medidas[1][i][1]) <= 1)
       afirmar(`${esqueleto} a ${anchoDeLaVentana}: nada salta al llegar los datos`, iguales, { arriba, medidas })
     }
