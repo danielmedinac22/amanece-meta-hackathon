@@ -15,6 +15,8 @@ export type { Huella }
 
 export const VIGENCIA_DE_UNA_PROPUESTA_HORAS = 24
 
+export const HUELLA = /^[0-9a-f]{64}$/
+
 /** De dónde sale lo que se propone. `lectura`: lo que se leyó de un enlace; solo lo arma el código y espera el botón siempre. */
 export type OrigenDelPedido = 'hilo' | 'panel' | 'lectura'
 
@@ -68,5 +70,5 @@ export function filaNueva(p: {
 }
 
 /** `deshacer` no sale de aquí: es la tarjeta de algo que ya se aplicó, y la arma `proponerComo` con el modo leído en el reclamo. */
-export const accionDe = (origen: OrigenDelPedido, actos: readonly Acto[], revierte: PropuestaId | string | null): TarjetaDeAprobacion['accion'] =>
+export const accionDe = (origen: OrigenDelPedido, actos: readonly Acto[], revierte: string | null): TarjetaDeAprobacion['accion'] =>
   actos.length ? 'enviar' : origen === 'lectura' ? 'confirmar' : revierte ? 'revertir' : 'aplicar'

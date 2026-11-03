@@ -154,6 +154,10 @@ export type Problema =
   | { readonly tipo: 'solo_mientras_se_arma' }
   /** Cabe en lo aplicado, pero lo que los Clientes tienen todavía depende de eso. */
   | { readonly tipo: 'rompe_lo_publicado'; readonly problema: Problema }
+  /** La tarjeta prometió que solo salía de la vista previa, y mientras esperaba alguien publicó: ahora les llegaría a los Clientes. */
+  | { readonly tipo: 'ya_se_publico' }
+  /** Revertir dejaría huérfano algo vigente. Una reversión va sola: no se puede quitar junto con lo que la usa. */
+  | { readonly tipo: 'la_usa_algo_vigente'; readonly quitada: Clave; readonly usadaPor: Clave }
 
 /** Lo que `validar` necesita del Negocio: los vigentes, con lo propuesto encima si es un borrador. */
 export type Vigentes = {

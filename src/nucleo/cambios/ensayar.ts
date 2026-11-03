@@ -8,7 +8,7 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { costoUsd } from '@/lib/modelo'
-import { conPropuesta, type CambioDeElemento, type EstadoBorrador, type EstadoDelNegocio, type Escritura, type EstadoAplicado } from '../estado'
+import { conPropuesta, type CambioDeElemento, type EstadoBorrador, type EstadoDelNegocio, type Escritura } from '../estado'
 import { VISTA_PREVIA, type Clave, type ElementoDe, type ProfundidadDeVistaPrevia } from '../estado/elementos'
 import type { ClienteId, Marca, Wamid } from '../identidad'
 import type { AccionHecha } from '../clientes/acciones'
@@ -86,6 +86,8 @@ export type VistaPreviaGuardada = {
   readonly advertencias?: readonly string[]
   readonly conversaciones?: VistaPreviaDeConversaciones | null
   readonly panel?: readonly PanelEnsayado[] | null
+  /** De una reversión: las claves que al proponer solo salían de la vista previa. Las tarjetas de antes del corte no lo traen. */
+  readonly soloVistaPrevia?: readonly Clave[]
 }
 
 export type GastoDelEnsayo = { readonly llamadas: number; readonly usd: number; readonly ms: number }
@@ -231,7 +233,7 @@ const NO_SE_ENSAYO = 'No pude ensayar este cambio con conversaciones: revisa con
  * alcanzó cuenta como no ensayado.
  */
 export async function vistaPreviaDe(
-  vigente: EstadoAplicado,
+  vigente: EstadoDelNegocio,
   escritura: Escritura,
   lineas: readonly string[],
   motores: Motores = MOTORES,
@@ -248,7 +250,7 @@ export async function vistaPreviaDe(
   }
 }
 
-async function ensayarConversaciones(vigente: EstadoAplicado, escritura: Escritura, lineas: readonly string[], motores: Motores, fin: number) {
+async function ensayarConversaciones(vigente: EstadoDelNegocio, escritura: Escritura, lineas: readonly string[], motores: Motores, fin: number) {
   const inicio = Date.now()
   const [pendientes, reales] = await Promise.all([pendientesDe(vigente), conversacionesReales(vigente)])
   const { hoy, conElCambio } = estadosDelEnsayo(vigente, escritura, pendientes)

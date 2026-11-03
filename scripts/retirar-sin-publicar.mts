@@ -1,8 +1,10 @@
 /**
- * Va antes de cualquier vuelta a un despliegue anterior, y antes de `quitar-panel.mts`: ese código lee la última fila e
- * ignora el bit, así que lo aplicado sin publicar les llegaría a los Clientes de una. Deja cada clave pendiente igual a
- * lo publicado, con una fila de origen `tablas_viejas`, y sella el resto. El Dueño pierde esos pendientes de su vista
- * previa, aunque siguen en la historia. En seco por defecto. Una transacción por Negocio, y uno que falla no corta la
+ * Va justo antes y otra vez justo después de cualquier vuelta a un despliegue anterior, porque en medio el código nuevo
+ * puede dejar filas sin publicar, y antes de `quitar-panel.mts`. El código viejo lee la última fila e ignora el bit, así que
+ * lo aplicado sin publicar les llegaría a los Clientes de una. Deja cada clave pendiente igual a
+ * lo publicado, con una fila de origen `tablas_viejas`. El Dueño pierde esos pendientes de su vista previa, aunque
+ * siguen en la historia. Las filas con el bit arriba se quedan así: el código viejo solo lee la última de cada clave, y
+ * esa ya vale lo que los Clientes tienen. En seco por defecto. Una transacción por Negocio, y uno que falla no corta la
  * corrida. Correrlo otra vez escribe 0.
  *
  * El orden importa: un Indicador publicado y quitado sin publicar no es una clave viva para `quitar-panel`, y esta
@@ -19,7 +21,7 @@ config({ path: '.env.local', quiet: true })
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
 const { escrituraParaRetirar, leerAplicado, leerPublicado, loPendiente } = await import('../src/nucleo/estado')
-const { bajarElBit, escribir } = await import('../src/nucleo/estado/escribir')
+const { escribir } = await import('../src/nucleo/estado/escribir')
 const { marcar } = await import('../src/nucleo/identidad')
 
 type NegocioId = import('../src/nucleo/identidad').NegocioId
@@ -27,14 +29,13 @@ type ItemPendiente = import('../src/nucleo/estado').ItemPendiente
 
 export function retirarSinPublicar(negocio: NegocioId, opciones: { readonly deVerdad: boolean }): Promise<readonly ItemPendiente[]> {
   return conTransaccion<readonly ItemPendiente[]>(async (tx, deshacer) => {
-    await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
+    await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
     const [aplicado, publicado] = [await leerAplicado(negocio, tx), await leerPublicado(negocio, tx)]
     const items = loPendiente(aplicado, publicado)
     if (!opciones.deVerdad) return deshacer(items)
     const r = await escribir(tx, negocio, { tipo: 'tablas_viejas' }, escrituraParaRetirar(aplicado, publicado), null)
     if (r.tipo === 'conflicto') throw new Error(`conflicto en ${r.claves.map((c) => c.clave).join(', ')}; vuelve a correrlo`)
     if (r.tipo === 'invalida') throw new Error(`no cabe: ${r.problemas.map((p) => p.tipo).join(', ')}`)
-    await bajarElBit(tx, negocio)
     return items
   })
 }

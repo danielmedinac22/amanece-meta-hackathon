@@ -9,13 +9,13 @@
  * Una propuesta deja una `Escritura` de Elementos que `aprobar` escribe con `escribir(tx, …)` dentro del mismo
  * reclamo. Una Sección o un Indicador va solo en su propuesta.
  */
-import { and, asc, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
-import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
+import { avisarEnLosHilos } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
-import { leerAplicado, type Escritura, type EstadoAplicado } from '../estado'
+import { leerAplicado, leerPublicado, type Escritura, type EstadoAplicado } from '../estado'
 import { alcanceDeLaClave, comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
 import { escribir, type ClaveEnConflicto, type LoRevertido } from '../estado/escribir'
 import {
@@ -34,7 +34,7 @@ import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDe
 import { fueraDeVentana } from '../salida/compuerta'
 import type { Motores } from '../clientes/turno'
 import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
-import { accionDe, filaNueva, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
+import { accionDe, filaNueva, HUELLA, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import type { MotorDelRedactor } from './redactar-consulta'
@@ -140,13 +140,13 @@ export const ESQUEMA_DEL_PEDIDO = z.object({
     .describe('Lo que el Dueño pidió: se aplica todo junto o nada'),
 })
 
-/**
- * `panel`: el clic del Dueño es la aprobación; solo lo produce `deshacer`. `lectura` la arma solo `proponerLectura`:
- * el modelo no tiene esquema para ella.
- */
-export type PedidoDelDueno =
-  | { readonly origen: 'hilo' | 'panel'; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
-  | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuierePoner, ...QuierePoner[]] }
+type PedidoEnPalabras<O extends OrigenDelPedido> = { readonly origen: O; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
+
+/** `lectura` la arma solo `proponerLectura`: el modelo no tiene esquema para ella. */
+export type PedidoDelDueno = PedidoEnPalabras<'hilo'> | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuierePoner, ...QuierePoner[]] }
+
+/** `panel`: el clic del Dueño es la aprobación, así que no puede entrar por `proponer`. Solo lo produce `deshacer`. */
+type PedidoConSuClic = PedidoDelDueno | PedidoEnPalabras<'panel'>
 
 // ══ Lo que vuelve ═══════════════════════════════════════════════════════════════════════════════
 
@@ -213,7 +213,6 @@ function estadoDe(f: { readonly estado: EstadoGuardado; readonly vence: Date }, 
 const REVERTIDA = sql<boolean>`exists (select 1 from propuestas r where r.revierte = "propuestas"."id" and r.estado = 'aplicada')`
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const HUELLA = /^[0-9a-f]{64}$/
 const SIN_GASTO: Gasto = { llamadas: 0, usd: 0, ms: 0 }
 const ahora = () => marcar.instante(new Date())
 const instanteDe = (d: Date | null) => (d ? marcar.instante(d) : null)
@@ -273,20 +272,25 @@ type Traducida = {
   readonly estado: EstadoAplicado
   /** Las del ensayo: el código las escribe y van arriba de la tarjeta y primero en el resumen. */
   readonly advertencias: readonly string[]
+  readonly soloVistaPrevia: readonly Clave[]
 }
 
 type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capacidad_faltante' }>
 
-async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
+async function proponerComo(quien: Quien, pedido: PedidoConSuClic, motores?: Motores, redactor?: MotorDelRedactor): Promise<ResultadoDeProponer> {
   if (pedido.origen !== 'lectura' && pedido.quiere.length > MAXIMO_DE_QUIERE) return corregir([{ tipo: 'valor_invalido', campo: 'quiere', porQue: `Hasta ${MAXIMO_DE_QUIERE} cosas por propuesta: lo demás va en otra` }])
   const traducida = await traducirPedido(quien, pedido, redactor)
   if ('desenlace' in traducida) return traducida
 
+  // Lo que frena les llega a los Clientes de una: se ensaya sobre lo que ellos tienen, no sobre la vista previa.
+  const frenos = traducida.revierte ? traducida.escritura.elementos.filter((c) => !traducida.soloVistaPrevia.includes(c.clave)) : []
   const ensayo =
     traducida.escritura.elementos.length && pedido.origen === 'hilo'
-      ? await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
+      ? frenos.length
+        ? await vistaPreviaDe(await leerPublicado(quien.negocio), { elementos: frenos, filas: [] }, traducida.lineas, motores)
+        : await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
       : { guardada: { lineas: traducida.lineas, advertencias: [], conversaciones: null }, gasto: SIN_GASTO }
-  const vistaPrevia: VistaPrevia = { ...ensayo.guardada, advertencias: [...traducida.advertencias, ...(ensayo.guardada.advertencias ?? [])] }
+  const vistaPrevia: VistaPrevia = { ...ensayo.guardada, advertencias: [...traducida.advertencias, ...(ensayo.guardada.advertencias ?? [])], soloVistaPrevia: traducida.soloVistaPrevia }
   const t: Traducida = { ...traducida, lineas: vistaPrevia.lineas, advertencias: vistaPrevia.advertencias ?? [], gasto: sumarGasto(traducida.gasto, ensayo.gasto) }
   const palabrasDelDueno = pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno
   const { valores, tarjeta } = filaNueva({ negocio: quien.negocio, palabrasDelDueno, pedidoPor: quien.pedidoPor, origen: pedido.origen, escritura: t.escritura, actos: t.actos, revierte: t.revierte, version: t.version, vistaPrevia })
@@ -300,6 +304,7 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Moto
       const aprobadoPor = pedido.origen === 'panel' ? quien.pedidoPor : null
       const r = await aplicarConReclamo({ negocio: quien.negocio, propuesta: id, huella, aprobadoPor, sinBoton: { alcance: t.alcance, origen: pedido.origen } })
       if (r.tipo === 'aplicado') {
+        if (pedido.origen === 'panel') await dejarElDesenlace(quien.negocio, r)
         const conDeshacer = t.alcance === 'panel' && !t.revierte && r.quedo === 'en_la_vista_previa'
         return { desenlace: 'aplicado', propuesta: id, tarjeta: conDeshacer ? { ...tarjeta, accion: 'deshacer' } : null, vistaPrevia, gasto: t.gasto, resumen: resumenDeLoAplicado(id, t, r.quedo) }
       }
@@ -333,7 +338,7 @@ function reemplazadas(negocio: NegocioId, nueva: PropuestaId, origen: OrigenDelP
 
 const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.llamadas, usd: a.usd + b.usd, ms: a.ms + b.ms })
 
-async function traducirPedido(quien: Quien, pedido: PedidoDelDueno, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
+async function traducirPedido(quien: Quien, pedido: PedidoConSuClic, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
   const estado = await leerAplicado(quien.negocio)
   const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[], redactor)
   if (!('tipo' in t)) return { ...t, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
@@ -374,6 +379,10 @@ export function problemaEnPalabras(p: Problema): string {
       return 'Eso solo se hace mientras el Negocio se arma.'
     case 'rompe_lo_publicado':
       return 'Tus Clientes todavía tienen algo que depende de esto. Toca Publicar primero y vuelve a revertirlo.'
+    case 'la_usa_algo_vigente':
+      return 'Algo que sigue vigente usa esto. Deshaz eso primero y vuelve a revertir.'
+    case 'ya_se_publico':
+      return 'Esto se publicó mientras la tarjeta esperaba. Revertirlo ahora les llega a tus Clientes de una. Pídeme revertirlo otra vez y te muestro lo que cambia.'
   }
 }
 
@@ -411,19 +420,13 @@ export async function aprobar(ctx: ContextoDelDueno, propuesta: string, huella: 
   if (r.tipo === 'conflicto') await descartarSinBoton(marcar.propuesta(propuesta))
   if (r.tipo === 'sigue_esperando') return { tipo: 'no_existe' }
   if (r.tipo !== 'aplicado') return r
-  // Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño.
-  const desenlace = await desenlaceEnPalabras(ctx.negocio, r.fila, r.envio, r.quedo).catch((e) => {
-    console.error('[aprobar] no pude armar el desenlace', propuesta, e)
-    return null
-  })
-  if (desenlace && r.avisar) await avisarEnLosHilos(ctx.negocio, r.fila, desenlace).catch((e) => console.error('[aprobar] no pude avisar en los Hilos', propuesta, e))
+  const desenlace = await dejarElDesenlace(ctx.negocio, r)
   return { tipo: 'aplicado', resumen: desenlace?.texto ?? 'Aplicado.', envio: r.envio, version: versionDe(r.fila) }
 }
 
 /** Lo que se le responde a un Cliente, ya revalidado dentro del reclamo. */
 type Respuesta = { readonly caso: CasoId; readonly cliente: ClienteId; readonly texto: string }
 
-/** A dónde llegó lo que se aplicó. */
 type Quedo = 'sin_clientes' | 'en_la_vista_previa' | 'con_los_clientes'
 
 type Reclamo =
@@ -455,7 +458,7 @@ async function aplicarConReclamo(a: {
   readonly aprobadoPor: DuenoId | null
   readonly sinBoton: SinBoton | null
 }): Promise<Aplicada | Exclude<ResultadoDeAprobar, { tipo: 'aplicado' }> | { readonly tipo: 'sigue_esperando' }> {
-  const reclamo = await conTransaccion<Reclamo>(async (tx, deshacer) => {
+  const reclamo = await conTransaccion<Reclamo>(async (tx, abortar) => {
     // Un primer clic colgado no deja esperando al segundo para siempre.
     await tx.execute(sql`set local lock_timeout = '10s'`)
     const [fila] = await tx
@@ -474,22 +477,22 @@ async function aplicarConReclamo(a: {
     if (!fila) return { tipo: 'sin_reclamo' }
     if (a.sinBoton) {
       // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
-      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('update')
-      if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return deshacer({ tipo: 'sigue_esperando' })
+      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
+      if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return abortar({ tipo: 'sigue_esperando' })
     }
     const [acto] = fila.actos
     if (acto) {
       const r = await cerrarCaso(tx, a.negocio, acto)
-      return 'problema' in r ? deshacer({ tipo: 'ya_no_cabe', problemas: [r.problema] }) : { tipo: 'reclamada', fila, respuesta: r, quedo: null }
+      return 'problema' in r ? abortar({ tipo: 'ya_no_cabe', problemas: [r.problema] }) : { tipo: 'reclamada', fila, respuesta: r, quedo: null }
     }
     if (fila.escritura.elementos.length) {
       const r = await escribir(tx, a.negocio, { tipo: 'propuesta', propuesta: a.propuesta }, fila.escritura, await loRevertidoPor(tx, fila))
-      if (r.tipo === 'conflicto') return deshacer(r)
-      if (r.tipo === 'invalida') return deshacer({ tipo: 'ya_no_cabe', problemas: r.problemas })
+      if (r.tipo === 'conflicto') return abortar(r)
+      if (r.tipo === 'invalida') return abortar({ tipo: 'ya_no_cabe', problemas: r.problemas })
       const [conVersion] = await tx.update(esquema.propuestas).set({ version: r.version }).where(eq(esquema.propuestas.id, a.propuesta)).returning()
       return { tipo: 'reclamada', fila: conVersion, respuesta: null, quedo: r.modo !== 'atendiendo' ? 'sin_clientes' : r.deUna ? 'con_los_clientes' : 'en_la_vista_previa' }
     }
-    return deshacer({ tipo: 'ya_no_cabe', problemas: [{ tipo: 'valor_invalido', campo: 'propuesta', porQue: 'Eso se pidió antes del cambio de sistema: pídelo de nuevo' }] })
+    return abortar({ tipo: 'ya_no_cabe', problemas: [{ tipo: 'valor_invalido', campo: 'propuesta', porQue: 'Eso se pidió antes del cambio de sistema: pídelo de nuevo' }] })
   })
   switch (reclamo.tipo) {
     case 'sigue_esperando':
@@ -510,7 +513,7 @@ async function loRevertidoPor(tx: Transaccion, fila: FilaDePropuesta): Promise<L
   if (!fila.revierte) return null
   const [revertida] = await tx.select({ version: esquema.propuestas.version }).from(esquema.propuestas).where(eq(esquema.propuestas.id, fila.revierte))
   if (revertida?.version == null) throw new Error(`La propuesta ${fila.revierte} que se revierte no dejó versión`)
-  return { propuesta: marcar.propuesta(fila.revierte), version: revertida.version as VersionDelNegocio }
+  return { version: revertida.version as VersionDelNegocio, soloVistaPrevia: fila.vistaPrevia.soloVistaPrevia ?? [] }
 }
 
 const QUIEN_ESCRIBIO = { propuesta: 'Otro Dueño', entrevista: 'La entrevista', tablas_viejas: 'La migración' } as const
@@ -643,36 +646,23 @@ async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio
 }
 
 /**
- * Una línea fija en el Hilo de cada Dueño del Negocio: así se entera el otro Dueño y, en el turno siguiente, el
- * modelo, que solo había visto `resumen`. `data-aprobacion` le da al modelo el id sin la huella.
+ * Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño. La línea es para el otro Dueño y
+ * para el modelo, que solo había visto `resumen`. `data-aprobacion` le da el id sin la huella.
  */
-async function avisarEnLosHilos(negocio: NegocioId, f: FilaDePropuesta, d: Desenlace): Promise<void> {
-  const duenos = await db.select({ id: esquema.duenos.id }).from(esquema.duenos).where(eq(esquema.duenos.negocioId, negocio)).orderBy(asc(esquema.duenos.creado))
-  for (const dueno of duenos) {
-    await guardarEnElHilo(negocio, dueno.id, 'agente', mensajeDelAgente(d.texto, [{ type: 'data-aprobacion', data: { propuesta: f.id, por: d.por } }]))
-  }
+async function dejarElDesenlace(negocio: NegocioId, r: Aplicada): Promise<Desenlace | null> {
+  const desenlace = await desenlaceEnPalabras(negocio, r.fila, r.envio, r.quedo).catch((e) => {
+    console.error('[aprobar] no pude armar el desenlace', r.fila.id, e)
+    return null
+  })
+  if (desenlace && r.avisar) await avisarEnLosHilos(negocio, desenlace.texto, [{ type: 'data-aprobacion', data: { propuesta: r.fila.id, por: desenlace.por } }]).catch((e) => console.error('[aprobar] no pude avisar en los Hilos', r.fila.id, e))
+  return desenlace
 }
 
 // ══ Deshacer, descartar e historial ═══════════════════════════════════════════════════════════════════════
 
-const ESPERAS_A_LA_OTRA_REVERSION = 40
-const PAUSA_ENTRE_ESPERAS_MS = 250
-
-/** El clic que perdió la carrera espera a que el que ganó termine: mientras haya otra reversión viva, todavía puede quedar. */
-async function terminoDeshecha(negocio: NegocioId, propuesta: string): Promise<boolean> {
-  for (let i = 0; i < ESPERAS_A_LA_OTRA_REVERSION; i++) {
-    const [f] = await db.select({ revertida: REVERTIDA }).from(esquema.propuestas).where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, negocio)))
-    if (f?.revertida) return true
-    const vivas = await db.$count(esquema.propuestas, and(eq(esquema.propuestas.revierte, propuesta), eq(esquema.propuestas.estado, 'espera_al_dueno')))
-    if (!vivas) return false
-    await new Promise((r) => setTimeout(r, PAUSA_ENTRE_ESPERAS_MS))
-  }
-  return false
-}
-
 /**
- * El botón de la tarjeta de algo del Panel ya aplicado. Solo suelta lo que el modelo no pudo pedir por su cuenta: exige
- * la huella de esa tarjeta, que esté aplicada y que todo sea de alcance Panel. No vence: la apaga que ya esté revertida.
+ * Solo suelta lo que el modelo no pudo pedir por su cuenta: exige la huella de la tarjeta, que esté aplicada y que todo
+ * sea de alcance Panel. No vence: la apaga que ya esté revertida.
  */
 export async function deshacer(ctx: ContextoDelDueno, propuesta: string, huella: string): Promise<ResultadoDeDeshacer> {
   if (!UUID.test(propuesta) || !HUELLA.test(huella)) return { tipo: 'no_existe' }
@@ -682,6 +672,8 @@ export async function deshacer(ctx: ContextoDelDueno, propuesta: string, huella:
     .where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, ctx.negocio), eq(esquema.propuestas.huella, huella), eq(esquema.propuestas.estado, 'aplicada')))
   if (!f || !f.escritura.elementos.length || !f.escritura.elementos.every((c) => alcanceDeLaClave(c.clave) === 'panel')) return { tipo: 'no_existe' }
   const YA = { tipo: 'deshecho', resumen: 'Ya estaba deshecho.' } as const
+  // Quien pierde la carrera y todavía no ve revertida recibe el `conflicto`: el botón sigue y el siguiente clic dice `deshecho`.
+  const yaDeshecha = async () => (await db.select({ revertida: REVERTIDA }).from(esquema.propuestas).where(eq(esquema.propuestas.id, propuesta)))[0]?.revertida === true
   const r = await proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, { origen: 'panel', palabrasDelDueno: 'Deshacer', quiere: [{ tipo: 'revertir', propuesta: marcar.propuesta(propuesta) }] })
   switch (r.desenlace) {
     case 'aplicado':
@@ -689,9 +681,9 @@ export async function deshacer(ctx: ContextoDelDueno, propuesta: string, huella:
     case 'espera_al_dueno':
       // La política no pudo: otro clic reclamó primero o le ganó el índice de una sola reversión.
       await descartarSinBoton(r.propuesta)
-      return (await terminoDeshecha(ctx.negocio, propuesta)) ? YA : { tipo: 'conflicto', resumen: 'No pude deshacerlo. Vuelve a tocar el botón.' }
+      return (await yaDeshecha()) ? YA : { tipo: 'conflicto', resumen: 'No pude deshacerlo. Vuelve a tocar el botón.' }
     case 'corregir': {
-      if (await terminoDeshecha(ctx.negocio, propuesta)) return YA
+      if (await yaDeshecha()) return YA
       return { tipo: r.problemas.some((p) => p.tipo === 'rompe_lo_publicado') ? 'ya_no_cabe' : 'conflicto', resumen: r.problemas.map(problemaEnPalabras).join(' ') }
     }
     case 'capacidad_faltante':
@@ -734,3 +726,5 @@ export async function historial(ctx: ContextoDelDueno, filtro: { readonly limite
     cuando: marcar.instante(f.creado),
   }))
 }
+
+export type _ProponerNoApruebaSolo = Es<'panel' extends Parameters<typeof proponer>[1]['origen'] ? false : true>

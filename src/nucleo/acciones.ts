@@ -1,11 +1,10 @@
 /**
- * La tabla de lo que cada actor puede hacer. Hoy una sola fila. La forma es un subconjunto textual de la del diseño de
- * permisos (#28), para que ese tramo agregue filas sin reescribir esta. Darle la acción a otro actor cambia quién compila.
+ * La forma es un subconjunto textual de la del diseño de permisos (#28), para que ese tramo agregue filas sin reescribir
+ * esta. Darle la acción a otro actor cambia quién compila.
  */
 import type { ContextoDelDueno, Marca } from './identidad'
 
 type Clase = 'libre' | 'con_aprobacion_del_dueno' | 'nunca'
-/** `boton`: una pulsación autenticada del Dueño. */
 export type TipoDeActor = 'agente' | 'vigilancia' | 'boton' | 'panel'
 type Sentido = 'frena' | 'suelta' | 'neutra'
 type LlegaA = 'nadie' | 'un_dueno' | 'un_cliente' | 'los_clientes' | 'segun_alcance'

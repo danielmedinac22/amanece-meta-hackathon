@@ -1,6 +1,6 @@
 /**
  * Solo lectura. Después de la 0005 y antes de publicar el código: por cada Negocio, lo publicado tiene que ser
- * exactamente lo aplicado, porque ningún Cliente debe notar el corte. Sale con 1 si algún Negocio difiere o no se lee.
+ * exactamente lo aplicado, porque ningún Cliente debe notar el corte.
  *
  *   pnpm tsx scripts/comprobar-corte.mts
  */

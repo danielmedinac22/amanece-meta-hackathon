@@ -8,24 +8,22 @@ import type { LoPendiente, ResultadoDePublicar } from '@/nucleo/cambios'
 
 const QUIEN_LO_NOTA = { clientes: 'Lo notan tus Clientes', equipo: 'Solo lo ven tú y tu equipo' } as const
 
-/** Mandar al link lo que ya está en la vista previa. La huella ata el clic a la lista que el Dueño tiene abierta. */
+/** La huella ata el clic a la lista que el Dueño tiene abierta. */
 export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
   const router = useRouter()
   const [enCurso, setEnCurso] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Lo que volvió de un `cambio`: se ve de una, sin esperar a que el Panel se refresque.
-  const [otraLista, setOtraLista] = useState<LoPendiente | null>(null)
-  const lista = otraLista ?? pendiente
-  const cuantos = lista.items.length
+  const [alguienAplico, setAlguienAplico] = useState(false)
+  const cuantos = pendiente.items.length
 
   async function publicar() {
     setEnCurso(true)
     setError(null)
     try {
-      const r = await fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ huella: lista.huella }) })
+      const r = await fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ huella: pendiente.huella }) })
       const datos = (await r.json().catch(() => ({ error: 'No pude publicar. Intenta de nuevo.' }))) as ResultadoDePublicar | { error: string }
       if ('error' in datos) return setError(datos.error)
-      setOtraLista(datos.tipo === 'cambio' ? datos.pendiente : null)
+      setAlguienAplico(datos.tipo === 'cambio')
       if (datos.tipo === 'no_existe') setError('No pude publicar. Intenta de nuevo.')
       router.refresh()
     } catch {
@@ -53,9 +51,9 @@ export function BotonPublicar({ pendiente }: { pendiente: LoPendiente }) {
           {cuantos ? (
             <>
               <p className="text-xs font-medium">Sin publicar</p>
-              {otraLista && <p className="mt-2 rounded-md bg-ojo-suave px-2 py-1 text-ojo">Alguien aplicó algo más. Revísalo y vuelve a tocar Publicar.</p>}
+              {alguienAplico && <p className="mt-2 rounded-md bg-ojo-suave px-2 py-1 text-ojo">Alguien aplicó algo más. Revísalo y vuelve a tocar Publicar.</p>}
               <ul className="mt-2 space-y-2">
-                {lista.items.map((i) => (
+                {pendiente.items.map((i) => (
                   <li key={i.clave}>
                     <span className="block whitespace-pre-wrap">{i.linea}</span>
                     <span className="block text-xs text-muted-foreground">
