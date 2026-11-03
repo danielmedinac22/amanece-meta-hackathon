@@ -25,6 +25,7 @@ export const NEGOCIO_POR_VENCER = conAtencion({ ...TUYA, quedaMs: 2000 })
 export const NEGOCIO_SE_ACABO_EL_TIEMPO = conAtencion(TUYA, { tipo: 'ya_no_la_tienes' })
 export const NEGOCIO_NO_SALIO = conAtencion(TUYA, { tipo: 'no_salio', porQue: 'pasaron más de 24 horas desde su último mensaje y WhatsApp no deja escribirle hasta que vuelva a escribir.' })
 export const NEGOCIO_WHATSAPP_NO_LO_TOMA = conAtencion(TUYA, { tipo: 'no_la_tomo' })
+export const NEGOCIO_SIN_SABER_SI_SALIO = conAtencion(TUYA, { tipo: 'sin_saber' })
 
 export const HILO_AVISO_DE_LA_TOMA: UIMessage[] = [
   { id: 'toma-1', role: 'assistant', parts: [{ type: 'text', text: 'Un Cliente te escribió en la conversación que tienes tomada. Tu agente no le contesta. Si la conversación vuelve a él sin que le respondas, le contesta cuando abras el Panel o cuando escriba de nuevo.' }, { type: 'data-toma', data: { cliente: CLIENTE, nombre: 'Daniela Quintero' } }] },

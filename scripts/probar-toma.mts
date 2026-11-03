@@ -18,7 +18,10 @@ const { marcar } = await import('../src/nucleo/identidad')
 const { atenderMensaje, atenderLoDebido, soltarVencidas } = await import('../src/nucleo/clientes/atender')
 const { atencionDe, tomar, devolver, escribirAlCliente } = await import('../src/nucleo/clientes/toma')
 const { despachar, intencion } = await import('../src/nucleo/salida')
-const { devolverLaDeuda } = await import('../src/nucleo/salida/atencion')
+const { reclamarConCerca, soltarLaDeUnCliente } = await import('../src/nucleo/salida/atencion')
+const { conTransaccion } = await import('../src/db/pool')
+const { recibirMensaje } = await import('../src/nucleo/entrada')
+const { comoClave, comoMonto } = await import('../src/nucleo/estado/elementos')
 const { leerCifras } = await import('../src/nucleo/hoy')
 const { parteDeDatosParaElModelo } = await import('../src/agentes/dueno')
 type Motores = import('../src/nucleo/clientes/turno').Motores
@@ -42,10 +45,14 @@ const guion = (responder: Motores['responder'] | string) => {
   return { motores, llamadas }
 }
 
+const claveDeCafe = comoClave('producto:cafe-500-g')
+const UN_CAFE = { pedido: { items: [{ producto: claveDeCafe, cantidad: 1 }], ciudad: 'Manizales' }, direccion: 'Calle 1' }
+
 async function negocioNuevo(sufijo: string) {
   const [neg] = await db.insert(esquema.negocios).values({ nombre: `Café Toma ${sufijo}${marca}`, codigo: `TOM${sufijo}${marca}`, rubro: 'café', estado: 'listo', version: 1 }).returning()
   creados.push(neg.id)
   await db.insert(esquema.elementos).values({ negocioId: neg.id, clave: 'dato:ciudad', version: 1, tipo: 'dato', contrato: 1, contenido: { tipo: 'dato', campo: 'ciudad', valor: 'Manizales' }, origen: 'tablas_viejas', sinPublicar: false })
+  await db.insert(esquema.elementos).values({ negocioId: neg.id, clave: claveDeCafe, version: 2, tipo: 'producto', contrato: 1, contenido: { tipo: 'producto', nombre: 'Café 500 g', descripcion: 'Tueste medio', precio: comoMonto(30_000), activo: true }, origen: 'tablas_viejas', sinPublicar: false })
   const dueno = async (d: string) => {
     const [f] = await db.insert(esquema.duenos).values({ negocioId: neg.id, usuarioId: `probar-toma-${sufijo}-${d}-${marca}`, nombre: `Dueño ${d}` }).returning()
     return { id: f.id, ctx: { medio: 'web', negocio: marcar.negocio(neg.id), dueno: marcar.dueno(f.id) } as const }
@@ -114,11 +121,32 @@ try {
   console.log('\n=== Un turno ya corriendo ===')
   {
     const c = await clienteNuevo(N.id)
+    let pedido: unknown
+    await atenderMensaje(mensaje(c.telefono), N.id, guion(async (e) => {
+      pedido = await e.puerto.crear_pedido(UN_CAFE)
+      return { texto: 'Te tomé el pedido.', uso: SIN_USO }
+    }).motores)
+    afirmar('control: libre, el mismo pedido sí se crea', (await db.select().from(esquema.pedidos).where(eq(esquema.pedidos.clienteId, c.id))).length === 1, pedido)
+    const numero = (pedido as { numero: number }).numero
+    let confirmado: unknown
+    let caso: unknown
+    await atenderMensaje(mensaje(c.telefono), N.id, guion(async (e) => {
+      await tomar(N.a.ctx, c.id)
+      confirmado = await e.puerto.confirmar_pedido(numero)
+      caso = await e.puerto.abrir_caso({ titulo: 'No debería abrirse', detalle: 'x', pedido: null })
+      return { texto: 'Respuesta vieja', uso: SIN_USO }
+    }).motores)
+    const [p] = await db.select().from(esquema.pedidos).where(eq(esquema.pedidos.clienteId, c.id))
+    afirmar('turno viejo: no confirma el pedido', p.estado === 'pendiente' && p.confirmado === null, confirmado)
+    afirmar('turno viejo: no abre el Caso', (await db.select().from(esquema.casos).where(eq(esquema.casos.clienteId, c.id))).length === 0, caso)
+  }
+  {
+    const c = await clienteNuevo(N.id)
     const m = mensaje(c.telefono)
     let pedido: unknown
     const t = guion(async (e) => {
       await tomar(N.a.ctx, c.id)
-      pedido = await e.puerto.crear_pedido({ pedido: { items: [], ciudad: 'Manizales' }, direccion: 'Calle 1' })
+      pedido = await e.puerto.crear_pedido(UN_CAFE)
       return { texto: 'Respuesta vieja', uso: SIN_USO }
     })
     const hilos = (await hilo(N.a.id)).length
@@ -162,18 +190,50 @@ try {
   for (const orden of ['el nuevo termina primero', 'el viejo termina primero'] as const) {
     const c = await clienteNuevo(N.id)
     const m = mensaje(c.telefono)
-    const pendientes: (() => Promise<void>)[] = []
+    let soltada: Awaited<ReturnType<typeof soltarLaDeUnCliente>> = null
+    const elNuevo = guion('Respuesta del turno nuevo')
     const t1 = guion(async () => {
       await tomar(N.a.ctx, c.id)
-      await devolver(N.a.ctx, c.id, (await fila(c.id)).vecesTomada, (t) => pendientes.push(t))
-      if (orden === 'el nuevo termina primero') await pendientes[0]()
+      soltada = await soltarLaDeUnCliente(N.id, marcar.cliente(c.id), (await fila(c.id)).vecesTomada)
+      if (orden === 'el nuevo termina primero') await atenderLoDebido(soltada!, elNuevo.motores)
       return { texto: 'Respuesta del turno viejo', uso: SIN_USO }
     })
     await atenderMensaje(m, N.id, t1.motores)
-    if (orden === 'el viejo termina primero') await pendientes[0]()
-    afirmar(`${orden}: un envío`, enviosA(c.telefono).length === 1, enviosA(c.telefono))
+    if (orden === 'el viejo termina primero') await atenderLoDebido(soltada!, elNuevo.motores)
+    const salio = enviosA(c.telefono)
+    afirmar(`${orden}: un envío, y es el del turno nuevo`, salio.length === 1 && salio[0].texto === 'Respuesta del turno nuevo', salio)
     afirmar(`${orden}: una fila del agente`, (await delAgente(c.id)).length === 1)
     afirmar(`${orden}: sin deuda`, (await fila(c.id)).sinContestar === null)
+  }
+
+  console.log('\n=== La cerca, en la base y esperando el candado ===')
+  {
+    const c = await clienteNuevo(N.id)
+    const w = marcar.wamid(`wamid.TOMA.${marca}.cerca`)
+    const f = { negocioId: N.id, clienteId: marcar.cliente(c.id), telefono: c.telefono, clase: 'respuesta', enRespuestaA: w, veredicto: 'sale', motivo: null } as const
+    const agente = { tipo: 'agente', vez: marcar.vez(0), debida: false } as const
+    await tomar(N.a.ctx, c.id)
+    afirmar('cerca: con una vez vieja no entra, aunque nadie haya leído antes', (await reclamarConCerca({ ...f, clave: `prueba:${w}:1` }, agente)).length === 0)
+    await devolver(N.a.ctx, c.id, 1, () => {})
+    afirmar('cerca: tampoco con la toma ya devuelta', (await reclamarConCerca({ ...f, clave: `prueba:${w}:2` }, agente)).length === 0)
+    afirmar('cerca: con su vez sí entra', (await reclamarConCerca({ ...f, clave: `prueba:${w}:3` }, { ...agente, vez: marcar.vez(1) })).length === 1)
+
+    // El reclamo llega mientras otra transacción ya subió la vez y no ha confirmado: tiene que esperarla y no entrar.
+    const d = await clienteNuevo(N.id)
+    let reclamo: Promise<readonly unknown[]> | null = null
+    let termino = false
+    let antesDelCommit = true
+    await conTransaccion(async (tx) => {
+      await tx.update(esquema.clientes).set({ vecesTomada: 1 }).where(eq(esquema.clientes.id, d.id))
+      reclamo = reclamarConCerca({ ...f, clienteId: marcar.cliente(d.id), telefono: d.telefono, clave: `prueba:${w}:4` }, agente)
+      void reclamo.then(() => (termino = true))
+      await new Promise((listo) => setTimeout(listo, 1500))
+      antesDelCommit = termino
+    })
+    const entro = await reclamo!
+    afirmar('cerca: el reclamo espera el candado de la toma', !antesDelCommit)
+    afirmar('cerca: al soltarse, Postgres reevalúa y el reclamo no entra', entro.length === 0, entro)
+    await db.delete(esquema.mensajesSalientes).where(like(esquema.mensajesSalientes.clave, `prueba:${w}:%`))
   }
 
   console.log('\n=== El reclamo y la toma a la vez: enviado si y solo si no se debe ===')
@@ -268,6 +328,79 @@ try {
     afirmar('lo debido revisa la ventana antes de gastar un turno', t.llamadas.responder === 0 && enviosA(c.telefono).length === 0)
   }
 
+  {
+    const c = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    const m1 = mensaje(c.telefono, 'Primero')
+    await atenderMensaje(m1, N.id, guion('No debería correr').motores)
+    const s1 = (await soltarLaDeUnCliente(N.id, marcar.cliente(c.id), (await fila(c.id)).vecesTomada))!
+    await atenderMensaje(mensaje(c.telefono, 'Segundo'), N.id, guion(async () => ({ texto: 'Respuesta al segundo', uso: SIN_USO })).motores)
+    const hilos = (await hilo(N.a.id)).length
+    await atenderLoDebido(s1, guion('Respuesta vieja al primero').motores)
+    const salio = enviosA(c.telefono)
+    afirmar('lo debido: si el Cliente volvió a escribir, no contesta otra vez', salio.length === 1 && salio[0].texto === 'Respuesta al segundo', salio)
+    afirmar('lo debido: y eso no es una alarma', (await hilo(N.a.id)).length === hilos)
+  }
+  {
+    const c = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    const vez = (await fila(c.id)).vecesTomada
+    const m = mensaje(c.telefono)
+    await atenderMensaje(m, N.id, guion('No debería correr').motores)
+    const s1 = (await soltarLaDeUnCliente(N.id, marcar.cliente(c.id), vez))!
+    await tomar(N.a.ctx, c.id)
+    await escribirAlCliente(N.a.ctx, { cliente: c.id, vez: vez + 1, texto: 'Yo le contesto', intento: randomUUID(), visto: m.wamid })
+    await devolver(N.a.ctx, c.id, vez + 1, () => {})
+    await atenderLoDebido({ ...s1, vez: marcar.vez(vez + 1) }, guion('Respuesta de más').motores)
+    afirmar('lo debido: si el Dueño ya contestó, el agente no contesta', enviosA(c.telefono).length === 1 && enviosA(c.telefono)[0].texto === 'Yo le contesto', enviosA(c.telefono))
+  }
+  {
+    const c = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    const m = mensaje(c.telefono)
+    await atenderMensaje(m, N.id, guion('No debería correr').motores)
+    const vez = (await fila(c.id)).vecesTomada
+    const hilos = (await hilo(N.a.id)).length
+    const silenciar = console.error
+    console.error = () => {}
+    process.env.SALIDA_EN_EMERGENCIA = N.id
+    await atenderLoDebido((await soltarLaDeUnCliente(N.id, marcar.cliente(c.id), vez))!, guion('Frenada por la emergencia').motores)
+    delete process.env.SALIDA_EN_EMERGENCIA
+    console.error = silenciar
+    afirmar('lo debido en una emergencia: frena de verdad, aunque la compuerta observe', enviosA(c.telefono).length === 0)
+    afirmar('lo debido en una emergencia: quien la tenía lo sabe', (await hilo(N.a.id)).length === hilos + 1)
+    afirmar('lo debido en una emergencia: sigue debido', (await fila(c.id)).sinContestar === m.wamid)
+    await tomar(N.a.ctx, c.id)
+    const r = await soltarLaDeUnCliente(N.id, marcar.cliente(c.id), (await fila(c.id)).vecesTomada)
+    await atenderLoDebido(r!, guion('Ya sin emergencia').motores)
+    const salio = enviosA(c.telefono)
+    afirmar('lo debido, ya sin emergencia: la fila frenada no le quita el turno', salio.length === 1 && salio[0].texto === 'Ya sin emergencia', salio)
+  }
+  {
+    const c = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    await atenderMensaje(mensaje(c.telefono), N.id, guion('No debería correr').motores)
+    const s1 = (await soltarLaDeUnCliente(N.id, marcar.cliente(c.id), (await fila(c.id)).vecesTomada))!
+    const hilos = (await hilo(N.a.id)).length
+    const silenciar = console.error
+    console.error = () => {}
+    await atenderLoDebido(s1, guion(async () => {
+      throw new Error('modelo caído a propósito')
+    }).motores)
+    console.error = silenciar
+    const salio = enviosA(c.telefono)
+    afirmar('lo debido con el modelo caído: la disculpa sí sale', salio.length === 1 && salio[0].texto.includes('problema técnico'), salio)
+    afirmar('lo debido con el modelo caído: con la disculpa afuera, el Hilo no suena', (await hilo(N.a.id)).length === hilos)
+  }
+  {
+    const c = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    const fantasma = marcar.wamid(`wamid.TOMA.${marca}.fantasma`)
+    const hilos = (await hilo(N.a.id)).length
+    await atenderLoDebido({ negocio: N.id, cliente: marcar.cliente(c.id), debe: fantasma, vez: marcar.vez((await fila(c.id)).vecesTomada), laTenia: marcar.dueno(N.a.id), ultimoEntrante: new Date() }, guion('No debería correr').motores)
+    afirmar('lo debido sin su mensaje: no sale nada y quien la tenía lo sabe', enviosA(c.telefono).length === 0 && (await hilo(N.a.id)).length === hilos + 1)
+  }
+
   console.log('\n=== Lo que escribe el Dueño pasa por la compuerta ===')
   const escrito = (cliente: string, vez: number, visto: string | null, texto = 'Hola, soy el Dueño') => ({ cliente, vez, texto, intento: randomUUID(), visto })
   {
@@ -360,14 +493,48 @@ try {
     afirmar('Caso: no salda otro mensaje', (await fila(c.id)).sinContestar === m.wamid)
   }
 
-  console.log('\n=== La deuda vuelve si Kapso falla y el agente ya no puede disculparse ===')
+  console.log('\n=== Lo que el Dueño no sabe si salió ===')
   {
     const c = await clienteNuevo(N.id)
-    const m = mensaje(c.telefono)
-    await devolverLaDeuda(marcar.cliente(c.id), m.wamid)
-    afirmar('deuda: vuelve si no había', (await fila(c.id)).sinContestar === m.wamid)
-    await devolverLaDeuda(marcar.cliente(c.id), mensaje(c.telefono).wamid)
-    afirmar('deuda: no pisa una más nueva', (await fila(c.id)).sinContestar === m.wamid)
+    await tomar(N.a.ctx, c.id)
+    const vez = (await fila(c.id)).vecesTomada
+    const conFila = async (error: string | null) => {
+      const e = escrito(c.id, vez, null)
+      await db.insert(esquema.mensajesSalientes).values({ clave: `dueno:${c.id}:${e.intento}`, negocioId: N.id, clienteId: c.id, telefono: c.telefono, clase: 'del_dueno', veredicto: 'sale', estado: 'por_enviar', error })
+      return (await escribirAlCliente(N.a.ctx, e)).tipo
+    }
+    afirmar('una excepción: no se sabe, y la pantalla no invita a reenviar', (await conFila('Error: se cortó la red')) === 'sin_saber')
+    afirmar('un envío en camino: tampoco se sabe', (await conFila(null)) === 'sin_saber')
+    afirmar('un rechazo de Kapso: no salió, y se puede reintentar', (await conFila('Kapso respondió 500: no')) === 'no_la_tomo')
+    afirmar('ninguno sale', enviosA(c.telefono).length === 0)
+
+    const e = escrito(c.id, vez, null)
+    await escribirAlCliente(N.a.ctx, e)
+    await devolver(N.a.ctx, c.id, vez, () => {})
+    afirmar('reintentar lo que ya salió, con la toma devuelta: dice que salió', (await escribirAlCliente(N.a.ctx, e)).tipo === 'salio' && enviosA(c.telefono).length === 1)
+  }
+
+  console.log('\n=== Por el webhook ===')
+  {
+    const c = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    const [neg] = await db.select({ codigo: esquema.negocios.codigo }).from(esquema.negocios).where(eq(esquema.negocios.id, N.id))
+    const m = mensaje(c.telefono, `(${neg.codigo}) Hola, sigo aquí`)
+    await recibirMensaje(m)
+    afirmar('recibirMensaje con la conversación tomada: nada sale, y queda debido', enviosA(c.telefono).length === 0 && (await fila(c.id)).sinContestar === m.wamid)
+    await db.delete(esquema.sesionesWhatsapp).where(eq(esquema.sesionesWhatsapp.telefono, c.telefono))
+    await db.delete(esquema.mensajesEntrantes).where(eq(esquema.mensajesEntrantes.wamid, m.wamid))
+  }
+  {
+    const c = await clienteNuevo(N.id)
+    const vencida = await clienteNuevo(N.id)
+    await tomar(N.a.ctx, c.id)
+    await tomar(N.a.ctx, vencida.id)
+    await atenderMensaje(mensaje(vencida.telefono), N.id, guion('No debería correr').motores)
+    await venceYa(vencida.id)
+    const cobra = guion('Lo que se debía')
+    await atenderMensaje(mensaje(c.telefono), N.id, cobra.motores)
+    afirmar('otro Cliente con su conversación tomada también le presta el reloj a una vencida', enviosA(vencida.telefono).length === 1 && enviosA(c.telefono).length === 0)
   }
 
   console.log('\n=== Con el modelo real ===')

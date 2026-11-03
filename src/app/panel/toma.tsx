@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { Atencion, ResultadoDeDevolver, ResultadoDeEscribir, ResultadoDeTomar } from '@/nucleo/clientes/toma'
+import { rutaDeConversacion } from '@/nucleo/listas-palabras'
 import { tocarToma, type ConError } from './tocar-toma'
 
 export type EscritoDelDueno = { readonly vez: number; readonly texto: string; readonly intento: string; readonly visto: string | null }
@@ -51,11 +52,8 @@ function Vuelve({ quedaMs, alVencer }: { quedaMs: number; alVencer: () => void }
   return <>vuelve a tu agente {enCuanto(useQueda(quedaMs, alVencer))}</>
 }
 
-function Redactor({ enviando, alEnviar }: { enviando: boolean; alEnviar: (texto: string) => Promise<boolean> }) {
-  const [texto, setTexto] = useState('')
-  const enviar = async () => {
-    if (await alEnviar(texto)) setTexto('')
-  }
+function Redactor({ texto, setTexto, enviando, alEnviar }: { texto: string; setTexto: (t: string) => void; enviando: boolean; alEnviar: () => Promise<void> }) {
+  const enviar = alEnviar
   return (
     <form
       className="flex items-end gap-2"
@@ -88,6 +86,8 @@ function Redactor({ enviando, alEnviar }: { enviando: boolean; alEnviar: (texto:
 /** El pie de una conversación: quién atiende, cuánto le queda y, si es tuya, desde dónde le escribes. */
 export function ControlDeLaToma({ cliente, atencion, caso, acciones, alCambiar }: { cliente: string; atencion: Atencion; caso: ReactNode; acciones: AccionesDeToma; alCambiar: () => void }) {
   const [ocupado, setOcupado] = useState(false)
+  // Vive aquí y no en el redactor: si se acaba el tiempo, lo escrito sigue ahí al volver a tomarla.
+  const [texto, setTexto] = useState('')
   const [aviso, setAviso] = useState<string | null>(null)
   const [enviado, setEnviado] = useState(false)
   // Se queda si la red falló: el reintento lleva el mismo, y si el primero sí llegó no sale dos veces.
@@ -119,33 +119,31 @@ export function ControlDeLaToma({ cliente, atencion, caso, acciones, alCambiar }
     alCambiar()
   }
 
-  const escribir = async (texto: string, a: Extract<Atencion, { tipo: 'tuya' }>): Promise<boolean> => {
-    if (!texto.trim() || ocupado) return false
+  const escribir = async (a: Extract<Atencion, { tipo: 'tuya' }>) => {
+    if (!texto.trim() || ocupado) return
     intento.current ??= crypto.randomUUID()
     const r = await hacer(() => acciones.escribir(cliente, { vez: a.vez, texto, intento: intento.current!, visto: a.sinContestar }))
-    if (r.tipo === 'error') {
-      setAviso(r.mensaje)
-      return false
+    if (r.tipo === 'error') return setAviso(r.mensaje)
+    if (r.tipo === 'sin_saber') {
+      setAviso('Todavía no sé si le llegó. Mira la conversación antes de enviarlo de nuevo.')
+      return alCambiar()
     }
     intento.current = null
     switch (r.tipo) {
       case 'salio':
+        setTexto('')
         setEnviado(true)
         alCambiar()
-        return true
+        return
       case 'no_salio':
-        setAviso(`No salió: ${r.porQue}`)
-        return false
+        return setAviso(`No salió: ${r.porQue}`)
       case 'ya_no_la_tienes':
-        setAviso('Ya no tienes esta conversación y tu mensaje no salió. Volvió a tu agente.')
-        alCambiar()
-        return false
+        setAviso('Ya no tienes esta conversación y tu mensaje no salió.')
+        return alCambiar()
       case 'no_la_tomo':
-        setAviso('WhatsApp no tomó tu mensaje. Vuelve a enviarlo en un momento.')
-        return false
+        return setAviso('WhatsApp no tomó tu mensaje. Vuelve a enviarlo en un momento.')
       case 'no_existe':
-        setAviso('Esta conversación ya no está.')
-        return false
+        return setAviso('Esta conversación ya no está.')
     }
   }
 
@@ -188,12 +186,13 @@ export function ControlDeLaToma({ cliente, atencion, caso, acciones, alCambiar }
           </>
         )}
       </div>
-      {atencion.tipo === 'agente' && atencion.espera && <p className="text-ojo">Este Cliente espera respuesta. Tu agente le contesta cuando vuelva a escribir, o puedes tomar la conversación.</p>}
+      {atencion.tipo === 'agente' && atencion.espera && <p className="text-ojo">Este Cliente espera respuesta. Tu agente le contesta cuando vuelva a escribir{atencion.ventana ? ', o puedes tomar la conversación' : ''}.</p>}
       {atencion.tipo !== 'de_otro' && !atencion.ventana && <p>{SIN_VENTANA}</p>}
       {atencion.tipo === 'tuya' && atencion.agenteTerminando && <p>Tu agente alcanzó a responderle antes de que la tomaras. Su mensaje puede aparecer en un momento.</p>}
       {aviso && <p className="text-ojo">{aviso}</p>}
       {enviado && !aviso && <p>Enviado.</p>}
-      {atencion.tipo === 'tuya' && atencion.ventana && <Redactor enviando={ocupado} alEnviar={(texto) => escribir(texto, atencion)} />}
+      {atencion.tipo !== 'tuya' && texto.trim() && <p>Lo que estabas escribiendo no salió. Si la vuelves a tomar, sigue ahí.</p>}
+      {atencion.tipo === 'tuya' && atencion.ventana && <Redactor texto={texto} setTexto={setTexto} enviando={ocupado} alEnviar={() => escribir(atencion)} />}
     </div>
   )
 }
@@ -205,8 +204,10 @@ export function TomaEnLaRuta({ cliente, atencion, caso }: { cliente: string; ate
   const tomada = atencion.tipo !== 'agente'
   useEffect(() => {
     if (!tomada) return
+    // Sin `?cliente=`, el detalle es la conversación más reciente: el sondeo saltaría a otra si escribe otro Cliente.
+    if (!new URLSearchParams(window.location.search).has('cliente')) router.replace(rutaDeConversacion(cliente), { scroll: false })
     const sondeo = setInterval(() => router.refresh(), SONDEO_MS)
     return () => clearInterval(sondeo)
-  }, [tomada, router])
+  }, [tomada, router, cliente])
   return <ControlDeLaToma cliente={cliente} atencion={atencion} caso={caso} acciones={tocarToma} alCambiar={alCambiar} />
 }

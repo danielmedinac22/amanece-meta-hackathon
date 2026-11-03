@@ -18,7 +18,7 @@ import { AlbaHastaElArmado } from './alba-de-muestra'
 import { ArmadoDeMuestra } from './armado-de-muestra'
 import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_COBRO_CORREGIDO, ARMADO_CORREGIDA, HILO_CORREGIDA, HILO_NO_CORRIGIO, TARJETAS_CORREGIDA, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { Componentes } from './componentes'
-import { HILO_AVISO_DE_LA_TOMA, NEGOCIO_CLIENTE_ESPERA, NEGOCIO_CON_LA_TOMA_TUYA, NEGOCIO_DE_OTRO_DUENO, NEGOCIO_NO_SALIO, NEGOCIO_POR_VENCER, NEGOCIO_SE_ACABO_EL_TIEMPO, NEGOCIO_SIN_VENTANA, NEGOCIO_TOMADA_CON_EL_AGENTE_TERMINANDO, NEGOCIO_TUYA_SIN_VENTANA, NEGOCIO_WHATSAPP_NO_LO_TOMA } from './datos-de-la-toma'
+import { HILO_AVISO_DE_LA_TOMA, NEGOCIO_CLIENTE_ESPERA, NEGOCIO_CON_LA_TOMA_TUYA, NEGOCIO_DE_OTRO_DUENO, NEGOCIO_NO_SALIO, NEGOCIO_POR_VENCER, NEGOCIO_SE_ACABO_EL_TIEMPO, NEGOCIO_SIN_SABER_SI_SALIO, NEGOCIO_SIN_VENTANA, NEGOCIO_TOMADA_CON_EL_AGENTE_TERMINANDO, NEGOCIO_TUYA_SIN_VENTANA, NEGOCIO_WHATSAPP_NO_LO_TOMA } from './datos-de-la-toma'
 import { GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
 import { EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
 import { GUION_WHATSAPP_NO_LA_TOMA, HILO_CASO_CON_REGLA, HILO_CASO_VIEJO, HILO_DESENLACES_DEL_ENVIO, NEGOCIO_CASOS_CON_ENVIO, TARJETAS_CASO_CON_REGLA, TARJETAS_CASO_VIEJO, TARJETAS_DESENLACES_DEL_ENVIO } from './datos-del-caso'
@@ -193,6 +193,7 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'conversacion-se-acabo-el-tiempo', titulo: 'Conversaciones: escribes justo cuando se acabó el tiempo', pinta: () => enLaSeccion(NEGOCIO_SE_ACABO_EL_TIEMPO, '/panel/conversaciones') },
   { id: 'conversacion-no-salio', titulo: 'Conversaciones: la compuerta no deja salir tu mensaje', pinta: () => enLaSeccion(NEGOCIO_NO_SALIO, '/panel/conversaciones') },
   { id: 'conversacion-whatsapp-no-lo-toma', titulo: 'Conversaciones: WhatsApp no toma tu mensaje', pinta: () => enLaSeccion(NEGOCIO_WHATSAPP_NO_LO_TOMA, '/panel/conversaciones') },
+  { id: 'conversacion-sin-saber', titulo: 'Conversaciones: todavía no se sabe si tu mensaje salió', pinta: () => enLaSeccion(NEGOCIO_SIN_SABER_SI_SALIO, '/panel/conversaciones') },
   { id: 'hilo-aviso-de-la-toma', titulo: 'El Hilo avisa que un Cliente escribió en la conversación que tienes', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_AVISO_DE_LA_TOMA) },
   { id: 'conversaciones-muchas', titulo: 'Conversaciones: más filas que el límite y textos largos', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDeConversacion('larga')) },
   { id: 'tablero', titulo: 'Tablero: cifras, Indicadores propios, gráfica, reparto y tabla', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/tablero') },
