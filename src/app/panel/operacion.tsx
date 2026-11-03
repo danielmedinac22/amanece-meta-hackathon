@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLineLeft, CaretUp, PushPin, Robot, Storefront, Table, type Icon } from '@phosphor-icons/react'
+import { ArrowLineLeft, CaretUp, CaretUpDown, PushPin, Robot, Storefront, Table, type Icon } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -8,16 +8,17 @@ import { useCallback, useMemo, useReducer, useState, type CSSProperties, type Mo
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import type { LoPendiente } from '@/nucleo/cambios'
 import type { SeccionPintada } from '@/nucleo/panel'
-import { DISPOSICION_INICIAL, HiloEnLaOperacion, disponer, type Disposicion, type Pestana } from './disposicion'
+import { DISPOSICION_INICIAL, EscribirleAlAgente, HiloEnLaOperacion, disponer, type Borrador, type Disposicion, type Pestana } from './disposicion'
 import { AlIrASeccion } from './ir-a-seccion'
 import { BotonPublicar } from './publicar'
 import { SinPublicar } from './sin-publicar'
 import type { Publicador } from './tocar-publicar'
-import { SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
+import { RUTA_DE_AJUSTES, SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
 
 /** Lo que la cáscara pinta. Quien la arma lee; ella no toca datos. */
 export type DatosDeLaOperacion = {
@@ -58,6 +59,11 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
   const { lugar, pestana, decision, movido } = disposicion
   const { negocio } = datos
   const avisarDecision = useCallback((id: string | null) => cambiar({ tipo: 'decision', id }), [])
+  const [borrador, setBorrador] = useState<Borrador | null>(null)
+  const escribirleAlAgente = useCallback((texto: string) => {
+    setBorrador({ texto })
+    cambiar({ tipo: 'pestana', pestana: 'agente' })
+  }, [])
   const publicar = negocio?.publicar
   const sinPublicar = useMemo(() => ({ claves: new Set<string>(publicar?.items.map((i) => i.clave)), indicadores: publicar?.nuevos ?? [] }), [publicar])
 
@@ -65,6 +71,7 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
     () => ({
       vista: `${lugar}-${pestana}`,
       avisarDecision,
+      borrador,
       controles:
         lugar === 'fijo' ? null : (
           <span className="hidden shrink-0 flotante:flex">
@@ -77,7 +84,7 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
           </span>
         ),
     }),
-    [lugar, pestana, avisarDecision],
+    [lugar, pestana, avisarDecision, borrador],
   )
 
   function alTocarUnaSeccion(evento: MouseEvent, destino: string) {
@@ -136,7 +143,9 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sideb
                 </div>
               </div>
               <div className="@container min-h-0 flex-1 overflow-y-auto p-4 lg:p-6 flotante:pb-28">
-                <AlIrASeccion.Provider value={alTocarUnaSeccion}>{children}</AlIrASeccion.Provider>
+                <AlIrASeccion.Provider value={alTocarUnaSeccion}>
+                  <EscribirleAlAgente.Provider value={escribirleAlAgente}>{children}</EscribirleAlAgente.Provider>
+                </AlIrASeccion.Provider>
               </div>
             </div>
           </section>
@@ -189,13 +198,24 @@ function BarraLateral({ datos, ruta, alTocar }: { datos: DatosDeLaOperacion; rut
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip={nombre} render={<Link href="/panel" onClick={(e) => tocar(e, '/panel')} />}>
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary font-heading text-sm font-semibold text-sidebar-primary-foreground">{nombre[0]}</span>
-              <span className="grid flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-medium">{nombre}</span>
-                {negocio?.ciudad && <span className="truncate text-xs text-muted-foreground">{negocio.ciudad}</span>}
-              </span>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent" />}>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary font-heading text-sm font-semibold text-sidebar-primary-foreground">{nombre[0]}</span>
+                <span className="grid flex-1 text-left leading-tight">
+                  <span className="truncate text-sm font-medium">{nombre}</span>
+                  {negocio?.ciudad && <span className="truncate text-xs text-muted-foreground">{negocio.ciudad}</span>}
+                </span>
+                <CaretUpDown className="ml-auto size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-52">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Tu negocio</DropdownMenuLabel>
+                  <DropdownMenuItem render={<Link href="/panel" onClick={(e) => tocar(e, '/panel')} />}>{nombre}</DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href={RUTA_DE_AJUSTES} onClick={(e) => tocar(e, RUTA_DE_AJUSTES)} />}>Ajustes del negocio</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

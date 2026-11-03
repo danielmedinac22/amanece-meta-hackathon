@@ -2,6 +2,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { db, esquema } from '@/db'
+import { ajustesDe } from '@/nucleo/ajustes'
 import { leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
@@ -112,6 +113,11 @@ export async function leerLosCasos() {
 export async function leerConversaciones(elegido: string | undefined) {
   const leido = await negocioDelPanel()
   return leido && conversacionesDe(leido.id, leido.negocio.zonaHoraria, elegido)
+}
+
+export async function leerAjustes() {
+  const leido = await negocioDelPanel()
+  return leido && ajustesDe(leido.estado)
 }
 
 /** `tablero` es `null` mientras el Negocio se arma: todavía no hay nada que contar, solo los Indicadores que pidió. */
