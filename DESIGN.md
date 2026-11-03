@@ -27,85 +27,13 @@ Amanece se ve como un buen producto de hoy y le habla a quien vende por WhatsApp
 | Movimiento | `motion`, con `MotionConfig reducedMotion="user"` en la raíz |
 | Letras | `next/font/google`: Bricolage Grotesque y Hanken Grotesk |
 
-Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de referencia para Tablero, tablas y bandeja. Hoy este repo tiene otros tokens y Geist: la migración es **Destino**.
+Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de referencia para Tablero, tablas y bandeja. Este repo ya usa esos tokens y esas letras. Para ver una pantalla sin sesión, mira `/vitrina`.
+
+**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
 
 ## Tokens
 
-**Decidido.** Mirada Alba, con modo oscuro opcional que sigue la configuración del sistema. Al migrar, `src/app/globals.css` pasa a ser la fuente y este bloque se borra.
-
-```css
-:root {
-  --fuente: 'Hanken Grotesk', system-ui, sans-serif;
-  --fuente-titulo: 'Bricolage Grotesque', system-ui, sans-serif;
-  --texto-hilo: 14.5px;
-  --radius: 0.875rem;
-
-  --background: oklch(0.992 0.002 250);
-  --foreground: oklch(0.23 0.035 265);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.23 0.035 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.23 0.035 265);
-  --primary: oklch(0.28 0.05 265);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.006 250);
-  --secondary-foreground: oklch(0.23 0.035 265);
-  --muted: oklch(0.965 0.005 250);
-  --muted-foreground: oklch(0.49 0.025 265);
-  --accent: oklch(0.955 0.007 250);
-  --accent-foreground: oklch(0.23 0.035 265);
-  --border: oklch(0.92 0.007 250);
-  --input: oklch(0.92 0.007 250);
-  --ring: oklch(0.7 0.12 45);
-  --sidebar: oklch(0.975 0.004 250);
-  --sidebar-foreground: oklch(0.35 0.03 265);
-  --sidebar-accent: oklch(0.94 0.007 250);
-  --sidebar-accent-foreground: oklch(0.23 0.035 265);
-  --sidebar-border: oklch(0.92 0.007 250);
-  --sidebar-primary: oklch(0.28 0.05 265);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.7 0.12 45);
-
-  --bien: oklch(0.5 0.12 160);
-  --bien-suave: oklch(0.95 0.035 160);
-  --ojo: oklch(0.52 0.15 50);
-  --ojo-suave: oklch(0.95 0.05 65);
-  --alba: linear-gradient(180deg, #a9c7f2 0%, #d5d3ee 38%, #fbd6c6 72%, #ffe9c9 100%);
-  --sol: linear-gradient(120deg, #ff9a5c, #ff6b8b);
-}
-
-:root.dark {
-  --background: oklch(0.17 0.025 265);
-  --foreground: oklch(0.95 0.008 250);
-  --card: oklch(0.21 0.028 265);
-  --card-foreground: oklch(0.95 0.008 250);
-  --popover: oklch(0.23 0.03 265);
-  --popover-foreground: oklch(0.95 0.008 250);
-  --primary: oklch(0.86 0.09 70);
-  --primary-foreground: oklch(0.2 0.03 265);
-  --secondary: oklch(0.27 0.03 265);
-  --secondary-foreground: oklch(0.95 0.008 250);
-  --muted: oklch(0.25 0.03 265);
-  --muted-foreground: oklch(0.74 0.02 260);
-  --accent: oklch(0.28 0.03 265);
-  --accent-foreground: oklch(0.95 0.008 250);
-  --border: oklch(0.31 0.03 265);
-  --input: oklch(0.31 0.03 265);
-  --sidebar: oklch(0.15 0.024 265);
-  --sidebar-foreground: oklch(0.8 0.015 260);
-  --sidebar-accent: oklch(0.25 0.03 265);
-  --sidebar-accent-foreground: oklch(0.95 0.008 250);
-  --sidebar-border: oklch(0.27 0.03 265);
-  --sidebar-primary: oklch(0.86 0.09 70);
-  --sidebar-primary-foreground: oklch(0.2 0.03 265);
-
-  --bien: oklch(0.78 0.13 160);
-  --bien-suave: oklch(0.3 0.05 160);
-  --ojo: oklch(0.82 0.13 65);
-  --ojo-suave: oklch(0.33 0.06 60);
-  --alba: linear-gradient(180deg, #151a3a 0%, #2a2a5c 45%, #6b4468 80%, #b5665a 100%);
-}
-```
+**Decidido.** Mirada Alba. Los valores viven en `src/app/globals.css`, que es la fuente: este documento dice para qué sirve cada uno y no los repite. El modo oscuro sigue la configuración del sistema solo con CSS, por `prefers-color-scheme`, sin clase ni script ni parpadeo. `--alba` y `--sol` son degradados y no se registran como colores de Tailwind: se usan con `var()`.
 
 ### Para qué es cada color
 
@@ -116,11 +44,12 @@ Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de refer
 | `--ojo` | Lo que espera al Dueño o está en vista previa: `Vista previa`, `Con novedad`, el número de Casos |
 | `--alba` | Solo el cielo de la entrada y del armado |
 | `--sol` | Solo el botón de enviar activo, siempre con ícono en tinta `oklch(0.23 0.035 265)` |
-| `--destructive` | **Derivado.** Errores y acciones que borran. Usa el valor de `base-nova` y mide su contraste al adoptarlo. |
+| `--globo-cliente` | **Derivado.** El globo de lo que recibe el Cliente de WhatsApp, donde se muestra junto a lo del Dueño. El texto va en `--globo-cliente-foreground`. |
+| `--destructive` | **Derivado.** Errores y acciones que borran. Valores de `base-nova`: `oklch(0.577 0.245 27.325)` en claro y `oklch(0.704 0.191 22.216)` en oscuro. Su contraste está medido en la tabla de abajo. |
 
 ### Contraste
 
-Medido sobre estos tokens, en claro y oscuro:
+Medido sobre los tokens de `src/app/globals.css`, en claro y oscuro. `scripts/probar-diseno.mts` lo vuelve a medir y falla si un token se aleja de esta tabla:
 
 | Par | Claro | Oscuro |
 |---|---|---|
@@ -130,6 +59,9 @@ Medido sobre estos tokens, en claro y oscuro:
 | Texto sobre `--primary` | 14,2 | 11,7 |
 | `--bien` sobre `--bien-suave` | 4,9 | 7,0 |
 | `--ojo` sobre `--ojo-suave` | 4,9 | 6,9 |
+| Texto del globo del Cliente sobre `--globo-cliente` | 13,1 | 9,2 |
+| `--destructive` sobre el fondo | 4,7 | 6,6 |
+| `--destructive` sobre `--card` | 4,8 | 6,1 |
 | Tinta sobre `--sol` | de 6,2 a 8,1 | de 6,2 a 8,1 |
 
 - Sobre `--alba` escribe con `--foreground` o `text-foreground/75`. `--muted-foreground` se queda corto en la parte alta del cielo (3,6).
