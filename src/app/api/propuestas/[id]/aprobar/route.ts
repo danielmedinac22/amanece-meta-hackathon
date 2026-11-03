@@ -1,7 +1,7 @@
 import { aprobar } from '@/nucleo/cambios'
 import { contextoDeLaSesion } from '@/negocio/sesion'
 
-/** El reclamo espera como mucho 10 s a otro clic (`lock_timeout`) y el puente escribe en pocos segundos. */
+/** El reclamo espera como mucho 10 s a otro clic (`lock_timeout`). */
 export const maxDuration = 30
 
 /** El botón de la tarjeta. El Dueño sale de la sesión y la huella del cuerpo; `aprobar` valida la forma de los dos. */

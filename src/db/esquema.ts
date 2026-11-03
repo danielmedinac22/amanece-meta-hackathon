@@ -1,8 +1,9 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
+import { check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { Escritura } from '../nucleo/estado'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
+import type { MotivoDeFaltante } from '../nucleo/capacidades'
 
 const id = () => uuid('id').primaryKey().defaultRandom()
 const creado = () => timestamp('creado', { withTimezone: true }).notNull().defaultNow()
@@ -160,8 +161,7 @@ export const cambios = pgTable(
     creado: creado(),
     aplicado: timestamp('aplicado', { withTimezone: true }),
     /**
-     * Puente hasta el corte del 31-oct: la propuesta que aplica este Cambio. Una reversión no tiene Cambio propio:
-     * lo encuentra por la propuesta que revierte. Solo lo escribe y lo lee `src/nucleo/cambios/puente.ts`.
+     * La propuesta que aplicó este Cambio, de antes del 2-nov. La tabla ya no tiene escritor: solo la lee `/medicion`.
      */
     propuestaId: uuid('propuesta_id').references((): AnyPgColumn => propuestas.id, { onDelete: 'set null' }),
   },
@@ -242,29 +242,6 @@ export const filasDeTabla = pgTable(
   (t) => [primaryKey({ columns: [t.negocioId, t.tabla, t.fila, t.version] })],
 )
 
-/** Cómo se pinta una Sección: tabla o tarjetas, con sus columnas. */
-export type Vista = { tipo: 'tabla' | 'tarjetas'; columnas: { clave: string; titulo: string }[] }
-
-/** Una Sección o un Indicador: código generado que corre aislado sobre los datos de un solo Negocio. */
-export const piezas = pgTable(
-  'piezas',
-  {
-    id: id(),
-    negocioId: negocioId(),
-    tipo: text('tipo', { enum: ['seccion', 'indicador'] }).notNull(),
-    clave: uuid('clave').notNull(),
-    version: integer('version').notNull().default(1),
-    nombre: text('nombre').notNull(),
-    descripcion: text('descripcion').notNull().default(''),
-    codigo: text('codigo').notNull(),
-    vista: jsonb('vista').$type<Vista | null>(),
-    activa: boolean('activa').notNull().default(true),
-    cambioId: uuid('cambio_id').references(() => cambios.id, { onDelete: 'set null' }),
-    creado: creado(),
-  },
-  (t) => [index('piezas_negocio').on(t.negocioId, t.activa)],
-)
-
 /** El Hilo de un Dueño con su Agente del dueño. Cada Dueño tiene el suyo. */
 export const mensajesDueno = pgTable(
   'mensajes_dueno',
@@ -282,14 +259,30 @@ export const mensajesDueno = pgTable(
   (t) => [index('mensajes_dueno_dueno').on(t.duenoId, t.creado)],
 )
 
+/** El `CHECK` de `capacidades_faltantes.tipo`. `anterior`: una fila de antes de 0004 que no se pudo leer. */
+export const TIPOS_DE_MOTIVO = ['no_hay', 'sin_cumplidor', 'no_se_puede', 'sin_converger', 'fuera_de_la_lista', 'regla_vieja', 'anterior'] as const
+
 /** Algo que un Dueño pidió y Amanece todavía no sabe hacer. */
-export const capacidadesFaltantes = pgTable('capacidades_faltantes', {
-  id: id(),
-  negocioId: negocioId(),
-  pedido: text('pedido').notNull(),
-  motivo: text('motivo').notNull().default(''),
-  creado: creado(),
-})
+export const capacidadesFaltantes = pgTable(
+  'capacidades_faltantes',
+  {
+    id: id(),
+    negocioId: negocioId(),
+    /** Las palabras del Dueño. Solo las lee `scripts/faltantes.mts`: `/medicion` agrupa sin ellas. */
+    pedido: text('pedido').notNull(),
+    /** El texto de antes de 0004 (`motivoEnTexto`). Se sigue escribiendo para quien todavía lo lea. */
+    motivo: text('motivo').notNull().default(''),
+    tipo: text('tipo', { enum: TIPOS_DE_MOTIVO }).notNull().default('anterior'),
+    claveDeAgrupacion: text('clave_de_agrupacion').notNull().default('anterior'),
+    detalle: jsonb('detalle').$type<MotivoDeFaltante>(),
+    creado: creado(),
+  },
+  (t) => [
+    index('capacidades_faltantes_clave').on(t.claveDeAgrupacion, t.creado),
+    check('capacidades_faltantes_tipo', sql`${t.tipo} in (${sql.raw(TIPOS_DE_MOTIVO.map((m) => `'${m}'`).join(', '))})`),
+    check('capacidades_faltantes_detalle', sql`${t.detalle} is null or ${t.detalle}->>'tipo' = ${t.tipo}`),
+  ],
+)
 
 /** Un turno de un agente, para medir tokens, costo y latencia. */
 export const turnos = pgTable(

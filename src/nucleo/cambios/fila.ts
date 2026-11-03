@@ -39,7 +39,6 @@ export type TarjetaDeAprobacion = {
  */
 export function huellaDe(contenido: {
   readonly negocio: NegocioId
-  readonly cambio: string | null
   readonly revierte: PropuestaId | null
   readonly actos: readonly Acto[]
   readonly escritura: Escritura
@@ -56,12 +55,11 @@ export function filaNueva(p: {
   readonly escritura: Escritura
   readonly actos: readonly Acto[]
   readonly revierte: PropuestaId | null
-  readonly cambio: string | null
   readonly version: VersionDelNegocio | null
   readonly vistaPrevia: VistaPreviaGuardada
 }): { readonly valores: typeof esquema.propuestas.$inferInsert; readonly tarjeta: TarjetaDeAprobacion } {
   const id = marcar.propuesta(randomUUID())
-  const huella = huellaDe({ negocio: p.negocio, cambio: p.cambio, revierte: p.revierte, actos: p.actos, escritura: p.escritura, version: p.version })
+  const huella = huellaDe({ negocio: p.negocio, revierte: p.revierte, actos: p.actos, escritura: p.escritura, version: p.version })
   const vence = new Date(Date.now() + VIGENCIA_DE_UNA_PROPUESTA_HORAS * 3600_000)
   return {
     valores: { id, negocioId: p.negocio, palabrasDelDueno: p.palabrasDelDueno, pedidoPor: p.pedidoPor, origen: p.origen, escritura: p.escritura, actos: p.actos, revierte: p.revierte, huella, vence, vistaPrevia: p.vistaPrevia },

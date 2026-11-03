@@ -1,8 +1,8 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // QuickJS carga su WebAssembly desde node_modules; no hay que empaquetarlo.
-  serverExternalPackages: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync'],
+  // libpg-query carga su WebAssembly desde node_modules; empaquetado, la ruta da 500 aunque el build pase.
+  serverExternalPackages: ['libpg-query'],
   turbopack: {
     rules: {
       '*.css': {

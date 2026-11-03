@@ -1,12 +1,20 @@
 import { desc, sql } from 'drizzle-orm'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { db, esquema } from '@/db'
+import { esDelEquipo } from '@/lib/equipo'
+import { faltantesPorMotivo } from '@/nucleo/capacidades'
 
 export const dynamic = 'force-dynamic'
 
-/** Cuánto cuesta y cuánto tarda cada agente y cada Cambio, medido en uso real. Es el dato que vuelve al mapa. */
+/**
+ * Cuánto cuesta y cuánto tarda cada agente, y lo que los Dueños piden y Amanece no tiene. Es el dato que vuelve al
+ * mapa. Solo para el equipo de Amanece; los demás ven un 404. Sin palabras de ningún Dueño.
+ */
 export default async function Medicion() {
-  const [porAgente, porTipo, recientes] = await Promise.all([
+  const equipo = await esDelEquipo()
+  if (!equipo) notFound()
+  const [porAgente, porTipo, recientes, faltantes] = await Promise.all([
     db
       .select({
         agente: esquema.turnos.agente,
@@ -29,7 +37,9 @@ export default async function Medicion() {
       .from(esquema.cambios)
       .groupBy(esquema.cambios.tipo),
     db.select().from(esquema.cambios).orderBy(desc(esquema.cambios.creado)).limit(20),
+    faltantesPorMotivo(equipo),
   ])
+  const fecha = (d: Date) => d.toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' })
   const usd = (n: number | null) => (n === null ? '—' : `USD ${n.toFixed(4)}`)
   const seg = (n: number | null) => (n === null ? '—' : `${(n / 1000).toFixed(1)} s`)
 
@@ -47,16 +57,19 @@ export default async function Medicion() {
         filas={porAgente.map((f) => [f.agente, f.turnos, seg(f.ms), f.entrada, f.salida, usd(f.costo)])}
       />
 
-      <h2 className="mt-8 font-medium">Por tipo de Cambio</h2>
+      <h2 className="mt-8 font-medium">Capacidad faltante por motivo</h2>
+      <Tabla columnas={['Motivo', 'Veces', 'Negocios', 'La última']} filas={faltantes.map((f) => [f.clave, f.veces, f.negocios, fecha(f.ultima)])} />
+
+      <h2 className="mt-8 font-medium">Por tipo de Cambio, antes del 2-nov</h2>
       <Tabla
         columnas={['Tipo', 'Propuestos', 'Aplicados', 'Costo medio', 'Hasta la vista previa']}
         filas={porTipo.map((f) => [f.tipo, f.cambios, f.aplicados, usd(f.costo), seg(f.msPropuesta)])}
       />
 
-      <h2 className="mt-8 font-medium">Últimos Cambios</h2>
+      <h2 className="mt-8 font-medium">Últimos Cambios, antes del 2-nov</h2>
       <Tabla
-        columnas={['Pedido', 'Tipo', 'Estado', 'Costo', 'Hasta la vista previa', 'Hasta aplicado']}
-        filas={recientes.map((c) => [c.pedido.slice(0, 70), c.tipo, c.estado, usd(c.costoUsd), seg(c.msHastaPropuesta), seg(c.msHastaAplicado)])}
+        columnas={['Tipo', 'Estado', 'Costo', 'Hasta la vista previa', 'Hasta aplicado']}
+        filas={recientes.map((c) => [c.tipo, c.estado, usd(c.costoUsd), seg(c.msHastaPropuesta), seg(c.msHastaAplicado)])}
       />
     </main>
   )

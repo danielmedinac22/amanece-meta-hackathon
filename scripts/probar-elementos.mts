@@ -8,6 +8,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { config } from 'dotenv'
 import { and, eq, inArray } from 'drizzle-orm'
+import { z } from 'zod'
 import { afirmar, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -16,15 +17,26 @@ process.env.ENVIO_SIMULADO = '1'
 const { db, esquema } = await import('../src/db')
 const { conTransaccion } = await import('../src/db/pool')
 const { armarEstado, leerEstado, EstadoIlegible } = await import('../src/nucleo/estado')
-const { queFaltaParaAbrir } = await import('../src/nucleo/cambios')
+const { ESQUEMA_DEL_PEDIDO, queFaltaParaAbrir } = await import('../src/nucleo/cambios')
+const { politicaDeAprobacion } = await import('../src/nucleo/cambios/politica')
 const { escribir } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { cotizar } = await import('../src/nucleo/precios/cotizar')
 const { marcar } = await import('../src/nucleo/identidad')
+const { canonico } = await import('../src/lib/canonico')
 
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 type CambioDeElemento = import('../src/nucleo/estado').CambioDeElemento
 type NegocioId = import('../src/nucleo/identidad').NegocioId
+type ConsultaGuardada = import('../src/nucleo/consultas/tipos').ConsultaGuardada
+
+/** Los niveles de un JSON Schema como los cuenta Muse Spark: cada esquema anidado en propiedades, ítems o variantes. */
+const niveles = (s: unknown): number => {
+  if (!s || typeof s !== 'object') return 0
+  const e = s as { properties?: Record<string, unknown>; items?: unknown; anyOf?: unknown[]; oneOf?: unknown[]; allOf?: unknown[] }
+  const hijos = [...Object.values(e.properties ?? {}), ...(e.items ? [e.items] : []), ...(e.anyOf ?? []), ...(e.oneOf ?? []), ...(e.allOf ?? [])]
+  return 1 + Math.max(0, ...hijos.map(niveles))
+}
 
 const marca = String(Date.now()).slice(-7)
 const creados: string[] = []
@@ -172,6 +184,38 @@ try {
   const [fila] = await db.select({ contenido: esquema.elementos.contenido }).from(esquema.elementos).where(and(eq(esquema.elementos.negocioId, A), eq(esquema.elementos.clave, crudo)))
   afirmar('E11: se guarda el Elemento parseado, con sus valores por defecto', conDefectos.tipo === 'escrito' && (fila?.contenido as { descripcion?: string })?.descripcion === '' && (fila?.contenido as { activo?: boolean })?.activo === true, fila)
 
+  console.log('\n=== E12. Sección e Indicador son Elementos ===')
+  const consulta = (sql: string, usa: string[], salida: ConsultaGuardada['salida'], catalogo = 1) =>
+    ({ sql, enPalabras: 'pedidos confirmados por día de los últimos 30 días', supuestos: [], catalogo, usa, salida }) as unknown as ConsultaGuardada
+  const indicador = (nombre: string, c = consulta('select dia_local::text as etiqueta, count(*) as valor from pedidos group by 1', ['pedidos.dia_local'], { tipo: 'serie', unidad: { tipo: 'cantidad', nombre: 'pedidos' } })): Elemento =>
+    ({ tipo: 'indicador', nombre, queQuiereVer: 'pedidos por día', consulta: c }) as Elemento
+  const seccion: Elemento = { tipo: 'seccion', nombre: 'Con novedad', queQuiereVer: 'pedidos con novedad', consulta: consulta("select numero from pedidos where estado = 'novedad'", ['pedidos.numero', 'pedidos.estado'], { tipo: 'filas', columnas: [{ columna: 'numero', titulo: 'Pedido' }] }) as never }
+  const D = await negocioDesechable('D')
+  const ki = el.claveNueva('indicador')
+  const ks = el.claveNueva('seccion')
+  const puestos = await escribirEn(D, [
+    { clave: ki, base: 'nueva', despues: indicador('Confirmados por día') },
+    { clave: ks, base: 'nueva', despues: seccion },
+  ])
+  const eD = await leerEstado(D)
+  afirmar('E12: una Sección y un Indicador se escriben y leerEstado los devuelve iguales', puestos.tipo === 'escrito' && canonico(eD.vigente(ki)?.elemento) === canonico(indicador('Confirmados por día')) && canonico(eD.vigente(ks)?.elemento) === canonico(seccion), eD.todos())
+  const repetido = await escribirEn(D, [{ clave: el.claveNueva('indicador'), base: 'nueva', despues: indicador('confirmados  por DÍA') }])
+  afirmar('E12: dos con el mismo nombre en el Panel no caben', repetido.tipo === 'invalida' && repetido.problemas.some((p) => p.tipo === 'valor_invalido' && p.campo === 'nombre'), repetido)
+  const rota = await escribirEn(D, [{ clave: el.claveNueva('indicador'), base: 'nueva', despues: indicador('Teléfonos', consulta('select count(*) as valor from clientes', ['clientes.telefono'], { tipo: 'numero', unidad: { tipo: 'cantidad', nombre: 'clientes' } })) }])
+  afirmar('E12: un campo que no está en el catálogo es referencia_rota', rota.tipo === 'invalida' && rota.problemas.some((p) => p.tipo === 'referencia_rota' && p.clave === 'clientes.telefono'), rota)
+  const deOtroCatalogo = await escribirEn(D, [{ clave: el.claveNueva('indicador'), base: 'nueva', despues: indicador('Viejo', consulta('select count(*) as valor from pedidos', [], { tipo: 'numero', unidad: { tipo: 'cantidad', nombre: 'pedidos' } }, 0)) }])
+  afirmar('E12: una consulta de otro catálogo no cabe', deOtroCatalogo.tipo === 'invalida', deOtroCatalogo)
+  const quitada = await escribirEn(D, [{ clave: ks, base: eD.vigente(ks)!.version, despues: null }])
+  const vuelta = await escribirEn(D, [{ clave: ks, base: 'nueva', despues: seccion }])
+  afirmar('E12: quitar la Sección la saca del estado y se puede volver a poner', quitada.tipo === 'escrito' && vuelta.tipo === 'escrito' && (await leerEstado(D)).vigentes('seccion').length === 1, { quitada, vuelta })
+  afirmar('E12: lo del Panel no lleva texto que llegue a un Cliente', el.definicionDe('seccion').textos(seccion).length === 0 && el.definicionDe('indicador').textos(indicador('x')).length === 0)
+  afirmar(
+    'E12: Sección e Indicador tienen alcance panel y con el Negocio atendiendo se aplican sin botón',
+    el.DEFINICIONES.seccion.alcance === 'panel' && el.DEFINICIONES.indicador.alcance === 'panel' && politicaDeAprobacion('atendiendo', 'panel', 'hilo', false) === 'se_aplica',
+  )
+  const profundidad = niveles(z.toJSONSchema(ESQUEMA_DEL_PEDIDO, { io: 'input' }))
+  afirmar('E12: el esquema de proponer sigue en 10 niveles o menos (Muse Spark rechaza más)', profundidad <= 10, profundidad)
+
   console.log('\n=== queFaltaParaAbrir ===')
   {
     const identidad = { id: marcar.negocio('00000000-0000-4000-8000-0000000000f1'), nombre: 'Café Trigo', rubro: 'café', codigo: 'FALTA', pais: 'CO', moneda: 'COP', zonaHoraria: 'America/Bogota', modo: 'armando' } as const
@@ -224,7 +268,13 @@ try {
   const escriben = con(/from ['"][^'"]*estado\/escribir['"]|import\(['"][^'"]*estado\/escribir['"]\)/)
   afirmar('E8: estado/escribir solo lo importan src/nucleo/cambios/ y scripts/', escriben.every((r) => r.startsWith('src/nucleo/cambios/') || r.startsWith('scripts/')), escriben)
   const leenViejo = con(/db\/viejo['"]/)
-  afirmar('E8: las tablas viejas solo las importa scripts/a-elementos.mts', JSON.stringify(leenViejo) === JSON.stringify(['scripts/a-elementos.mts']), leenViejo)
+  afirmar('E8: las tablas viejas solo las importan a-elementos y su prueba', JSON.stringify(leenViejo.sort()) === JSON.stringify(['scripts/a-elementos.mts', 'scripts/probar-migracion.mts']), leenViejo)
+  const parsean = con(/from ['"]libpg-query['"]/)
+  afirmar('E8: libpg-query solo lo importa src/nucleo/consultas/validar.ts', JSON.stringify(parsean) === JSON.stringify(['src/nucleo/consultas/validar.ts']), parsean)
+  const quickjs = con(/quickjs-emscripten/).filter((r) => r !== 'scripts/probar-elementos.mts')
+  afirmar('E8: nadie importa quickjs-emscripten', quickjs.length === 0, quickjs)
+  const piezasViejas = ['src/nucleo/cambios/puente.ts', 'src/negocio/cambios.ts', 'src/agentes/generador.ts', 'src/negocio/datos.ts', 'src/lib/aislado.ts']
+  afirmar('E8: el puente, las piezas en JS y el intérprete aislado ya no existen', piezasViejas.every((b) => !fuentes.some((f) => f.ruta === b)))
   const conocimiento = con(/\.conocimientoSinLector\b|\bconocimientoSinLector: jsonb/).filter((r) => r !== 'scripts/probar-elementos.mts')
   afirmar('E8: negocios.conocimiento solo lo nombran esquema.ts y a-elementos', JSON.stringify(conocimiento.sort()) === JSON.stringify(['scripts/a-elementos.mts', 'src/db/esquema.ts']), conocimiento)
   const borrados = ['src/agentes/clientes.ts', 'src/agentes/contratos.ts', 'src/negocio/dueno-catalogo.ts']

@@ -83,6 +83,36 @@ const MUTACIONES: readonly Mutacion[] = [
     despues: "  readonly corregido: 'no' | 'si' | 'respaldo'\n  readonly texto: string\n}",
   },
   {
+    nombre: 'la consulta de una Sección en lo que escribe el Agente del dueño',
+    archivo: ELEMENTOS,
+    antes: "type SoloDelRedactor = 'consulta'",
+    despues: 'type SoloDelRedactor = never',
+  },
+  {
+    nombre: 'seccion con describir en VISTA_PREVIA',
+    archivo: ELEMENTOS,
+    antes: "  seccion: 'panel',\n  indicador: 'panel',",
+    despues: "  seccion: 'describir',\n  indicador: 'panel',",
+  },
+  {
+    nombre: 'filas de una consulta en lo que se guarda de la vista previa del Panel',
+    archivo: 'src/nucleo/cambios/ensayar.ts',
+    antes: "  readonly fallo: ErrorDeConsulta['tipo'] | null\n}",
+    despues: "  readonly fallo: ErrorDeConsulta['tipo'] | null\n  readonly filas: readonly Record<string, string>[]\n}",
+  },
+  {
+    nombre: 'un motivo de Capacidad faltante sin su lugar en el CHECK',
+    archivo: 'src/nucleo/capacidades.ts',
+    antes: "  | { readonly tipo: 'regla_vieja' }\n",
+    despues: "  | { readonly tipo: 'regla_vieja' }\n  | { readonly tipo: 'cobrar2' }\n",
+  },
+  {
+    nombre: '/medicion sin preguntar si quien mira es del equipo',
+    archivo: 'src/app/medicion/page.tsx',
+    antes: '  const equipo = await esDelEquipo()\n  if (!equipo) notFound()\n',
+    despues: '  const equipo = { email: process.env.EQUIPO_DE_AMANECE ?? \'\' }\n',
+  },
+  {
     nombre: 'un estado de pedido sin decir si está abierto',
     archivo: 'src/nucleo/clientes/turno.ts',
     antes: 'enviado: true, novedad: true, entregado: false,',

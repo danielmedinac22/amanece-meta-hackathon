@@ -8,9 +8,10 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const pruebas: [archivo: string, ...argumentos: string[]][] = [
-  ['probar-aislado'],
+  ['probar-humo'],
   ['probar-modelo'],
   ['probar-revisar'],
+  ['probar-consultas'],
   ['probar-leer-enlace'],
   ['probar-elementos'],
   ['probar-migracion'],
@@ -24,6 +25,7 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-dueno'],
   ['probar-primera'],
   ['probar-vista-previa'],
+  ['probar-panel'],
 ]
 
 const fallaron: string[] = []
