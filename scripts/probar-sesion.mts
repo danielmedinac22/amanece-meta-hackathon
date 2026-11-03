@@ -394,6 +394,7 @@ try {
       afirmar('Una cuenta sin verificar entra con su contraseña y pide confirmar el correo', await nav.ve('Confirma tu correo', 60_000), await nav.texto())
       afirmar('Sin confirmar no llega a su Negocio', !(await nav.texto()).includes(c.negocio) && (await usuarioIdDe(c.duenoId)) === c.idViejo)
       await capturar('cuenta-por-confirmar')
+      await nav.hastaQue(`[...document.querySelectorAll('button')].some((b) => b.innerText === 'Mandarme el código' && !b.disabled)`)
       await nav.clic('Mandarme el código')
       afirmar('Le manda el código', await nav.ve('Escríbelo aquí'), await nav.texto())
       await nav.escribe('codigo', CODIGO_DE_PRUEBA)
@@ -408,7 +409,7 @@ try {
       afirmar('Con la sesión viva y el token vencido, Entrar en Alba vuelve a su Negocio', await nav.ve(c.negocio, 90_000), await nav.ruta())
       await nav.hastaQue(`window.Clerk?.loaded === true`)
       await nav.evalua(`window.Clerk.signOut({ redirectUrl: '/entrar' })`)
-      await nav.hastaQue(`location.pathname === '/entrar'`)
+      await nav.hastaQue(`location.pathname === '/entrar' && window.Clerk?.loaded === true`)
     }
 
     await nav.clic('Seguir con Google')

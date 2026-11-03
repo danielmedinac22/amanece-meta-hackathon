@@ -37,7 +37,7 @@ const intentar = async (accion: () => Promise<unknown>): Promise<MotivoDeEntrada
 
 /** Con el correo confirmado, una navegación completa vuelve a pasar por la puerta, que ahora sí lo enlaza. */
 export function ConfirmarCorreoConClerk({ email }: { email: string }) {
-  const { user } = useUser()
+  const { isLoaded, user } = useUser()
   const correo = () => {
     const principal = user?.primaryEmailAddress
     if (!principal) throw new Error('Sin correo principal')
@@ -46,6 +46,7 @@ export function ConfirmarCorreoConClerk({ email }: { email: string }) {
   return (
     <CuentaPorConfirmar
       email={email}
+      listo={isLoaded}
       salir={<BotonDeSalirConClerk />}
       mandar={() => intentar(() => correo().prepareVerification({ strategy: 'email_code' }))}
       confirmar={async (codigo) => {

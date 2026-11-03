@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { CuentaPorConfirmar, CuentaPorPasar } from '@/app/panel/espera'
+import { CuentaPorPasar } from '@/app/panel/espera'
 import type { ComponentProps, ReactNode } from 'react'
 import { InicioHoy } from '@/app/panel/inicio-hoy'
 import { ListaDePedidos, TablaDeClientes } from '@/app/panel/listas'
@@ -19,7 +19,7 @@ import { ArmadoDeMuestra } from './armado-de-muestra'
 import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { Componentes } from './componentes'
 import { GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
-import { EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
+import { ConfirmarDeMuestra, EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
 import { GUION_WHATSAPP_NO_LA_TOMA, HILO_CASO_CON_REGLA, HILO_CASO_VIEJO, HILO_DESENLACES_DEL_ENVIO, NEGOCIO_CASOS_CON_ENVIO, TARJETAS_CASO_CON_REGLA, TARJETAS_CASO_VIEJO, TARJETAS_DESENLACES_DEL_ENVIO } from './datos-del-caso'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
@@ -105,7 +105,7 @@ const ESCENAS_DE_ESTADOS: readonly Escena[] = [
   { id: 'entrar-dispositivo', titulo: 'Entrar: desde un dispositivo nuevo', pinta: () => <EntradaDeMuestra modoInicial="entrar" responde={[{ en: 'codigo', por: 'dispositivo', email: 'lucia@cafeladera.co' }, null]} /> },
   { id: 'entrar-olvido', titulo: 'Entrar: olvidó la contraseña', pinta: () => <EntradaDeMuestra modoInicial="entrar" responde={[{ en: 'codigo', por: 'recuperar', email: 'lucia@cafeladera.co' }, { en: 'contrasena_nueva' }, null]} /> },
   { id: 'cuenta-por-pasar', titulo: 'Una cuenta que todavía no llega a su Negocio', pinta: () => <CuentaPorPasar salir={<Button variant="ghost">Cerrar sesión</Button>} /> },
-  { id: 'cuenta-por-confirmar', titulo: 'Un correo sin verificar: lo confirma con un código, y uno equivocado lo dice', pinta: () => <CuentaPorConfirmar email="lucia@cafeladera.co" salir={<Button variant="ghost">Cerrar sesión</Button>} mandar={async () => null} confirmar={async () => 'codigo_incorrecto'} /> },
+  { id: 'cuenta-por-confirmar', titulo: 'Un correo sin verificar: lo confirma con un código, y uno equivocado lo dice', pinta: () => <ConfirmarDeMuestra /> },
   { id: 'ajustes', titulo: 'Ajustes del negocio: funcionando', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, RUTA_DE_AJUSTES) },
   { id: 'ajustes-armandose', titulo: 'Ajustes del negocio: armándose, sin link', pinta: () => conLaPagina(RUTA_DE_AJUSTES, <VistaDeAjustes nombre="Café Ladera" ciudad="Manizales" link={null} />) },
   { id: 'ajustes-sin-ciudad', titulo: 'Ajustes del negocio: el agente no sabe la ciudad', pinta: () => conLaPagina(RUTA_DE_AJUSTES, <VistaDeAjustes nombre="Café Ladera" ciudad="" link={NEGOCIO_FUNCIONANDO.hoy.link} />) },

@@ -3,7 +3,9 @@
 import { useRef, useState, useSyncExternalStore } from 'react'
 import type { MotivoDeEntrada } from '@/app/entrar/errores'
 import { PantallaDeEntrada, type ModoDeEntrada, type PasoDeEntrada } from '@/app/entrar/formulario'
+import { CuentaPorConfirmar } from '@/app/panel/espera'
 import { ErrorDeLaPantalla } from '@/app/panel/estados'
+import { Button } from '@/components/ui/button'
 
 // `--clic` espera 600 ms antes de su siguiente paso: el recorrido tiene que alcanzar a ver `Entrando…` aunque la máquina vaya lenta.
 const ENTRAR_TARDA_MS = 2000
@@ -28,6 +30,11 @@ export function EntradaDeMuestra({ modoInicial, responde }: { modoInicial: ModoD
       }}
     />
   )
+}
+
+/** Confirmar el correo sin proveedor: cada código que se escriba está equivocado. */
+export function ConfirmarDeMuestra() {
+  return <CuentaPorConfirmar email="lucia@cafeladera.co" salir={<Button variant="ghost">Cerrar sesión</Button>} mandar={async () => null} confirmar={async () => 'codigo_incorrecto'} />
 }
 
 /** El error de una Sección: al volver a intentar, en la vitrina sigue fallando. */

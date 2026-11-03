@@ -27,7 +27,7 @@ export type ConfirmarCorreo = { mandar: () => Promise<MotivoDeEntrada | null>; c
  * Un correo sin verificar no llega a ningún Negocio. Aquí su dueño lo confirma con un código, y al confirmarlo la puerta
  * lo deja pasar. Quién manda el código queda afuera: la vitrina la pinta sin proveedor.
  */
-export function CuentaPorConfirmar({ email, salir, mandar, confirmar }: ConfirmarCorreo & { email: string; salir: ReactNode }) {
+export function CuentaPorConfirmar({ email, salir, listo = true, mandar, confirmar }: ConfirmarCorreo & { email: string; salir: ReactNode; listo?: boolean }) {
   const [mandado, setMandado] = useState(false)
   const [motivo, setMotivo] = useState<MotivoDeEntrada | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -77,7 +77,7 @@ export function CuentaPorConfirmar({ email, salir, mandar, confirmar }: Confirma
             Mándame otro código
           </Button>
         ) : (
-          <Button type="button" size="lg" disabled={enviando} onClick={pedirCodigo} className="h-11 text-base">
+          <Button type="button" size="lg" disabled={enviando || !listo} onClick={pedirCodigo} className="h-11 text-base">
             {enviando ? 'Mandándolo…' : 'Mandarme el código'}
           </Button>
         )}
