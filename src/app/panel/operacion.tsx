@@ -4,16 +4,19 @@ import { ArrowLineLeft, CaretUp, PushPin, Robot, Storefront, Table, type Icon } 
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useCallback, useMemo, useReducer, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { useCallback, useMemo, useReducer, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import type { LoPendiente } from '@/nucleo/cambios'
+import type { SeccionPintada } from '@/nucleo/panel'
 import { DISPOSICION_INICIAL, HiloEnLaOperacion, disponer, type Disposicion, type Pestana } from './disposicion'
 import { AlIrASeccion } from './ir-a-seccion'
 import { BotonPublicar } from './publicar'
+import { SinPublicar } from './sin-publicar'
+import type { Publicador } from './tocar-publicar'
 import { SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
 
 /** Lo que la cáscara pinta. Quien la arma lee; ella no toca datos. */
@@ -25,7 +28,7 @@ export type DatosDeLaOperacion = {
         ciudad: string
         propias: readonly SeccionPropia[]
         /** Lo que hay por publicar; `null` es Armándose, donde todavía no se publica. */
-        publicar: LoPendiente | null
+        publicar: (LoPendiente & { link: string; nuevos: readonly SeccionPintada[] }) | null
       })
     | null
 }
@@ -35,6 +38,8 @@ type Props = {
   ruta: string
   /** Sin esto los enlaces navegan. La vitrina lo usa para recorrer las Secciones sin salir de la escena. */
   alIr?: (ruta: string) => void
+  /** Sin esto Publicar va a la ruta. La vitrina lo usa para recorrerlo sin base de datos. */
+  publicador?: Publicador
   hilo: ReactNode
   children: ReactNode
   sidebarAbierto?: boolean
@@ -48,11 +53,13 @@ const ICONOS_DE_PESTANA: { id: Pestana; nombre: string; icono: Icon }[] = [
   { id: 'negocio', nombre: 'Tu negocio', icono: Storefront },
 ]
 
-export function Operacion({ datos, ruta, alIr, hilo, children, sidebarAbierto = true, cajonAbierto = false, inicial }: Props) {
+export function Operacion({ datos, ruta, alIr, publicador, hilo, children, sidebarAbierto = true, cajonAbierto = false, inicial }: Props) {
   const [disposicion, cambiar] = useReducer(disponer, { ...DISPOSICION_INICIAL, ...inicial })
   const { lugar, pestana, decision, movido } = disposicion
   const { negocio } = datos
   const avisarDecision = useCallback((id: string | null) => cambiar({ tipo: 'decision', id }), [])
+  const publicar = negocio?.publicar
+  const sinPublicar = useMemo(() => ({ claves: new Set<string>(publicar?.items.map((i) => i.clave)), indicadores: publicar?.nuevos ?? [] }), [publicar])
 
   const hiloEnLaOperacion = useMemo(
     () => ({
@@ -84,65 +91,67 @@ export function Operacion({ datos, ruta, alIr, hilo, children, sidebarAbierto = 
   return (
     <SidebarProvider defaultOpen={sidebarAbierto} defaultOpenMobile={cajonAbierto} className="h-dvh min-h-0" style={{ '--sidebar-width': '13.5rem' } as CSSProperties}>
       <BarraLateral datos={datos} ruta={ruta} alTocar={alTocarUnaSeccion} />
-      <SidebarInset data-lugar={lugar} data-movido={movido || undefined} className="min-h-0 min-w-0 overflow-hidden lg:flex-row">
-        <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border px-2 lg:hidden">
-          <SidebarTrigger />
-          <span className="min-w-0 truncate font-heading font-semibold">{negocio?.nombre ?? 'Tu negocio'}</span>
-          {negocio?.publicar && (
-            <span className="ml-auto">
-              <BotonPublicar pendiente={negocio.publicar} />
-            </span>
-          )}
-        </header>
-
-        {/* El Hilo se sale del flujo en PC: este espacio es el que se pliega y empuja el lienzo. */}
-        <div aria-hidden className="hidden shrink-0 transition-[width] duration-280 ease-mueve motion-reduce:transition-none lg:block lg:w-[348px] flotante:w-0" />
-
-        <section data-pano="hilo" aria-label="Tu agente" className={cn('flex min-h-0 flex-1 flex-col fijo:absolute fijo:inset-y-0 fijo:left-0 fijo:z-10 fijo:w-[348px] fijo:border-r fijo:border-border fijo:bg-background flotante:absolute flotante:bottom-5 flotante:left-1/2 flotante:z-10 flotante:w-[min(560px,calc(100%-3rem))] flotante:flex-none flotante:-translate-x-1/2', pestana !== 'agente' && 'max-lg:hidden')}>
-          <div className="hidden h-12 shrink-0 items-center gap-1.5 px-3 fijo:flex">
+      <SinPublicar.Provider value={sinPublicar}>
+        <SidebarInset data-lugar={lugar} data-movido={movido || undefined} className="min-h-0 min-w-0 overflow-hidden lg:flex-row">
+          <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border px-2 lg:hidden">
             <SidebarTrigger />
-            <span className="font-heading text-[15px] font-semibold">Tu agente</span>
-            <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={() => cambiar({ tipo: 'ocultar' })}>
-              <ArrowLineLeft className="size-3.5" /> Ocultar
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 p-3 fijo:pt-0 flotante:p-0">
-            <HiloEnLaOperacion.Provider value={hiloEnLaOperacion}>{hilo}</HiloEnLaOperacion.Provider>
-          </div>
-        </section>
-
-        <section data-pano="lienzo" className={cn('min-h-0 min-w-0 flex-1 lg:bg-muted/40 lg:p-2', pestana !== 'negocio' && 'max-lg:hidden')}>
-          <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card lg:rounded-lg lg:border lg:border-border">
-            <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 lg:px-4">
-              <span className="hidden flotante:flex">
-                <SidebarTrigger />
+            <span className="min-w-0 truncate font-heading font-semibold">{negocio?.nombre ?? 'Tu negocio'}</span>
+            {negocio?.publicar && (
+              <span className="ml-auto">
+                <BotonPublicar pendiente={negocio.publicar} link={negocio.publicar.link} publicador={publicador} />
               </span>
-              <h1 className="min-w-0 truncate font-heading text-[15px] font-semibold">{nombreDeLaRuta(ruta, negocio?.propias ?? [])}</h1>
-              <div className="ml-auto flex items-center gap-2">
-                {negocio && <EstadoDelNegocio publicar={negocio.publicar} />}
-                {negocio?.publicar && (
-                  <span className="hidden lg:contents">
-                    <BotonPublicar pendiente={negocio.publicar} />
-                  </span>
-                )}
+            )}
+          </header>
+
+          {/* El Hilo se sale del flujo en PC: este espacio es el que se pliega y empuja el lienzo. */}
+          <div aria-hidden className="hidden shrink-0 transition-[width] duration-280 ease-mueve motion-reduce:transition-none lg:block lg:w-[348px] flotante:w-0" />
+
+          <section data-pano="hilo" aria-label="Tu agente" className={cn('flex min-h-0 flex-1 flex-col fijo:absolute fijo:inset-y-0 fijo:left-0 fijo:z-10 fijo:w-[348px] fijo:border-r fijo:border-border fijo:bg-background flotante:absolute flotante:bottom-5 flotante:left-1/2 flotante:z-10 flotante:w-[min(560px,calc(100%-3rem))] flotante:flex-none flotante:-translate-x-1/2', pestana !== 'agente' && 'max-lg:hidden')}>
+            <div className="hidden h-12 shrink-0 items-center gap-1.5 px-3 fijo:flex">
+              <SidebarTrigger />
+              <span className="font-heading text-[15px] font-semibold">Tu agente</span>
+              <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={() => cambiar({ tipo: 'ocultar' })}>
+                <ArrowLineLeft className="size-3.5" /> Ocultar
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1 p-3 fijo:pt-0 flotante:p-0">
+              <HiloEnLaOperacion.Provider value={hiloEnLaOperacion}>{hilo}</HiloEnLaOperacion.Provider>
+            </div>
+          </section>
+
+          <section data-pano="lienzo" className={cn('min-h-0 min-w-0 flex-1 lg:bg-muted/40 lg:p-2', pestana !== 'negocio' && 'max-lg:hidden')}>
+            <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card lg:rounded-lg lg:border lg:border-border">
+              <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 lg:px-4">
+                <span className="hidden flotante:flex">
+                  <SidebarTrigger />
+                </span>
+                <h1 className="min-w-0 truncate font-heading text-[15px] font-semibold">{nombreDeLaRuta(ruta, negocio?.propias ?? [])}</h1>
+                <div className="ml-auto flex items-center gap-2">
+                  {negocio && <EstadoDelNegocio publicar={negocio.publicar} />}
+                  {negocio?.publicar && (
+                    <span className="hidden lg:contents">
+                      <BotonPublicar pendiente={negocio.publicar} link={negocio.publicar.link} publicador={publicador} />
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="@container min-h-0 flex-1 overflow-y-auto p-4 lg:p-6 flotante:pb-28">
+                <AlIrASeccion.Provider value={alTocarUnaSeccion}>{children}</AlIrASeccion.Provider>
               </div>
             </div>
-            <div className="@container min-h-0 flex-1 overflow-y-auto p-4 lg:p-6 flotante:pb-28">
-              <AlIrASeccion.Provider value={alTocarUnaSeccion}>{children}</AlIrASeccion.Provider>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <nav aria-label="Dónde estás" className="grid shrink-0 grid-cols-2 border-t border-border pb-[env(safe-area-inset-bottom)] lg:hidden">
-          {ICONOS_DE_PESTANA.map(({ id, nombre, icono: I }) => (
-            <button key={id} type="button" onClick={() => cambiar({ tipo: 'pestana', pestana: id })} aria-current={pestana === id ? 'page' : undefined} className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px]', pestana === id ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-              <I weight={pestana === id ? 'fill' : 'regular'} className="size-5" />
-              {nombre}
-              {id === 'agente' && decision && pestana !== 'agente' && <span role="img" className="absolute top-2 left-[calc(50%+8px)] size-2 rounded-full bg-ojo" aria-label="Algo espera tu decisión" />}
-            </button>
-          ))}
-        </nav>
-      </SidebarInset>
+          <nav aria-label="Dónde estás" className="grid shrink-0 grid-cols-2 border-t border-border pb-[env(safe-area-inset-bottom)] lg:hidden">
+            {ICONOS_DE_PESTANA.map(({ id, nombre, icono: I }) => (
+              <button key={id} type="button" onClick={() => cambiar({ tipo: 'pestana', pestana: id })} aria-current={pestana === id ? 'page' : undefined} className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px]', pestana === id ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                <I weight={pestana === id ? 'fill' : 'regular'} className="size-5" />
+                {nombre}
+                {id === 'agente' && decision && pestana !== 'agente' && <span role="img" className="absolute top-2 left-[calc(50%+8px)] size-2 rounded-full bg-ojo" aria-label="Algo espera tu decisión" />}
+              </button>
+            ))}
+          </nav>
+        </SidebarInset>
+      </SinPublicar.Provider>
     </SidebarProvider>
   )
 }
@@ -169,6 +178,8 @@ function BarraLateral({ datos, ruta, alTocar }: { datos: DatosDeLaOperacion; rut
   const { negocio, dueno } = datos
   const nombre = negocio?.nombre ?? 'Tu negocio'
   const { setOpenMobile } = useSidebar()
+  // Solo entra con animación lo que llegó después de abrir: también la primera Sección, que trae su grupo con ella.
+  const [yaEstaban] = useState(() => new Set(negocio?.propias.map((p) => p.clave)))
   const tocar: AlTocar = (evento, destino) => {
     alTocar(evento, destino)
     setOpenMobile(false)
@@ -225,19 +236,17 @@ function BarraLateral({ datos, ruta, alTocar }: { datos: DatosDeLaOperacion; rut
             <SidebarGroupLabel className="overflow-hidden">Tus secciones</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <AnimatePresence initial={false}>
-                  {negocio.propias.map((p) => {
-                    const destino = rutaDePropia(p.clave)
-                    return (
-                      <ItemConEntrada key={p.clave} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>
-                        <SidebarMenuButton isActive={ruta === destino} tooltip={p.nombre} render={<Link href={destino} onClick={(e) => tocar(e, destino)} />}>
-                          <Table weight={ruta === destino ? 'fill' : 'regular'} />
-                          <span>{p.nombre}</span>
-                        </SidebarMenuButton>
-                      </ItemConEntrada>
-                    )
-                  })}
-                </AnimatePresence>
+                {negocio.propias.map((p) => {
+                  const destino = rutaDePropia(p.clave)
+                  return (
+                    <ItemConEntrada key={p.clave} initial={yaEstaban.has(p.clave) ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>
+                      <SidebarMenuButton isActive={ruta === destino} tooltip={p.nombre} render={<Link href={destino} onClick={(e) => tocar(e, destino)} />}>
+                        <Table weight={ruta === destino ? 'fill' : 'regular'} />
+                        <span>{p.nombre}</span>
+                      </SidebarMenuButton>
+                    </ItemConEntrada>
+                  )
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

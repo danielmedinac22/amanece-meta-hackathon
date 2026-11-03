@@ -5,6 +5,7 @@ import { etiquetaLarga, graficaDe } from '@/nucleo/graficas'
 import type { SeccionPintada } from '@/nucleo/panel'
 import { advertenciaEnPalabras, conUnidad } from '@/nucleo/panel-palabras'
 import { Barras, Reparto } from './graficas'
+import { BordeDeCambio } from './sin-publicar'
 
 /** `to_jsonb` da el instante ya en la zona del Negocio, porque el lote fija `TimeZone`: solo se recorta. */
 const INSTANTE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/
@@ -28,13 +29,14 @@ function Advertencias({ p }: { p: SeccionPintada }) {
   )
 }
 
-export function Indicador({ p }: { p: SeccionPintada }) {
+/** Lo mismo en el lienzo y en la tarjeta del Hilo: solo cambia quién le pone el recuadro. */
+export function ResultadoDelIndicador({ p }: { p: SeccionPintada }) {
   const r = p.resultado
   const grafica = r.tipo === 'serie' && r.porTiempo ? graficaDe(r.puntos, r.unidad) : null
   const ranking = r.tipo === 'serie' && !r.porTiempo ? r.puntos : []
   const maximo = Math.max(1, ...ranking.map((s) => s.valor))
   return (
-    <div className="rounded-(--radius) border border-border bg-card p-4">
+    <>
       <Advertencias p={p} />
       <p className="text-sm font-medium">{p.nombre}</p>
       {r.tipo === 'numero' && <p className="mt-1 font-heading text-2xl font-semibold tracking-tight tabular-nums wrap-anywhere">{conUnidad(r.valor, r.unidad)}</p>}
@@ -56,7 +58,15 @@ export function Indicador({ p }: { p: SeccionPintada }) {
         </>
       )}
       <p className="mt-2 text-xs text-muted-foreground">{p.enPalabras}</p>
-    </div>
+    </>
+  )
+}
+
+export function Indicador({ p }: { p: SeccionPintada }) {
+  return (
+    <BordeDeCambio clave={p.clave} className="rounded-(--radius) bg-card p-4" quieto="border border-border">
+      <ResultadoDelIndicador p={p} />
+    </BordeDeCambio>
   )
 }
 
@@ -66,7 +76,7 @@ export function Indicadores({ indicadores }: { indicadores: readonly SeccionPint
     <div className="grid gap-3 @lg:grid-cols-2 @3xl:grid-cols-4">
       {indicadores.map((p) =>
         p.resultado.tipo === 'no_se_pudo_calcular' ? (
-          <Fallo key={p.clave} nombre={p.nombre} />
+          <Fallo key={p.clave} clave={p.clave} nombre={p.nombre} />
         ) : (
           <div key={p.clave} className={cn('min-w-0', p.resultado.tipo === 'serie' && 'col-span-full')}>
             <Indicador p={p} />
@@ -148,19 +158,19 @@ export function Seccion({ p }: { p: SeccionPintada }) {
 export function SeccionEntera({ p }: { p: SeccionPintada }) {
   if (p.resultado.tipo !== 'filas') return null
   return (
-    <div className="mx-auto max-w-4xl">
+    <BordeDeCambio clave={p.clave} className="mx-auto max-w-4xl rounded-(--radius)" nuevo="p-4">
       <Advertencias p={p} />
       <p className="mb-3 text-sm text-muted-foreground">{p.enPalabras}</p>
       <TablaDeSeccion {...p.resultado} />
-    </div>
+    </BordeDeCambio>
   )
 }
 
-export function Fallo({ nombre }: { nombre: string }) {
+export function Fallo({ clave, nombre }: { clave: string; nombre: string }) {
   return (
-    <div className="rounded-(--radius) border border-border bg-card p-4 text-sm">
+    <BordeDeCambio clave={clave} className="rounded-(--radius) bg-card p-4 text-sm" quieto="border border-border">
       <p className="font-heading font-medium">{nombre}</p>
       <p className="mt-1 text-muted-foreground">No se pudo calcular ahora. Pídele a tu agente que lo revise.</p>
-    </div>
+    </BordeDeCambio>
   )
 }

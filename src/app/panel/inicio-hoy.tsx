@@ -4,6 +4,7 @@ import { fraseDeHoy, MIENTRAS_NADIE_ESCRIBE } from '@/nucleo/hoy-palabras'
 import type { Hoy } from '@/nucleo/hoy'
 import { CopiarLink } from './copiar-link'
 import { IrASeccion } from './ir-a-seccion'
+import { LoNuevo } from './lo-nuevo'
 
 export type DatosDeHoy = { hoy: Hoy; link: string; reglas: { clave: string; texto: string }[] }
 
@@ -22,6 +23,7 @@ export function InicioHoy({ hoy, link, reglas }: DatosDeHoy) {
           ),
         )}
       </p>
+      <LoNuevo />
       <section>
         <h3 className="mb-2 text-sm font-medium">Necesita tu ojo</h3>
         {hoy.ojo.length ? (
@@ -78,6 +80,7 @@ export function InicioHoy({ hoy, link, reglas }: DatosDeHoy) {
 function RecienAbierto({ voz, link }: { voz: Hoy['voz']; link: string }) {
   return (
     <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-5">
+      <LoNuevo />
       <div>
         <div className="font-heading text-3xl font-semibold tracking-tight text-balance">Todavía no te ha escrito nadie.</div>
         <p className="mt-2 text-muted-foreground">{MIENTRAS_NADIE_ESCRIBE[voz]}</p>

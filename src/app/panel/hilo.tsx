@@ -48,7 +48,8 @@ export function Hilo({ inicial, tarjetas, estado }: { inicial: UIMessage[]; tarj
       clearTimeout(primera)
       clearInterval(intervalo)
     }
-  }, [ocupado, releer])
+    // `tarjetas` cambia con cada `router.refresh`: la línea de Publicar llega con la tarjeta, sin esperar el intervalo.
+  }, [ocupado, releer, tarjetas])
 
   /** Después de un clic: la línea del desenlace y el Panel, que pudo cambiar. */
   const alCambiar = useCallback(() => {

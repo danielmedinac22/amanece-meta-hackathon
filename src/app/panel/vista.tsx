@@ -28,7 +28,7 @@ export function VistaDelNegocio({ datos }: { datos: DatosDelNegocio }) {
 
       {casos.length > 0 && <CasosParaTi casos={casos} />}
 
-      {secciones.map((p) => (p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo key={p.clave} nombre={p.nombre} /> : <Seccion key={p.clave} p={p} />))}
+      {secciones.map((p) => (p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo key={p.clave} clave={p.clave} nombre={p.nombre} /> : <Seccion key={p.clave} p={p} />))}
 
       {reglas.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-4">
@@ -61,5 +61,5 @@ function CasosParaTi({ casos }: { casos: DatosDelNegocio['casos'] }) {
 }
 
 export function VistaDeUnaSeccion({ p }: { p: SeccionPintada }) {
-  return p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo nombre={p.nombre} /> : <SeccionEntera p={p} />
+  return p.resultado.tipo === 'no_se_pudo_calcular' ? <Fallo clave={p.clave} nombre={p.nombre} /> : <SeccionEntera p={p} />
 }

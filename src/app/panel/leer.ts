@@ -49,6 +49,10 @@ export const leerCasos = cache(async () => {
 export async function leerOperacion(): Promise<DatosDeLaOperacion> {
   const { usuario, dueno } = await duenoDelPanel()
   const [leido, pendiente, casos] = await Promise.all([negocioDelPanel(), pendienteDelPanel(), leerCasos()])
+  const listo = leido?.negocio.estado === 'listo'
+  const sinPublicar = new Set<string>(pendiente?.items.map((i) => i.clave))
+  // Solo corre consultas mientras hay algo sin publicar: lo pintan la tarjeta del Hilo, Inicio y Pedidos.
+  const nuevos = listo ? await Promise.all(leido.estado.vigentes('indicador').filter((v) => sinPublicar.has(v.clave)).map((v) => pintarUna(leido.estado, v.clave, v.elemento))) : []
   return {
     dueno: dueno?.nombre || usuario.name || usuario.email,
     negocio:
@@ -58,7 +62,7 @@ export async function leerOperacion(): Promise<DatosDeLaOperacion> {
             ciudad: valorDelDato(leido.estado, 'ciudad'),
             casosAbiertos: casos.length,
             propias: leido.estado.vigentes('seccion').map((s) => ({ clave: s.clave, nombre: s.elemento.nombre })),
-            publicar: leido.negocio.estado === 'listo' ? pendiente : null,
+            publicar: listo ? { ...pendiente, link: linkDeWhatsapp(leido.negocio.nombre, leido.negocio.codigo), nuevos } : null,
           }
         : null,
   }

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { pesos } from '@/nucleo/estado/elementos'
 import type { DatosDeClientes, DatosDePedidos, FilaDePedido, GrupoDePedidos } from '@/nucleo/listas'
 import { cifra, ETIQUETA_DE_PEDIDO } from '@/nucleo/listas-palabras'
+import { LoNuevo } from './lo-nuevo'
 
 const TONO: Record<Estado, string> = {
   novedad: 'bg-ojo-suave text-ojo',
@@ -96,10 +97,19 @@ function Grupo({ grupo }: { grupo: GrupoDePedidos }) {
 
 /** Va de borde a borde del lienzo: sale de su relleno para que los encabezados peguen arriba, sin nada encima. */
 export function ListaDePedidos({ cifras, grupos }: DatosDePedidos) {
-  if (!grupos.length) return <p className="text-sm text-muted-foreground">Todavía no tienes pedidos. Cuando tu agente tome uno, aparece aquí.</p>
+  if (!grupos.length)
+    return (
+      <div className="flex flex-col gap-4">
+        <LoNuevo />
+        <p className="text-sm text-muted-foreground">Todavía no tienes pedidos. Cuando tu agente tome uno, aparece aquí.</p>
+      </div>
+    )
   return (
     <div className="-mx-4 -mt-4 lg:-mx-6 lg:-mt-6">
       <ResumenDePedidos cifras={cifras} />
+      <div className="p-3 empty:hidden">
+        <LoNuevo />
+      </div>
       {grupos.map((g) => (
         <Grupo key={g.estado} grupo={g} />
       ))}

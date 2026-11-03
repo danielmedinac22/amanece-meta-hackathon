@@ -2,21 +2,23 @@
 
 import { ArrowCounterClockwise, CaretDown, CheckCircle, Eye, Warning } from '@phosphor-icons/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Elemento } from '@/nucleo/estado/elementos'
+import { ResultadoDelIndicador } from './pieza'
+import { SinPublicar } from './sin-publicar'
 import type { AccionDeTarjeta, RespuestaDeTarjeta, TocarTarjeta } from './tocar-tarjeta'
 
 const ACCIONES = {
-  aplicar: { verbo: 'Aplicar', hecha: 'Aplicada', llega: 'Lo notan tus Clientes' },
-  enviar: { verbo: 'Enviar', hecha: 'Enviada', llega: 'Sale por WhatsApp a tu Cliente' },
-  confirmar: { verbo: 'Están bien y no falta ninguno', hecha: 'Confirmada', llega: 'Lo notan tus Clientes' },
-  deshacer: { verbo: 'Deshacer', hecha: 'Deshecha', llega: 'Solo lo ven tú y tu equipo' },
-  revertir: { verbo: 'Revertir', hecha: 'Revertida', llega: 'Lo notan tus Clientes' },
-} as const satisfies Record<TarjetaDeAprobacion['accion'], { verbo: string; hecha: string; llega: string }>
+  aplicar: { verbo: 'Aplicar', hecha: 'Aplicada', llega: 'Lo notan tus Clientes', terminaEnPublicar: true },
+  enviar: { verbo: 'Enviar', hecha: 'Enviada', llega: 'Sale por WhatsApp a tu Cliente', terminaEnPublicar: false },
+  confirmar: { verbo: 'Están bien y no falta ninguno', hecha: 'Confirmada', llega: 'Lo notan tus Clientes', terminaEnPublicar: false },
+  deshacer: { verbo: 'Deshacer', hecha: 'Deshecha', llega: 'Solo lo ven tú y tu equipo', terminaEnPublicar: true },
+  revertir: { verbo: 'Revertir', hecha: 'Revertida', llega: 'Lo notan tus Clientes', terminaEnPublicar: false },
+} as const satisfies Record<TarjetaDeAprobacion['accion'], { verbo: string; hecha: string; llega: string; terminaEnPublicar: boolean }>
 
 const ETIQUETAS: Partial<Record<Elemento['tipo'], { abierta: string; constancia: string }>> = {
   regla: { abierta: 'Vista previa · regla nueva', constancia: 'Nueva regla' },
@@ -47,6 +49,7 @@ function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarj
   const lograda = cliente ? `${hecha} a ${cliente}` : hecha
   const bien = (texto: string) => ({ texto, bien: true })
   const nada = (texto: string) => ({ texto, bien: false })
+  if (estado?.publicada && ACCIONES[accion].terminaEnPublicar) return bien('Publicada')
   switch (r?.tipo) {
     case 'deshecho':
       return bien(hecha)
@@ -127,6 +130,9 @@ function Hecho({ desenlace, recien }: { desenlace: Desenlace; recien: boolean })
 
 function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined }) {
   const asunto = estado?.asunto
+  const { indicadores } = useContext(SinPublicar)
+  const clave = asunto?.tipo === 'elemento' && tarjeta.accion === 'deshacer' ? asunto.clave : null
+  const resultado = indicadores.find((p) => p.clave === clave && p.resultado.tipo !== 'no_se_pudo_calcular')
   return (
     <>
       {tarjeta.advertencias?.map((a, i) => (
@@ -147,6 +153,10 @@ function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: Est
             <p className="mt-1 text-sm whitespace-pre-wrap">{asunto.respuesta}</p>
           </div>
         </>
+      ) : resultado ? (
+        <div>
+          <ResultadoDelIndicador p={resultado} />
+        </div>
       ) : (
         tarjeta.lineas.map((l, i) => (
           <p key={i} className="text-sm whitespace-pre-wrap">
@@ -165,9 +175,9 @@ export function Tarjeta({ tarjeta, estado, posicion = null, ancla, alTocar, alCa
 
   // Recién llegada en el stream todavía no tiene estado: se deja tocar si no venció, y la ruta decide.
   const [vigente] = useState(() => Date.parse(tarjeta.vence) > Date.now())
-  // Deshacer es de algo ya aplicado: no vence, y la apaga que ya esté revertido.
+  // Deshacer es de algo ya aplicado: no vence, y la apaga que ya esté revertido o publicado.
   const esDeshacer = tarjeta.accion === 'deshacer'
-  const abierta = esDeshacer ? !estado || estado.estado === 'aplicada' : estado ? estado.estado === 'espera_al_dueno' : vigente
+  const abierta = esDeshacer ? !estado || (estado.estado === 'aplicada' && !estado.publicada) : estado ? estado.estado === 'espera_al_dueno' : vigente
   // Un `conflicto` de Aplicar ya descartó la tarjeta y su texto pide proponerlo de nuevo: ahí tocar otra vez no sirve.
   const sirveTocarOtraVez = !respuesta || respuesta.tipo === 'error' || respuesta.tipo === 'ya_no_cabe' || (respuesta.tipo === 'conflicto' && esDeshacer)
   const esperando = sirveTocarOtraVez && abierta

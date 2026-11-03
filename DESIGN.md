@@ -199,15 +199,13 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 
 **Derivado: varias decisiones a la vez.** Cada tarjeta se queda en su lugar de la conversación y lleva su `1 de 3`. Arriba del Hilo queda una línea con la más urgente, que lleva a ella: primero lo que un Cliente está esperando y después lo que vence antes.
 
-**Hoy el código** aplica un Indicador o una Sección sin tarjeta, y una regla aplicada queda funcionando de una vez. La tarjeta y la vista previa de esta tabla llegan con el ticket de Publicar.
-
 ### Redactor
 
 **Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto. **Destino**: adjuntar, porque el Hilo todavía no recibe archivos.
 
 ## Publicar
 
-**Destino**, se construye en [Publicar](https://github.com/danielmedinac22/amanece/issues/34). Lo aplicado queda en vista previa hasta que el Dueño lo manda a su link.
+**Decidido.** Lo aplicado queda en vista previa hasta que el Dueño lo manda a su link.
 
 | Estado | Botón | Lienzo |
 |---|---|---|
@@ -216,6 +214,8 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 | Mientras corre | `Publicando` con indicador | `Vista previa` |
 
 Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, por cada cosa, si la notan los Clientes o solo la ve el equipo. Después, el agente lo confirma en el Hilo.
+
+Hoy el único link es el de WhatsApp. **Destino**: el del Panel, para el equipo, cuando exista un rol distinto del Dueño y un link propio.
 
 ## Palabras
 
