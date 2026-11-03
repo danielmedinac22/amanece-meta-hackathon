@@ -217,6 +217,7 @@ const CASOS: Record<string, () => Promise<void>> = {
       ['sin sellar y última', { fila: f(6, x), sellada: false, ultima: f(6, x), ultimaSellada: 5 }, { tipo: 'solo_vista_previa' }],
       ['sin sellar, y la última vale lo mismo', { fila: f(6, x), sellada: false, ultima: f(8, x), ultimaSellada: 5 }, { tipo: 'solo_vista_previa' }],
       ['sin sellar, con otra distinta encima', { fila: f(6, x), sellada: false, ultima: f(7, y), ultimaSellada: 5 }, { tipo: 'no_se_puede' }],
+      ['sin sellar, y otra fila con lo mismo ya se publicó', { fila: f(6, x), sellada: false, ultima: f(8, x), ultimaSellada: 8 }, { tipo: 'no_se_puede' }],
       ['una lápida sin sellar y última (D1)', { fila: f(7, null), sellada: false, ultima: f(7, null), ultimaSellada: null }, { tipo: 'solo_vista_previa' }],
     ] as const
     for (const [nombre, entrada, espera] of tabla) {
@@ -378,6 +379,21 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('freno enterrado: la tarjeta avisa que llega de una', tarjeta.advertencias.some((a) => a.includes('de una')), tarjeta)
     afirmar('freno enterrado: los Clientes vuelven a lo que tenían, y lo que nunca les llegó no sale', boton.tipo === 'aplicado' && valor(await leerPublicado(N), HORARIO) === 'De 7 a 3', { boton, publicado: valor(await leerPublicado(N), HORARIO) })
     afirmar('freno enterrado: la vista previa queda igual a los Clientes', valor(await leerAplicado(N), HORARIO) === 'De 7 a 3' && (await pendienteDe(N)).items.length === 0)
+  },
+
+  async publicadaPorOtraFila() {
+    const N = await negocioAbierto('3')
+    const ana = await duenoDe(N, 'Ana')
+    await aplicar(ana, poner(dato('horario', 'De 7 a 3')))
+    await publicarTodo(ana)
+    const b = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const c = await aplicar(ana, poner(dato('horario', 'De 9 a 6')))
+    await revertir(ana, c)
+    await publicarTodo(ana)
+    afirmar('publicada por otra fila: los Clientes tienen lo de la propuesta enterrada', valor(await leerPublicado(N), HORARIO) === 'De 8 a 5')
+    const r = await pedir(ana, { tipo: 'revertir', propuesta: b })
+    afirmar('publicada por otra fila: no ofrece una tarjeta que dejaría a los Clientes con lo mismo sin decirlo', r.desenlace === 'corregir', r)
+    afirmar('publicada por otra fila: nada cambió', valor(await leerPublicado(N), HORARIO) === 'De 8 a 5' && valor(await leerAplicado(N), HORARIO) === 'De 8 a 5')
   },
 
   async devueltaNoSeSella() {

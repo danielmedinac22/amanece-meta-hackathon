@@ -341,11 +341,10 @@ export function comoSeRevierte({ fila, sellada, ultima, ultimaSellada }: {
   readonly ultima: FilaDeUnaClave
   readonly ultimaSellada: number | null
 }): ComoSeRevierte {
+  // También si lo que se publicó encima vale lo mismo: "solo sale de la vista previa" dejaría a los Clientes con eso sin decirlo.
+  if (ultimaSellada !== null && ultimaSellada > fila.version) return { tipo: 'no_se_puede' }
   const nadaEncima = canonico(ultima.contenido) === canonico(fila.contenido)
-  if (sellada) {
-    if (ultimaSellada !== fila.version) return { tipo: 'no_se_puede' }
-    return { tipo: 'frena', pierde: nadaEncima ? null : { hoy: ultima.contenido } }
-  }
+  if (sellada) return { tipo: 'frena', pierde: nadaEncima ? null : { hoy: ultima.contenido } }
   return nadaEncima ? { tipo: 'solo_vista_previa' } : { tipo: 'no_se_puede' }
 }
 
