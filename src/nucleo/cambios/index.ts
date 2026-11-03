@@ -377,6 +377,8 @@ export function problemaEnPalabras(p: Problema): string {
       return 'Eso solo se hace mientras el Negocio se arma.'
     case 'rompe_lo_publicado':
       return 'Tus Clientes todavía tienen algo que depende de esto. Toca Publicar primero y vuelve a revertirlo.'
+    case 'la_usa_algo_vigente':
+      return 'Algo que sigue vigente usa esto. Deshaz eso primero y vuelve a revertir.'
     case 'ya_se_publico':
       return 'Esto se publicó mientras la tarjeta esperaba. Revertirlo ahora les llega a tus Clientes de una. Pídeme revertirlo otra vez y te muestro lo que cambia.'
   }

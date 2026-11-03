@@ -5,7 +5,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { MotivoDeFaltante } from '../capacidades'
-import { conPropuesta, historiaParaRevertir, otrosNegocios, queCambiaLoAplicado, validarEscritura, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
+import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, validarReversion, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
 import { alcanceDeLaClave, claveNueva, comoVersion, definicionDe, describirCambio, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
@@ -146,7 +146,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
   const escritura: Escritura = { elementos: cambios, filas: [] }
   const sinCumplidor = new Set(cambios.flatMap((c) => (c.despues?.tipo === 'regla' ? sinCumplidorHoy(c.despues) : [])))
   if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] }, gasto }
-  const v = validarEscritura(estado, revierte ? queCambiaLoAplicado(estado, escritura) : escritura)
+  const v = revierte ? validarReversion(estado, escritura) : validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') problemas.push(...v.problemas)
   const otros = cambios.some((c) => c.despues) ? await otrosNegocios(estado) : []
   for (const c of cambios) if (c.despues) for (const t of definicionDe(c.despues.tipo).textos(c.despues)) for (const motivo of revisarTextoDelDueno(t.texto, otros)) problemas.push({ tipo: 'norma', campo: t.campo, motivo })

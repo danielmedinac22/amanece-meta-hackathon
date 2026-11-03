@@ -19,7 +19,9 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
   // Deshacer es de algo ya aplicado: no vence, y la apaga que ya esté revertido.
   const esDeshacer = tarjeta.accion === 'deshacer'
   const abierta = esDeshacer ? !estado || estado.estado === 'aplicada' : estado ? estado.estado === 'espera_al_dueno' : vigente
-  const esperando = (!respuesta || respuesta.tipo === 'error') && abierta
+  // Un `conflicto` de Aplicar ya descartó la tarjeta y su texto pide proponerlo de nuevo: ahí tocar otra vez no sirve.
+  const sirveTocarOtraVez = !respuesta || respuesta.tipo === 'error' || respuesta.tipo === 'ya_no_cabe' || (respuesta.tipo === 'conflicto' && esDeshacer)
+  const esperando = sirveTocarOtraVez && abierta
   const verbo = VERBO[tarjeta.accion]
 
   async function tocar(accion: 'aprobar' | 'descartar' | 'deshacer') {
@@ -52,7 +54,7 @@ export function Tarjeta({ tarjeta, estado, alCambiar }: { tarjeta: TarjetaDeApro
           {l}
         </p>
       ))}
-      {respuesta?.tipo === 'error' && <p className="mt-2 text-xs text-red-700">{respuesta.mensaje}</p>}
+      {esperando && respuesta && <p className="mt-2 text-xs text-red-700">{respuesta.tipo === 'error' ? respuesta.mensaje : 'resumen' in respuesta ? respuesta.resumen : null}</p>}
       {esperando ? (
         <div className="mt-3 flex gap-2">
           {esDeshacer ? (

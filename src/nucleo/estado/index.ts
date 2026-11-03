@@ -272,12 +272,16 @@ export type ResultadoDeValidar = { readonly tipo: 'valida'; readonly escritura: 
 
 const invalido = (campo: string, porQue: string): Problema => ({ tipo: 'valor_invalido', campo, porQue })
 
-/**
- * Pura. Sin las lápidas sobre claves que ya no están: solo las deja el freno, cuando lo aplicado ya quitó lo que los
- * Clientes todavía tienen. No le cambian nada a lo aplicado, y contra lo publicado sí se validan.
- */
-export function queCambiaLoAplicado(estado: EstadoDelNegocio, escritura: Escritura): Escritura {
+/** Sin las lápidas sobre claves que ya no están: solo las deja el freno, cuando lo aplicado ya quitó lo que los Clientes todavía tienen. */
+function queCambiaLoAplicado(estado: EstadoDelNegocio, escritura: Escritura): Escritura {
   return { ...escritura, elementos: escritura.elementos.filter((c) => c.despues !== null || estado.vigente(c.clave) !== null) }
+}
+
+/** Pura. `validarEscritura` para una reversión, con lo que aplica solo a ella. Lo que no cambia lo aplicado se valida contra lo publicado. */
+export function validarReversion(estado: EstadoDelNegocio, escritura: Escritura): ResultadoDeValidar {
+  const v = validarEscritura(estado, queCambiaLoAplicado(estado, escritura))
+  if (v.tipo === 'valida') return v
+  return { tipo: 'invalida', problemas: v.problemas.map((p) => (p.tipo === 'referencia_huerfana' ? { ...p, tipo: 'la_usa_algo_vigente' } : p)) }
 }
 
 /**

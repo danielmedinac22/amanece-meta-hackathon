@@ -420,6 +420,10 @@ const CASOS: Record<string, () => Promise<void>> = {
     }
     await aplicar(ana, poner(reglaDelMolino))
     await publicarTodo(ana)
+    const huerfana = await pedir(ana, { tipo: 'revertir', propuesta: conMolino })
+    afirmar('reversión huérfana: dice el camino que sí funciona, no «quítalos juntos»', huerfana.desenlace === 'corregir' && huerfana.problemas.some((p) => p.tipo === 'la_usa_algo_vigente') && !/juntos/.test(huerfana.resumen), huerfana)
+    const quitarJuntos = await pedir(ana, { tipo: 'quitar', claves: [claveMolino] })
+    afirmar('quitar lo que otro usa sí puede decir «quítalos juntos»', quitarJuntos.desenlace === 'corregir' && quitarJuntos.problemas.some((p) => p.tipo === 'referencia_huerfana'), quitarJuntos)
     const claveRegla = (await leerAplicado(N)).vigentes('regla')[0].clave
     await aplicar(ana, { tipo: 'quitar', claves: [claveRegla] })
     const propuesta = await pedir(ana, { tipo: 'revertir', propuesta: conMolino })

@@ -14,9 +14,9 @@ import {
   leerPublicado,
   loPendiente,
   origenDe,
-  queCambiaLoAplicado,
   ultimasDe,
   validarEscritura,
+  validarReversion,
   type ComoSeRevierte,
   type Escritura,
   type ItemPendiente,
@@ -100,7 +100,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
   // El clic se dio para otra acción: lo que iba a salir de la vista previa ahora les llegaría a los Clientes.
   if (revierte?.soloVistaPrevia.some((clave) => comoDe(clave)?.tipo === 'frena')) return { tipo: 'invalida', problemas: [{ tipo: 'ya_se_publico' }] }
 
-  const v = validarEscritura(estado, revierte ? queCambiaLoAplicado(estado, escritura) : escritura)
+  const v = revierte ? validarReversion(estado, escritura) : validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') return v
   const validadas = new Map(v.escritura.elementos.map((c) => [c.clave, c]))
   const filas = escritura.elementos.map((c) => validadas.get(c.clave) ?? c)
