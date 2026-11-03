@@ -152,6 +152,8 @@ export type Problema =
   | { readonly tipo: 'fuera_de_ventana'; readonly cliente: ClienteId }
   | { readonly tipo: 'caso_resuelto'; readonly caso: CasoId }
   | { readonly tipo: 'solo_mientras_se_arma' }
+  /** Cabe en lo aplicado, pero lo que los Clientes tienen todavía depende de eso. */
+  | { readonly tipo: 'rompe_lo_publicado'; readonly problema: Problema }
 
 /** Lo que `validar` necesita del Negocio: los vigentes, con lo propuesto encima si es un borrador. */
 export type Vigentes = {
@@ -632,6 +634,12 @@ export function describirVigente(e: Elemento, estado: Vigentes): string {
     case 'indicador':
       return `Indicador «${e.nombre}»: ${e.consulta.enPalabras}`
   }
+}
+
+/** Pura. `validarEscritura` hace cumplir que toda clave empiece por su tipo. Una lápida no trae Elemento, y esto sí sirve. */
+export function alcanceDeLaClave(clave: Clave): Alcance {
+  const tipo = clave.split(':')[0]
+  return tipo in DEFINICIONES ? definicionDe(tipo as TipoDeElemento).alcance : 'clientes'
 }
 
 export function describirCambio(antes: Elemento | null, despues: Elemento | null, estado: Vigentes): string {

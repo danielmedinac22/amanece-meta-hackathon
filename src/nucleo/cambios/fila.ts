@@ -30,7 +30,7 @@ export type TarjetaDeAprobacion = {
   readonly vence: Instante
   readonly advertencias: readonly string[]
   readonly lineas: readonly string[]
-  readonly accion: 'aplicar' | 'enviar' | 'confirmar'
+  readonly accion: 'aplicar' | 'enviar' | 'confirmar' | 'deshacer' | 'revertir'
 }
 
 /**
@@ -63,8 +63,10 @@ export function filaNueva(p: {
   const vence = new Date(Date.now() + VIGENCIA_DE_UNA_PROPUESTA_HORAS * 3600_000)
   return {
     valores: { id, negocioId: p.negocio, palabrasDelDueno: p.palabrasDelDueno, pedidoPor: p.pedidoPor, origen: p.origen, escritura: p.escritura, actos: p.actos, revierte: p.revierte, huella, vence, vistaPrevia: p.vistaPrevia },
-    tarjeta: { propuesta: id, huella, vence: marcar.instante(vence), advertencias: p.vistaPrevia.advertencias ?? [], lineas: p.vistaPrevia.lineas, accion: accionDe(p.origen, p.actos) },
+    tarjeta: { propuesta: id, huella, vence: marcar.instante(vence), advertencias: p.vistaPrevia.advertencias ?? [], lineas: p.vistaPrevia.lineas, accion: accionDe(p.origen, p.actos, p.revierte) },
   }
 }
 
-export const accionDe = (origen: OrigenDelPedido, actos: readonly Acto[]): TarjetaDeAprobacion['accion'] => (actos.length ? 'enviar' : origen === 'lectura' ? 'confirmar' : 'aplicar')
+/** `deshacer` no sale de aquí: es la tarjeta de algo que ya se aplicó, y la arma `proponerComo` con el modo leído en el reclamo. */
+export const accionDe = (origen: OrigenDelPedido, actos: readonly Acto[], revierte: PropuestaId | string | null): TarjetaDeAprobacion['accion'] =>
+  actos.length ? 'enviar' : origen === 'lectura' ? 'confirmar' : revierte ? 'revertir' : 'aplicar'

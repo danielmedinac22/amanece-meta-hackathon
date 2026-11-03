@@ -24,10 +24,11 @@ const { conTransaccion } = await import('../src/db/pool')
 const { abrirEnElAlta, aprobar, leerLoPendiente, proponer, proponerRespuestaAlCaso, publicar } = await import('../src/nucleo/cambios')
 const { ACCIONES, actorDelBoton } = await import('../src/nucleo/acciones')
 const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
-const { leerAplicado, leerPublicado } = await import('../src/nucleo/estado')
+const { comoSeRevierte, leerAplicado, leerPublicado } = await import('../src/nucleo/estado')
 const { escribir, naceSinPublicar } = await import('../src/nucleo/estado/escribir')
 const el = await import('../src/nucleo/estado/elementos')
 const { marcar } = await import('../src/nucleo/identidad')
+const { canonico } = await import('../src/lib/canonico')
 const { leerMensajeEntrante } = await import('../src/nucleo/entrada')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
 
@@ -151,6 +152,19 @@ const lineasDelHilo = async (ctx: ContextoDelDueno, re: RegExp) =>
 const filasSinPublicar = (N: NegocioId) => db.$count(esquema.elementos, and(eq(esquema.elementos.negocioId, N), eq(esquema.elementos.sinPublicar, true)))
 
 const HORARIO = el.comoClave('dato:horario')
+const PAGOS = el.comoClave('dato:pagos')
+
+/** La reversión de una propuesta, con el botón. Devuelve la tarjeta y lo que respondió. */
+async function revertir(ctx: ContextoDelDueno, propuesta: import('../src/nucleo/identidad').PropuestaId) {
+  const r = await pedir(ctx, { tipo: 'revertir', propuesta })
+  if (r.desenlace !== 'espera_al_dueno') throw new Error(`revertir dio ${r.desenlace}: ${r.resumen}`)
+  return { tarjeta: r.tarjeta, boton: await aprobar(ctx, r.tarjeta.propuesta, r.tarjeta.huella) }
+}
+
+const valor = (e: { vigente(c: Clave): { elemento: Elemento } | null }, c: Clave) => {
+  const v = e.vigente(c)?.elemento
+  return v?.tipo === 'dato' ? v.valor : null
+}
 
 const canon = (e: { todos(): readonly { clave: Clave; elemento: Elemento }[] }) => JSON.stringify([...e.todos()].map((v) => [v.clave, v.elemento]).sort())
 
@@ -164,7 +178,32 @@ const CASOS: Record<string, () => Promise<void>> = {
       ['propuesta', 'en_sombra', false],
       ['propuesta', 'atendiendo', true],
     ] as const
-    for (const [origen, modo, espera] of filas) afirmar(`tabla del bit: ${origen} en ${modo} nace ${espera}`, naceSinPublicar(origen, modo) === espera)
+    for (const [origen, modo, espera] of filas) afirmar(`tabla del bit: ${origen} en ${modo} nace ${espera}`, naceSinPublicar(origen, modo, null) === espera)
+    const FRENA = { tipo: 'frena', pierde: null } as const
+    const SOLO = { tipo: 'solo_vista_previa' } as const
+    afirmar('tabla del bit: el freno nace sellado', naceSinPublicar('propuesta', 'atendiendo', FRENA) === false)
+    afirmar('tabla del bit: lo que solo sale de la vista previa nace sin publicar', naceSinPublicar('propuesta', 'atendiendo', SOLO) === true)
+    afirmar('tabla del bit: mientras se arma, una reversión nace sellada', naceSinPublicar('propuesta', 'armando', SOLO) === false)
+    afirmar('tabla del bit: tablas_viejas nace sellado aunque sea una reversión', naceSinPublicar('tablas_viejas', 'atendiendo', SOLO) === false)
+
+    const x = dato('horario', 'x')
+    const y = dato('horario', 'y')
+    const f = (version: number, contenido: Elemento | null) => ({ version, contenido })
+    const tabla = [
+      ['sellada y última', { fila: f(5, x), sellada: true, ultima: f(5, x), ultimaSellada: 5 }, { tipo: 'frena', pierde: null }],
+      ['sellada, con una edición sin publicar encima', { fila: f(5, x), sellada: true, ultima: f(6, y), ultimaSellada: 5 }, { tipo: 'frena', pierde: { hoy: y } }],
+      ['sellada, quitada sin publicar encima', { fila: f(5, x), sellada: true, ultima: f(6, null), ultimaSellada: 5 }, { tipo: 'frena', pierde: { hoy: null } }],
+      ['sellada, con una edición ya deshecha encima', { fila: f(5, x), sellada: true, ultima: f(7, x), ultimaSellada: 5 }, { tipo: 'frena', pierde: null }],
+      ['sellada, con otra sellada encima', { fila: f(5, x), sellada: true, ultima: f(6, y), ultimaSellada: 6 }, { tipo: 'no_se_puede', porQue: 'la_cambio_otra_publicada' }],
+      ['sin sellar y última', { fila: f(6, x), sellada: false, ultima: f(6, x), ultimaSellada: 5 }, { tipo: 'solo_vista_previa' }],
+      ['sin sellar, y la última vale lo mismo', { fila: f(6, x), sellada: false, ultima: f(8, x), ultimaSellada: 5 }, { tipo: 'solo_vista_previa' }],
+      ['sin sellar, con otra distinta encima', { fila: f(6, x), sellada: false, ultima: f(7, y), ultimaSellada: 5 }, { tipo: 'no_se_puede', porQue: 'la_cambio_otra_sin_publicar' }],
+      ['una lápida sin sellar y última (D1)', { fila: f(7, null), sellada: false, ultima: f(7, null), ultimaSellada: null }, { tipo: 'solo_vista_previa' }],
+    ] as const
+    for (const [nombre, entrada, espera] of tabla) {
+      const r = comoSeRevierte(entrada)
+      afirmar(`comoSeRevierte: ${nombre}`, canonico(r) === canonico(espera), r)
+    }
   },
 
   async central() {
@@ -248,6 +287,148 @@ const CASOS: Record<string, () => Promise<void>> = {
     await aplicar(ana, poner(dato('horario', 'De 6 a 2')))
     const [pub, apl] = await Promise.all([publicarComo(ana, (await pendienteDe(N)).huella), aplicar(beto, poner(dato('pagos', 'Daviplata'), el.comoClave('dato:pagos')))])
     afirmar('publicar y aplicar a la vez: terminan los dos', pub.tipo === 'publicado' || pub.tipo === 'cambio', { pub, apl })
+  },
+
+  async frenoConOtraPendiente() {
+    const N = await negocioAbierto('F')
+    const ana = await duenoDe(N, 'Ana')
+    const r = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
+    const { tarjeta, boton } = await revertir(ana, r)
+    afirmar('freno: la tarjeta es de Revertir y advierte que llega de una', tarjeta.accion === 'revertir' && tarjeta.advertencias.some((a) => a.includes('de una')), tarjeta)
+    afirmar('freno: el botón lo aplica y dice que llegó a los Clientes', boton.tipo === 'aplicado' && /Clientes/.test(boton.resumen), boton)
+    const publicado = await leerPublicado(N)
+    afirmar('freno: los Clientes ya no lo tienen, sin Publicar', publicado.vigente(HORARIO) === null, valor(publicado, HORARIO))
+    afirmar('freno: lo otro pendiente no llegó a los Clientes', valor(publicado, PAGOS) === 'Contraentrega', valor(publicado, PAGOS))
+    const pendiente = await pendienteDe(N)
+    afirmar('freno: lo otro sigue pendiente, y solo eso', pendiente.items.length === 1 && pendiente.items[0].clave === PAGOS, pendiente.items)
+  },
+
+  async d1() {
+    const N = await negocioAbierto('U')
+    const ana = await duenoDe(N, 'Ana')
+    const crear = await aplicar(ana, poner(SIEMPRE_SIN_PLAZO))
+    const clave = (await leerAplicado(N)).vigentes('regla')[0].clave
+    const quitar = await aplicar(ana, { tipo: 'quitar', claves: [clave] })
+    const { tarjeta, boton } = await revertir(ana, quitar)
+    afirmar('D1: revertir un quitar sin publicar no advierte que llega a los Clientes', !tarjeta.advertencias.some((a) => a.includes('de una')), tarjeta)
+    afirmar('D1: la regla vuelve a la vista previa', boton.tipo === 'aplicado' && (await leerAplicado(N)).vigente(clave) !== null, boton)
+    afirmar('D1: los Clientes siguen sin la regla', (await leerPublicado(N)).vigente(clave) === null, crear)
+    afirmar('D1: la regla queda pendiente de publicar', (await pendienteDe(N)).items.some((i) => i.clave === clave))
+  },
+
+  async frenoConEdicionEncima() {
+    const N = await negocioAbierto('E')
+    const ana = await duenoDe(N, 'Ana')
+    await aplicar(ana, poner(dato('horario', 'De 7 a 3')))
+    await publicarTodo(ana)
+    const r = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('horario', 'De 9 a 6')))
+    const { tarjeta, boton } = await revertir(ana, r)
+    afirmar('edición encima: la tarjeta avisa lo que se va de la vista previa', tarjeta.advertencias.some((a) => a.includes('También se va')), tarjeta)
+    afirmar('edición encima: los dos quedan en lo de antes', boton.tipo === 'aplicado' && valor(await leerPublicado(N), HORARIO) === 'De 7 a 3' && valor(await leerAplicado(N), HORARIO) === 'De 7 a 3', boton)
+    afirmar('edición encima: nada queda pendiente', (await pendienteDe(N)).items.length === 0)
+    await publicarTodo(ana).catch(() => undefined)
+    afirmar('edición encima: Publicar no resucita la edición', valor(await leerPublicado(N), HORARIO) === 'De 7 a 3')
+
+    const dos = await aplicar(ana, poner(dato('horario', 'De 10 a 4')), poner(dato('pagos', 'Daviplata'), PAGOS))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
+    const segundo = await revertir(ana, dos)
+    afirmar('dos claves, una editada encima: las dos salen', segundo.boton.tipo === 'aplicado' && valor(await leerPublicado(N), HORARIO) === 'De 7 a 3' && valor(await leerPublicado(N), PAGOS) === 'Contraentrega', segundo.boton)
+    afirmar('dos claves: lo aplicado queda igual a lo publicado', canon(await leerPublicado(N)) === canon(await leerAplicado(N)))
+  },
+
+  async lapidaDelFreno() {
+    const N = await negocioAbierto('L')
+    const ana = await duenoDe(N, 'Ana')
+    const crear = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    await publicarTodo(ana)
+    await aplicar(ana, { tipo: 'quitar', claves: [HORARIO] })
+    const { tarjeta, boton } = await revertir(ana, crear)
+    afirmar('lápida del freno: la tarjeta dice qué se quita', tarjeta.lineas.some((l) => l.startsWith('Deshacer: ') && l.length > 'Deshacer: '.length), tarjeta)
+    afirmar('lápida del freno: los Clientes ya no lo tienen', boton.tipo === 'aplicado' && (await leerPublicado(N)).vigente(HORARIO) === null, boton)
+    afirmar('lápida del freno: nada queda pendiente', (await pendienteDe(N)).items.length === 0)
+  },
+
+  async hecho2() {
+    const N = await negocioAbierto('2')
+    const ana = await duenoDe(N, 'Ana')
+    const molino: Elemento = { tipo: 'producto', nombre: `Molino ${marca}`, descripcion: 'Manual', precio: el.comoMonto(120000), activo: true }
+    const conMolino = await aplicar(ana, poner(molino))
+    const claveMolino = (await leerAplicado(N)).vigentes('producto').find((v) => v.elemento.nombre === molino.nombre)!.clave
+    const reglaDelMolino: Elemento = {
+      tipo: 'regla',
+      nombre: 'Pedido con molino',
+      cuando: { tipo: 'pedido', condicion: { tipo: 'incluye', producto: claveMolino } },
+      efectos: [{ tipo: 'abrir_caso', titulo: 'Pedido con molino' }],
+      escenarios: { activan: [{ mensajeDelCliente: 'Quiero un molino para Pereira, calle 10 # 5-20', momento: null, pedido: null, esperado: { hace: ['crear_pedido', 'abrir_caso'], noHace: [] } }], noActivan: [] },
+    }
+    await aplicar(ana, poner(reglaDelMolino))
+    await publicarTodo(ana)
+    const claveRegla = (await leerAplicado(N)).vigentes('regla')[0].clave
+    await aplicar(ana, { tipo: 'quitar', claves: [claveRegla] })
+    const propuesta = await pedir(ana, { tipo: 'revertir', propuesta: conMolino })
+    if (propuesta.desenlace !== 'espera_al_dueno') throw new Error(propuesta.resumen)
+    const primero = await aprobar(ana, propuesta.tarjeta.propuesta, propuesta.tarjeta.huella)
+    afirmar('hecho 2: lo que rompería lo publicado no sale', primero.tipo === 'ya_no_cabe' && primero.problemas.some((p) => p.tipo === 'rompe_lo_publicado') && (await leerPublicado(N)).vigente(claveMolino) !== null, primero)
+    await publicarTodo(ana)
+    const segundo = await aprobar(ana, propuesta.tarjeta.propuesta, propuesta.tarjeta.huella)
+    afirmar('hecho 2: después de Publicar, la misma tarjeta sí sale', segundo.tipo === 'aplicado' && (await leerPublicado(N)).vigente(claveMolino) === null, segundo)
+  },
+
+  async revertirSinPublicar() {
+    const N = await negocioAbierto('S')
+    const ana = await duenoDe(N, 'Ana')
+    const antes = canon(await leerPublicado(N))
+    const r = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const { tarjeta, boton } = await revertir(ana, r)
+    afirmar('sin publicar: no advierte a los Clientes y dice que solo sale de la vista previa', !tarjeta.advertencias.some((a) => a.includes('de una')) && boton.tipo === 'aplicado' && /vista previa/.test(boton.resumen), { tarjeta, boton })
+    afirmar('sin publicar: lo publicado no cambia y no queda nada pendiente', canon(await leerPublicado(N)) === antes && (await pendienteDe(N)).items.length === 0)
+  },
+
+  async cambioDeRespuesta() {
+    const N = await negocioAbierto('Y')
+    const [ana, beto] = [await duenoDe(N, 'Ana'), await duenoDe(N, 'Beto')]
+    const r = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    const carta = await pedir(ana, { tipo: 'revertir', propuesta: r })
+    if (carta.desenlace !== 'espera_al_dueno') throw new Error(carta.resumen)
+    await publicarTodo(beto)
+    const boton = await aprobar(ana, carta.tarjeta.propuesta, carta.tarjeta.huella)
+    afirmar('otro publicó antes del clic: se aplica y el desenlace dice que llegó a los Clientes', boton.tipo === 'aplicado' && /Clientes/.test(boton.resumen) && (await leerPublicado(N)).vigente(HORARIO) === null, boton)
+
+    const base = await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('pagos', 'Daviplata'), PAGOS))
+    const carta2 = await pedir(ana, { tipo: 'revertir', propuesta: base })
+    if (carta2.desenlace !== 'espera_al_dueno') throw new Error(carta2.resumen)
+    await publicarTodo(ana)
+    const conflicto = await aprobar(ana, carta2.tarjeta.propuesta, carta2.tarjeta.huella)
+    afirmar('otro publicó la edición de encima: da conflicto y no escribe', conflicto.tipo === 'conflicto' && valor(await leerPublicado(N), PAGOS) === 'Daviplata', conflicto)
+  },
+
+  async publicarYRevertirALaVez() {
+    const N = await negocioAbierto('V')
+    const ana = await duenoDe(N, 'Ana')
+    const r = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
+    await publicarTodo(ana)
+    await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
+    const carta = await pedir(ana, { tipo: 'revertir', propuesta: r })
+    if (carta.desenlace !== 'espera_al_dueno') throw new Error(carta.resumen)
+    const vista = (await pendienteDe(N)).huella
+    const [pub, rev] = await Promise.all([publicarComo(ana, vista), aprobar(ana, carta.tarjeta.propuesta, carta.tarjeta.huella)])
+    const publicado = await leerPublicado(N)
+    afirmar('a la vez: terminan los dos', pub.tipo === 'publicado' && rev.tipo === 'aplicado', { pub, rev })
+    afirmar('a la vez: en cualquier orden, sin el freno y con lo publicado', publicado.vigente(HORARIO) === null && valor(publicado, PAGOS) === 'Nequi', canon(publicado))
+
+    const q = await aplicar(ana, poner(dato('horario', 'De 9 a 6')))
+    const carta2 = await pedir(ana, { tipo: 'revertir', propuesta: q })
+    if (carta2.desenlace !== 'espera_al_dueno') throw new Error(carta2.resumen)
+    const vista2 = (await pendienteDe(N)).huella
+    const [pub2, rev2] = await Promise.all([publicarComo(ana, vista2), aprobar(ana, carta2.tarjeta.propuesta, carta2.tarjeta.huella)])
+    afirmar('a la vez, sin publicar: en cualquier orden, los Clientes no se quedan con lo revertido', rev2.tipo === 'aplicado' && (await leerPublicado(N)).vigente(HORARIO) === null, { pub2, rev2 })
   },
 
   async aislamiento() {

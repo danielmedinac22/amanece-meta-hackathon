@@ -5,8 +5,8 @@
 import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { MotivoDeFaltante } from '../capacidades'
-import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
-import { claveNueva, comoVersion, definicionDe, describirCambio, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
+import { conPropuesta, historiaParaRevertir, otrosNegocios, queCambiaLoAplicado, validarEscritura, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
+import { alcanceDeLaClave, claveNueva, comoVersion, definicionDe, describirCambio, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
 import { revisarTextoDelDueno } from '../salida/revisar'
@@ -36,6 +36,8 @@ export type Traduccion = {
   readonly alcance: Alcance
   /** Lo que lee el Dueño en la tarjeta: `describir(antes, despues)` de cada clave, y cada acto. */
   readonly lineas: readonly string[]
+  /** Lo que el código le advierte al Dueño arriba de las líneas, como que algo llega a los Clientes sin Publicar. */
+  readonly advertencias: readonly string[]
   /** Lo que gastó el redactor; cero sin una Sección o un Indicador. */
   readonly gasto: Gasto
 }
@@ -59,6 +61,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
   const cambios: CambioDeElemento[] = []
   const actos: Acto[] = []
   const lineas: string[] = []
+  const advertencias: string[] = []
   const problemas: Problema[] = []
   let revierte: PropuestaId | null = null
   let gasto = SIN_GASTO
@@ -118,6 +121,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
         if ('tipo' in r) return r
         for (const c of r.cambios) tocar(c)
         lineas.push(...r.lineas)
+        advertencias.push(...r.advertencias)
         revierte = q.propuesta
         break
       }
@@ -138,28 +142,27 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
   const escritura: Escritura = { elementos: cambios, filas: [] }
   const sinCumplidor = new Set(cambios.flatMap((c) => (c.despues?.tipo === 'regla' ? sinCumplidorHoy(c.despues) : [])))
   if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] }, gasto }
-  const v = validarEscritura(estado, escritura)
+  const v = validarEscritura(estado, revierte ? queCambiaLoAplicado(estado, escritura) : escritura)
   if (v.tipo === 'invalida') problemas.push(...v.problemas)
   const otros = cambios.some((c) => c.despues) ? await otrosNegocios(estado) : []
   for (const c of cambios) if (c.despues) for (const t of definicionDe(c.despues.tipo).textos(c.despues)) for (const motivo of revisarTextoDelDueno(t.texto, otros)) problemas.push({ tipo: 'norma', campo: t.campo, motivo })
   if (problemas.length) return corregir(...problemas)
 
-  const alcances = cambios.flatMap((c) => {
-    const tipo = (c.despues ?? estado.vigente(c.clave)?.elemento)?.tipo
-    return tipo ? [definicionDe(tipo).alcance] : []
-  })
   return {
     escritura,
     actos,
     revierte,
-    alcance: actos.length || alcances.includes('clientes') || !alcances.length ? 'clientes' : 'panel',
+    alcance: actos.length || cambios.some((c) => alcanceDeLaClave(c.clave) === 'clientes') ? 'clientes' : 'panel',
     gasto,
+    advertencias,
     lineas: revierte ? lineas : [...cambios.map((c) => describirCambio(estado.vigente(c.clave)?.elemento ?? null, c.despues, conPropuesta(estado, escritura))), ...lineas],
   }
 }
 
-/** Cada clave que la propuesta escribió y nadie tocó después vuelve a lo de antes. */
-async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[] } | SinTraduccion> {
+const SIN_PUBLICAR_DE_UNA = 'Esto les llega a tus Clientes de una, sin Publicar.'
+
+/** Cada clave vuelve a lo de antes si `comoSeRevierte` lo deja. La línea de lo que frena dice lo que notan los Clientes, no lo de la vista previa. */
+async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[]; readonly advertencias: readonly string[] } | SinTraduccion> {
   const [p] = await db
     .select({ estado: esquema.propuestas.estado, actos: esquema.propuestas.actos, revierte: esquema.propuestas.revierte, escritura: esquema.propuestas.escritura, version: esquema.propuestas.version })
     .from(esquema.propuestas)
@@ -178,19 +181,25 @@ async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promis
   const historia = await historiaParaRevertir(estado.identidad.id, p.escritura.elementos.map((c) => c.clave), comoVersion(p.version))
   const cambios: CambioDeElemento[] = []
   const lineas: string[] = []
+  const advertencias: string[] = []
+  const atendiendo = estado.identidad.modo === 'atendiendo'
   for (const { clave } of p.escritura.elementos) {
     const h = historia.get(clave)
     const vigente = estado.vigente(clave)
-    if (!h || h.ultima !== p.version) {
+    if (!h || h.como.tipo === 'no_se_puede') {
       lineas.push(`No se deshace ${describirCambio(null, vigente?.elemento ?? null, estado) || clave}: lo cambió otra propuesta después`)
       continue
     }
-    if (!h.antes && !vigente) continue
+    const frena = h.como.tipo === 'frena'
+    if (!frena && !h.antes && !vigente) continue
     cambios.push({ clave, base: vigente?.version ?? 'nueva', despues: h.antes })
-    lineas.unshift(`Deshacer: ${describirCambio(vigente?.elemento ?? null, h.antes, estado)}`)
+    lineas.unshift(`Deshacer: ${describirCambio(frena ? h.fila : (vigente?.elemento ?? null), h.antes, estado)}`)
+    if (!atendiendo || h.como.tipo !== 'frena') continue
+    if (!advertencias.includes(SIN_PUBLICAR_DE_UNA)) advertencias.push(SIN_PUBLICAR_DE_UNA)
+    if (h.como.pierde) advertencias.push(`También se va de tu vista previa lo que tenías sin publicar sobre esto: ${describirCambio(h.fila, h.como.pierde.hoy, estado)}`)
   }
   if (!cambios.length) return no('Todo lo de esa propuesta ya lo cambió otra después')
-  return { cambios, lineas }
+  return { cambios, lineas, advertencias }
 }
 
 /** Lo de hoy: un Caso de este Negocio, sin resolver, con Cliente y dentro de la ventana de 24 horas. */

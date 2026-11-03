@@ -6,7 +6,22 @@ import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
 import { comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
-import { elementoDe, huellaDeLoPendiente, leerAplicado, leerPublicado, loPendiente, origenDe, ultimasDe, validarEscritura, type Escritura, type ItemPendiente, type OrigenDeEscritura } from './index'
+import {
+  elementoDe,
+  historiaParaRevertir,
+  huellaDeLoPendiente,
+  leerAplicado,
+  leerPublicado,
+  loPendiente,
+  origenDe,
+  queCambiaLoAplicado,
+  ultimasDe,
+  validarEscritura,
+  type ComoSeRevierte,
+  type Escritura,
+  type ItemPendiente,
+  type OrigenDeEscritura,
+} from './index'
 
 /** Quién tocó la clave después de la `base` que vio quien propuso. Todo null si la clave ya no tiene filas. */
 export type ClaveEnConflicto = {
@@ -20,7 +35,7 @@ export type ClaveEnConflicto = {
 
 export type ResultadoDeEscribir =
   /** `deUna`: cuántas filas les llegan a los Clientes sin pasar por Publicar. */
-  | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio; readonly deUna: number }
+  | { readonly tipo: 'escrito'; readonly version: VersionDelNegocio; readonly deUna: number; readonly modo: ModoDelNegocio }
   | { readonly tipo: 'conflicto'; readonly claves: readonly ClaveEnConflicto[] }
   /** No cabe en el estado de ahora (`validarEscritura`): quien llama hace ROLLBACK. */
   | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }
@@ -28,14 +43,18 @@ export type ResultadoDeEscribir =
 /** Lo revertido: la propuesta y la versión que dejó su escritura. */
 export type LoRevertido = { readonly propuesta: PropuestaId; readonly version: VersionDelNegocio }
 
+const BIT_DE_LA_REVERSION = { frena: false, solo_vista_previa: true, no_se_puede: true } as const satisfies Record<ComoSeRevierte['tipo'], boolean>
+
 /**
  * Pura. Con qué bit nace una fila. Lo decide solo `escribir`, bajo la fila del Negocio. Sin Clientes reales no hay nada
- * que retener, y lo de las tablas viejas ya lo notaban.
+ * que retener, y lo de las tablas viejas ya lo notaban. `como`: la clave se está revirtiendo.
  */
-export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDelNegocio): boolean {
-  if (origen === 'tablas_viejas') return false
-  return modo === 'atendiendo'
+export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDelNegocio, como: ComoSeRevierte | null): boolean {
+  if (origen === 'tablas_viejas' || modo !== 'atendiendo') return false
+  return como ? BIT_DE_LA_REVERSION[como.tipo] : true
 }
+
+const NO_SE_PUEDE: ComoSeRevierte = { tipo: 'no_se_puede', porQue: 'la_cambio_otra_publicada' }
 
 /**
  * Dentro de la transacción de quien llama, después de tomar la fila del Negocio: ahí relee el estado y valida, así
@@ -45,17 +64,19 @@ export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDel
 export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura, revierte: LoRevertido | null): Promise<ResultadoDeEscribir> {
   const [n] = await tx.select({ version: esquema.negocios.version, modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
-  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0 }
   const modo = n.modo ?? 'armando'
+  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0, modo }
 
   const estado = await leerAplicado(negocio, tx)
   const claves = escritura.elementos.map((c) => c.clave)
   const ultimaDe = new Map((await ultimasDe(tx, negocio, inArray(esquema.elementos.clave, claves))).map((u) => [u.clave, u]))
+  const historia = revierte ? await historiaParaRevertir(negocio, claves, revierte.version, tx) : null
+  const comoDe = (clave: Clave): ComoSeRevierte | null => (historia ? (historia.get(clave)?.como ?? NO_SE_PUEDE) : null)
   const chocan = escritura.elementos.flatMap((c) => {
     const ultima = ultimaDe.get(c.clave)
     const viva = ultima && ultima.contenido !== null ? ultima : null
     const coincide = c.base === 'nueva' ? viva === null : viva !== null && viva.version === c.base
-    return coincide ? [] : [{ clave: c.clave, ultima, viva }]
+    return coincide && comoDe(c.clave)?.tipo !== 'no_se_puede' ? [] : [{ clave: c.clave, ultima, viva }]
   })
   if (chocan.length) {
     const ids = chocan.flatMap((c) => (c.ultima?.propuestaId ? [c.ultima.propuestaId] : []))
@@ -76,13 +97,22 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
     }
   }
 
-  const v = validarEscritura(estado, escritura)
+  const v = validarEscritura(estado, revierte ? queCambiaLoAplicado(estado, escritura) : escritura)
   if (v.tipo === 'invalida') return v
+  const validadas = new Map(v.escritura.elementos.map((c) => [c.clave, c]))
+  const filas = escritura.elementos.map((c) => validadas.get(c.clave) ?? c)
+
+  const nace = (c: { readonly clave: Clave }) => naceSinPublicar(origen.tipo, modo, comoDe(c.clave))
+  const deFreno = revierte ? filas.filter((c) => modo === 'atendiendo' && !nace(c)) : []
+  if (deFreno.length) {
+    // Lo publicado es válido por inducción: nace igual a un aplicado válido, sellar lo iguala a otro, y solo lo cambian estas filas.
+    const w = validarEscritura(await leerPublicado(negocio, tx), { elementos: deFreno, filas: [] })
+    if (w.tipo === 'invalida') return { tipo: 'invalida', problemas: w.problemas.map((problema) => ({ tipo: 'rompe_lo_publicado', problema })) }
+  }
 
   const version = n.version + 1
-  const sinPublicar = naceSinPublicar(origen.tipo, modo)
   await tx.insert(esquema.elementos).values(
-    v.escritura.elementos.map((c) => {
+    filas.map((c) => {
       const tipo = c.despues?.tipo ?? ultimaDe.get(c.clave)!.tipo
       return {
         negocioId: negocio,
@@ -93,12 +123,12 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
         contenido: c.despues,
         origen: origen.tipo,
         propuestaId: origen.tipo === 'propuesta' ? origen.propuesta : null,
-        sinPublicar,
+        sinPublicar: nace(c),
       }
     }),
   )
   await tx.update(esquema.negocios).set({ version }).where(eq(esquema.negocios.id, negocio))
-  return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' && !sinPublicar ? v.escritura.elementos.length : 0 }
+  return { tipo: 'escrito', version: comoVersion(version), deUna: modo === 'atendiendo' ? filas.filter((c) => !nace(c)).length : 0, modo }
 }
 
 export type ResultadoDeSellar = { readonly tipo: 'sellado'; readonly items: readonly ItemPendiente[] } | { readonly tipo: 'sin_nada' } | { readonly tipo: 'cambio' }

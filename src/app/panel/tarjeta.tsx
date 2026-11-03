@@ -4,8 +4,8 @@ import { useState } from 'react'
 import type { ResultadoDeAprobar, TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 
-const VERBO = { aplicar: 'Aplicar', enviar: 'Enviar', confirmar: 'Están bien y no falta ninguno' } as const satisfies Record<TarjetaDeAprobacion['accion'], string>
-const HECHA = { Aplicar: 'Aplicada', Enviar: 'Enviada', 'Están bien y no falta ninguno': 'Confirmada' } as const satisfies Record<(typeof VERBO)[keyof typeof VERBO], string>
+const VERBO = { aplicar: 'Aplicar', enviar: 'Enviar', confirmar: 'Están bien y no falta ninguno', deshacer: 'Deshacer', revertir: 'Revertir' } as const satisfies Record<TarjetaDeAprobacion['accion'], string>
+const HECHA = { Aplicar: 'Aplicada', Enviar: 'Enviada', 'Están bien y no falta ninguno': 'Confirmada', Deshacer: 'Deshecho', Revertir: 'Revertida' } as const satisfies Record<(typeof VERBO)[keyof typeof VERBO], string>
 
 type Respuesta = ResultadoDeAprobar | { readonly tipo: 'descartada' } | { readonly tipo: 'error'; readonly mensaje: string }
 
