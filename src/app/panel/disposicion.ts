@@ -43,8 +43,15 @@ export function disponer(d: Disposicion, cambio: CambioDeDisposicion): Disposici
 }
 
 /** Lo que el Hilo necesita de la cáscara. El Hilo vive en un solo lugar del árbol: moverlo perdería su `useChat`. */
-export const HiloEnLaOperacion = createContext<{ vista: string; controles: ReactNode; avisarDecision: (id: string | null) => void }>({
+export const HiloEnLaOperacion = createContext<{ vista: string; controles: ReactNode; avisarDecision: (id: string | null) => void; borrador: Borrador | null }>({
   vista: '',
   controles: null,
   avisarDecision: () => {},
+  borrador: null,
 })
+
+/** Un objeto nuevo por cada pedido: tocar lo mismo dos veces vuelve a dejar el texto en el redactor. */
+export type Borrador = { texto: string }
+
+/** Lo que el lienzo le deja al Hilo: empieza un mensaje y el Dueño lo termina. */
+export const EscribirleAlAgente = createContext<(texto: string) => void>(() => {})

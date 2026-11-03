@@ -13,12 +13,12 @@ import { SinPublicar } from './sin-publicar'
 import type { AccionDeTarjeta, RespuestaDeTarjeta, TocarTarjeta } from './tocar-tarjeta'
 
 const ACCIONES = {
-  aplicar: { verbo: 'Aplicar', hecha: 'Aplicada', llega: 'Lo notan tus Clientes', terminaEnPublicar: true },
-  enviar: { verbo: 'Enviar', hecha: 'Enviada', llega: 'Sale por WhatsApp a tu Cliente', terminaEnPublicar: false },
-  confirmar: { verbo: 'Están bien y no falta ninguno', hecha: 'Confirmada', llega: 'Lo notan tus Clientes', terminaEnPublicar: false },
-  deshacer: { verbo: 'Deshacer', hecha: 'Deshecha', llega: 'Solo lo ven tú y tu equipo', terminaEnPublicar: true },
-  revertir: { verbo: 'Revertir', hecha: 'Revertida', llega: 'Lo notan tus Clientes', terminaEnPublicar: false },
-} as const satisfies Record<TarjetaDeAprobacion['accion'], { verbo: string; hecha: string; llega: string; terminaEnPublicar: boolean }>
+  aplicar: { verbo: 'Aplicar', hecha: 'Aplicada', llega: 'Lo notan tus Clientes', terminaEnPublicar: true, vencio: 'Venció sin aplicarse. Pídela de nuevo si todavía la quieres.' },
+  enviar: { verbo: 'Enviar', hecha: 'Enviada', llega: 'Sale por WhatsApp a tu Cliente', terminaEnPublicar: false, vencio: 'Venció sin enviarse. Pídele a tu agente que la prepare de nuevo.' },
+  confirmar: { verbo: 'Están bien y no falta ninguno', hecha: 'Confirmada', llega: 'Lo notan tus Clientes', terminaEnPublicar: false, vencio: 'Venció sin confirmarse. Pégale el enlace a tu agente de nuevo.' },
+  deshacer: { verbo: 'Deshacer', hecha: 'Deshecha', llega: 'Solo lo ven tú y tu equipo', terminaEnPublicar: true, vencio: 'Ya no se puede deshacer desde aquí. Pídeselo a tu agente.' },
+  revertir: { verbo: 'Revertir', hecha: 'Revertida', llega: 'Lo notan tus Clientes', terminaEnPublicar: false, vencio: 'Venció sin revertirse. Pídela de nuevo si todavía la quieres.' },
+} as const satisfies Record<TarjetaDeAprobacion['accion'], { verbo: string; hecha: string; llega: string; terminaEnPublicar: boolean; vencio: string }>
 
 const ETIQUETAS: Partial<Record<Elemento['tipo'], { abierta: string; constancia: string }>> = {
   regla: { abierta: 'Vista previa · regla nueva', constancia: 'Nueva regla' },
@@ -27,7 +27,6 @@ const ETIQUETAS: Partial<Record<Elemento['tipo'], { abierta: string; constancia:
   seccion: { abierta: 'En tu vista previa · nueva Sección', constancia: 'Nueva Sección' },
 }
 
-const VENCIO = 'Venció sin aplicarse. Pídela de nuevo si todavía la quieres.'
 const ENTRA = [0.22, 1, 0.36, 1] as const
 
 export function etiquetaDe(tarjeta: TarjetaDeAprobacion, estado: EstadoDeTarjeta | undefined, cual: 'abierta' | 'constancia' = 'abierta'): string {
@@ -43,7 +42,7 @@ type Desenlace = { readonly texto: string; readonly bien: boolean }
 
 /** Lo que dice la tarjeta cuando ya no espera: primero lo que acaba de pasar con este clic, después lo guardado. */
 function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): Desenlace {
-  const { hecha } = ACCIONES[accion]
+  const { hecha, vencio } = ACCIONES[accion]
   const cliente = estado?.asunto?.tipo === 'caso' ? estado.asunto.cliente : null
   const por = estado?.aprobadaPor ? `${hecha} por ${estado.aprobadaPor}` : hecha
   const lograda = cliente ? `${hecha} a ${cliente}` : hecha
@@ -60,9 +59,9 @@ function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarj
     case 'conflicto':
       return nada(r.resumen)
     case 'vencido':
-      return nada(VENCIO)
+      return nada(vencio)
     case 'no_existe':
-      return nada('Esta tarjeta ya no está disponible.')
+      return nada('Esta tarjeta ya no está disponible. Pídesela de nuevo a tu agente si todavía la quieres.')
     case 'descartada':
       return nada('Descartada')
   }
@@ -74,7 +73,7 @@ function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarj
     case 'descartada':
       return nada('Descartada')
     default:
-      return nada(VENCIO)
+      return nada(vencio)
   }
 }
 

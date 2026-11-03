@@ -1,11 +1,11 @@
 'use client'
 
-import { ArrowUp, CaretUp, CheckCircle, Warning } from '@phosphor-icons/react'
+import { ArrowUp, CaretUp, CheckCircle, NotePencil, Warning } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import { decisionesEnEspera, decisionQueEspera, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
+import { decisionesEnEspera, decisionQueEspera, esCapacidadFaltante, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { HiloEnLaOperacion } from './disposicion'
 import { etiquetaDe, Tarjeta } from './tarjeta'
 import type { TocarTarjeta } from './tocar-tarjeta'
@@ -54,6 +54,19 @@ function Rastro({ estado, children }: { estado: string; children: ReactNode }) {
   )
 }
 
+/** Lo que el Dueño pidió y Amanece no sabe hacer: queda anotado y no se aplica nada, así que no lleva botón. */
+function CapacidadFaltante() {
+  return (
+    <div className="flex gap-2.5 rounded-[calc(var(--radius)-4px)] bg-muted px-3 py-2.5">
+      <NotePencil className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium">Todavía no sé hacer esto</p>
+        <p className="text-xs text-pretty text-muted-foreground">Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.</p>
+      </div>
+    </div>
+  )
+}
+
 /** Pinta la conversación. Quien la conecta decide qué pasa al enviar y al tocar una tarjeta: esta vista no habla con ninguna ruta. */
 export function VistaDelHilo({ messages, estados, estado, status, error, alEnviar, alTocar, alCambiar }: DatosDelHilo & { alEnviar: (contenido: string) => void; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const [texto, setTexto] = useState('')
@@ -61,7 +74,19 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
   // Lo que ya estaba al abrir no entra con movimiento: solo lo que llega después.
   const [yaEstaban] = useState(messages.length)
   const ocupado = status === 'submitted' || status === 'streaming'
-  const { vista, controles, avisarDecision } = useContext(HiloEnLaOperacion)
+  const { vista, controles, avisarDecision, borrador } = useContext(HiloEnLaOperacion)
+  const caja = useRef<HTMLTextAreaElement>(null)
+  const [borradorPuesto, setBorradorPuesto] = useState(borrador)
+  if (borrador !== borradorPuesto) {
+    setBorradorPuesto(borrador)
+    if (borrador) setTexto(borrador.texto)
+  }
+
+  useEffect(() => {
+    if (!borrador) return
+    caja.current?.focus()
+    caja.current?.setSelectionRange(borrador.texto.length, borrador.texto.length)
+  }, [borrador])
 
   // `vista` porque oculta no se puede bajar: al volver a verse tiene que quedar en lo último que llegó.
   useEffect(() => {
@@ -113,11 +138,15 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
               m.parts.map((parte, i) => {
                 if (parte.type === 'text') return <p key={i} className="text-(length:--texto-hilo) leading-normal text-pretty whitespace-pre-wrap">{parte.text}</p>
                 const t = tarjetaDeLaParte(parte)
+                if (esCapacidadFaltante(parte)) return <CapacidadFaltante key={i} />
                 if (parte.type.startsWith('tool-')) {
                   const herramienta = parte.type.slice(5)
+                  const estadoDeLaParte = (parte as { state: string }).state
+                  // `proponer` sin tarjeta no preparó nada: el modelo tiene que corregir o explicar.
+                  const noPreparo = herramienta === 'proponer' && estadoDeLaParte === 'output-available' && !t
                   return (
                     <div key={i} className="flex flex-col gap-3">
-                      <Rastro estado={(parte as { state: string }).state}>{ETIQUETAS[herramienta] ?? herramienta}</Rastro>
+                      <Rastro estado={estadoDeLaParte}>{noPreparo ? 'Revisó lo que pediste' : (ETIQUETAS[herramienta] ?? herramienta)}</Rastro>
                       {t && tarjeta(t)}
                     </div>
                   )
@@ -132,7 +161,7 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
             <Puntos />
           </span>
         )}
-        {error && <p className="text-sm text-destructive">Algo falló. Intenta de nuevo.</p>}
+        {error && <p role="alert" className="text-sm text-destructive">Se cortó mi respuesta. Escríbeme de nuevo.</p>}
         <div ref={final} />
       </div>
 
@@ -151,6 +180,7 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
         className="mt-2 flex items-end gap-2 rounded-(--radius) border border-border bg-card p-2 flotante:mt-0 flotante:items-center flotante:gap-1 flotante:rounded-lg flotante:p-1 flotante:shadow-alzada"
       >
         <textarea
+          ref={caja}
           rows={1}
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
