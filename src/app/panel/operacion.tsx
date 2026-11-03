@@ -18,7 +18,7 @@ import { AlIrASeccion } from './ir-a-seccion'
 import { BotonPublicar } from './publicar'
 import { SinPublicar } from './sin-publicar'
 import type { Publicador } from './tocar-publicar'
-import { RUTA_DE_AJUSTES, SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
+import { esDeLaSeccion, RUTA_DE_AJUSTES, SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
 
 /** Lo que la cáscara pinta. Quien la arma lee; ella no toca datos. */
 export type DatosDeLaOperacion = {
@@ -224,7 +224,7 @@ function BarraLateral({ datos, ruta, alTocar }: { datos: DatosDeLaOperacion; rut
           <SidebarGroupContent>
             <SidebarMenu>
               {SECCIONES.map((s) => {
-                const activa = ruta === s.ruta
+                const activa = esDeLaSeccion(ruta, s)
                 const cuenta = negocio && s.cuenta?.(negocio)
                 return (
                   <SidebarMenuItem key={s.ruta}>
