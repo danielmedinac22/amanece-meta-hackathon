@@ -8,6 +8,7 @@ import type { ItemDeLoPendiente, LoPendiente, TarjetaDeAprobacion } from '@/nucl
 import type { Supuesto } from '@/nucleo/consultas/tipos'
 import type { Clave } from '@/nucleo/estado/elementos'
 import type { Huella, Instante, PropuestaId } from '@/nucleo/identidad'
+import { loQueEscribio } from '@/nucleo/hoy-palabras'
 import type { DatosDeClientes, DatosDeConversaciones, DatosDePedidos, DetalleDeConversacion, FilaDeCliente, FilaDePedido } from '@/nucleo/listas'
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero } from '@/nucleo/tablero'
@@ -108,9 +109,9 @@ const HOY_FUNCIONANDO: DatosDeHoy['hoy'] = {
   ojo: [...OJO_FUNCIONANDO],
   ultimo: [
     { clave: 'pedido-41', texto: 'Tu agente le tomó un pedido a Daniela Quintero', cuando: 'hace 12 min' },
-    { clave: 'santiago', texto: 'Santiago Herrera te escribió', cuando: 'hace 40 min' },
-    { clave: 'nicolas', texto: 'Tu agente le tomó un pedido a Nicolás Aristizábal', cuando: 'hace 1 h' },
-    { clave: 'andres', texto: 'Andrés Felipe Gómez te escribió', cuando: 'hace 3 h' },
+    { clave: 'santiago', texto: 'Santiago Herrera te escribió: «¿Qué café sirve para greca?»', cuando: 'hace 40 min' },
+    { clave: 'nicolas', texto: 'Nicolás Aristizábal confirmó su pedido', cuando: 'hace 1 h' },
+    { clave: 'andres', texto: 'Andrés Felipe Gómez te escribió: «¿Me lo pueden mandar en caja de regalo?»', cuando: 'hace 3 h' },
   ],
 }
 
@@ -359,6 +360,23 @@ export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
     resueltos: Array.from({ length: 50 }, (_, i) => ({ id: `m-${i}`, titulo: MENSAJE_LARGO, resolucion: MENSAJE_LARGO, hace: 'hace 12 min', noSalio: i === 0 })),
   },
   ...MUCHAS_CONVERSACIONES,
+}
+
+export const NEGOCIO_LO_ULTIMO: NegocioDeMuestra = {
+  ...NEGOCIO_FUNCIONANDO,
+  hoy: {
+    ...NEGOCIO_FUNCIONANDO.hoy,
+    hoy: {
+      ...NEGOCIO_FUNCIONANDO.hoy.hoy,
+      ultimo: [
+        { clave: 'mariana', texto: loQueEscribio('Mariana Ospina', 'Hola, buenas tardes.\n\nQuería saber si el café en grano de 500 g sirve para prensa francesa o si me recomiendan otro, porque el último me quedó muy amargo'), cuando: 'ahora' },
+        { clave: 'link', texto: loQueEscribio('Un cliente', `https://www.instagram.com/p/${'CzLaderaCafe'.repeat(10)}`), cuando: 'hace 6 min' },
+        { clave: 'daniela', texto: 'Daniela Quintero confirmó su pedido', cuando: 'hace 12 min' },
+        { clave: 'pedido-41', texto: 'Tu agente le tomó un pedido a Daniela Quintero', cuando: 'hace 15 min' },
+        { clave: 'julian', texto: loQueEscribio('Julián Ramírez', ''), cuando: 'hace 1 h' },
+      ],
+    },
+  },
 }
 
 export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
