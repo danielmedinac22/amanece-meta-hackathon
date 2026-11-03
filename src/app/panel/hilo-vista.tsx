@@ -1,11 +1,12 @@
 'use client'
 
 import type { ChatStatus, UIMessage } from 'ai'
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
+import { decisionQueEspera, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
+import { HiloEnLaOperacion } from './disposicion'
 import { Tarjeta } from './tarjeta'
 
 /** Lo que el Dueño ve mientras su Agente del dueño usa una herramienta. */
@@ -42,10 +43,16 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
   const [texto, setTexto] = useState('')
   const final = useRef<HTMLDivElement>(null)
   const ocupado = status === 'submitted' || status === 'streaming'
+  const { vista, controles, avisarDecision } = useContext(HiloEnLaOperacion)
+
+  // `vista` porque oculta no se puede bajar: al volver a verse tiene que quedar en lo último que llegó.
+  useEffect(() => {
+    final.current?.scrollIntoView({ block: 'nearest' })
+  }, [messages, vista])
 
   useEffect(() => {
-    final.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    avisarDecision(decisionQueEspera(messages, estados))
+  }, [messages, estados, avisarDecision])
 
   function enviar(contenido: string) {
     if (!contenido.trim() || ocupado) return
@@ -56,8 +63,8 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
   const sugerencias = estado === 'listo' ? SUGERENCIAS_LISTO : SUGERENCIAS_ARMANDO
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+    <div className="flex h-full min-h-0 flex-col flotante:h-auto">
+      <div data-conversacion className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 motion-safe:scroll-smooth flotante:mb-2 flotante:max-h-[58vh] flotante:flex-none flotante:rounded-lg flotante:border flotante:bg-background flotante:p-4 flotante:shadow-alzada plegada:hidden">
         {messages.length === 0 && (
           <div className="rounded-lg bg-card p-4 text-sm">
             Hola, soy tu agente. Trabajo para tu negocio todo el día. Si ya lo tienes publicado en una página o en Instagram,
@@ -93,7 +100,7 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
         <div ref={final} />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2 flotante:hidden">
         {sugerencias.map((s) => (
           <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto max-w-full shrink rounded-full bg-card px-3 py-1 text-left font-normal whitespace-normal text-muted-foreground">
             {s}
@@ -105,12 +112,13 @@ export function VistaDelHilo({ messages, estados, estado, status, error, alEnvia
           e.preventDefault()
           enviar(texto)
         }}
-        className="mt-3 flex gap-2"
+        className="mt-3 flex items-center gap-2 flotante:mt-0 flotante:gap-1 flotante:rounded-lg flotante:border flotante:bg-card flotante:p-1 flotante:shadow-alzada"
       >
-        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a tu agente…" className="h-11 flex-1 rounded-full bg-card px-4" />
+        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a tu agente…" className="h-11 flex-1 rounded-full bg-card px-4 flotante:border-transparent flotante:bg-transparent" />
         <Button type="submit" disabled={ocupado || !texto.trim()} className="h-11 rounded-full px-5">
           Enviar
         </Button>
+        {controles}
       </form>
     </div>
   )
