@@ -1,6 +1,7 @@
 /**
- * Va antes de cualquier vuelta a un despliegue anterior, y antes de `quitar-panel.mts`: ese código lee la última fila e
- * ignora el bit, así que lo aplicado sin publicar les llegaría a los Clientes de una. Deja cada clave pendiente igual a
+ * Va justo antes y otra vez justo después de cualquier vuelta a un despliegue anterior, porque en medio el código nuevo
+ * puede dejar filas sin publicar, y antes de `quitar-panel.mts`. El código viejo lee la última fila e ignora el bit, así que
+ * lo aplicado sin publicar les llegaría a los Clientes de una. Deja cada clave pendiente igual a
  * lo publicado, con una fila de origen `tablas_viejas`. El Dueño pierde esos pendientes de su vista previa, aunque
  * siguen en la historia. Las filas con el bit arriba se quedan así: el código viejo solo lee la última de cada clave, y
  * esa ya vale lo que los Clientes tienen. En seco por defecto. Una transacción por Negocio, y uno que falla no corta la

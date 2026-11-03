@@ -39,7 +39,12 @@ Lo aplicado es lo que ve el Dueño: su vista previa. Lo publicado es lo que nota
 - **Lo que no espera Publicar:** responder un Caso, que es un mensaje; y mientras se arma, porque no hay Clientes reales. Abrir el Negocio es la primera publicación.
 - **"Solo lo ve el equipo" todavía no le cambia la pantalla a nadie:** hoy solo existe el Dueño, y los Dueños ven la vista previa. Un Indicador se guarda, se cuenta y se publica igual.
 - **Por WhatsApp no hay botón todavía.** Publicar se toca en la web.
-- **Corte y vuelta atrás:** la migración va antes del código y no copia nada, porque el `DEFAULT` deja lo de hoy publicado. Antes de volver a un despliegue anterior corre `scripts/retirar-sin-publicar.mts` y después `scripts/quitar-panel.mts`, en ese orden. Si no, lo aplicado sin publicar les llega a los Clientes de una.
+- **Corte y vuelta atrás:** la migración va antes del código y no copia nada, porque el `DEFAULT` deja lo de hoy publicado. Para volver a un despliegue anterior, los pasos son estos, en este orden. Sin `retirar-sin-publicar`, lo aplicado sin publicar les llega a los Clientes de una.
+  1. `scripts/retirar-sin-publicar.mts`, justo antes de cambiar el despliegue.
+  2. Si ese despliegue no conoce Secciones ni Indicadores, `scripts/quitar-panel.mts`: con una sola fila viva de esas, su lector lanza y el Negocio queda sin atender.
+  3. Cambiar el despliegue.
+  4. `scripts/retirar-sin-publicar.mts` otra vez, justo después: en medio, el código nuevo puede dejar filas sin publicar.
+  5. `scripts/quitar-panel.mts` otra vez, si corrió en el paso 2, por lo mismo.
 
 **Qué no hace el núcleo, ni con un Cambio:**
 - mandar desde un número que no sea el de Amanece;
