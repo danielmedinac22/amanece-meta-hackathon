@@ -1,5 +1,5 @@
 import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type ToolSet, type UIMessage } from 'ai'
-import { and, desc, eq, inArray, lte } from 'drizzle-orm'
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
@@ -90,6 +90,8 @@ export type EstadoDeTarjeta = {
   /** El nombre del Dueño que tocó el botón; null si la aplicó la política o no se aplicó. */
   readonly aprobadaPor: string | null
   readonly asunto: AsuntoDeTarjeta | null
+  /** Que lo aplicado ya les llegó a los Clientes. Mientras se arma no hay Clientes: ahí nunca. */
+  readonly publicada: boolean
 }
 
 /** De qué trata la tarjeta, con la estructura que las `lineas` de texto no traen. */
@@ -103,8 +105,8 @@ export type AsuntoDeTarjeta =
       readonly escribio: string | null
       readonly respuesta: string
     }
-  /** `que` es null si cambia algo que ya existía o mezcla varios tipos. */
-  | { readonly tipo: 'elemento'; readonly que: Elemento['tipo'] | null }
+  /** `que` es null si cambia algo que ya existía o mezcla varios tipos. `clave` es null si toca más de una cosa. */
+  | { readonly tipo: 'elemento'; readonly que: Elemento['tipo'] | null; readonly clave: string | null }
 
 /**
  * El Hilo y el estado vivo de cada tarjeta que trae. Las filas del Hilo no se editan: lo guardado es la tarjeta
@@ -120,10 +122,24 @@ export async function estadosDeTarjetas(ctx: ContextoDelDueno, propuestas: reado
   const entradas = await historial(ctx, { propuestas })
   const ids = [...new Set(entradas.map((e) => e.aprobadoPor).filter((id) => id !== null))]
   const duenos = ids.length ? await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(and(eq(esquema.duenos.negocioId, ctx.negocio), inArray(esquema.duenos.id, ids))) : []
-  const asuntos = await asuntosDe(ctx, entradas.map((e) => e.propuesta))
+  const [asuntos, selladas] = await Promise.all([asuntosDe(ctx, entradas.map((e) => e.propuesta)), selladasDe(ctx, entradas.filter((e) => e.estado === 'aplicada').map((e) => e.propuesta))])
   return Object.fromEntries(
-    entradas.map((e) => [e.propuesta, { estado: e.estado, accion: e.accion, aprobadaPor: e.aprobadoPor ? duenos.find((d) => d.id === e.aprobadoPor)?.nombre || 'un Dueño' : null, asunto: asuntos.get(e.propuesta) ?? null } satisfies EstadoDeTarjeta]),
+    entradas.map((e) => [e.propuesta, { estado: e.estado, accion: e.accion, aprobadaPor: e.aprobadoPor ? duenos.find((d) => d.id === e.aprobadoPor)?.nombre || 'un Dueño' : null, asunto: asuntos.get(e.propuesta) ?? null, publicada: e.estado === 'aplicada' && selladas.has(e.propuesta) } satisfies EstadoDeTarjeta]),
   )
+}
+
+/** Una fila enterrada se queda con el bit arriba para siempre, porque nunca les llegó a los Clientes: por eso se pide que todas estén selladas. */
+async function selladasDe(ctx: ContextoDelDueno, propuestas: readonly string[]): Promise<ReadonlySet<string>> {
+  if (!propuestas.length) return new Set()
+  const { elementos: e, negocios: n } = esquema
+  const filas = await db
+    .select({ propuesta: e.propuestaId })
+    .from(e)
+    .innerJoin(n, eq(n.id, e.negocioId))
+    .where(and(eq(e.negocioId, ctx.negocio), eq(n.estado, 'listo'), inArray(e.propuestaId, [...propuestas])))
+    .groupBy(e.propuestaId)
+    .having(sql`bool_and(not ${e.sinPublicar})`)
+  return new Set(filas.flatMap((f) => f.propuesta ?? []))
 }
 
 /** Una sola lectura por sondeo, porque el Hilo la repite cada pocos segundos. Las propuestas ya vienen del Negocio de `ctx`. */
@@ -147,7 +163,8 @@ async function asuntosDe(ctx: ContextoDelDueno, propuestas: readonly string[]): 
       const [acto] = f.actos
       if (!acto) {
         const tipos = new Set(f.escritura.elementos.map((e) => (e.base === 'nueva' ? e.despues?.tipo : undefined)))
-        return [f.id, { tipo: 'elemento', que: !f.revierte && tipos.size === 1 ? ([...tipos][0] ?? null) : null }]
+        const [unico, ...mas] = f.escritura.elementos
+        return [f.id, { tipo: 'elemento', que: !f.revierte && tipos.size === 1 ? ([...tipos][0] ?? null) : null, clave: unico && !mas.length ? unico.clave : null }]
       }
       const caso = casos.find((x) => x.id === acto.caso)
       return [f.id, { tipo: 'caso', titulo: caso?.titulo ?? 'Un Caso', pedido: caso?.pedido ?? null, cliente: caso?.cliente || null, escribio: caso?.escribio || null, respuesta: acto.texto }]
