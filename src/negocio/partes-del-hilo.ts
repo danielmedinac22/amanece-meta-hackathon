@@ -34,8 +34,11 @@ export function esCapacidadFaltante(parte: UIMessage['parts'][number]): boolean 
 /** Deshacer no cuenta: es de algo que ya pasó. Una recién llegada en el stream todavía no tiene estado y cuenta si no venció, igual que en la tarjeta. */
 function tarjetasQueEsperan(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>, ahora: number): TarjetaDeAprobacion[] {
   const tarjetas = mensajes.flatMap((m) => m.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []))
+  // Hay una por Negocio: en medio de un turno el sondeo está quieto, y una corregida todavía se ve esperando aunque ya la reemplazó otra.
+  const lectura = tarjetas.findLast((t) => t.accion === 'confirmar')
   return tarjetas.filter((t) => {
     const estado = estados[t.propuesta]
+    if (t.accion === 'confirmar' && t !== lectura) return false
     return t.accion !== 'deshacer' && (estado ? estado.estado === 'espera_al_dueno' : Date.parse(t.vence) > ahora)
   })
 }

@@ -5,7 +5,7 @@
  *   pnpm tsx scripts/probar-listas.mts
  */
 import { config } from 'dotenv'
-import { inArray } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { afirmar, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -14,7 +14,7 @@ process.env.ENVIO_SIMULADO = '1'
 const { db, esquema } = await import('../src/db')
 const { leerCifras } = await import('../src/nucleo/hoy')
 const { marcar } = await import('../src/nucleo/identidad')
-const { CUANTOS_CLIENTES, CUANTOS_POR_GRUPO, leerClientes, leerPedidos } = await import('../src/nucleo/listas')
+const { CUANTOS_CLIENTES, CUANTOS_MENSAJES_DEL_DETALLE, CUANTOS_PEDIDOS_DEL_CLIENTE, CUANTOS_POR_GRUPO, leerCliente, leerClientes, leerPedido, leerPedidos } = await import('../src/nucleo/listas')
 const { lineaDeItems, nombreDelCliente, ORDEN_DE_PEDIDOS } = await import('../src/nucleo/listas-palabras')
 
 const ZONA = 'America/Bogota'
@@ -99,6 +99,43 @@ try {
   const deOtroClientes = await leerClientes(marcar.negocio(b.id), ZONA)
   afirmar('Otro Negocio tiene sus propios Clientes', deOtroClientes.cuenta === 4 && deOtroClientes.filas.some((c) => c.total === 7_777_777 + 30_000) && !deOtroClientes.filas.some((c) => c.id === deA.paola.id), deOtroClientes.filas)
 
+  console.log('\nEl detalle de un pedido')
+  const delNegocioA = marcar.negocio(a.id)
+  const delNegocioB = marcar.negocio(b.id)
+  const pendienteDeDaniela = pendientes.filas[0]
+  const unPedido = await leerPedido(delNegocioA, ZONA, pendienteDeDaniela.id)
+  afirmar('Trae su estado, lo que compró, el total y la entrega', unPedido?.estado === 'pendiente' && unPedido.numero === pendienteDeDaniela.numero && unPedido.total === 76_000 && unPedido.ciudad === 'Pereira' && unPedido.items.length === 1 && unPedido.items[0].cantidad === 2 && unPedido.items[0].precio === 38_000 && unPedido.hace === 'hace 12 min', unPedido)
+  afirmar('Trae a su Cliente, con el teléfono aparte', unPedido?.cliente.id === deA.daniela.id && unPedido.cliente.nombre === 'Daniela Quintero' && unPedido.cliente.telefono === `+57${marca}1`, unPedido?.cliente)
+  afirmar('Sin mensajes, la conversación es null', unPedido?.conversacion === null)
+  await db.insert(esquema.mensajesCliente).values(Array.from({ length: CUANTOS_MENSAJES_DEL_DETALLE + 3 }, (_, i) => ({ negocioId: a.id, clienteId: deA.daniela.id, rol: i % 2 ? ('agente' as const) : ('cliente' as const), texto: `Mensaje ${i}`, creado: hace((30 - i) * MINUTO) })))
+  await db.insert(esquema.mensajesCliente).values({ negocioId: b.id, clienteId: deA.daniela.id, rol: 'cliente', texto: 'Mensaje intruso', creado: hace(1) })
+  await db.insert(esquema.casos).values({ negocioId: a.id, clienteId: deA.daniela.id, titulo: 'Su Caso abierto', estado: 'esperando_dueno' })
+  await db.insert(esquema.casos).values({ negocioId: b.id, clienteId: deA.daniela.id, titulo: 'Caso intruso', estado: 'esperando_dueno', creado: hace(1) })
+  const conMensajes = (await leerPedido(delNegocioA, ZONA, pendienteDeDaniela.id))?.conversacion
+  afirmar('Su conversación trae los últimos mensajes, en orden, con la cuenta de verdad', conMensajes?.cuenta === CUANTOS_MENSAJES_DEL_DETALLE + 3 && conMensajes.mensajes.length === CUANTOS_MENSAJES_DEL_DETALLE && conMensajes.mensajes.at(-1)?.texto === `Mensaje ${CUANTOS_MENSAJES_DEL_DETALLE + 2}`, conMensajes?.cuenta)
+  afirmar('Dice si un Caso de ese Cliente espera, sin colarse el de otro Negocio', conMensajes?.casoQueEspera === 'Su Caso abierto', conMensajes?.casoQueEspera)
+  afirmar('Un mensaje de otro Negocio no se cuela en la conversación', !JSON.stringify(conMensajes).includes('intruso'))
+
+  const pedidoDeB = deOtro.grupos.find((g) => g.estado === 'entregado')!.filas[0]
+  afirmar('El id de un pedido de otro Negocio da no encontrado', (await leerPedido(delNegocioA, ZONA, pedidoDeB.id)) === null)
+  afirmar('Ese mismo id sí abre en su Negocio, así que el pedido existe', (await leerPedido(delNegocioB, ZONA, pedidoDeB.id))?.total === 7_777_777)
+  const [intruso] = await db.select({ id: esquema.pedidos.id }).from(esquema.pedidos).where(eq(esquema.pedidos.ciudad, 'Intrusa'))
+  afirmar('Un pedido de otro Negocio a nombre de mi Cliente tampoco abre', (await leerPedido(delNegocioA, ZONA, intruso.id)) === null)
+  afirmar('Un pedido a nombre de un Cliente ajeno no abre ni en el suyo', (await leerPedido(delNegocioB, ZONA, intruso.id)) === null)
+  afirmar('Un id que no existe da no encontrado', (await leerPedido(delNegocioA, ZONA, '00000000-0000-4000-8000-000000000000')) === null)
+  afirmar('Un id mal escrito da no encontrado, sin error de la base', (await leerPedido(delNegocioA, ZONA, "1' or '1'='1")) === null)
+
+  console.log('\nEl detalle de un Cliente')
+  const unCliente = await leerCliente(delNegocioA, ZONA, deA.paola.id)
+  afirmar('Sus cifras son las de la tabla', unCliente?.pedidos === por('Paola Rojas').pedidos && unCliente.total === por('Paola Rojas').total && unCliente.ciudad === por('Paola Rojas').ciudad && unCliente.nombre === 'Paola Rojas', unCliente)
+  afirmar('Trae todos sus pedidos, del más reciente al más antiguo, también los no vendidos', unCliente?.cuentaDeSuyos === 3 && unCliente.suyos.map((p) => p.estado).join() === 'cancelado,novedad,entregado', unCliente?.suyos)
+  afirmar('Un Cliente sin pedidos ni mensajes abre vacío', await leerCliente(delNegocioA, ZONA, deA.santiago.id).then((c) => c?.cuentaDeSuyos === 0 && c.suyos.length === 0 && c.conversacion === null))
+  const sinNombre = clientes.filas.at(-1)!
+  afirmar('Un Cliente sin nombre no repite el teléfono', (await leerCliente(delNegocioA, ZONA, sinNombre.id))?.telefono === null)
+  afirmar('Su conversación trae lo suyo y no la de otro Negocio', await leerCliente(delNegocioA, ZONA, deA.daniela.id).then((c) => c?.conversacion?.cuenta === CUANTOS_MENSAJES_DEL_DETALLE + 3 && !JSON.stringify(c).includes('intruso')))
+  afirmar('El id de un Cliente de otro Negocio da no encontrado', (await leerCliente(delNegocioB, ZONA, deA.paola.id)) === null)
+  afirmar('Un id mal escrito de Cliente da no encontrado, sin error de la base', (await leerCliente(delNegocioA, ZONA, 'cualquier-cosa')) === null)
+
   console.log('\nMuchas filas')
   const c = await negocioNuevo('C')
   const muchos = await db
@@ -111,6 +148,8 @@ try {
   afirmar('Un grupo con más filas que el límite dice el total y trae las más recientes', entregados.cuenta === CUANTOS_POR_GRUPO + 10 && entregados.filas.length === CUANTOS_POR_GRUPO && entregados.filas[0].numero === 1, { cuenta: entregados.cuenta, filas: entregados.filas.length })
   const tablaLarga = await leerClientes(marcar.negocio(c.id), ZONA)
   afirmar('La tabla con más filas que el límite dice el total y trae las más recientes', tablaLarga.cuenta === CUANTOS_CLIENTES + 5 && tablaLarga.filas.length === CUANTOS_CLIENTES && tablaLarga.filas[0].nombre === 'Cliente 0', { cuenta: tablaLarga.cuenta, filas: tablaLarga.filas.length })
+  const clienteLargo = await leerCliente(marcar.negocio(c.id), ZONA, muchos[0].id)
+  afirmar('Un Cliente con más pedidos que el límite dice el total y trae los más recientes', clienteLargo?.cuentaDeSuyos === CUANTOS_POR_GRUPO + 10 && clienteLargo.suyos.length === CUANTOS_PEDIDOS_DEL_CLIENTE && clienteLargo.suyos[0].numero === 1, { cuenta: clienteLargo?.cuentaDeSuyos, filas: clienteLargo?.suyos.length })
   const negocioVacio = await negocioNuevo('D')
   afirmar('Un Negocio sin pedidos ni Clientes queda vacío', (await leerPedidos(marcar.negocio(negocioVacio.id), ZONA)).grupos.length === 0 && (await leerClientes(marcar.negocio(negocioVacio.id), ZONA)).filas.length === 0)
 } finally {

@@ -33,6 +33,12 @@ export function titularDe(paso: PasoDelArmado, d: DatosDelArmado): string {
   }
 }
 
+/**
+ * Con lo que `Corregir` empieza el mensaje. Sin cifras ni datos de la tarjeta: lo que el Dueño envía cuenta como escrito
+ * por él (`numerosDelDueno`), y un precio leído que viajara aquí quedaría guardado sin pasar por el botón.
+ */
+export const EMPIEZA_A_CORREGIR = 'Corrige lo que leíste: '
+
 type ParteDeHerramienta = { readonly type: string; readonly state?: string; readonly output?: unknown }
 const partes = (mensajes: readonly UIMessage[]) => mensajes.flatMap((m) => (m.role === 'assistant' ? (m.parts as readonly ParteDeHerramienta[]) : []))
 
@@ -42,7 +48,7 @@ export const estaLeyendo = (mensajes: readonly UIMessage[]) => partes(mensajes).
 /** El agente ya abrió el Negocio con su herramienta. */
 export const abrioElAgente = (mensajes: readonly UIMessage[]) => partes(mensajes).some((p) => p.type === 'tool-abrir_negocio' && p.state === 'output-available' && (p.output as { ok?: unknown } | undefined)?.ok === true)
 
-const GUARDAN = new Set(['tool-leer_enlace', 'tool-guardar_conocimiento', 'tool-guardar_productos'])
+const GUARDAN = new Set(['tool-leer_enlace', 'tool-guardar_conocimiento', 'tool-guardar_productos', 'tool-corregir_tarjeta'])
 
 /** Cuántas veces ya guardó algo: cada una cambia lo que la carta sabe, aunque el turno siga. */
 export const cuantoGuardo = (mensajes: readonly UIMessage[]) => partes(mensajes).filter((p) => GUARDAN.has(p.type) && p.state === 'output-available').length

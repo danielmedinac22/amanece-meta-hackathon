@@ -17,6 +17,7 @@ const ETIQUETAS: Record<string, string> = {
   leer_enlace: 'Leyó lo que publicaste',
   guardar_conocimiento: 'Guardó lo que sabe de tu negocio',
   guardar_productos: 'Actualizó tu catálogo',
+  corregir_tarjeta: 'Corrigió lo que leyó',
   abrir_negocio: 'Dejó listo a tu agente de clientes',
   ver_negocio: 'Revisó tu negocio',
   proponer: 'Preparó lo que pediste',
@@ -174,9 +175,10 @@ export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boo
             const conEstado = parte as { state: string; input?: unknown }
             // `proponer` sin tarjeta no preparó nada: el modelo tiene que corregir o explicar.
             const noPreparo = herramienta === 'proponer' && conEstado.state === 'output-available' && !t
+            const noCorrigio = herramienta === 'corregir_tarjeta' && conEstado.state === 'output-available' && !t
             return (
               <div key={i} className="flex flex-col gap-3">
-                <Rastro estado={conEstado.state}>{noPreparo ? 'Revisó lo que pediste' : etiquetaDelRastro(herramienta, conEstado)}</Rastro>
+                <Rastro estado={conEstado.state}>{noPreparo ? 'Revisó lo que pediste' : noCorrigio ? 'Revisó lo que leyó' : etiquetaDelRastro(herramienta, conEstado)}</Rastro>
                 {t && tarjeta(t)}
               </div>
             )

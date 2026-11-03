@@ -39,6 +39,32 @@ function FilaConversacion({ c, elegida }: { c: FilaDeConversacion; elegida: bool
   )
 }
 
+/** Lo que se dijeron, del más viejo al más nuevo. */
+export function Mensajes({ d }: { d: DetalleDeConversacion }) {
+  return (
+    <div className="mb-auto space-y-2">
+      {d.cuenta > d.mensajes.length && (
+        <p className="pb-2 text-center text-xs text-muted-foreground">
+          Ves los últimos {cifra(d.mensajes.length)} de {cifra(d.cuenta)}.
+        </p>
+      )}
+      {d.mensajes.map((m) => (
+        <div key={m.id} className={cn('flex', m.de === 'agente' && 'justify-end')}>
+          <p className={cn('max-w-[80%] rounded-xl px-3 py-2 text-[13px] wrap-anywhere whitespace-pre-wrap', m.de === 'agente' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>{m.texto}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function CasoQueEspera({ titulo, className }: { titulo: string; className?: string }) {
+  return (
+    <IrASeccion href="/panel/casos" title={titulo} className={buttonVariants({ variant: 'outline', size: 'sm', className })}>
+      <Warning weight="fill" className="size-3.5 text-ojo" /> Un Caso espera tu decisión
+    </IrASeccion>
+  )
+}
+
 function Detalle({ d }: { d: DetalleDeConversacion }) {
   return (
     <>
@@ -50,26 +76,11 @@ function Detalle({ d }: { d: DetalleDeConversacion }) {
       </div>
       {/* `flex-col-reverse` abre abajo, en lo último que se dijo, sin mover el scroll a mano; `mb-auto` deja arriba una conversación corta. */}
       <div key={d.cliente} className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto p-4">
-        <div className="mb-auto space-y-2">
-          {d.cuenta > d.mensajes.length && (
-            <p className="pb-2 text-center text-xs text-muted-foreground">
-              Ves los últimos {cifra(d.mensajes.length)} de {cifra(d.cuenta)}.
-            </p>
-          )}
-          {d.mensajes.map((m) => (
-            <div key={m.id} className={cn('flex', m.de === 'agente' && 'justify-end')}>
-              <p className={cn('max-w-[80%] rounded-xl px-3 py-2 text-[13px] wrap-anywhere whitespace-pre-wrap', m.de === 'agente' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>{m.texto}</p>
-            </div>
-          ))}
-        </div>
+        <Mensajes d={d} />
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t border-border p-3 text-xs text-muted-foreground">
         <span>Tu agente está atendiendo</span>
-        {d.casoQueEspera && (
-          <IrASeccion href="/panel/casos" title={d.casoQueEspera} className={buttonVariants({ variant: 'outline', size: 'sm', className: 'ml-auto' })}>
-            <Warning weight="fill" className="size-3.5 text-ojo" /> Un Caso espera tu decisión
-          </IrASeccion>
-        )}
+        {d.casoQueEspera && <CasoQueEspera titulo={d.casoQueEspera} className="ml-auto" />}
       </div>
     </>
   )

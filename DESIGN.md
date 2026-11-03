@@ -184,6 +184,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 - **En Conversaciones**, la lista son los Clientes que tienen mensajes, los 100 más recientes. El detalle trae los últimos 200 y abre en lo último. El pie dice quién atiende: hoy siempre `Tu agente está atendiendo`, porque el Agente de clientes no se calla con un Caso abierto, y un enlace si hay un Caso sin resolver.
 - **En Casos**, `Espera tu decisión` lleva la misma tarjeta del Hilo, leída con `estadosDeTarjetas`. Un Caso solo se cierra enviando: descartar o que venza lo deja esperando, con su constancia y qué sigue. En `Resueltos`, una respuesta aprobada que no salió lo dice.
 - **En Clientes**, `Pedidos` y `Total` usan `CUENTA_COMO_VENTA`. `Ciudad` es la del último pedido que dijo una, y `Último` lo más reciente entre escribir y pedir. Un Cliente sin nombre sale con su teléfono.
+- **El detalle de un pedido o de un Cliente** tiene su ruta (`/panel/pedidos/[id]`, `/panel/clientes/[id]`) y sigue en su Sección: la lista va al lado, angosta y con su fila marcada, y en teléfono una pantalla a la vez. La flecha también va en PC, porque sin elegir nada la lista vuelve a ocupar el lienzo. Su conversación trae los últimos 20 mensajes y es la del Cliente, no la del pedido, porque nada liga un mensaje con un pedido. Un id que no es del Negocio dice que no está.
 
 ## Hilo: Nota
 
