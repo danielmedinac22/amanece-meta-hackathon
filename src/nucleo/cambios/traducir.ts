@@ -38,6 +38,8 @@ export type Traduccion = {
   readonly lineas: readonly string[]
   /** Lo que el código le advierte al Dueño arriba de las líneas, como que algo llega a los Clientes sin Publicar. */
   readonly advertencias: readonly string[]
+  /** De una reversión: lo que la tarjeta promete que solo sale de la vista previa. */
+  readonly soloVistaPrevia: readonly Clave[]
   /** Lo que gastó el redactor; cero sin una Sección o un Indicador. */
   readonly gasto: Gasto
 }
@@ -62,6 +64,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
   const actos: Acto[] = []
   const lineas: string[] = []
   const advertencias: string[] = []
+  const soloVistaPrevia: Clave[] = []
   const problemas: Problema[] = []
   let revierte: PropuestaId | null = null
   let gasto = SIN_GASTO
@@ -122,6 +125,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
         for (const c of r.cambios) tocar(c)
         lineas.push(...r.lineas)
         advertencias.push(...r.advertencias)
+        soloVistaPrevia.push(...r.soloVistaPrevia)
         revierte = q.propuesta
         break
       }
@@ -155,6 +159,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
     alcance: actos.length || cambios.some((c) => alcanceDeLaClave(c.clave) === 'clientes') ? 'clientes' : 'panel',
     gasto,
     advertencias,
+    soloVistaPrevia,
     lineas: revierte ? lineas : [...cambios.map((c) => describirCambio(estado.vigente(c.clave)?.elemento ?? null, c.despues, conPropuesta(estado, escritura))), ...lineas],
   }
 }
@@ -162,7 +167,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
 const SIN_PUBLICAR_DE_UNA = 'Esto les llega a tus Clientes de una, sin Publicar.'
 
 /** Cada clave vuelve a lo de antes si `comoSeRevierte` lo deja. La línea de lo que frena dice lo que notan los Clientes, no lo de la vista previa. */
-async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[]; readonly advertencias: readonly string[] } | SinTraduccion> {
+async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promise<{ readonly cambios: readonly CambioDeElemento[]; readonly lineas: readonly string[]; readonly advertencias: readonly string[]; readonly soloVistaPrevia: readonly Clave[] } | SinTraduccion> {
   const [p] = await db
     .select({ estado: esquema.propuestas.estado, actos: esquema.propuestas.actos, revierte: esquema.propuestas.revierte, escritura: esquema.propuestas.escritura, version: esquema.propuestas.version })
     .from(esquema.propuestas)
@@ -182,6 +187,7 @@ async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promis
   const cambios: CambioDeElemento[] = []
   const lineas: string[] = []
   const advertencias: string[] = []
+  const soloVistaPrevia: Clave[] = []
   const atendiendo = estado.identidad.modo === 'atendiendo'
   for (const { clave } of p.escritura.elementos) {
     const h = historia.get(clave)
@@ -194,12 +200,13 @@ async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promis
     if (!frena && !h.antes && !vigente) continue
     cambios.push({ clave, base: vigente?.version ?? 'nueva', despues: h.antes })
     lineas.unshift(`Deshacer: ${describirCambio(frena ? h.fila : (vigente?.elemento ?? null), h.antes, estado)}`)
+    if (!frena) soloVistaPrevia.push(clave)
     if (!atendiendo || h.como.tipo !== 'frena') continue
     if (!advertencias.includes(SIN_PUBLICAR_DE_UNA)) advertencias.push(SIN_PUBLICAR_DE_UNA)
     if (h.como.pierde) advertencias.push(`También se va de tu vista previa lo que tenías sin publicar sobre esto: ${describirCambio(h.fila, h.como.pierde.hoy, estado)}`)
   }
   if (!cambios.length) return no('Todo lo de esa propuesta ya lo cambió otra después')
-  return { cambios, lineas, advertencias }
+  return { cambios, lineas, advertencias, soloVistaPrevia }
 }
 
 /** Lo de hoy: un Caso de este Negocio, sin resolver, con Cliente y dentro de la ventana de 24 horas. */

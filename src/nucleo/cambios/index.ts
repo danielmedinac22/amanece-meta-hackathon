@@ -275,6 +275,7 @@ type Traducida = {
   readonly estado: EstadoAplicado
   /** Las del ensayo: el código las escribe y van arriba de la tarjeta y primero en el resumen. */
   readonly advertencias: readonly string[]
+  readonly soloVistaPrevia: readonly Clave[]
 }
 
 type SinPropuesta = Extract<ResultadoDeProponer, { desenlace: 'corregir' | 'capacidad_faltante' }>
@@ -288,7 +289,7 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Moto
     traducida.escritura.elementos.length && pedido.origen === 'hilo'
       ? await vistaPreviaDe(traducida.estado, traducida.escritura, traducida.lineas, motores)
       : { guardada: { lineas: traducida.lineas, advertencias: [], conversaciones: null }, gasto: SIN_GASTO }
-  const vistaPrevia: VistaPrevia = { ...ensayo.guardada, advertencias: [...traducida.advertencias, ...(ensayo.guardada.advertencias ?? [])] }
+  const vistaPrevia: VistaPrevia = { ...ensayo.guardada, advertencias: [...traducida.advertencias, ...(ensayo.guardada.advertencias ?? [])], soloVistaPrevia: traducida.soloVistaPrevia }
   const t: Traducida = { ...traducida, lineas: vistaPrevia.lineas, advertencias: vistaPrevia.advertencias ?? [], gasto: sumarGasto(traducida.gasto, ensayo.gasto) }
   const palabrasDelDueno = pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno
   const { valores, tarjeta } = filaNueva({ negocio: quien.negocio, palabrasDelDueno, pedidoPor: quien.pedidoPor, origen: pedido.origen, escritura: t.escritura, actos: t.actos, revierte: t.revierte, version: t.version, vistaPrevia })
@@ -376,6 +377,8 @@ export function problemaEnPalabras(p: Problema): string {
       return 'Eso solo se hace mientras el Negocio se arma.'
     case 'rompe_lo_publicado':
       return 'Tus Clientes todavía tienen algo que depende de esto. Toca Publicar primero y vuelve a revertirlo.'
+    case 'ya_se_publico':
+      return 'Esto se publicó mientras la tarjeta esperaba. Revertirlo ahora les llega a tus Clientes de una. Pídeme revertirlo otra vez y te muestro lo que cambia.'
   }
 }
 
@@ -512,7 +515,7 @@ async function loRevertidoPor(tx: Transaccion, fila: FilaDePropuesta): Promise<L
   if (!fila.revierte) return null
   const [revertida] = await tx.select({ version: esquema.propuestas.version }).from(esquema.propuestas).where(eq(esquema.propuestas.id, fila.revierte))
   if (revertida?.version == null) throw new Error(`La propuesta ${fila.revierte} que se revierte no dejó versión`)
-  return { propuesta: marcar.propuesta(fila.revierte), version: revertida.version as VersionDelNegocio }
+  return { version: revertida.version as VersionDelNegocio, soloVistaPrevia: fila.vistaPrevia.soloVistaPrevia ?? [] }
 }
 
 const QUIEN_ESCRIBIO = { propuesta: 'Otro Dueño', entrevista: 'La entrevista', tablas_viejas: 'La migración' } as const

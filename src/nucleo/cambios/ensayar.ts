@@ -85,6 +85,8 @@ export type VistaPreviaGuardada = {
   readonly advertencias?: readonly string[]
   readonly conversaciones?: VistaPreviaDeConversaciones | null
   readonly panel?: readonly PanelEnsayado[] | null
+  /** De una reversión: las claves que al proponer solo salían de la vista previa. Las tarjetas de antes del corte no lo traen. */
+  readonly soloVistaPrevia?: readonly Clave[]
 }
 
 export type GastoDelEnsayo = { readonly llamadas: number; readonly usd: number; readonly ms: number }

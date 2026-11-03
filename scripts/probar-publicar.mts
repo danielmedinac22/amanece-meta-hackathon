@@ -447,9 +447,26 @@ const CASOS: Record<string, () => Promise<void>> = {
     const r = await aplicar(ana, poner(dato('horario', 'De 8 a 5')))
     const carta = await pedir(ana, { tipo: 'revertir', propuesta: r })
     if (carta.desenlace !== 'espera_al_dueno') throw new Error(carta.resumen)
+    afirmar('otro publicó antes del clic: la tarjeta no avisó nada', !carta.tarjeta.advertencias.some((a) => a.includes('de una')), carta.tarjeta)
     await publicarTodo(beto)
     const boton = await aprobar(ana, carta.tarjeta.propuesta, carta.tarjeta.huella)
-    afirmar('otro publicó antes del clic: se aplica y el desenlace dice que llegó a los Clientes', boton.tipo === 'aplicado' && /Clientes/.test(boton.resumen) && (await leerPublicado(N)).vigente(HORARIO) === null, boton)
+    afirmar('otro publicó antes del clic: lo que no avisó no sale, y los Clientes lo siguen teniendo', boton.tipo === 'ya_no_cabe' && boton.problemas.some((p) => p.tipo === 'ya_se_publico') && valor(await leerPublicado(N), HORARIO) === 'De 8 a 5', boton)
+    const [sigue] = await db.select({ estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.id, carta.tarjeta.propuesta))
+    afirmar('otro publicó antes del clic: la tarjeta sigue esperando', sigue?.estado === 'espera_al_dueno', sigue)
+    const otra = await pedir(ana, { tipo: 'revertir', propuesta: r })
+    if (otra.desenlace !== 'espera_al_dueno') throw new Error(otra.resumen)
+    afirmar('pedirlo otra vez: la tarjeta nueva avisa que llega de una', otra.tarjeta.advertencias.some((a) => a.includes('de una')), otra.tarjeta)
+    const segundo = await aprobar(ana, otra.tarjeta.propuesta, otra.tarjeta.huella)
+    afirmar('pedirlo otra vez: ahora sí les llega a los Clientes', segundo.tipo === 'aplicado' && (await leerPublicado(N)).vigente(HORARIO) === null, segundo)
+
+    const ciudad = el.comoClave('dato:ciudad')
+    const deAntes = await aplicar(ana, poner(dato('ciudad', 'Pereira'), ciudad))
+    const vieja = await pedir(ana, { tipo: 'revertir', propuesta: deAntes })
+    if (vieja.desenlace !== 'espera_al_dueno') throw new Error(vieja.resumen)
+    await db.update(esquema.propuestas).set({ vistaPrevia: { lineas: vieja.vistaPrevia.lineas } }).where(eq(esquema.propuestas.id, vieja.tarjeta.propuesta))
+    await publicarTodo(ana)
+    const delCorte = await aprobar(ana, vieja.tarjeta.propuesta, vieja.tarjeta.huella)
+    afirmar('una tarjeta de antes del corte no trae el campo: no se le pide nada', delCorte.tipo === 'aplicado' && valor(await leerPublicado(N), ciudad) === 'Manizales', delCorte)
 
     const base = await aplicar(ana, poner(dato('pagos', 'Nequi'), PAGOS))
     await publicarTodo(ana)
@@ -480,7 +497,10 @@ const CASOS: Record<string, () => Promise<void>> = {
     if (carta2.desenlace !== 'espera_al_dueno') throw new Error(carta2.resumen)
     const vista2 = (await pendienteDe(N)).huella
     const [pub2, rev2] = await Promise.all([publicarComo(ana, vista2), aprobar(ana, carta2.tarjeta.propuesta, carta2.tarjeta.huella)])
-    afirmar('a la vez, sin publicar: en cualquier orden, los Clientes no se quedan con lo revertido', rev2.tipo === 'aplicado' && (await leerPublicado(N)).vigente(HORARIO) === null, { pub2, rev2 })
+    const horarioFinal = valor(await leerPublicado(N), HORARIO)
+    const primeroRevertir = rev2.tipo === 'aplicado' && horarioFinal === null
+    const primeroPublicar = rev2.tipo === 'ya_no_cabe' && rev2.problemas.some((p) => p.tipo === 'ya_se_publico') && pub2.tipo === 'publicado' && horarioFinal === 'De 9 a 6'
+    afirmar('a la vez, sin publicar: si revierte primero no les llega; si publica primero, la tarjeta no sale de una', primeroRevertir || primeroPublicar, { pub2, rev2, horarioFinal })
   },
 
   async botonDeshacer() {

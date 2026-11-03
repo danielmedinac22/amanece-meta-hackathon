@@ -4,7 +4,7 @@
 import { and, eq, inArray, or } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
-import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId, type PropuestaId } from '../identidad'
+import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId } from '../identidad'
 import { comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
 import {
   elementoDe,
@@ -40,8 +40,8 @@ export type ResultadoDeEscribir =
   /** No cabe en el estado de ahora (`validarEscritura`): quien llama hace ROLLBACK. */
   | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }
 
-/** Lo revertido: la propuesta y la versión que dejó su escritura. */
-export type LoRevertido = { readonly propuesta: PropuestaId; readonly version: VersionDelNegocio }
+/** Lo revertido: la versión que dejó su escritura y las claves que su tarjeta prometió que solo salían de la vista previa. */
+export type LoRevertido = { readonly version: VersionDelNegocio; readonly soloVistaPrevia: readonly Clave[] }
 
 const BIT_DE_LA_REVERSION = { frena: false, solo_vista_previa: true, no_se_puede: true } as const satisfies Record<ComoSeRevierte['tipo'], boolean>
 
@@ -96,6 +96,9 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
       }),
     }
   }
+
+  // El clic se dio para otra acción: lo que iba a salir de la vista previa ahora les llegaría a los Clientes.
+  if (revierte?.soloVistaPrevia.some((clave) => comoDe(clave)?.tipo === 'frena')) return { tipo: 'invalida', problemas: [{ tipo: 'ya_se_publico' }] }
 
   const v = validarEscritura(estado, revierte ? queCambiaLoAplicado(estado, escritura) : escritura)
   if (v.tipo === 'invalida') return v
