@@ -212,8 +212,6 @@ function estadoDe(f: { readonly estado: EstadoGuardado; readonly vence: Date }, 
 /** Escrito a mano y no con `${columna}`: dentro de la subconsulta, una columna sin calificar sería la de `r`. */
 const REVERTIDA = sql<boolean>`exists (select 1 from propuestas r where r.revierte = "propuestas"."id" and r.estado = 'aplicada')`
 
-const OTRA_REVERSION_VIVA = sql<boolean>`exists (select 1 from propuestas r where r.revierte = "propuestas"."id" and r.estado = 'espera_al_dueno')`
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HUELLA = /^[0-9a-f]{64}$/
 const SIN_GASTO: Gasto = { llamadas: 0, usd: 0, ms: 0 }
@@ -662,21 +660,6 @@ async function avisarEnLosHilos(negocio: NegocioId, f: FilaDePropuesta, d: Desen
 
 // ══ Deshacer, descartar e historial ═══════════════════════════════════════════════════════════════════════
 
-const ESPERAS_A_LA_OTRA_REVERSION = 40
-const PAUSA_ENTRE_ESPERAS_MS = 250
-
-/** El clic que perdió la carrera espera a que el que ganó termine: mientras haya otra reversión viva, todavía puede quedar. */
-async function terminoDeshecha(negocio: NegocioId, propuesta: string): Promise<boolean> {
-  for (let i = 0; i < ESPERAS_A_LA_OTRA_REVERSION; i++) {
-    // Un solo SELECT: en dos, el otro clic puede hacer COMMIT en medio y no verse ni viva ni aplicada.
-    const [f] = await db.select({ revertida: REVERTIDA, viva: OTRA_REVERSION_VIVA }).from(esquema.propuestas).where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, negocio)))
-    if (f?.revertida) return true
-    if (!f?.viva) return false
-    await new Promise((r) => setTimeout(r, PAUSA_ENTRE_ESPERAS_MS))
-  }
-  return false
-}
-
 /**
  * El botón de la tarjeta de algo del Panel ya aplicado. Solo suelta lo que el modelo no pudo pedir por su cuenta: exige
  * la huella de esa tarjeta, que esté aplicada y que todo sea de alcance Panel. No vence: la apaga que ya esté revertida.
@@ -689,6 +672,8 @@ export async function deshacer(ctx: ContextoDelDueno, propuesta: string, huella:
     .where(and(eq(esquema.propuestas.id, propuesta), eq(esquema.propuestas.negocioId, ctx.negocio), eq(esquema.propuestas.huella, huella), eq(esquema.propuestas.estado, 'aplicada')))
   if (!f || !f.escritura.elementos.length || !f.escritura.elementos.every((c) => alcanceDeLaClave(c.clave) === 'panel')) return { tipo: 'no_existe' }
   const YA = { tipo: 'deshecho', resumen: 'Ya estaba deshecho.' } as const
+  // Quien pierde la carrera y todavía no ve revertida recibe el `conflicto`: el botón sigue y el siguiente clic dice `deshecho`.
+  const yaDeshecha = async () => (await db.select({ revertida: REVERTIDA }).from(esquema.propuestas).where(eq(esquema.propuestas.id, propuesta)))[0]?.revertida === true
   const r = await proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, { origen: 'panel', palabrasDelDueno: 'Deshacer', quiere: [{ tipo: 'revertir', propuesta: marcar.propuesta(propuesta) }] })
   switch (r.desenlace) {
     case 'aplicado':
@@ -696,9 +681,9 @@ export async function deshacer(ctx: ContextoDelDueno, propuesta: string, huella:
     case 'espera_al_dueno':
       // La política no pudo: otro clic reclamó primero o le ganó el índice de una sola reversión.
       await descartarSinBoton(r.propuesta)
-      return (await terminoDeshecha(ctx.negocio, propuesta)) ? YA : { tipo: 'conflicto', resumen: 'No pude deshacerlo. Vuelve a tocar el botón.' }
+      return (await yaDeshecha()) ? YA : { tipo: 'conflicto', resumen: 'No pude deshacerlo. Vuelve a tocar el botón.' }
     case 'corregir': {
-      if (await terminoDeshecha(ctx.negocio, propuesta)) return YA
+      if (await yaDeshecha()) return YA
       return { tipo: r.problemas.some((p) => p.tipo === 'rompe_lo_publicado') ? 'ya_no_cabe' : 'conflicto', resumen: r.problemas.map(problemaEnPalabras).join(' ') }
     }
     case 'capacidad_faltante':
