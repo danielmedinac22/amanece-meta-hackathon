@@ -1,9 +1,10 @@
-import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type ToolSet, type UIMessage } from 'ai'
+import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, generateId, isStepCount, streamText, toUIMessageStream, type LanguageModel, type ToolSet, type UIMessage } from 'ai'
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
 import { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
+import { adjuntosDelMensaje, PARTE_DE_ARCHIVO, type Adjunto } from '@/nucleo/archivos'
 import { comoPropuesta, SIN_SABER, type EnvioDeRespuesta } from '@/nucleo/caso-palabras'
 import { historial, type EstadoDePropuesta, type TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { enviosDeCasos } from '@/nucleo/casos'
@@ -15,17 +16,53 @@ import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 /** Cuántos mensajes del Hilo ve el modelo en cada turno. */
 const MENSAJES_QUE_VE_EL_MODELO = 40
 
-/** Del mensaje que manda el navegador solo se toma el texto: las demás partes no se le creen. */
-export function mensajeDelDueno(crudo: unknown): UIMessage | null {
+const textoDe = (crudo: unknown) => {
   const m = crudo as { parts?: { type?: string; text?: unknown }[]; content?: unknown } | null
-  const texto =
-    typeof m?.content === 'string'
-      ? m.content
-      : (m?.parts ?? [])
-          .filter((p) => p?.type === 'text' && typeof p.text === 'string')
-          .map((p) => p.text as string)
-          .join('\n')
-  return mensajeDelDuenoEnTexto(texto)
+  return typeof m?.content === 'string'
+    ? m.content
+    : (m?.parts ?? [])
+        .filter((p) => p?.type === 'text' && typeof p.text === 'string')
+        .map((p) => p.text as string)
+        .join('\n')
+}
+
+/** Los ids de archivo que dice traer el mensaje del navegador. Es lo único que se le cree de esas partes. */
+export function idsDeArchivos(crudo: unknown): readonly unknown[] {
+  const m = crudo as { parts?: { type?: string; data?: { id?: unknown } }[] } | null
+  return (m?.parts ?? []).filter((p) => p?.type === PARTE_DE_ARCHIVO).map((p) => p.data?.id)
+}
+
+/** Del mensaje que manda el navegador solo se toma el texto: las demás partes no se le creen. Los `adjuntos` los armó el servidor desde sus filas, y con ellos el texto puede faltar. */
+export function mensajeDelDueno(crudo: unknown, adjuntos: readonly Adjunto[] = []): UIMessage | null {
+  const mensaje = mensajeDelDuenoEnTexto(textoDe(crudo))
+  const partes = adjuntos.map((data) => ({ type: PARTE_DE_ARCHIVO, data }) as const)
+  if (mensaje) return { ...mensaje, parts: [...mensaje.parts, ...partes] }
+  return partes.length ? { id: generateId(), role: 'user', parts: partes } : null
+}
+
+/**
+ * Un paso que no le pregunta nada al modelo: llama una herramienta y ya. Muse Spark solo acepta `tool_choice: auto` (medido: 400
+ * con cualquier otro), y que un archivo adjunto se lea no se le deja a su criterio, porque sin leerlo diría cosas que no vio.
+ */
+function pasoQueLlama(toolName: string, input: object): Exclude<LanguageModel, string> {
+  const sinTokens = { inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 0, text: 0, reasoning: 0 } }
+  return {
+    specificationVersion: 'v4',
+    provider: 'amanece',
+    modelId: 'paso-fijo',
+    supportedUrls: {},
+    doGenerate: () => Promise.reject(new Error('pasoQueLlama solo corre en streamText')),
+    doStream: async () => ({
+      stream: new ReadableStream({
+        start(c) {
+          c.enqueue({ type: 'stream-start', warnings: [] })
+          c.enqueue({ type: 'tool-call', toolCallId: generateId(), toolName, input: JSON.stringify(input) })
+          c.enqueue({ type: 'finish', finishReason: { unified: 'tool-calls', raw: undefined }, usage: sinTokens })
+          c.close()
+        },
+      }),
+    }),
+  }
 }
 
 /** El Hilo como lo ve el modelo: cada salida de herramienta pasa por el `toModelOutput` de su definición, también la de otro modo. */
@@ -55,6 +92,9 @@ export async function responderEnElHilo({
   await guardarEnElHilo(negocio.id, dueno.id, 'dueno', mensaje)
   const historial = await leerHilo(dueno.id, MENSAJES_QUE_VE_EL_MODELO)
 
+  const adjuntos = adjuntosDelMensaje(mensaje)
+  const pregunta = mensaje.parts.flatMap((p) => (p.type === 'text' ? [p.text] : [])).join(' ').trim().slice(0, 300)
+
   const inicio = Date.now()
   const resultado = streamText({
     model: modelo,
@@ -62,6 +102,10 @@ export async function responderEnElHilo({
     messages: await mensajesParaElModelo(historial, agente),
     tools: agente.tools,
     stopWhen: isStepCount(8),
+    prepareStep: ({ stepNumber, steps }) => {
+      if (stepNumber === 0 && adjuntos.length) return { model: pasoQueLlama('leer_archivo', { archivos: adjuntos.map((a) => a.id), ...(pregunta ? { pregunta } : {}) }) }
+      return steps.some((s) => s.toolCalls.some((c) => c.toolName === 'leer_archivo')) ? { activeTools: agente.soloLeen } : {}
+    },
     onEnd: async ({ totalUsage }) => {
       await registrarTurno('dueno', negocio.id, totalUsage, Date.now() - inicio).catch((e) => console.warn('No se pudo registrar el turno del Agente del dueño', e))
     },

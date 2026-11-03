@@ -37,12 +37,14 @@ type ParteDeHerramienta = { readonly type: string; readonly state?: string; read
 const partes = (mensajes: readonly UIMessage[]) => mensajes.flatMap((m) => (m.role === 'assistant' ? (m.parts as readonly ParteDeHerramienta[]) : []))
 
 /** El agente tiene un enlace en las manos: la herramienta arrancó y todavía no devuelve. */
-export const estaLeyendo = (mensajes: readonly UIMessage[]) => partes(mensajes).some((p) => p.type === 'tool-leer_enlace' && !!p.state?.startsWith('input'))
+const LEEN = new Set(['tool-leer_enlace', 'tool-leer_archivo'])
+
+export const estaLeyendo = (mensajes: readonly UIMessage[]) => partes(mensajes).some((p) => LEEN.has(p.type) && !!p.state?.startsWith('input'))
 
 /** El agente ya abrió el Negocio con su herramienta. */
 export const abrioElAgente = (mensajes: readonly UIMessage[]) => partes(mensajes).some((p) => p.type === 'tool-abrir_negocio' && p.state === 'output-available' && (p.output as { ok?: unknown } | undefined)?.ok === true)
 
-const GUARDAN = new Set(['tool-leer_enlace', 'tool-guardar_conocimiento', 'tool-guardar_productos'])
+const GUARDAN = new Set([...LEEN, 'tool-guardar_conocimiento', 'tool-guardar_productos'])
 
 /** Cuántas veces ya guardó algo: cada una cambia lo que la carta sabe, aunque el turno siga. */
 export const cuantoGuardo = (mensajes: readonly UIMessage[]) => partes(mensajes).filter((p) => GUARDAN.has(p.type) && p.state === 'output-available').length

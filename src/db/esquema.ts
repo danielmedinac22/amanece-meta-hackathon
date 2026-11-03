@@ -1,9 +1,17 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
+import { boolean, check, customType, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { Escritura } from '../nucleo/estado'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
 import type { MotivoDeFaltante } from '../nucleo/capacidades'
+import type { LoExtraido } from '../nucleo/cambios/lectura'
+
+/** Se manda en hexadecimal; el driver lo devuelve como `Buffer`. */
+const bytea = customType<{ data: Uint8Array; driverData: string | Uint8Array }>({
+  dataType: () => 'bytea',
+  toDriver: (v) => `\\x${Buffer.from(v).toString('hex')}`,
+  fromDriver: (v) => (typeof v === 'string' ? new Uint8Array(Buffer.from(v.slice(2), 'hex')) : new Uint8Array(v)),
+})
 
 const id = () => uuid('id').primaryKey().defaultRandom()
 const creado = () => timestamp('creado', { withTimezone: true }).notNull().defaultNow()
@@ -268,6 +276,39 @@ export const mensajesDueno = pgTable(
     creado: creado(),
   },
   (t) => [index('mensajes_dueno_dueno').on(t.duenoId, t.creado)],
+)
+
+/**
+ * Lo que el Dueño adjunta en el Hilo. Tabla aparte porque el sondeo lee `mensajes_dueno` entero cada pocos segundos. Solo la
+ * toca `src/negocio/archivos.ts`, para que pasar los bytes a otro almacén cambie un archivo.
+ */
+export const archivosDueno = pgTable(
+  'archivos_dueno',
+  {
+    id: id(),
+    negocioId: negocioId(),
+    duenoId: uuid('dueno_id')
+      .notNull()
+      .references(() => duenos.id, { onDelete: 'cascade' }),
+    tipo: text('tipo', { enum: ['image/jpeg', 'image/png', 'application/pdf'] }).notNull(),
+    nombre: text('nombre').notNull(),
+    paginas: integer('paginas'),
+    paginasDelOriginal: integer('paginas_del_original'),
+    tamano: integer('tamano').notNull(),
+    bytes: bytea('bytes').notNull(),
+    /** Sin enviar en un mensaje, se borra a las 24 horas. */
+    enviado: timestamp('enviado', { withTimezone: true }),
+    lecturas: integer('lecturas').notNull().default(0),
+    ultimaLectura: timestamp('ultima_lectura', { withTimezone: true }),
+    /** Lo último que el lector sacó: cargarlo a una tarjeta después no vuelve a pagar. */
+    extraido: jsonb('extraido').$type<LoExtraido>(),
+    creado: creado(),
+  },
+  (t) => [
+    index('archivos_dueno_negocio').on(t.negocioId, t.creado),
+    check('archivos_dueno_peso', sql`octet_length(${t.bytes}) <= 4000000`),
+    check('archivos_dueno_paginas', sql`${t.paginas} is null or ${t.paginas} <= 20`),
+  ],
 )
 
 /** El `CHECK` de `capacidades_faltantes.tipo`. `anterior`: una fila de antes de 0004 que no se pudo leer. */

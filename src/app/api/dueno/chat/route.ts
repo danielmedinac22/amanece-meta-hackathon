@@ -1,5 +1,6 @@
 import { altaDeDueno } from '@/negocio/alta'
-import { leerHiloConTarjetas, mensajeDelDueno, responderEnElHilo } from '@/negocio/dueno-chat'
+import { adjuntosParaElMensaje } from '@/negocio/archivos'
+import { idsDeArchivos, leerHiloConTarjetas, mensajeDelDueno, responderEnElHilo } from '@/negocio/dueno-chat'
 import { contextoDe, duenoActual } from '@/negocio/sesion'
 
 // Un turno puede generar y probar código varias veces.
@@ -31,7 +32,9 @@ export async function POST(req: Request) {
 
   const cuerpo = (await req.json().catch(() => null)) as { message?: unknown; messages?: unknown[] } | null
   const ultimo = cuerpo?.message ?? cuerpo?.messages?.at(-1)
-  const mensaje = mensajeDelDueno(ultimo)
+  const adjuntos = await adjuntosParaElMensaje(sesion.ctx, idsDeArchivos(ultimo))
+  if (!adjuntos) return Response.json({ error: 'Ese archivo ya no está. Vuelve a adjuntarlo.' }, { status: 400 })
+  const mensaje = mensajeDelDueno(ultimo, adjuntos)
   if (!mensaje) return Response.json({ error: 'Escribe un mensaje' }, { status: 400 })
 
   return responderEnElHilo({ ...sesion, mensaje })
