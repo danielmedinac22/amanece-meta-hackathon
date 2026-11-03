@@ -195,7 +195,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 
 | Caso | La tarjeta muestra | Acciones | Al resolver |
 |---|---|---|---|
-| Caso | Lo que escribió el Cliente, la respuesta en `--muted` y la regla que aplica | `Enviar`, `Descartar` | `Enviada a [Cliente]`, `Descartada` |
+| Caso | Lo que escribió el Cliente, la respuesta en `--muted`, `Por tu lado` y la regla que aplica; lo que el Caso no guardó no se muestra | `Enviar`, `Descartar` | `Enviada a [Cliente]` solo si WhatsApp la tomó; si no, lo que pasó, con el ícono y el color `--ojo`. `Descartada` |
 | Indicador o Sección | El resultado con datos reales, ya en la vista previa | `Deshacer` | `Deshecha`, `Publicada` |
 | Regla o conocimiento | La regla y una conversación de prueba | `Aplicar`, `Descartar` | `Aplicada`, `Publicada`, `Descartada` |
 | Lo leído de una página | Lo encontrado | `Están bien y no falta ninguno`, `Corregir` | `Confirmada` |

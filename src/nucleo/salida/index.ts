@@ -17,6 +17,7 @@ import {
 import { enviarPorKapso, numeroListo, type EnvioPorKapso } from './kapso'
 
 export type { AlCliente, Destinatario, IntencionDeEnvio, IntencionEnsayada, MotivoDeSilencio } from './compuerta'
+export { fueRechazado } from './kapso'
 
 /** Un aviso no lleva texto libre: ni el modelo ni el Dueño escriben uno. */
 export type AvisoDelNucleo =
@@ -203,7 +204,7 @@ async function intentarReclamo(i: IntencionDeEnvio, hechos: HechosDeEnvio, telef
 }
 
 /** El error de una fila `por_enviar` que otro intento reclamó y todavía está enviando. */
-export const EN_CURSO = 'en curso'
+const EN_CURSO = 'en curso'
 
 function resultadoGuardado(f: {
   readonly estado: 'por_enviar' | 'enviado' | 'simulado' | 'no_salio'

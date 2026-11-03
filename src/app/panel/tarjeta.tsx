@@ -5,7 +5,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useContext, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import type { AsuntoDeTarjeta, EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { loQueSeSabe, noSalioEnPalabras, porTuRegla, SIN_SABER, type EnvioDeRespuesta } from '@/nucleo/caso-palabras'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Elemento } from '@/nucleo/estado/elementos'
 import { ResultadoDelIndicador } from './pieza'
@@ -38,23 +39,30 @@ export function etiquetaDe(tarjeta: TarjetaDeAprobacion, estado: EstadoDeTarjeta
   return etiquetas?.[cual] ?? 'Un cambio en tu negocio'
 }
 
-type Desenlace = { readonly texto: string; readonly bien: boolean }
+type Desenlace = { readonly texto: string; readonly tono: 'bien' | 'nada' | 'ojo' }
+
+function envioDeLaTarjeta(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): EnvioDeRespuesta | null {
+  if (accion !== 'enviar') return null
+  const guardado = estado?.estado === 'aplicada' && estado.asunto?.tipo === 'caso' ? estado.asunto.envio : null
+  const delClic = r?.tipo === 'aplicado' ? r.envio : null
+  const aprobada = estado?.estado === 'aplicada' || r?.tipo === 'aplicado'
+  return loQueSeSabe(delClic, guardado) ?? (aprobada ? SIN_SABER : null)
+}
 
 /** Lo que dice la tarjeta cuando ya no espera: primero lo que acaba de pasar con este clic, después lo guardado. */
 function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): Desenlace {
   const { hecha, vencio } = ACCIONES[accion]
   const cliente = estado?.asunto?.tipo === 'caso' ? estado.asunto.cliente : null
   const por = estado?.aprobadaPor ? `${hecha} por ${estado.aprobadaPor}` : hecha
-  const lograda = cliente ? `${hecha} a ${cliente}` : hecha
-  const bien = (texto: string) => ({ texto, bien: true })
-  const nada = (texto: string) => ({ texto, bien: false })
+  const bien = (texto: string): Desenlace => ({ texto, tono: 'bien' })
+  const nada = (texto: string): Desenlace => ({ texto, tono: 'nada' })
+  const envio = envioDeLaTarjeta(accion, estado, r)
+  if (envio) return envio.tipo === 'salio' ? bien(cliente ? `${hecha} a ${cliente}` : por) : { texto: noSalioEnPalabras(envio), tono: 'ojo' }
   if (estado?.publicada && ACCIONES[accion].terminaEnPublicar) return bien('Publicada')
   switch (r?.tipo) {
     case 'deshecho':
-      return bien(hecha)
     case 'aplicado':
-      // Si el envío no salió como debía, el desenlace que armó el núcleo lo dice.
-      return r.envio && r.envio.tipo !== 'simulado' && r.envio.tipo !== 'enviado' ? nada(r.resumen) : bien(lograda)
+      return bien(hecha)
     case 'ya_no_cabe':
     case 'conflicto':
       return nada(r.resumen)
@@ -67,7 +75,7 @@ function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarj
   }
   switch (estado?.estado) {
     case 'aplicada':
-      return bien(cliente ? lograda : por)
+      return bien(por)
     case 'revertida':
       return accion === 'deshacer' ? bien(hecha) : nada(`${por}, y revertida después`)
     case 'descartada':
@@ -116,7 +124,14 @@ function Decision({ ancla, etiqueta, constancia, icono, posicion, cuerpo, accion
 }
 
 function Hecho({ desenlace, recien }: { desenlace: Desenlace; recien: boolean }) {
-  if (!desenlace.bien) return <p className="text-sm text-muted-foreground">{desenlace.texto}</p>
+  if (desenlace.tono === 'nada') return <p className="text-sm text-muted-foreground">{desenlace.texto}</p>
+  if (desenlace.tono === 'ojo')
+    return (
+      <div className="flex items-start gap-2 text-sm text-ojo">
+        <Warning weight="fill" className="mt-0.5 size-4 shrink-0" />
+        <span className="min-w-0">{desenlace.texto}</span>
+      </div>
+    )
   return (
     <div className="flex items-center gap-2 text-sm">
       <motion.span initial={recien ? { scale: 0.6 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', duration: 0.35, bounce: 0.35 }} className="inline-flex shrink-0">
@@ -124,6 +139,21 @@ function Hecho({ desenlace, recien }: { desenlace: Desenlace; recien: boolean })
       </motion.span>
       <span className="min-w-0">{desenlace.texto}</span>
     </div>
+  )
+}
+
+export function LineasDelCaso({ reglas, porTuLado }: Pick<Extract<AsuntoDeTarjeta, { tipo: 'caso' }>, 'reglas' | 'porTuLado'>) {
+  const regla = porTuRegla(reglas)
+  return (
+    <>
+      {porTuLado && (
+        <div>
+          <p className="text-xs text-muted-foreground">Por tu lado</p>
+          <p className="mt-1 text-sm wrap-anywhere whitespace-pre-wrap">{porTuLado}</p>
+        </div>
+      )}
+      {regla && <p className="text-xs wrap-anywhere text-muted-foreground">{regla}</p>}
+    </>
   )
 }
 
@@ -151,6 +181,7 @@ function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: Est
             <p className="text-xs text-muted-foreground">Le voy a responder</p>
             <p className="mt-1 text-sm whitespace-pre-wrap">{asunto.respuesta}</p>
           </div>
+          <LineasDelCaso reglas={asunto.reglas} porTuLado={asunto.porTuLado} />
         </>
       ) : resultado ? (
         <div>

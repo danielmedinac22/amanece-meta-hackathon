@@ -3,8 +3,9 @@
 import { CheckCircle, Warning } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import type { CasoQueEspera, CasoResuelto, DatosDeCasos } from '@/negocio/casos'
+import { noSalioEnPalabras } from '@/nucleo/caso-palabras'
 import { cifra } from '@/nucleo/listas-palabras'
-import { Tarjeta } from './tarjeta'
+import { LineasDelCaso, Tarjeta } from './tarjeta'
 import { tocarTarjeta, type TocarTarjeta } from './tocar-tarjeta'
 
 const DILE = 'Dile a tu agente cómo quieres responderle.'
@@ -20,19 +21,25 @@ function CasoSinTarjeta({ caso }: { caso: CasoQueEspera }) {
       {caso.quien && <p className="mt-1 text-xs text-muted-foreground">{caso.quien}</p>}
       {caso.detalle && <p className="mt-3 text-sm whitespace-pre-wrap">{caso.detalle}</p>}
       {caso.propuesta && <p className="mt-3 rounded-[calc(var(--radius)-4px)] bg-muted px-3 py-2.5 text-sm whitespace-pre-wrap">{caso.propuesta}</p>}
+      {(caso.porTuLado || caso.reglas.length > 0) && (
+        <div className="mt-3 flex flex-col gap-3">
+          <LineasDelCaso reglas={caso.reglas} porTuLado={caso.porTuLado} />
+        </div>
+      )}
       <p className="mt-3 text-xs text-muted-foreground">Todavía no hay una respuesta lista para enviar. {DILE}</p>
     </div>
   )
 }
 
 function FilaResuelta({ caso }: { caso: CasoResuelto }) {
+  const noSalio = caso.envio && caso.envio.tipo !== 'salio' ? caso.envio : null
   return (
     <li className="flex items-start gap-3 border-b border-border py-3 last:border-0">
-      {caso.noSalio ? <Warning weight="fill" className="mt-0.5 size-4 shrink-0 text-ojo" /> : <CheckCircle weight="fill" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+      {noSalio ? <Warning weight="fill" className="mt-0.5 size-4 shrink-0 text-ojo" /> : <CheckCircle weight="fill" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{caso.titulo}</p>
         <p className="text-sm whitespace-pre-wrap text-muted-foreground">{caso.resolucion}</p>
-        {caso.noSalio && <p className="mt-1 text-sm text-ojo">Esta respuesta no le llegó. Escríbele tú directamente.</p>}
+        {noSalio && <p className="mt-1 text-sm text-ojo">{noSalioEnPalabras(noSalio)}</p>}
       </div>
       <span className="shrink-0 text-xs text-muted-foreground">{caso.hace}</span>
     </li>

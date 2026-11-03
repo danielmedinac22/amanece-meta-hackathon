@@ -28,6 +28,8 @@ import {
   type ResultadoDelAlta,
   type TarjetaDeAprobacion,
 } from '@/nucleo/cambios'
+import { envioParaElModelo } from '@/nucleo/caso-palabras'
+import { enviosDeResueltos } from '@/nucleo/casos'
 import { leerAplicado } from '@/nucleo/estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, LARGO_DEL_ESTILO, normalizar, reglaEnPalabras, tratoDelTono } from '@/nucleo/estado/elementos'
 import { revisarTextoDelDueno } from '@/nucleo/salida/revisar'
@@ -294,14 +296,19 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
         const ids = [...new Set(entradas.flatMap((e) => [e.pedidoPor, e.aprobadoPor]).filter((id) => id !== null))]
         const duenos = ids.length ? await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(and(eq(esquema.duenos.negocioId, negocioId), inArray(esquema.duenos.id, ids))) : []
         const nombre = (id: string | null) => (id ? duenos.find((d) => d.id === id)?.nombre || 'un Dueño' : null)
-        return entradas.map((e) => ({ id: e.propuesta, lineas: e.lineas, estado: e.estado, pedidaPor: nombre(e.pedidoPor), aprobadaPor: nombre(e.aprobadoPor), cuando: e.cuando }))
+        const envios = await enviosDeResueltos(negocioId, entradas.flatMap((e) => (e.caso && e.estado === 'aplicada' ? [e.caso] : [])))
+        const envio = (e: (typeof entradas)[number]) => {
+          const hecho = e.caso && e.estado === 'aplicada' ? envios.get(e.caso) : undefined
+          return hecho ? envioParaElModelo(hecho) : null
+        }
+        return entradas.map((e) => ({ id: e.propuesta, lineas: e.lineas, estado: e.estado, envio: envio(e), pedidaPor: nombre(e.pedidoPor), aprobadaPor: nombre(e.aprobadoPor), cuando: e.cuando }))
       }),
   })
 
   // --- Casos ---------------------------------------------------------------------------------------
 
   const listarCasos = tool({
-    description: 'Lista los Casos del Negocio: lo que el agente de clientes no resolvió solo. Por defecto los que siguen sin resolver.',
+    description: 'Lista los Casos del Negocio: lo que el agente de clientes no resolvió solo. Por defecto los que siguen sin resolver. En uno resuelto, envio dice lo que pasó de verdad con la respuesta: resuelto no quiere decir que le llegó.',
     inputSchema: z.object({ estado: z.enum(['abierto', 'esperando_dueno', 'resuelto']).optional() }),
     execute: ({ estado }) =>
       seguro(async () => {
@@ -313,12 +320,20 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
           .where(and(eq(esquema.casos.negocioId, negocioId), estado ? eq(esquema.casos.estado, estado) : ne(esquema.casos.estado, 'resuelto')))
           .orderBy(desc(esquema.casos.creado))
           .limit(15)
+        const envios = await enviosDeResueltos(negocioId, filas.filter((f) => f.caso.estado === 'resuelto').map((f) => f.caso.id))
+        const envio = (id: string) => {
+          const e = envios.get(id)
+          return e ? envioParaElModelo(e) : null
+        }
         return filas.map(({ caso, cliente, pedido }) => ({
           id: caso.id,
           titulo: caso.titulo,
           detalle: caso.detalle,
           estado: caso.estado,
           propuesta: caso.propuesta,
+          porTuLado: caso.porTuLado,
+          reglas: caso.reglas,
+          envio: envio(caso.id),
           cliente: cliente || null,
           pedido,
           creado: caso.creado.toISOString(),
@@ -408,6 +423,6 @@ Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp.
 - Responder un Caso no espera Publicar: sale con Enviar. Revertir algo que los clientes ya tienen les llega de una, y la tarjeta lo dice.
 - Después de proponer, cuéntale en palabras sencillas lo que te devolvió proponer, sin código. Si dice que otro Dueño cambió lo mismo, vuelve a mirar ver_negocio y propónlo de nuevo si todavía lo quiere. Si quedó en una tarjeta, dile que la revise y toque el botón; no digas que ya quedó. Si te dice "sí" por escrito, recuérdale que toque el botón de la tarjeta: tú no puedes aplicarlo.
 - Casos: el aviso ya trae la respuesta lista en su tarjeta. Para verlos usa listar_casos. Si el Dueño prefiere otra respuesta, propónla con responder_caso.
-- Para saber qué pasó con una tarjeta, mira el Hilo (cuando alguien toca el botón queda una línea) o usa listar_propuestas.
+- Para saber qué pasó con una tarjeta, mira el Hilo (cuando alguien toca el botón queda una línea) o usa listar_propuestas. Si una respuesta a un Caso le llegó al Cliente lo dice el campo envio, no que esté aplicada.
 - Hay cosas que Amanece no hace ni con un Cambio: escribirle a un cliente desde otro número, fuera de la ventana de 24 horas, o mandar publicidad fuera del horario de la Ley 2300. Si te lo piden, explícalo.`
 }

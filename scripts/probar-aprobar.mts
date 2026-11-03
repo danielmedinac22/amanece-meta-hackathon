@@ -255,7 +255,7 @@ try {
     const r10 = await aprobar(B, rc.propuesta, rc.tarjeta.huella)
     const salientes = await db.select().from(mensajesSalientes).where(eq(mensajesSalientes.clienteId, camila.id))
     const [cerrado] = await db.select().from(casos).where(eq(casos.id, caso.id))
-    afirmar('respuesta: aprobar sale simulado', r10.tipo === 'aplicado' && r10.envio?.tipo === 'simulado', r10)
+    afirmar('respuesta: aprobar sale simulado', r10.tipo === 'aplicado' && r10.envio?.tipo === 'salio', r10)
     afirmar('respuesta: un solo envío a la Cliente, con el texto de la propuesta', enviosA(camila.telefono, desde).length === 1 && enviosA(camila.telefono, desde)[0].texto === texto, enviosA(camila.telefono, desde))
     afirmar('respuesta: una fila resolucion_de_caso con su Caso y la huella en la clave', salientes.length === 1 && salientes[0].clase === 'resolucion_de_caso' && salientes[0].casoId === caso.id && salientes[0].clave.includes(rc.tarjeta.huella), salientes)
     afirmar('respuesta: el Caso queda resuelto con ese texto', cerrado.estado === 'resuelto' && cerrado.resolucion === texto, cerrado)

@@ -78,7 +78,8 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
       return respuesta
     }
     const estado = accion === 'aprobar' ? 'aplicada' : accion === 'descartar' ? 'descartada' : 'revertida'
-    setEstados((e) => (e[tarjeta.propuesta] ? { ...e, [tarjeta.propuesta]: { ...e[tarjeta.propuesta], estado } } : e))
+    const conEnvio = (asunto: EstadoDeTarjeta['asunto']): EstadoDeTarjeta['asunto'] => (asunto?.tipo === 'caso' && accion === 'aprobar' ? { ...asunto, envio: { tipo: 'salio' } } : asunto)
+    setEstados((e) => (e[tarjeta.propuesta] ? { ...e, [tarjeta.propuesta]: { ...e[tarjeta.propuesta], estado, asunto: conEnvio(e[tarjeta.propuesta].asunto) } } : e))
     const cambio = guion.cambios?.[tarjeta.propuesta]
     if (cambio && accion === 'aprobar') {
       setItems((i) => [...i, cambio])
@@ -88,7 +89,7 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
       setItems((i) => i.filter((x) => x.clave !== cambio.clave))
       avisar(`${QUIEN_PUBLICA} revirtió: ${cambio.linea}. Solo sale de la vista previa`)
     }
-    return accion === 'aprobar' ? { tipo: 'aplicado', resumen: '', envio: null, version: null } : accion === 'descartar' ? { tipo: 'descartada' } : { tipo: 'deshecho', resumen: '' }
+    return accion === 'aprobar' ? { tipo: 'aplicado', resumen: '', envio: tarjeta.accion === 'enviar' ? { tipo: 'salio' } : null, version: null } : accion === 'descartar' ? { tipo: 'descartada' } : { tipo: 'deshecho', resumen: '' }
   }
   return <LasDecisiones.Provider value={{ estados, tocar, items, propias, avisos, publicador }}>{children}</LasDecisiones.Provider>
 }
@@ -105,7 +106,7 @@ export function CasosDeMuestra(datos: DatosDeCasos) {
   const conEstado = datos.esperan.map((c) => (c.decision ? { ...c, decision: { ...c.decision, estado: estados[c.decision.tarjeta.propuesta] ?? c.decision.estado } } : c))
   const enviados = conEstado.filter((c) => c.decision?.estado.estado === 'aplicada')
   const esperan = conEstado.filter((c) => !enviados.includes(c))
-  const resueltos = enviados.map((c) => ({ id: c.id, titulo: c.titulo, resolucion: c.decision?.estado.asunto?.tipo === 'caso' ? c.decision.estado.asunto.respuesta : '', hace: 'ahora', noSalio: false }))
+  const resueltos = enviados.map((c) => ({ id: c.id, titulo: c.titulo, resolucion: c.decision?.estado.asunto?.tipo === 'caso' ? c.decision.estado.asunto.respuesta : '', hace: 'ahora', envio: c.decision?.estado.asunto?.tipo === 'caso' ? c.decision.estado.asunto.envio : null }))
   return <VistaDeCasos {...datos} cuentaQueEspera={datos.cuentaQueEspera - enviados.length} esperan={esperan} resueltos={[...resueltos, ...datos.resueltos]} alTocar={tocar} alCambiar={nada} />
 }
 

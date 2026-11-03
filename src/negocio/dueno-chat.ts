@@ -4,7 +4,9 @@ import { db, esquema } from '@/db'
 import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
 import { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } from '@/negocio/dueno-hilo'
+import { comoPropuesta, SIN_SABER, type EnvioDeRespuesta } from '@/nucleo/caso-palabras'
 import { historial, type EstadoDePropuesta, type TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { enviosDeCasos } from '@/nucleo/casos'
 import type { Elemento } from '@/nucleo/estado/elementos'
 import type { ContextoDelDueno } from '@/nucleo/identidad'
 import { registrarTurno } from '@/negocio/medir'
@@ -104,6 +106,10 @@ export type AsuntoDeTarjeta =
       /** Lo último que escribió el Cliente antes de abrirse el Caso. */
       readonly escribio: string | null
       readonly respuesta: string
+      readonly reglas: readonly string[]
+      /** Lo que se le pidió con el borrador del agente. Si el Dueño dictó otra respuesta, puede que ya no aplique: no sale. */
+      readonly porTuLado: string | null
+      readonly envio: EnvioDeRespuesta | null
     }
   /** `que` es null si cambia algo que ya existía o mezcla varios tipos. `clave` es null si toca más de una cosa. */
   | { readonly tipo: 'elemento'; readonly que: Elemento['tipo'] | null; readonly clave: string | null }
@@ -142,22 +148,23 @@ async function selladasDe(ctx: ContextoDelDueno, propuestas: readonly string[]):
   return new Set(filas.flatMap((f) => f.propuesta ?? []))
 }
 
-/** Una sola lectura por sondeo, porque el Hilo la repite cada pocos segundos. Las propuestas ya vienen del Negocio de `ctx`. */
+/** Una lectura por sondeo y no una por tarjeta, porque el Hilo la repite cada pocos segundos. Las propuestas ya vienen del Negocio de `ctx`. */
 async function asuntosDe(ctx: ContextoDelDueno, propuestas: readonly string[]): Promise<ReadonlyMap<string, AsuntoDeTarjeta>> {
   if (!propuestas.length) return new Map()
   const { propuestas: p, casos: c, clientes, pedidos, mensajesCliente: m } = esquema
-  const filas = await db.select({ id: p.id, actos: p.actos, escritura: p.escritura, revierte: p.revierte }).from(p).where(and(eq(p.negocioId, ctx.negocio), inArray(p.id, [...propuestas])))
+  const filas = await db.select({ id: p.id, estado: p.estado, actos: p.actos, escritura: p.escritura, revierte: p.revierte }).from(p).where(and(eq(p.negocioId, ctx.negocio), inArray(p.id, [...propuestas])))
   const idsDeCasos = filas.flatMap((f) => f.actos.map((a) => a.caso))
-  const casos = idsDeCasos.length
-    ? await db
-        .selectDistinctOn([c.id], { id: c.id, titulo: c.titulo, pedido: pedidos.numero, cliente: clientes.nombre, escribio: m.texto })
-        .from(c)
-        .leftJoin(clientes, and(eq(clientes.id, c.clienteId), eq(clientes.negocioId, c.negocioId)))
-        .leftJoin(pedidos, and(eq(pedidos.id, c.pedidoId), eq(pedidos.negocioId, c.negocioId)))
-        .leftJoin(m, and(eq(m.clienteId, c.clienteId), eq(m.negocioId, c.negocioId), eq(m.rol, 'cliente'), lte(m.creado, c.creado)))
-        .where(and(eq(c.negocioId, ctx.negocio), inArray(c.id, idsDeCasos)))
-        .orderBy(c.id, desc(m.creado))
-    : []
+  const aplicados = filas.filter((f) => f.estado === 'aplicada').flatMap((f) => f.actos.map((a) => a.caso))
+  const leerCasos = () =>
+    db
+      .selectDistinctOn([c.id], { id: c.id, titulo: c.titulo, pedido: pedidos.numero, cliente: clientes.nombre, escribio: m.texto, reglas: c.reglas, propuesta: c.propuesta, porTuLado: c.porTuLado })
+      .from(c)
+      .leftJoin(clientes, and(eq(clientes.id, c.clienteId), eq(clientes.negocioId, c.negocioId)))
+      .leftJoin(pedidos, and(eq(pedidos.id, c.pedidoId), eq(pedidos.negocioId, c.negocioId)))
+      .leftJoin(m, and(eq(m.clienteId, c.clienteId), eq(m.negocioId, c.negocioId), eq(m.rol, 'cliente'), lte(m.creado, c.creado)))
+      .where(and(eq(c.negocioId, ctx.negocio), inArray(c.id, idsDeCasos)))
+      .orderBy(c.id, desc(m.creado))
+  const [casos, envios] = await Promise.all([idsDeCasos.length ? leerCasos() : [], enviosDeCasos(ctx.negocio, aplicados)])
   return new Map(
     filas.map((f): [string, AsuntoDeTarjeta] => {
       const [acto] = f.actos
@@ -167,7 +174,7 @@ async function asuntosDe(ctx: ContextoDelDueno, propuestas: readonly string[]): 
         return [f.id, { tipo: 'elemento', que: !f.revierte && tipos.size === 1 ? ([...tipos][0] ?? null) : null, clave: unico && !mas.length ? unico.clave : null }]
       }
       const caso = casos.find((x) => x.id === acto.caso)
-      return [f.id, { tipo: 'caso', titulo: caso?.titulo ?? 'Un Caso', pedido: caso?.pedido ?? null, cliente: caso?.cliente || null, escribio: caso?.escribio || null, respuesta: acto.texto }]
+      return [f.id, { tipo: 'caso', titulo: caso?.titulo ?? 'Un Caso', pedido: caso?.pedido ?? null, cliente: caso?.cliente || null, escribio: caso?.escribio || null, respuesta: acto.texto, reglas: caso?.reglas ?? [], porTuLado: caso?.propuesta === comoPropuesta(acto.texto) ? caso.porTuLado || null : null, envio: f.estado === 'aplicada' ? (envios.get(acto.caso) ?? SIN_SABER) : null }]
     }),
   )
 }

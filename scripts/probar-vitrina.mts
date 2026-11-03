@@ -23,6 +23,7 @@ const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando'
 const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
 const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
 const ESCENAS_DE_ALBA = ['alba', 'alba-al-armado']
+const ESCENAS_DEL_CASO = ['caso-con-regla', 'caso-viejo', 'caso-desenlaces', 'caso-no-la-toma', 'casos-envio']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
@@ -80,6 +81,17 @@ const TOCAR_PUBLICAR = `--cierto=(() => { const b = [...document.querySelectorAl
 const PUNTEADOS = (n: number) => `--cierto=document.querySelectorAll('[data-pano=lienzo] .border-dashed').length === ${n}`
 const HASTA_PUBLICADO = [TOCAR_PUBLICAR, '--ve=Publicando', '--ve=Publicado hace un momento. Todo está en tu link.', '--ve=Atendiendo', '--no-ve=Vista previa']
 
+const RECORRIDOS_DEL_CASO: typeof RECORRIDOS = [
+  ['Caso: dice su regla y lo que le toca al Dueño', 'caso-con-regla', '1440', '--ve=Por tu regla: si llega dañado, se repone sin costo.', '--ve=Por tu lado', '--ve=Separar una bolsa de 500 g'],
+  ['Caso: lo mismo en teléfono', 'caso-con-regla', '390', '--ve=Por tu regla: si llega dañado', '--ve=Separar una bolsa'],
+  ['Caso: uno de antes no muestra esos bloques ni dice nada adivinado', 'caso-viejo', '1440', '--ve=Le voy a responder', '--no-ve=Por tu regla', '--no-ve=Por tu lado'],
+  ['Caso al recargar: solo lo que salió dice Enviada', 'caso-desenlaces', '1440', '--ve=Enviada a Camila Rojas', '--ve=WhatsApp no la tomó. Escríbele tú directamente.', '--ve=No salió: pasaron más de 24 horas', '--ve=Todavía no sé si le llegó. Si no cambia en un momento, escríbele tú.', `--cierto=document.querySelectorAll('[data-pano=hilo] .text-bien').length === 1 && [...document.querySelectorAll('[data-pano=hilo] *')].filter((e) => e.children.length === 0 && e.textContent.includes('Enviada')).length === 1`],
+  ['Caso al recargar: a 320 de ancho la frase larga cabe', 'caso-desenlaces', '320', '--ve=No salió: pasaron más de 24 horas'],
+  ['Caso: tocar Enviar y que WhatsApp no la tome no dice Enviada, ni al reabrir el detalle', 'caso-no-la-toma', '1440', '--ve=Sale por WhatsApp a Camila Rojas', '--clic=Enviar', '--ve=WhatsApp no la tomó. Escríbele tú directamente.', '--no-ve=Enviada', '--no-ve=Le voy a responder', '--clic=Ver el detalle', '--ve=Le voy a responder', '--ve=Por tu lado', '--ve=WhatsApp no la tomó', '--no-ve=Enviada'],
+  ['Caso: tocar Enviar cuando sale dice Enviada', 'caso-con-regla', '1440', '--clic=Enviar', '--ve=Enviada a Camila Rojas'],
+  ['Casos: en Resueltos solo avisa lo que no salió, y un Caso sin tarjeta trae su regla', 'casos-envio', '1440', '--ve=Por tu regla: pedidos para fuera de Manizales.', '--ve=Preguntarle a la transportadora', '--ve=WhatsApp no la tomó. Escríbele tú directamente.', '--ve=Todavía no sé si le llegó', '--ve=Resuelto antes de esta salida', `--cierto=document.querySelectorAll('[data-pano=lienzo] li .text-ojo').length === 6`],
+]
+
 const RECORRIDOS_DE_PUBLICAR: typeof RECORRIDOS = [
   ['Publicar, PC: un Indicador en la vista previa hasta Publicado', 'publicar-indicador', '1440', '--ve=Vista previa', '--ve=Deshacer', PUNTEADOS(1), '--clic=Publicar', '--ve=Solo lo ven tú y tu equipo', ...HASTA_PUBLICADO, '--ve=Lucía publicó: Indicador nuevo', '--ve=Publicada', '--no-ve=Deshacer', PUNTEADOS(0), `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Pedidos confirmados por día')`],
   ['Publicar, teléfono: arriba, y el lienzo cambia con él', 'publicar-indicador', '390', `--cierto=document.querySelector('header').textContent.includes('Publicar')`, '--clic=Tu negocio', '--ve=Vista previa', PUNTEADOS(1), '--clic=Publicar', ...HASTA_PUBLICADO, PUNTEADOS(0)],
@@ -110,7 +122,7 @@ const TARJETA_SIN_BOTONES = (id: string) => `--cierto=![...document.querySelecto
 const SECCIONES_CON_ESTADOS: [string, string][] = [['inicio', 'lo de hoy'], ['casos', 'tus Casos'], ['conversaciones', 'tus conversaciones'], ['pedidos', 'tus pedidos'], ['clientes', 'tus Clientes'], ['tablero', 'tu Tablero'], ['seccion', 'esta Sección'], ['ajustes', 'los ajustes de tu negocio']]
 const ESCENAS_DE_ESTADOS = ['entrar', 'entrar-registro', 'ajustes', 'ajustes-armandose', 'ajustes-sin-ciudad', 'ajustes-largo', ...SECCIONES_CON_ESTADOS.flatMap(([id]) => [`cargando-${id}`, `error-${id}`]), 'seccion-sin-advertencia', 'error-de-verdad', 'seccion-no-esta', 'hilo-capacidad-faltante', 'hilo-tarjeta-vencio', 'hilo-error']
 
-const TODAS_LAS_ESCENAS = [...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA, ...ESCENAS_DE_ESTADOS]
+const TODAS_LAS_ESCENAS = [...ESCENAS_DEL_CASO, ...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA, ...ESCENAS_DE_ESTADOS]
 
 const RECORRIDOS_DE_ESTADOS: typeof RECORRIDOS = [
   ['Entrar: cada falla dice qué pasó, se vuelve a tocar y al final entra', 'entrar', '1440', LLENAR_ENTRADA, '--clic=Entrar', '--ve=Entrando…', '--espera=500', '--ve=El correo o la contraseña no coinciden. Revísalos y vuelve a intentar.', `--cierto=document.querySelector('[name=email]').value === 'lucia@cafe.co' && document.querySelector('[name=password]').value === 'una-clave-larga'`, '--clic=Entrar', '--no-ve=no coinciden', '--espera=500', '--ve=No me pude conectar. Revisa tu internet', '--clic=Entrar', '--espera=500', '--ve=Ya van muchos intentos', '--clic=Entrar', '--espera=500', '--ve=Ya entraste.'],
@@ -181,7 +193,7 @@ const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
   ['Casos: Enviar desde el Hilo deja lo mismo en la Sección', 'casos-espera', '1440', tocarEn('hilo', 'Enviar'), '--espera=500', enElPano('hilo', 'Enviada a Marcela Ríos'), `--cierto=!document.querySelector('[data-pano=lienzo]').innerText.includes('Espera tu decisión')`, enElPano('lienzo', 'El envío a Cali cuesta')],
   ['Casos: Descartar en la Sección lo deja esperando y dice qué sigue, igual en el Hilo', 'casos-espera', '1440', tocarEn('lienzo', 'Descartar'), '--espera=500', enElPano('lienzo', 'Espera tu decisión'), enElPano('lienzo', 'Descartada'), enElPano('lienzo', 'Sigue sin resolver'), enElPano('hilo', 'Descartada')],
   ['Casos: la tarjeta de la Sección no repite el ancla del Hilo', 'casos-espera', '1440', `--cierto=document.querySelectorAll('[id="tarjeta-p-caso"]').length === 1 && !!document.querySelector('[data-pano=hilo] [id="tarjeta-p-caso"]')`],
-  ['Casos: sin botón vivo dice por qué y qué sigue', 'casos-sin-boton', '1440', '--ve=Todavía no hay una respuesta lista para enviar', '--ve=Descartada', '--ve=Venció sin enviarse', '--ve=Esta respuesta no le llegó', `--cierto=![...document.querySelectorAll('[data-pano=lienzo] button')].some((b) => /^(Enviar|Descartar)$/.test(b.textContent.trim()))`],
+  ['Casos: sin botón vivo dice por qué y qué sigue', 'casos-sin-boton', '1440', '--ve=Todavía no hay una respuesta lista para enviar', '--ve=Descartada', '--ve=Venció sin enviarse', '--ve=WhatsApp no la tomó', `--cierto=![...document.querySelectorAll('[data-pano=lienzo] button')].some((b) => /^(Enviar|Descartar)$/.test(b.textContent.trim()))`],
   ['Casos: sin nada, dice qué sigue', 'casos-vacios', '1440', '--ve=Nada espera tu decisión', '--no-ve=Resueltos'],
   ['Casos: sin nada esperando no hay encabezado de decisión', 'pedidos-lista', '1440', '--clic=Casos', '--ve=Resueltos', '--ve=Pregunta por envío a San Andrés', `--no-ve=Espera tu decisión`],
   ['Casos: más que el límite dice el total', 'casos-muchos', '1440', '--ve=Ves los 50 más recientes de 60', '--ve=Ves los 50 más recientes de 1.204'],
@@ -434,7 +446,7 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
     const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

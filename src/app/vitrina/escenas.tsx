@@ -18,6 +18,7 @@ import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_
 import { Componentes } from './componentes'
 import { GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
 import { EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
+import { GUION_WHATSAPP_NO_LA_TOMA, HILO_CASO_CON_REGLA, HILO_CASO_VIEJO, HILO_DESENLACES_DEL_ENVIO, NEGOCIO_CASOS_CON_ENVIO, TARJETAS_CASO_CON_REGLA, TARJETAS_CASO_VIEJO, TARJETAS_DESENLACES_DEL_ENVIO } from './datos-del-caso'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
@@ -173,6 +174,11 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'telefono-tu-negocio', titulo: 'Teléfono: Tu negocio, con el punto en Tu agente', pinta: () => panel(NEGOCIO_CON_UN_CASO, HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { inicial: { pestana: 'negocio' } }) },
   { id: 'telefono-cajon', titulo: 'Teléfono: el sidebar como cajón', pinta: () => panel(NEGOCIO_CON_UN_CASO, HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { cajonAbierto: true, inicial: { pestana: 'negocio' } }) },
   { id: 'hilo-constancias', titulo: 'Hilo: cada desenlace de una tarjeta resuelta', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CONSTANCIAS, TARJETAS_CONSTANCIAS) },
+  { id: 'caso-con-regla', titulo: 'Caso: dice su regla y lo que le toca al Dueño', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CASO_CON_REGLA, TARJETAS_CASO_CON_REGLA) },
+  { id: 'caso-viejo', titulo: 'Caso: uno de antes, sin regla ni lo que le toca al Dueño', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CASO_VIEJO, TARJETAS_CASO_VIEJO) },
+  { id: 'caso-desenlaces', titulo: 'Caso: cada desenlace del envío, como se ve al recargar', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_DESENLACES_DEL_ENVIO, TARJETAS_DESENLACES_DEL_ENVIO) },
+  { id: 'caso-no-la-toma', titulo: 'Caso: tocar Enviar y que WhatsApp no la tome', pinta: () => publicando(NEGOCIO_FUNCIONANDO, HILO_CASO_CON_REGLA, TARJETAS_CASO_CON_REGLA, GUION_WHATSAPP_NO_LA_TOMA) },
+  { id: 'casos-envio', titulo: 'Casos: lo que pasó con cada respuesta, y un Caso sin tarjeta con su regla', pinta: () => enLaSeccion(NEGOCIO_CASOS_CON_ENVIO, '/panel/casos') },
   { id: 'hilo-varias-decisiones', titulo: 'Hilo: tres decisiones a la vez', pinta: () => panel(NEGOCIO_CON_UN_CASO, HILO_VARIAS_DECISIONES, TARJETAS_VARIAS_DECISIONES) },
   { id: 'hilo-trabajando', titulo: 'Hilo: el agente trabajando', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_TRABAJANDO} status="streaming" />} /> },
   ...ESCENAS_DE_ESTADOS,

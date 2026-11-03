@@ -6,7 +6,7 @@
  *   pnpm tsx scripts/probar-casos.mts
  */
 import { config } from 'dotenv'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { afirmar, capturarEnvios, terminar } from './afirmar.mjs'
 
 config({ path: '.env.local', quiet: true })
@@ -16,6 +16,14 @@ const envios = capturarEnvios()
 const { db, esquema } = await import('../src/db')
 const { marcar } = await import('../src/nucleo/identidad')
 const { aprobar, descartar, proponerRespuestaAlCaso } = await import('../src/nucleo/cambios')
+const { comoPropuesta, envioParaElModelo, loQueSeSabe, noSalioEnPalabras, porQueNoSalio, porTuRegla } = await import('../src/nucleo/caso-palabras')
+const { enviosDeCasos, enviosDeResueltos, envioDe } = await import('../src/nucleo/casos')
+const { puertoDeLaBase } = await import('../src/nucleo/clientes/acciones')
+const { columnasDeLaPropuesta } = await import('../src/agentes/avisos')
+const { crearAgenteDelDueno } = await import('../src/agentes/dueno')
+const { leerPublicado } = await import('../src/nucleo/estado')
+const { despachar, intencion } = await import('../src/nucleo/salida')
+const { MODO_DE_LA_COMPUERTA } = await import('../src/nucleo/salida/compuerta')
 const { CUANTOS_MENSAJES, CUANTAS_CONVERSACIONES, leerConversaciones } = await import('../src/nucleo/listas')
 const { CUANTOS_CASOS, casosDe } = await import('../src/negocio/casos')
 const { leerHiloConTarjetas } = await import('../src/negocio/dueno-chat')
@@ -77,10 +85,10 @@ try {
   const enviosAntes = envios.length
   // La huella que usa el botón de la Sección es la que se leyó para la Sección.
   const enviada = await aprobar(A.ctx, deLaSeccion!.tarjeta.propuesta, deLaSeccion!.tarjeta.huella)
-  afirmar('Enviar con la tarjeta de la Sección sale una sola vez, simulado', enviada.tipo === 'aplicado' && enviada.envio?.tipo === 'simulado' && envios.length === enviosAntes + 1, enviada)
+  afirmar('Enviar con la tarjeta de la Sección sale una sola vez, simulado', enviada.tipo === 'aplicado' && enviada.envio?.tipo === 'salio' && envios.length === enviosAntes + 1, enviada)
   const despues = await casosDe(A.ctx, ZONA)
   const hilo = await leerHiloConTarjetas(A.ctx)
-  afirmar('Enviar lo saca de Espera tu decisión y lo pone en Resueltos con la respuesta', !casoDe(despues, paraEnviar.id) && despues.resueltos[0]?.id === paraEnviar.id && despues.resueltos[0].resolucion === `Te la repongo sin costo (${marca}).` && !despues.resueltos[0].noSalio, despues.resueltos)
+  afirmar('Enviar lo saca de Espera tu decisión y lo pone en Resueltos con la respuesta', !casoDe(despues, paraEnviar.id) && despues.resueltos[0]?.id === paraEnviar.id && despues.resueltos[0].resolucion === `Te la repongo sin costo (${marca}).` && despues.resueltos[0].envio?.tipo === 'salio', despues.resueltos)
   afirmar('El Hilo dice lo mismo: aplicada y por el mismo Dueño', hilo.tarjetas[tEnviar.propuesta]?.estado === 'aplicada' && hilo.tarjetas[tEnviar.propuesta]?.aprobadaPor === 'Dueño A', hilo.tarjetas[tEnviar.propuesta])
   afirmar('Enviar deja la respuesta en la conversación del Cliente', (await leerConversaciones(A.ctx.negocio, ZONA, camila.id)).detalle?.mensajes.at(-1)?.texto === `Te la repongo sin costo (${marca}).`)
 
@@ -99,7 +107,135 @@ try {
   await db.update(esquema.casos).set({ estado: 'resuelto', resolucion: 'No llegó', resuelto: new Date() }).where(eq(esquema.casos.id, noSalio.id))
   await db.insert(esquema.mensajesSalientes).values({ clave: `probar-casos-${marca}`, negocioId: A.negocio.id, clienteId: julian.id, casoId: noSalio.id, telefono: julian.telefono, clase: 'resolucion_de_caso', veredicto: 'no_sale', motivo: 'fuera_de_ventana', estado: 'no_salio' })
   const conFallo = await casosDe(A.ctx, ZONA)
-  afirmar('Resueltos dice que no salió, y solo de ese', conFallo.resueltos.find((c) => c.id === noSalio.id)?.noSalio === true && conFallo.resueltos.find((c) => c.id === paraEnviar.id)?.noSalio === false, conFallo.resueltos)
+  afirmar('Resueltos dice que no salió, y solo de ese', conFallo.resueltos.find((c) => c.id === noSalio.id)?.envio?.tipo === 'no_salio' && conFallo.resueltos.find((c) => c.id === paraEnviar.id)?.envio?.tipo === 'salio', conFallo.resueltos)
+
+  console.log('\nLo que pasó de verdad con el envío')
+  const F = await negocioNuevo('F')
+  const clienteDeF = async (nombre: string, i: number) => clienteNuevo(F.negocio.id, nombre, 10 + i)
+  const conTarjeta = async (cliente: { id: string }, titulo: string) => {
+    const caso = await casoNuevo(F.negocio.id, cliente.id, titulo)
+    const t = await traerAlHilo(F.negocio.id, F.dueno.id, caso.id, `Respuesta de ${titulo} (${marca})`)
+    return { caso, t }
+  }
+  const alRecargar = async (caso: string, propuesta: string) => {
+    const asunto = (await leerHiloConTarjetas(F.ctx)).tarjetas[propuesta]?.asunto
+    return { hilo: asunto?.tipo === 'caso' ? asunto.envio?.tipo : undefined, seccion: (await casosDe(F.ctx, ZONA)).resueltos.find((c) => c.id === caso)?.envio?.tipo, completo: asunto }
+  }
+  const lineasDelHilo = async (propuesta: string) => (await db.select({ mensaje: esquema.mensajesDueno.mensaje }).from(esquema.mensajesDueno).where(eq(esquema.mensajesDueno.duenoId, F.dueno.id))).map((m) => JSON.stringify(m.mensaje)).filter((m) => m.includes(propuesta) && m.includes('data-aprobacion'))
+  const fantasma = marcar.cliente('00000000-0000-4000-8000-00000000fa11')
+
+  const sale = await clienteDeF('Sale Bien', 1)
+  const bien = await conTarjeta(sale, 'Sale bien')
+  const clicBien = await aprobar(F.ctx, bien.t.propuesta, bien.t.huella)
+  const recargaBien = await alRecargar(bien.caso.id, bien.t.propuesta)
+  afirmar('Salió: el clic y la recarga dicen salio', clicBien.tipo === 'aplicado' && clicBien.envio?.tipo === 'salio' && recargaBien.hilo === 'salio' && recargaBien.seccion === 'salio', { clicBien, recargaBien })
+
+  const frenada = await clienteDeF('Sin Telefono', 2)
+  const sinTelefono = await conTarjeta(frenada, 'No hay a quién')
+  await despachar(intencion.resolucionDeCaso({ destinatario: { tipo: 'cliente', negocio: F.ctx.negocio, cliente: fantasma }, texto: 'Sin a quién', caso: marcar.caso(sinTelefono.caso.id), vez: sinTelefono.t.huella }))
+  const enviosAntesDelFrenado = envios.length
+  const clicFrenado = await aprobar(F.ctx, sinTelefono.t.propuesta, sinTelefono.t.huella)
+  const recargaFrenada = await alRecargar(sinTelefono.caso.id, sinTelefono.t.propuesta)
+  afirmar('Frenado por la salida: nada salió, y el clic, la recarga y la línea lo dicen', clicFrenado.tipo === 'aplicado' && clicFrenado.envio?.tipo === 'no_salio' && recargaFrenada.hilo === 'no_salio' && recargaFrenada.seccion === 'no_salio' && envios.length === enviosAntesDelFrenado && clicFrenado.resumen.includes('no salió'), { clicFrenado, recargaFrenada })
+
+  const sembrarLoQueDejaKapsoAlFallar = async (cliente: { id: string; telefono: string }, caso: string, huella: string, error: string | null) => {
+    const { clave } = intencion.resolucionDeCaso({ destinatario: { tipo: 'cliente', negocio: F.ctx.negocio, cliente: marcar.cliente(cliente.id) }, texto: '', caso: marcar.caso(caso), vez: huella })
+    await db.insert(esquema.mensajesSalientes).values({ clave, negocioId: F.negocio.id, clienteId: cliente.id, casoId: caso, telefono: cliente.telefono, clase: 'resolucion_de_caso', veredicto: 'sale', estado: 'por_enviar', error })
+  }
+
+  const caida = await clienteDeF('Kapso Caido', 3)
+  const noTomo = await conTarjeta(caida, 'WhatsApp no la tomó')
+  await sembrarLoQueDejaKapsoAlFallar(caida, noTomo.caso.id, noTomo.t.huella, 'Kapso respondió 500: caído')
+  const enviosAntesDeLaCaida = envios.length
+  const clicCaido = await aprobar(F.ctx, noTomo.t.propuesta, noTomo.t.huella)
+  const recargaCaida = await alRecargar(noTomo.caso.id, noTomo.t.propuesta)
+  afirmar('WhatsApp no la tomó: nada salió, y el clic y la línea del Hilo lo dicen', clicCaido.tipo === 'aplicado' && clicCaido.envio?.tipo === 'no_la_tomo' && clicCaido.resumen.includes('no la tomó') && envios.length === enviosAntesDeLaCaida && (await lineasDelHilo(noTomo.t.propuesta)).length === 1, clicCaido)
+  afirmar('WhatsApp no la tomó: después de recargar no dice Enviada, ni en el Hilo ni en la Sección', recargaCaida.hilo === 'no_la_tomo' && recargaCaida.seccion === 'no_la_tomo', recargaCaida)
+  const otraVezCaido = await aprobar(F.ctx, noTomo.t.propuesta, noTomo.t.huella)
+  afirmar('WhatsApp no la tomó: otro clic no la reenvía ni cambia lo que dice', otraVezCaido.tipo === 'aplicado' && otraVezCaido.envio?.tipo === 'no_la_tomo' && envios.length === enviosAntesDeLaCaida, otraVezCaido)
+
+  const colgada = await clienteDeF('Sin Desenlace', 4)
+  const enCurso = await conTarjeta(colgada, 'Sin desenlace')
+  await sembrarLoQueDejaKapsoAlFallar(colgada, enCurso.caso.id, enCurso.t.huella, null)
+  const clicColgado = await aprobar(F.ctx, enCurso.t.propuesta, enCurso.t.huella)
+  const recargaColgada = await alRecargar(enCurso.caso.id, enCurso.t.propuesta)
+  afirmar('Reclamada y sin desenlace: no se sabe, nunca salio', clicColgado.tipo === 'aplicado' && clicColgado.envio?.tipo === 'sin_saber' && recargaColgada.hilo === 'sin_saber' && recargaColgada.seccion === 'sin_saber', { clicColgado, recargaColgada })
+
+  const murioAntesDeEnviar = async (caso: string, propuesta: string) => {
+    await db.update(esquema.propuestas).set({ estado: 'aplicada', aprobadoPor: F.dueno.id }).where(eq(esquema.propuestas.id, propuesta))
+    await db.update(esquema.casos).set({ estado: 'resuelto', resolucion: 'x', resuelto: new Date() }).where(eq(esquema.casos.id, caso))
+  }
+  const murio = await clienteDeF('Sin Fila', 5)
+  const sinFila = await conTarjeta(murio, 'Sin fila')
+  await murioAntesDeEnviar(sinFila.caso.id, sinFila.t.propuesta)
+  const recargaSinFila = await alRecargar(sinFila.caso.id, sinFila.t.propuesta)
+  afirmar('Sin fila: al recargar no se sabe, en el Hilo y en la Sección', recargaSinFila.hilo === 'sin_saber' && recargaSinFila.seccion === 'sin_saber', recargaSinFila)
+  const rescate = await aprobar(F.ctx, sinFila.t.propuesta, sinFila.t.huella)
+  const recargaRescate = await alRecargar(sinFila.caso.id, sinFila.t.propuesta)
+  afirmar('Sin fila: otro clic en una tarjeta abierta la despacha y todo pasa a salio', rescate.tipo === 'aplicado' && rescate.envio?.tipo === 'salio' && recargaRescate.hilo === 'salio' && recargaRescate.seccion === 'salio', { rescate, recargaRescate })
+
+  const tarde = await clienteDeF('Ventana Cerrada', 6)
+  const cerrada = await conTarjeta(tarde, 'Ventana cerrada')
+  await murioAntesDeEnviar(cerrada.caso.id, cerrada.t.propuesta)
+  await db.update(esquema.clientes).set({ ultimoMensajeEntrante: hace(25 * 60 * MINUTO) }).where(eq(esquema.clientes.id, tarde.id))
+  const enviosAntesDeLaVentana = envios.length
+  const clicCerrada = await aprobar(F.ctx, cerrada.t.propuesta, cerrada.t.huella)
+  afirmar('Sin fila y con la ventana cerrada: no se despacha, y dice que no sabe, una sola línea en el Hilo', clicCerrada.tipo === 'aplicado' && clicCerrada.envio?.tipo === 'sin_saber' && envios.length === enviosAntesDeLaVentana && (await lineasDelHilo(cerrada.t.propuesta)).length === 1, clicCerrada)
+
+  const ausente = await clienteDeF('Se Fue', 7)
+  const sinCliente = await conTarjeta(ausente, 'Se fue el Cliente')
+  await murioAntesDeEnviar(sinCliente.caso.id, sinCliente.t.propuesta)
+  await db.update(esquema.casos).set({ clienteId: null }).where(eq(esquema.casos.id, sinCliente.caso.id))
+  const clicSinCliente = await aprobar(F.ctx, sinCliente.t.propuesta, sinCliente.t.huella)
+  afirmar('Sin fila y sin Cliente: el clic no dice que salió', clicSinCliente.tipo === 'aplicado' && clicSinCliente.envio?.tipo === 'sin_saber', clicSinCliente)
+
+  const observada = await clienteDeF('Observada', 8)
+  const conEmergencia = await conTarjeta(observada, 'Con emergencia')
+  process.env.SALIDA_EN_EMERGENCIA = F.negocio.id
+  const clicObservado = await aprobar(F.ctx, conEmergencia.t.propuesta, conEmergencia.t.huella).finally(() => delete process.env.SALIDA_EN_EMERGENCIA)
+  const [filaObservada] = await db.select().from(esquema.mensajesSalientes).where(eq(esquema.mensajesSalientes.casoId, conEmergencia.caso.id))
+  const esperado = MODO_DE_LA_COMPUERTA === 'observa' ? 'salio' : 'no_salio'
+  afirmar('La verdad es lo que pasó y no el veredicto: la emergencia queda anotada y la tarjeta dice lo que hizo la salida', filaObservada?.veredicto === 'no_sale' && filaObservada.motivo === 'emergencia' && clicObservado.tipo === 'aplicado' && clicObservado.envio?.tipo === esperado && (await alRecargar(conEmergencia.caso.id, conEmergencia.t.propuesta)).hilo === esperado, { filaObservada, clicObservado })
+
+  afirmar('Un envío de un Caso no se ve desde otro Negocio', (await enviosDeCasos(B.ctx.negocio, [noTomo.caso.id])).size === 0 && (await enviosDeResueltos(B.ctx.negocio, [noTomo.caso.id, sinFila.caso.id])).size === 0)
+  const agente = crearAgenteDelDueno(F.ctx, { negocio: F.negocio, dueno: F.dueno })
+  const herramienta = (nombre: string, entrada: object) => agente.todas[nombre].execute!(entrada, { toolCallId: 'probar', messages: [], context: {} }) as Promise<{ id: string; envio: string | null }[]>
+  const paraElModelo = envioParaElModelo({ tipo: 'no_la_tomo' })
+  afirmar('El modelo lee lo que pasó: en listar_casos', (await herramienta('listar_casos', { estado: 'resuelto' })).find((c) => c.id === noTomo.caso.id)?.envio === paraElModelo, paraElModelo)
+  afirmar('El modelo lee lo que pasó: en listar_propuestas', (await herramienta('listar_propuestas', {})).find((p) => p.id === noTomo.t.propuesta)?.envio === paraElModelo, paraElModelo)
+  afirmar('Solo salio se lee como salio', envioDe({ estado: 'enviado', motivo: null, error: null }).tipo === 'salio' && envioDe({ estado: 'simulado', motivo: 'emergencia', error: null }).tipo === 'salio' && envioDe({ estado: 'por_enviar', motivo: null, error: null }).tipo === 'sin_saber')
+  afirmar('No la tomó solo si Kapso la rechazó: una excepción pudo llegar después de que aceptó', envioDe({ estado: 'por_enviar', motivo: 'emergencia', error: 'Kapso respondió 400: número inválido' }).tipo === 'no_la_tomo' && envioDe({ estado: 'por_enviar', motivo: null, error: 'Falta KAPSO_PHONE_NUMBER_ID' }).tipo === 'no_la_tomo' && envioDe({ estado: 'por_enviar', motivo: null, error: 'TypeError: fetch failed' }).tipo === 'sin_saber')
+  const SALIO = { tipo: 'salio' } as const
+  const NO_SE = { tipo: 'sin_saber' } as const
+  afirmar('Lo que ya se sabe le gana a sin_saber, en cualquier orden', loQueSeSabe(NO_SE, SALIO) === SALIO && loQueSeSabe(SALIO, NO_SE) === SALIO && loQueSeSabe(null, NO_SE) === NO_SE && loQueSeSabe(NO_SE, null) === NO_SE && loQueSeSabe(null, null) === null)
+  const frases = [{ tipo: 'no_la_tomo' }, { tipo: 'sin_saber' }, { tipo: 'no_salio', motivo: 'fuera_de_ventana' }] as const
+  afirmar('Ninguna frase de un envío que no salió dice Enviada ni que le respondió', frases.every((f) => !/enviada|respondi/i.test(`${porQueNoSalio(f)} ${noSalioEnPalabras(f)}`)), frases.map(noSalioEnPalabras))
+
+  console.log('\nLa regla y lo que le toca al Dueño')
+  afirmar('Por tu regla: minúscula al empezar, nombres intactos después, sin punto doble', porTuRegla(['   ']) === null && porTuRegla(['Envío a Manizales.']) === 'Por tu regla: envío a Manizales.' && porTuRegla(['IVA incluido']) === 'Por tu regla: IVA incluido.' && porTuRegla(['Uno', 'Dos']) === 'Por tus reglas: uno y dos.' && porTuRegla([]) === null, [porTuRegla(['Envío a Manizales.']), porTuRegla(['Uno', 'Dos'])])
+  const columnas = columnasDeLaPropuesta({ respuestaAlCliente: 'Te la repongo', queHacer: '  Separar una bolsa  ' })
+  afirmar('Por tu lado va en su columna y no pegado a la respuesta', columnas.propuesta === 'Responderle: "Te la repongo"' && columnas.porTuLado === 'Separar una bolsa', columnas)
+  afirmar('Sin borrador no hay nada que guardar', columnasDeLaPropuesta(null).propuesta === '' && columnasDeLaPropuesta(null).porTuLado === '')
+
+  const delPuerto = await clienteDeF('Con Regla', 9)
+  const puerto = puertoDeLaBase(await leerPublicado(F.ctx.negocio), marcar.cliente(delPuerto.id))
+  const conRegla = await puerto.abrir_caso({ titulo: `Pedido fuera (${marca})`, detalle: 'uno', pedido: null, reusar: true, reglas: ['Regla uno'] })
+  await puerto.abrir_caso({ titulo: `Pedido fuera (${marca})`, detalle: 'dos', pedido: null, reusar: true, reglas: ['Regla dos', 'Regla uno'] })
+  const [reusado] = await db.select().from(esquema.casos).where(eq(esquema.casos.id, conRegla.caso!))
+  afirmar('Reusar suma la regla nueva sin repetir y conserva el orden', reusado.reglas.join() === 'Regla uno,Regla dos', reusado.reglas)
+  await db.update(esquema.casos).set({ estado: 'esperando_dueno', propuesta: comoPropuesta(`Ya te confirmo (${marca}).`), porTuLado: 'Revisar la dirección' }).where(eq(esquema.casos.id, reusado.id))
+  const tConRegla = await traerAlHilo(F.negocio.id, F.dueno.id, reusado.id, `Ya te confirmo (${marca}).`)
+  const deLaTarjeta = (await leerHiloConTarjetas(F.ctx)).tarjetas[tConRegla.propuesta]?.asunto
+  afirmar('La tarjeta trae la regla y lo que le toca al Dueño, y todavía ningún envío', deLaTarjeta?.tipo === 'caso' && deLaTarjeta.reglas.length === 2 && deLaTarjeta.porTuLado === 'Revisar la dirección' && deLaTarjeta.envio === null, deLaTarjeta)
+
+  const viejoInsertado = await db.execute(sql`insert into casos (negocio_id, cliente_id, titulo, propuesta, estado) values (${F.negocio.id}, ${delPuerto.id}, ${`Caso viejo ${marca}`}, ${'Responderle: "Hola"\nPor tu lado: revisar algo'}, 'esperando_dueno') returning id`)
+  const idViejo = (viejoInsertado.rows[0] as { id: string }).id
+  const tVieja = await traerAlHilo(F.negocio.id, F.dueno.id, idViejo, `Hola (${marca}).`)
+  const deLaVieja = (await leerHiloConTarjetas(F.ctx)).tarjetas[tVieja.propuesta]?.asunto
+  const viejoEnLaSeccion = (await casosDe(F.ctx, ZONA)).esperan.find((c) => c.id === idViejo)
+  afirmar('Un Caso viejo no trae regla ni lado, y no se adivinan del texto pegado', deLaVieja?.tipo === 'caso' && deLaVieja.reglas.length === 0 && deLaVieja.porTuLado === null && viejoEnLaSeccion?.reglas.length === 0 && viejoEnLaSeccion.porTuLado === null, { deLaVieja, viejoEnLaSeccion })
+  const [resueltoViejo] = await db.insert(esquema.casos).values({ negocioId: F.negocio.id, titulo: 'Resuelto antes de esta salida', resolucion: 'Listo', estado: 'resuelto', resuelto: new Date() }).returning()
+  afirmar('Un Caso resuelto antes de esta salida no avisa nada, porque no se sabe', (await casosDe(F.ctx, ZONA)).resueltos.find((c) => c.id === resueltoViejo.id)?.envio === null)
 
   console.log('\nCasos: el aislamiento')
   const casoDeB = await casoNuevo(B.negocio.id, deB.id, 'Intruso de B')

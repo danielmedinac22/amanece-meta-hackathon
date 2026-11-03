@@ -155,8 +155,8 @@ const muchasFilas = (cuenta: number, base: number) => ({
 
 const SIN_CASOS: DatosDeCasos = { cuentaQueEspera: 0, esperan: [], cuentaDeResueltos: 0, resueltos: [] }
 const RESUELTOS: CasoResuelto[] = [
-  { id: 'r-1', titulo: 'Pregunta por envío a San Andrés', resolucion: 'Se le explicó que no hay envíos a islas por ahora.', hace: 'hace 6 días', noSalio: false },
-  { id: 'r-2', titulo: 'Cambio de dirección después de confirmar', resolucion: 'El pedido no había salido; se cambió la dirección.', hace: 'hace 9 días', noSalio: false },
+  { id: 'r-1', titulo: 'Pregunta por envío a San Andrés', resolucion: 'Se le explicó que no hay envíos a islas por ahora.', hace: 'hace 6 días', envio: { tipo: 'salio' } },
+  { id: 'r-2', titulo: 'Cambio de dirección después de confirmar', resolucion: 'El pedido no había salido; se cambió la dirección.', hace: 'hace 9 días', envio: { tipo: 'salio' } },
 ]
 const SOLO_RESUELTOS: DatosDeCasos = { ...SIN_CASOS, cuentaDeResueltos: RESUELTOS.length, resueltos: RESUELTOS }
 
@@ -355,9 +355,9 @@ export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
   },
   seccionDeCasos: {
     cuentaQueEspera: 60,
-    esperan: Array.from({ length: 50 }, (_, i) => ({ id: `e-${i}`, titulo: `${MENSAJE_LARGO} ${i}`, quien: `${NOMBRE_LARGO} · pedido #${1_000 + i}`, detalle: MENSAJE_LARGO, propuesta: '', hace: 'hace 3 días', decision: null })),
+    esperan: Array.from({ length: 50 }, (_, i) => ({ id: `e-${i}`, titulo: `${MENSAJE_LARGO} ${i}`, quien: `${NOMBRE_LARGO} · pedido #${1_000 + i}`, detalle: MENSAJE_LARGO, propuesta: '', reglas: [], porTuLado: null, hace: 'hace 3 días', decision: null })),
     cuentaDeResueltos: 1_204,
-    resueltos: Array.from({ length: 50 }, (_, i) => ({ id: `m-${i}`, titulo: MENSAJE_LARGO, resolucion: MENSAJE_LARGO, hace: 'hace 12 min', noSalio: i === 0 })),
+    resueltos: Array.from({ length: 50 }, (_, i) => ({ id: `m-${i}`, titulo: MENSAJE_LARGO, resolucion: MENSAJE_LARGO, hace: 'hace 12 min', envio: i === 0 ? { tipo: 'no_la_tomo' } : { tipo: 'salio' } })),
   },
   ...MUCHAS_CONVERSACIONES,
 }
@@ -449,7 +449,7 @@ export const HILO_CON_UN_CASO: UIMessage[] = [
 
 const estadoDe = (estado: EstadoDeTarjeta['estado'], accion: TarjetaDeAprobacion['accion'], asunto: EstadoDeTarjeta['asunto'], aprobadaPor: string | null = null, publicada = false): EstadoDeTarjeta => ({ estado, accion, aprobadaPor, asunto, publicada })
 const ES_REGLA = { tipo: 'elemento', que: 'regla', clave: null } as const
-const CASO_DE_MARCELA = { tipo: 'caso', titulo: 'Quiere saber cuánto cuesta un envío', pedido: 31, cliente: 'Marcela Ríos', escribio: '¿Cuánto cuesta enviar a Cali?', respuesta: 'El envío a Cali cuesta $12.000 y llega en 3 días hábiles.' } as const
+const CASO_DE_MARCELA = { tipo: 'caso', titulo: 'Quiere saber cuánto cuesta un envío', pedido: 31, cliente: 'Marcela Ríos', escribio: '¿Cuánto cuesta enviar a Cali?', respuesta: 'El envío a Cali cuesta $12.000 y llega en 3 días hábiles.', reglas: [], porTuLado: null, envio: null } as const
 
 export const TARJETAS_CON_UN_CASO: Record<string, EstadoDeTarjeta> = {
   'p-regla': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Daniela'),
@@ -472,7 +472,7 @@ export const HILO_CONSTANCIAS: UIMessage[] = [
 ]
 
 export const TARJETAS_CONSTANCIAS: Record<string, EstadoDeTarjeta> = {
-  'c-enviada': estadoDe('aplicada', 'enviar', { tipo: 'caso', titulo: 'La bolsa llegó rota', pedido: 31, cliente: 'Camila Rojas', escribio: 'Una de las bolsas llegó abierta y con café regado dentro de la caja.', respuesta: 'Hola Camila, te la repongo sin costo.' }, 'Lucía'),
+  'c-enviada': estadoDe('aplicada', 'enviar', { tipo: 'caso', titulo: 'La bolsa llegó rota', pedido: 31, cliente: 'Camila Rojas', escribio: 'Una de las bolsas llegó abierta y con café regado dentro de la caja.', respuesta: 'Hola Camila, te la repongo sin costo.', reglas: [], porTuLado: null, envio: { tipo: 'salio' } }, 'Lucía'),
   'c-aplicada': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Julián'),
   'c-publicada': estadoDe('aplicada', 'aplicar', ES_REGLA, 'Julián', true),
   'c-indicador-publicado': estadoDe('aplicada', 'deshacer', { tipo: 'elemento', que: 'indicador', clave: null }, 'Julián', true),
@@ -511,7 +511,7 @@ export const NEGOCIO_CON_CAMBIOS: NegocioDeMuestra = {
 export const NEGOCIO_CON_UN_CASO: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   casos: [CASO_DE_MUESTRA],
-  seccionDeCasos: { ...SOLO_RESUELTOS, cuentaQueEspera: 1, esperan: [{ id: 'caso-1', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', hace: 'hace 12 min', decision: { tarjeta: CASO, estado: TARJETAS_CON_UN_CASO['p-caso'] } }] },
+  seccionDeCasos: { ...SOLO_RESUELTOS, cuentaQueEspera: 1, esperan: [{ id: 'caso-1', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 12 min', decision: { tarjeta: CASO, estado: TARJETAS_CON_UN_CASO['p-caso'] } }] },
   hoy: {
     hoy: {
       ...HOY_FUNCIONANDO,
@@ -531,12 +531,12 @@ export const NEGOCIO_CASOS_SIN_BOTON: NegocioDeMuestra = {
   seccionDeCasos: {
     cuentaQueEspera: 3,
     esperan: [
-      { id: 's-1', titulo: 'Pide factura a nombre de su empresa', quien: 'Julián Ramírez', detalle: 'Necesita factura electrónica y el agente no tiene cómo generarla.', propuesta: 'Responderle: "Hola Julián, ya te confirmo lo de la factura."\nPor tu lado: revisar si se puede facturar a empresa.', hace: 'ayer', decision: null },
-      { id: 's-2', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', hace: 'hace 2 días', decision: decisionDe('s-descartada', 'descartada') },
-      { id: 's-3', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', hace: 'hace 3 días', decision: decisionDe('s-vencida', 'vencida') },
+      { id: 's-1', titulo: 'Pide factura a nombre de su empresa', quien: 'Julián Ramírez', detalle: 'Necesita factura electrónica y el agente no tiene cómo generarla.', propuesta: 'Responderle: "Hola Julián, ya te confirmo lo de la factura."\nPor tu lado: revisar si se puede facturar a empresa.', reglas: [], porTuLado: null, hace: 'ayer', decision: null },
+      { id: 's-2', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 2 días', decision: decisionDe('s-descartada', 'descartada') },
+      { id: 's-3', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 3 días', decision: decisionDe('s-vencida', 'vencida') },
     ],
     cuentaDeResueltos: 1,
-    resueltos: [{ id: 's-4', titulo: 'La bolsa llegó rota', resolucion: 'Hola Camila, te la repongo sin costo.', hace: 'hace 3 h', noSalio: true }],
+    resueltos: [{ id: 's-4', titulo: 'La bolsa llegó rota', resolucion: 'Hola Camila, te la repongo sin costo.', hace: 'hace 3 h', envio: { tipo: 'no_la_tomo' } }],
   },
 }
 
