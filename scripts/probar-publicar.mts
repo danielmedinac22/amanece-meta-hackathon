@@ -527,6 +527,8 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('Deshacer: un clic posterior responde deshecho', (await deshacer(ana, tarjeta.propuesta, tarjeta.huella)).tipo === 'deshecho')
     const [quien] = await db.select({ por: esquema.propuestas.aprobadoPor }).from(esquema.propuestas).where(and(eq(esquema.propuestas.revierte, tarjeta.propuesta), eq(esquema.propuestas.estado, 'aplicada')))
     afirmar('Deshacer: queda quién tocó', quien?.por === ana.dueno || quien?.por === beto.dueno, quien)
+    const [enAna, enBeto] = [await lineasDelHilo(ana, /revirtió/), await lineasDelHilo(beto, /revirtió/)]
+    afirmar('Deshacer: deja una sola línea en el Hilo de cada Dueño', enAna.length === 1 && enBeto.length === 1, { enAna, enBeto })
 
     const regla = await pedir(ana, poner(SIEMPRE_SIN_PLAZO))
     if (regla.desenlace !== 'espera_al_dueno') throw new Error(regla.resumen)

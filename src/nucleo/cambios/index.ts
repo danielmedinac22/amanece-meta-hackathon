@@ -9,11 +9,11 @@
  * Una propuesta deja una `Escritura` de Elementos que `aprobar` escribe con `escribir(tx, …)` dentro del mismo
  * reclamo. Una Sección o un Indicador va solo en su propuesta.
  */
-import { and, asc, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
 import { conTransaccion, type Transaccion } from '@/db/pool'
-import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
+import { avisarEnLosHilos } from '@/negocio/dueno-hilo'
 import { registrarFaltante, type MotivoDeFaltante } from '../capacidades'
 import { leerAplicado, type Escritura, type EstadoAplicado } from '../estado'
 import { alcanceDeLaClave, comoClave, ENTRADA_PARA_PONER, type Clave, type ElementoDe, type Problema, type TipoDeElemento, type VersionDelNegocio } from '../estado/elementos'
@@ -301,6 +301,7 @@ async function proponerComo(quien: Quien, pedido: PedidoDelDueno, motores?: Moto
       const aprobadoPor = pedido.origen === 'panel' ? quien.pedidoPor : null
       const r = await aplicarConReclamo({ negocio: quien.negocio, propuesta: id, huella, aprobadoPor, sinBoton: { alcance: t.alcance, origen: pedido.origen } })
       if (r.tipo === 'aplicado') {
+        if (pedido.origen === 'panel') await dejarElDesenlace(quien.negocio, r)
         const conDeshacer = t.alcance === 'panel' && !t.revierte && r.quedo === 'en_la_vista_previa'
         return { desenlace: 'aplicado', propuesta: id, tarjeta: conDeshacer ? { ...tarjeta, accion: 'deshacer' } : null, vistaPrevia, gasto: t.gasto, resumen: resumenDeLoAplicado(id, t, r.quedo) }
       }
@@ -416,12 +417,7 @@ export async function aprobar(ctx: ContextoDelDueno, propuesta: string, huella: 
   if (r.tipo === 'conflicto') await descartarSinBoton(marcar.propuesta(propuesta))
   if (r.tipo === 'sigue_esperando') return { tipo: 'no_existe' }
   if (r.tipo !== 'aplicado') return r
-  // Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño.
-  const desenlace = await desenlaceEnPalabras(ctx.negocio, r.fila, r.envio, r.quedo).catch((e) => {
-    console.error('[aprobar] no pude armar el desenlace', propuesta, e)
-    return null
-  })
-  if (desenlace && r.avisar) await avisarEnLosHilos(ctx.negocio, r.fila, desenlace).catch((e) => console.error('[aprobar] no pude avisar en los Hilos', propuesta, e))
+  const desenlace = await dejarElDesenlace(ctx.negocio, r)
   return { tipo: 'aplicado', resumen: desenlace?.texto ?? 'Aplicado.', envio: r.envio, version: versionDe(r.fila) }
 }
 
@@ -648,14 +644,16 @@ async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio
 }
 
 /**
- * Una línea fija en el Hilo de cada Dueño del Negocio: así se entera el otro Dueño y, en el turno siguiente, el
- * modelo, que solo había visto `resumen`. `data-aprobacion` le da al modelo el id sin la huella.
+ * Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño. La línea es para el otro Dueño y
+ * para el modelo, que solo había visto `resumen`. `data-aprobacion` le da el id sin la huella.
  */
-async function avisarEnLosHilos(negocio: NegocioId, f: FilaDePropuesta, d: Desenlace): Promise<void> {
-  const duenos = await db.select({ id: esquema.duenos.id }).from(esquema.duenos).where(eq(esquema.duenos.negocioId, negocio)).orderBy(asc(esquema.duenos.creado))
-  for (const dueno of duenos) {
-    await guardarEnElHilo(negocio, dueno.id, 'agente', mensajeDelAgente(d.texto, [{ type: 'data-aprobacion', data: { propuesta: f.id, por: d.por } }]))
-  }
+async function dejarElDesenlace(negocio: NegocioId, r: Aplicada): Promise<Desenlace | null> {
+  const desenlace = await desenlaceEnPalabras(negocio, r.fila, r.envio, r.quedo).catch((e) => {
+    console.error('[aprobar] no pude armar el desenlace', r.fila.id, e)
+    return null
+  })
+  if (desenlace && r.avisar) await avisarEnLosHilos(negocio, desenlace.texto, [{ type: 'data-aprobacion', data: { propuesta: r.fila.id, por: desenlace.por } }]).catch((e) => console.error('[aprobar] no pude avisar en los Hilos', r.fila.id, e))
+  return desenlace
 }
 
 // ══ Deshacer, descartar e historial ═══════════════════════════════════════════════════════════════════════

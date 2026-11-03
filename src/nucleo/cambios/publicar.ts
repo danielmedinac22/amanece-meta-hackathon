@@ -2,14 +2,14 @@
  * Publicar: mandar al link lo que el Dueño ya aplicó en su vista previa. Solo lo llama el botón (`ACCIONES.publicar`):
  * el modelo no tiene herramienta y `QuienPuede` no le deja compilar a nadie más.
  */
-import { asc, eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { conTransaccion } from '@/db/pool'
-import { guardarEnElHilo, mensajeDelAgente } from '@/negocio/dueno-hilo'
+import { avisarEnLosHilos } from '@/negocio/dueno-hilo'
 import type { QuienPuede } from '../acciones'
 import { huellaDeLoPendiente, leerAplicado, leerPublicado, loPendiente, quienEscribioLaUltima, type EstadoAplicado, type ItemPendiente } from '../estado'
 import { sellar } from '../estado/escribir'
-import { marcar, type Huella, type NegocioId, type PropuestaId } from '../identidad'
+import type { DuenoId, Huella, NegocioId, PropuestaId } from '../identidad'
 
 export type ItemDeLoPendiente = ItemPendiente & { readonly aplicadoPor: string | null }
 export type LoPendiente = { readonly items: readonly ItemDeLoPendiente[]; readonly huella: Huella }
@@ -71,14 +71,13 @@ export async function publicar(quien: QuienPuede<'publicar'>, vista: string): Pr
     case 'sellado': {
       const lineas = lineasEnOrden(r.items)
       // Ya hubo COMMIT: una falla al avisar no convierte lo publicado en un error para el Dueño.
-      await avisarEnLosHilos(quien.negocio, quien.dueno, lineas).catch((e) => console.error('[publicar] no pude avisar en los Hilos', quien.negocio, e))
+      await avisarQuePublico(quien.negocio, quien.dueno, lineas).catch((e) => console.error('[publicar] no pude avisar en los Hilos', quien.negocio, e))
       return { tipo: 'publicado', resumen: `Publicado: ${lineas.join('; ')}` }
     }
   }
 }
 
-async function avisarEnLosHilos(negocio: NegocioId, por: string, lineas: readonly string[]): Promise<void> {
-  const duenos = await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(eq(esquema.duenos.negocioId, negocio)).orderBy(asc(esquema.duenos.creado))
-  const nombre = duenos.find((d) => d.id === por)?.nombre || 'Un Dueño'
-  for (const dueno of duenos) await guardarEnElHilo(negocio, marcar.dueno(dueno.id), 'agente', mensajeDelAgente(`${nombre} publicó: ${lineas.join('; ')}`))
+async function avisarQuePublico(negocio: NegocioId, por: DuenoId, lineas: readonly string[]): Promise<void> {
+  const [quien] = await db.select({ nombre: esquema.duenos.nombre }).from(esquema.duenos).where(eq(esquema.duenos.id, por))
+  await avisarEnLosHilos(negocio, `${quien?.nombre || 'Un Dueño'} publicó: ${lineas.join('; ')}`)
 }
