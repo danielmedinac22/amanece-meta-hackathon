@@ -1,5 +1,5 @@
 import { after } from 'next/server'
-import { firmaValida, leerMensajeEntrante, recibirMensaje } from '@/nucleo/entrada'
+import { firmaValida, leerMensajeEntrante, porQueSeDescarta, recibirMensaje } from '@/nucleo/entrada'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
@@ -22,9 +22,12 @@ export async function POST(request: Request) {
   }
 
   const mensaje = leerMensajeEntrante(evento)
+  // Sin esto, un número mal configurado se queda sordo y responde 200.
+  if (!mensaje) console.warn('[webhook] descartado', porQueSeDescarta(evento))
   if (mensaje) {
     after(async () => {
       try {
+        console.info('[webhook] atendiendo', mensaje.wamid)
         await recibirMensaje(mensaje)
       } catch (error) {
         console.error('[webhook] no se pudo atender el mensaje', mensaje.wamid, error)

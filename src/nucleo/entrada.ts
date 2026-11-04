@@ -89,6 +89,20 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
   }
 }
 
+/** Pura y sin datos del Cliente: lo que se puede escribir en un log cuando `leerMensajeEntrante` da `null`. */
+export function porQueSeDescarta(cuerpo: unknown) {
+  const crudo = cuerpo as CuerpoDeKapso | null
+  const raiz = crudo?.data && !crudo.message ? crudo.data : crudo
+  return {
+    conMensaje: Boolean(raiz?.message?.id && raiz.message.from),
+    esteNumero: !raiz?.phone_number_id || raiz.phone_number_id === NUMERO_DE_AMANECE.id,
+    largoDelIdRecibido: String(raiz?.phone_number_id ?? '').length,
+    largoDelIdPropio: NUMERO_DE_AMANECE.id.length,
+    tipo: raiz?.message?.type,
+    estado: raiz?.message?.kapso?.status,
+  }
+}
+
 export function linkDeWhatsapp(nombre: string, codigo: string): string {
   return `https://wa.me/${NUMERO_DE_AMANECE.telefono}?text=${encodeURIComponent(`(${codigo}) Hola ${nombre}`)}`
 }
