@@ -5,6 +5,8 @@
  * build. Ciérralo antes de correr esto. Tarda unos minutos por el build.
  *
  *   pnpm tsx scripts/probar-vitrina.mts
+ *   pnpm tsx scripts/probar-vitrina.mts --solo=armado,panel-recien   Solo las escenas cuyo id empieza así, para un arreglo
+ *     urgente. No reemplaza la corrida completa: salta las demás escenas y los esqueletos.
  */
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
@@ -20,11 +22,14 @@ import { decisionesEnEspera, decisionQueEspera } from '../src/negocio/partes-del
 import { EMPIEZA_A_CORREGIR } from '../src/nucleo/armado-paso'
 import { afirmar, terminar } from './afirmar.mjs'
 
+const SOLO = process.argv.find((a) => a.startsWith('--solo='))?.slice('--solo='.length).split(',') ?? null
+const toca = (escena: string) => !SOLO || SOLO.some((p) => escena.startsWith(p))
+
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
 const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'hoy-agenda-sin-citas', 'agenda-lista', 'agenda-muchas', 'agenda-vacia', 'tablero-agenda-sin-citas', 'tablero-agenda-con-pedidos', 'hoy-lo-ultimo', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
-const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-corregida', 'armado-no-corrigio', 'hilo-lectura-espera', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
+const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-sin-precios', 'armado-confirmar','armado-corregida', 'armado-no-corrigio', 'hilo-lectura-espera', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
 const ESCENAS_DE_ALBA = ['alba', 'alba-al-armado']
 const ESCENAS_DEL_CASO = ['caso-con-regla', 'caso-viejo', 'caso-desenlaces', 'caso-no-la-toma', 'casos-envio']
 const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/agenda', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion', '/panel/pedidos/un-pedido', '/panel/clientes/un-cliente']
@@ -77,7 +82,10 @@ const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['Inicio: la frase lleva sus cifras en negrita', 'panel-funcionando', '1440', '--ve=Esta semana vendiste', `--cierto=[...document.querySelectorAll('p b')].map((b) => b.textContent).join('|') === '$1.284.000|23 pedidos|13 de 14'`],
   ['Inicio: Decidir lleva a Casos sin navegar fuera', 'panel-un-caso', '1440', '--ve=Necesita tu ojo', '--clic=Decidir', '--ve=Espera tu decisión', '--no-ve=Necesita tu ojo'],
   ['Inicio en teléfono: Ver el pedido se queda en Tu negocio', 'panel-un-caso', '390', '--clic=Tu negocio', '--ve=Necesita tu ojo', '--clic=Ver el pedido', '--ve=Pedido #37', '--ve=Con novedad', '--no-ve=Necesita tu ojo', `--cierto=document.querySelector('[data-pano=lienzo]').checkVisibility()`],
-  ['Inicio: recién abierto muestra el link y ninguna cifra', 'panel-recien-abierto', '1440', '--ve=Todavía no te ha escrito nadie.', '--no-ve=Necesita tu ojo', '--no-ve=Esta semana', `--evalua=(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: (t) => { window.copiado = t; return Promise.resolve() } } }); return 'listo' })()`, '--clic=Copiar', '--ve=Copiado', `--cierto=window.copiado.startsWith('https://wa.me/')`],
+  ['Inicio: recién abierto pide lo que falta y empieza el mensaje en el redactor', 'panel-recien-abierto', '1440', '--ve=Para que tu agente atienda mejor', '--ve=Cómo cobras', '--clic=Decirle: Tono', `--cierto=document.activeElement === document.querySelector('textarea') && document.activeElement.value === 'Agrega cómo quiero que les hables a mis clientes: '`],
+  ['Inicio: en teléfono Decírselo lleva a la pestaña del agente', 'panel-recien-abierto', '390', '--clic=Tu negocio', '--ve=Para que tu agente atienda mejor', '--clic=Decirle: Cómo cobras', '--espera=400', `--cierto=document.activeElement === document.querySelector('textarea') && document.activeElement.value === 'Agrega cómo me pagan mis clientes: '`],
+  ['Inicio: con clientes no sale la lista de lo que falta', 'panel-funcionando', '1440', '--no-ve=Para que tu agente atienda mejor'],
+  ['Inicio: recién abierto muestra el link y ninguna cifra', 'panel-recien-abierto', '1440','--ve=Todavía no te ha escrito nadie.', '--no-ve=Necesita tu ojo', '--no-ve=Esta semana', `--evalua=(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: (t) => { window.copiado = t; return Promise.resolve() } } }); return 'listo' })()`, '--clic=Copiar', '--ve=Copiado', `--cierto=window.copiado.startsWith('https://wa.me/')`],
   ['Inicio: con cero ventas no dice $0 y el ojo vacío dice qué sigue', 'hoy-sin-ventas', '1440', '--ve=Esta semana todavía no tienes ventas.', '--ve=la única conversación', '--ve=Nada por ahora', '--no-ve=$0'],
   ['Lo último: un mensaje largo sale recortado en una línea, y dice quién confirmó', 'hoy-lo-ultimo', '1440', '--ve=Mariana Ospina te escribió: «Hola, buenas tardes. Quería saber', '--ve=…»', '--ve=Daniela Quintero confirmó su pedido', '--no-ve=me quedó muy amargo'],
   ['Lo último: a 320 de ancho un link largo no desborda', 'hoy-lo-ultimo', '320', '--clic=Tu negocio', '--ve=Un cliente te escribió: «https://www.instagram.com', `--cierto=[...document.querySelectorAll('[data-pano=lienzo] li span')].every((s) => s.scrollWidth <= s.clientWidth)`],
@@ -356,7 +364,11 @@ const RECORRIDOS_DEL_ARMADO: typeof RECORRIDOS = [
   ['Armado: el redactor sigue en todos los pasos', 'armado-listo', '1440', '--cierto=!!document.querySelector(\'textarea[aria-label="Escríbele a tu agente"]\')', '--ve=Abrir Café Ladera', '--ve=listo para abrir'],
   ['Armado: abrir saca el cielo hacia arriba y lleva a la operación', 'armado-listo', '1440', MUESTREAR_EL_CIELO, '--clic=Abrir Café Ladera', '--espera=1200', `--cierto=window.cielo.some(([o, y]) => o > 0 && o < 1 && y < 0 && y > -300)`, '--ve=Todavía no te ha escrito nadie.', `--cierto=!document.querySelector('.cielo')`],
   ['Armado: con prefers-reduced-motion el cielo sale sin recorrido y abrir igual lleva a la operación', 'armado-listo', '1440', '--menos-movimiento', MUESTREAR_EL_CIELO, '--clic=Abrir Café Ladera', '--espera=1200', `--cierto=window.cielo.length > 0 && window.cielo.every(([, y]) => y === 0 || y === -300)`, '--ve=Todavía no te ha escrito nadie.'],
-  ['Armado: fuera del orden del guion, lo dicho se marca y el paso no se adelanta', 'armado-fuera-de-orden', '1440', TITULAR('Cuéntame de tu negocio.'), FILA('Cómo cobras', 'Lo sé'), FILA('Tono', 'Lo sé'), FILA('Nombre', 'Falta'), FILA('Productos', 'Falta'), '--no-ve=¿Cómo te pagan tus clientes?', '--no-ve=Abrir'],
+  ['Armado: al tocar el botón, lo que sigue queda de último y las filas se marcan', 'armado-sin-precios', '1440', TITULAR('¿Está bien lo que leí?'), FILA('Qué haces', 'Por confirmar'), FILA('Ciudad', 'Por confirmar'), '--no-ve=Listo, ya lo tengo.', '--clic=Están bien y no falta ninguno', '--espera=500', TITULAR('¿Cómo se llama tu negocio?'), FILA('Qué haces', 'Lo sé'), FILA('Ciudad', 'Lo sé'), `--cierto=document.querySelector('main').lastElementChild.textContent === 'Listo, ya lo tengo. ¿Cómo se llama tu negocio?'`],
+  ['Armado: al descartar no dice que ya lo tiene, y pregunta lo que falta', 'armado-sin-precios', '1440', '--clic=Descartar', '--espera=500', '--no-ve=Listo, ya lo tengo.', `--cierto=document.querySelector('main').lastElementChild.textContent === '¿Cómo se llama tu negocio?'`],
+  ['Armado: en teléfono lo que sigue también queda de último', 'armado-sin-precios', '390', '--clic=Están bien y no falta ninguno', '--espera=500', `--cierto=document.querySelector('main').lastElementChild.textContent.endsWith('¿Cómo se llama tu negocio?')`],
+  ['Armado: en PC Lo que ya sé va debajo de Tu Panel y la pregunta encima del redactor', 'armado-sin-precios', '1440', '--clic=Están bien y no falta ninguno', '--espera=500', `--cierto=!!document.querySelector('aside h2') && document.querySelector('aside h2').textContent === 'Lo que ya sé'`, `--cierto=!document.querySelector('main h2')`],
+  ['Armado: fuera del orden del guion, lo dicho se marca y el paso no se adelanta', 'armado-fuera-de-orden', '1440', TITULAR('¿Cómo se llama tu negocio?'),FILA('Cómo cobras', 'Lo sé'), FILA('Tono', 'Lo sé'), FILA('Nombre', 'Falta'), FILA('Productos', 'Falta'), '--no-ve=¿Cómo te pagan tus clientes?', '--no-ve=Abrir'],
   ['Armado: un nombre largo no saca el botón Abrir de la carta a 320', 'armado-textos-largos', '320', `--cierto=(() => { const s = document.querySelector('.cielo').nextElementSibling; return s.scrollWidth <= s.clientWidth })()`],
   ['Armado: en teléfono Tu Panel queda debajo de la carta', 'armado-listo', '390', `--cierto=document.querySelector('aside').getBoundingClientRect().top > document.querySelector('main').getBoundingClientRect().bottom`],
   ['Armado: en PC Tu Panel queda a la derecha', 'armado-listo', '1024', `--cierto=document.querySelector('aside').getBoundingClientRect().left >= document.querySelector('main').getBoundingClientRect().right`],
@@ -532,7 +544,8 @@ try {
   const ids = [...html.matchAll(/href="\/vitrina\/([\w-]+)"/g)].map((m) => m[1])
   afirmar('dev: el índice enlaza las escenas esperadas', TODAS_LAS_ESCENAS.every((id) => ids.includes(id)), ids)
 
-  for (const id of new Set([...ids, ...TODAS_LAS_ESCENAS])) {
+  const escenasACorrer = [...new Set([...ids, ...TODAS_LAS_ESCENAS])].filter(toca)
+  for (const id of escenasACorrer) {
     const r = await ver(`${desarrollo.base}/vitrina/${id}`)
     afirmar(`dev: /vitrina/${id} da 200`, r.status === 200, { estado: r.status, servidor: desarrollo.salida() })
   }
@@ -553,18 +566,18 @@ try {
 
   // Teléfono y PC valen igual: ninguna escena se desborda a lo ancho a ninguno de los dos anchos.
   const captura = join(mkdtempSync(join(tmpdir(), 'vitrina-')), 'escena.png')
-  for (const id of new Set([...ids, ...TODAS_LAS_ESCENAS])) {
+  for (const id of escenasACorrer) {
     for (const [ancho, alto] of [['390', '844'], ['1440', '900']]) {
       const r = mirar(desarrollo.base, id, captura, ancho, alto)
       afirmar(`dev: ${id} cabe en ${ancho} px`, r.status === 0, r.stderr.slice(-500))
     }
   }
-  for (const id of ESCENAS_DE_320) {
+  for (const id of ESCENAS_DE_320.filter(toca)) {
     const r = mirar(desarrollo.base, id, captura, '320', '700')
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA].filter(([, escena]) => toca(escena))) {
     const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }
@@ -572,7 +585,7 @@ try {
   // Tras cientos de páginas y unos 20 minutos, el mismo `next dev` deja de responderle a Chrome.
   desarrollo.parar()
   desarrollo = await servir('dev', SIN_BASE)
-  for (const { vista, esqueleto, arriba } of ESQUELETOS_QUE_NO_SALTAN) {
+  for (const { vista, esqueleto, arriba } of SOLO ? [] : ESQUELETOS_QUE_NO_SALTAN) {
     for (const anchoDeLaVentana of ['1440', '390']) {
       const medir = `--evalua=${JSON.stringify(arriba)}.map((s) => { const e = document.querySelector('[data-pano=lienzo] ' + s); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)] })`
       const medidas = [vista, esqueleto].map((escena) => {

@@ -139,7 +139,9 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 ### Armado
 
-**Decidido.** A la izquierda, la carta del agente: un paso a la vez, con un titular que cambia, la decisión en tarjeta y `Lo que ya sé` marcándose fila por fila. A la derecha, **Tu Panel**, que se va armando con lo que el agente sabe: primero en gris, luego con datos reales, en ceros hasta abrir. En teléfono el Panel queda debajo. Termina en una tarjeta con el link y `Abrir [Negocio]`, que lleva a la operación.
+**Decidido.** A la izquierda, la carta del agente: un paso a la vez, con un titular que cambia y la decisión en tarjeta. Lo último de la carta es siempre lo que el Dueño tiene que hacer ahora. A la derecha, **Tu Panel**, que se va armando con lo que el agente sabe: primero en gris, luego con datos reales, en ceros hasta abrir. Debajo del Panel, `Lo que ya sé`, marcándose fila por fila. En teléfono el Panel queda debajo. Termina en una tarjeta con el link y `Abrir [Negocio]`, que lleva a la operación. Daniel lo ajustó el 4 de noviembre de 2026 frente al prototipo del flujo completo, después de trabarse en producción.
+
+**Al tocar el botón.** Tocar la tarjeta no corre un turno del modelo. Si todavía falta algo para abrir, la carta dice qué sigue con una frase escrita por el código, porque sin ella nadie habla y el Dueño no sabe qué hacer. Lo que sigue también sale en el titular. Si lo que falta es cómo cobra o ya se puede abrir, lo dice su propia tarjeta.
 
 ### Operación: tres paños
 
@@ -161,7 +163,7 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 ### Inicio: Hoy
 
-**Decidido.** Una frase con las cifras en negrita, `Necesita tu ojo` con cada cosa y su acción, y `Lo último`. Lo resuelto sale de la lista enseguida. Recién abierto el Negocio, muestra `Todavía no te ha escrito nadie.` con el link para copiar.
+**Decidido.** Una frase con las cifras en negrita, `Necesita tu ojo` con cada cosa y su acción, y `Lo último`. Lo resuelto sale de la lista enseguida. Recién abierto el Negocio, muestra `Todavía no te ha escrito nadie.` con el link para copiar y `Para que tu agente atienda mejor`, con lo que no bloqueó abrir. `Decírselo` empieza el mensaje en el redactor, y lo que responda pasa por `Aplicar` y `Publicar`.
 
 La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y una agenda de citas. Cada cifra sale de un dato real, nunca del modelo.
 

@@ -19,7 +19,7 @@ import { loQueTrae, RUTA_DE_AJUSTES } from '@/app/panel/secciones'
 import { Alba } from '@/app/alba'
 import { AlbaHastaElArmado } from './alba-de-muestra'
 import { ArmadoDeMuestra } from './armado-de-muestra'
-import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_COBRO_CORREGIDO, ARMADO_CORREGIDA, HILO_CORREGIDA, HILO_NO_CORRIGIO, TARJETAS_CORREGIDA, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
+import { ARMADO_SIN_PRECIOS, ARMADO_TRAS_EL_BOTON, HILO_SIN_PRECIOS, TARJETAS_SIN_PRECIOS, ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_COBRO_CORREGIDO, ARMADO_CORREGIDA, HILO_CORREGIDA, HILO_NO_CORRIGIO, TARJETAS_CORREGIDA, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { Componentes } from './componentes'
 import { ADJUNTOS_EN_EL_REDACTOR, GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_CON_ARCHIVOS, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
 import { ConfirmarDeMuestra, EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
@@ -152,6 +152,7 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'panel-vacio', titulo: 'Armado: un Dueño recién entrado', pinta: () => <ArmadoDeMuestra datos={ARMADO_VACIO} messages={[]} /> },
   { id: 'panel-armandose', titulo: 'Armado: conversando, sin enlace', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_CONOCIENDO} /> },
   { id: 'armado-leyendo', titulo: 'Armado: leyendo su página', pinta: () => <ArmadoDeMuestra datos={ARMADO_LEYENDO} messages={HILO_LEYENDO} status="streaming" /> },
+  { id: 'armado-sin-precios', titulo: 'Armado: una página sin precios, y lo que sigue al tocar el botón', pinta: () => <ArmadoDeMuestra datos={ARMADO_SIN_PRECIOS} messages={HILO_SIN_PRECIOS} tarjetas={TARJETAS_SIN_PRECIOS} siguiente={ARMADO_TRAS_EL_BOTON} /> },
   { id: 'armado-confirmar', titulo: 'Armado: ¿están bien estos productos?', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONFIRMAR} messages={HILO_CONFIRMAR} tarjetas={TARJETAS_CONFIRMAR} siguiente={ARMADO_COBRO} /> },
   { id: 'armado-corregida', titulo: 'Armado: lo leído, ya corregido en palabras', pinta: () => <ArmadoDeMuestra datos={ARMADO_CORREGIDA} messages={HILO_CORREGIDA} tarjetas={TARJETAS_CORREGIDA} siguiente={ARMADO_COBRO_CORREGIDO} /> },
   { id: 'armado-no-corrigio', titulo: 'Armado: lo que dijo el Dueño no coincidió con la tarjeta', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONFIRMAR} messages={HILO_NO_CORRIGIO} tarjetas={TARJETAS_CONFIRMAR} /> },

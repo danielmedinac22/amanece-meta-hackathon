@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { db, esquema } from '@/db'
 import { ajustesDe } from '@/nucleo/ajustes'
-import { ARMADO_SIN_NEGOCIO, armadoDe } from '@/nucleo/armado'
+import { ARMADO_SIN_NEGOCIO, armadoDe, porCompletar } from '@/nucleo/armado'
 import { lecturaPendiente, leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
@@ -79,7 +79,7 @@ export async function leerInicio(): Promise<DatosDeHoy | null> {
   const { negocio, id, estado } = leido
   const reglas = estado.vigentes('regla').map((r) => ({ clave: r.clave, texto: reglaEnPalabras(r.elemento, estado) }))
   const hoy = await leerHoy(id, negocio.zonaHoraria, estado.identidad.rubro)
-  return { hoy, link: linkDeWhatsapp(negocio.nombre, negocio.codigo), reglas }
+  return { hoy, link: linkDeWhatsapp(negocio.nombre, negocio.codigo), reglas, porCompletar: porCompletar(estado) }
 }
 
 export async function leerArmado() {

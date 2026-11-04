@@ -8,7 +8,7 @@ import { linkDeWhatsapp } from './entrada'
 import { conPropuesta, valorDelDato, type Escritura, type EstadoDelNegocio } from './estado'
 import { pesos } from './estado/elementos'
 
-export type DatoQueSe = 'Nombre' | 'Productos' | 'Envíos' | 'Horario' | 'Cómo cobras' | 'Tono'
+export type DatoQueSe = 'Nombre' | 'Qué haces' | 'Ciudad' | 'Productos' | 'Envíos' | 'Horario' | 'Cómo cobras' | 'Tono'
 
 /** `en_la_tarjeta`: lo leído de una página cuenta solo cuando el Dueño toca el botón. */
 export type FilaQueYaSe = { readonly dato: DatoQueSe; readonly valor: string | null; readonly estado: 'sabido' | 'en_la_tarjeta' | 'falta' }
@@ -32,12 +32,31 @@ const CUANTOS_PRODUCTOS_EN_EL_PANEL = 3
 
 const FILAS: readonly { readonly dato: DatoQueSe; readonly valor: (e: EstadoDelNegocio) => string | null }[] = [
   { dato: 'Nombre', valor: nombreDe },
+  { dato: 'Qué haces', valor: (e) => valorDelDato(e, 'descripcion') || null },
+  { dato: 'Ciudad', valor: (e) => valorDelDato(e, 'ciudad') || null },
   { dato: 'Productos', valor: (e) => (conPrecio(e).length ? `${conPrecio(e).length} con precio` : null) },
   { dato: 'Envíos', valor: (e) => valorDelDato(e, 'envios') || null },
   { dato: 'Horario', valor: (e) => valorDelDato(e, 'horario') || null },
   { dato: 'Cómo cobras', valor: (e) => valorDelDato(e, 'pagos') || null },
   { dato: 'Tono', valor: (e) => e.vigentes('voz')[0]?.elemento.estilo || null },
 ]
+
+export type PorCompletar = { readonly dato: DatoQueSe; readonly para: string; readonly empieza: string }
+
+/**
+ * Lo que no bloqueó abrir, primero lo que más le preguntan al agente. `empieza` pide un cambio porque, con el Negocio
+ * abierto, el agente no prepara lo que solo le cuentan. Sin cifras: lo que envía el Dueño cuenta como escrito por él.
+ */
+const POR_COMPLETAR: readonly PorCompletar[] = [
+  { dato: 'Cómo cobras', para: 'Para decirle a un Cliente cómo pagar', empieza: 'Agrega cómo me pagan mis clientes: ' },
+  { dato: 'Envíos', para: 'Para responder a dónde llegas y cuánto cuesta', empieza: 'Agrega mis envíos: ' },
+  { dato: 'Horario', para: 'Para decir cuándo atiendes', empieza: 'Agrega mi horario: ' },
+  { dato: 'Ciudad', para: 'Para decir desde dónde vendes', empieza: 'Agrega la ciudad de mi negocio: ' },
+  { dato: 'Tono', para: 'Para que hable como tú', empieza: 'Agrega cómo quiero que les hables a mis clientes: ' },
+]
+
+/** Pura. Lo que Inicio le sigue pidiendo al Dueño con el Negocio recién abierto. */
+export const porCompletar = (e: EstadoDelNegocio): readonly PorCompletar[] => POR_COMPLETAR.filter((p) => !FILAS.find((f) => f.dato === p.dato)?.valor(e))
 
 /** Pura. Lo que se confirmó manda; lo que solo está en la tarjeta se muestra sin marcar. */
 export function armadoDe(estado: EstadoDelNegocio, pendiente: Escritura | null): DatosDelArmado {

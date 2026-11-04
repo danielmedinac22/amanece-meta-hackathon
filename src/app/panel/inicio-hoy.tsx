@@ -1,15 +1,17 @@
 import { ArrowRight, CheckCircle, Warning } from '@phosphor-icons/react/ssr'
 import { buttonVariants } from '@/components/ui/button'
 import { fraseDeHoy, MIENTRAS_NADIE_ESCRIBE } from '@/nucleo/hoy-palabras'
+import type { PorCompletar as FilaPorCompletar } from '@/nucleo/armado'
 import type { Hoy } from '@/nucleo/hoy'
 import { CopiarLink } from './copiar-link'
 import { IrASeccion } from './ir-a-seccion'
 import { LoNuevo } from './lo-nuevo'
+import { PorCompletar } from './por-completar'
 
-export type DatosDeHoy = { hoy: Hoy; link: string; reglas: { clave: string; texto: string }[] }
+export type DatosDeHoy = { hoy: Hoy; link: string; reglas: { clave: string; texto: string }[]; porCompletar: readonly FilaPorCompletar[] }
 
-export function InicioHoy({ hoy, link, reglas }: DatosDeHoy) {
-  if (hoy.recienAbierto) return <RecienAbierto voz={hoy.voz} link={link} />
+export function InicioHoy({ hoy, link, reglas, porCompletar }: DatosDeHoy) {
+  if (hoy.recienAbierto) return <RecienAbierto voz={hoy.voz} link={link} porCompletar={porCompletar} />
   return (
     <div className="mx-auto flex max-w-[38rem] flex-col gap-7 pt-2">
       <p className="font-heading text-[clamp(20px,5cqw,28px)] leading-[1.28] font-medium tracking-tight text-pretty">
@@ -77,7 +79,7 @@ export function InicioHoy({ hoy, link, reglas }: DatosDeHoy) {
   )
 }
 
-function RecienAbierto({ voz, link }: { voz: Hoy['voz']; link: string }) {
+function RecienAbierto({ voz, link, porCompletar }: { voz: Hoy['voz']; link: string; porCompletar: readonly FilaPorCompletar[] }) {
   return (
     <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-5">
       <LoNuevo />
@@ -86,6 +88,7 @@ function RecienAbierto({ voz, link }: { voz: Hoy['voz']; link: string }) {
         <p className="mt-2 text-muted-foreground">{MIENTRAS_NADIE_ESCRIBE[voz]}</p>
       </div>
       <CopiarLink link={link} />
+      <PorCompletar filas={porCompletar} />
     </div>
   )
 }
