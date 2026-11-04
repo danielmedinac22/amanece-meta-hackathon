@@ -473,7 +473,8 @@ console.log('\nuna tarjeta sigue pasando por sus rutas')
 
 try {
   console.log('\nnext dev, sin base de datos ni sesión')
-  const desarrollo = await servir('dev', { DATABASE_URL: '', DATABASE_URL_UNPOOLED: '', DATABASE_URL_CONSULTAS: '' })
+  const SIN_BASE = { DATABASE_URL: '', DATABASE_URL_UNPOOLED: '', DATABASE_URL_CONSULTAS: '' }
+  let desarrollo = await servir('dev', SIN_BASE)
   const indice = await ver(`${desarrollo.base}/vitrina`)
   const html = await indice.text()
   afirmar('dev: /vitrina da 200', indice.status === 200, { estado: indice.status, servidor: desarrollo.salida() })
@@ -517,10 +518,17 @@ try {
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }
 
+  // Tras cientos de páginas y unos 20 minutos, el mismo `next dev` deja de responderle a Chrome.
+  desarrollo.parar()
+  desarrollo = await servir('dev', SIN_BASE)
   for (const { vista, esqueleto, arriba } of ESQUELETOS_QUE_NO_SALTAN) {
     for (const anchoDeLaVentana of ['1440', '390']) {
       const medir = `--evalua=${JSON.stringify(arriba)}.map((s) => { const e = document.querySelector('[data-pano=lienzo] ' + s); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)] })`
-      const medidas = [vista, esqueleto].map((escena) => JSON.parse(mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', medir).stdout.split('\n')[0]) as ([number, number] | null)[])
+      const medidas = [vista, esqueleto].map((escena) => {
+        const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', medir)
+        if (!r.stdout.trim()) throw new Error(`${escena} a ${anchoDeLaVentana} no midió nada (estado ${r.status}, señal ${r.signal}): ${r.stderr.slice(-500)}`)
+        return JSON.parse(r.stdout.split('\n')[0]) as ([number, number] | null)[]
+      })
       const iguales = arriba.every((_, i) => medidas[0][i] && medidas[1][i] && Math.abs(medidas[0][i][0] - medidas[1][i][0]) <= 1 && Math.abs(medidas[0][i][1] - medidas[1][i][1]) <= 1)
       afirmar(`${esqueleto} a ${anchoDeLaVentana}: nada salta al llegar los datos`, iguales, { arriba, medidas })
     }
