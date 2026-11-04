@@ -3,7 +3,7 @@ import { PARTIDAS, type IdDePlantilla } from '@/nucleo/plantillas'
 export type Tono = 'bien' | 'ojo' | 'nada'
 
 /** Solo las Secciones que tiene un Panel de verdad. Algo que el Panel no tiene no se puede poner en una tarjeta. */
-export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
+export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Agenda' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
 
 export type Plantilla = {
   id: IdDePlantilla
@@ -79,27 +79,27 @@ export const PLANTILLAS: Plantilla[] = [
   {
     id: 'agenda',
     nombre: PARTIDAS.agenda.nombre,
-    promesa: 'Responde por tus servicios y te pasa cada cita para que la confirmes.',
+    promesa: 'Propone una hora, agenda la cita y mueve las que cambian.',
     negocio: 'Consultorio Alameda',
-    secciones: ['Casos', 'Conversaciones', 'Clientes', 'Tablero'],
+    secciones: ['Agenda', 'Conversaciones', 'Clientes', 'Tablero'],
     indicadores: [
-      { dato: 'Clientes de la semana', valor: '34' },
+      { dato: 'Citas de la semana', valor: '34' },
       { dato: 'Conversaciones', valor: '52' },
       { dato: 'Necesitan atención', valor: '5' },
     ],
     barras: [9, 12, 14, 11, 15, 8, 14],
-    tituloBarras: 'Conversaciones por día',
+    tituloBarras: 'Citas por día',
     filas: [
-      { nombre: 'Felipe Rueda', detalle: 'Quiere mover su cita del jueves', estado: 'Espera tu decisión', tono: 'ojo' },
-      { nombre: 'Ana Lucía Mora', detalle: 'Pidió cita de control', estado: 'Espera tu decisión', tono: 'ojo' },
-      { nombre: 'Tomás Vélez', detalle: '¿Cuánto vale la consulta?', estado: 'Resuelta', tono: 'bien' },
+      { nombre: 'Felipe Rueda', detalle: '9:00 a. m. · Primera cita', estado: 'Agendada', tono: 'bien' },
+      { nombre: 'Ana Lucía Mora', detalle: '10:30 a. m. · Control', estado: 'Movida', tono: 'nada' },
+      { nombre: 'Tomás Vélez', detalle: '11:00 a. m. · Control', estado: 'Agendada', tono: 'bien' },
     ],
     chat: [
       { de: 'cliente', texto: 'Hola, necesito mover mi cita del jueves' },
-      { de: 'agente', texto: 'Claro, Felipe. Se lo paso a Consultorio Alameda, y te responden por aquí.' },
-      { de: 'cliente', texto: '¿Cuánto vale la consulta?' },
-      { de: 'agente', texto: 'La consulta vale $90.000.' },
+      { de: 'agente', texto: 'Claro, Felipe. Tengo viernes a las 9:00 a. m. o lunes a las 3:30 p. m. ¿Cuál te sirve?' },
+      { de: 'cliente', texto: 'El viernes' },
+      { de: 'agente', texto: 'Listo, Felipe.\n\nCita movida: viernes 6 de noviembre, 9:00 a. m. (antes jueves 5 de noviembre, 3:00 p. m.).' },
     ],
-    globos: [{ de: 'cliente', texto: 'Necesito mover mi cita del jueves' }, { de: 'agente', texto: 'Se lo paso a Consultorio Alameda.' }],
+    globos: [{ de: 'cliente', texto: 'Necesito mover mi cita del jueves' }, { de: 'agente', texto: 'Tengo viernes a las 9:00 a. m.' }],
   },
 ]
