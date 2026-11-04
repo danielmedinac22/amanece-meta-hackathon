@@ -452,7 +452,7 @@ const versionDe = (f: FilaDePropuesta): VersionDelNegocio | null => (f.version =
 
 /**
  * La única manera de aplicar una propuesta: la usan el botón y la política. El reclamo va en una transacción de
- * `Pool` que sostiene la fila tomada mientras escribe: un segundo clic espera en el `UPDATE` y, al soltarse,
+ * `Pool` que sostiene la fila tomada mientras escribe: un segundo clic espera la fila del Negocio y, al soltarse,
  * relee. Si `escribir` lanza, hay ROLLBACK y nadie recibió `aplicado` sobre algo que no quedó. Una propuesta sin
  * Elementos ni actos es una pieza del puente de antes del 2-nov: ya no cabe y se pide de nuevo.
  */
@@ -466,6 +466,8 @@ async function aplicarConReclamo(a: {
   const reclamo = await conTransaccion<Reclamo>(async (tx, abortar) => {
     // Un primer clic colgado no deja esperando al segundo para siempre.
     await tx.execute(sql`set local lock_timeout = '10s'`)
+    // Primero la fila del Negocio y después la propuesta, como la entrevista y `corregirLectura`: al revés, un clic y un mensaje a la vez se bloquean entre sí.
+    const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
     const [fila] = await tx
       .update(esquema.propuestas)
       .set({ estado: 'aplicada', aprobadoPor: a.aprobadoPor })
@@ -481,8 +483,7 @@ async function aplicarConReclamo(a: {
       .returning()
     if (!fila) return { tipo: 'sin_reclamo' }
     if (a.sinBoton) {
-      // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
-      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
+      // El modo se leyó con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
       if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return abortar({ tipo: 'sigue_esperando' })
     }
     const [acto] = fila.actos
