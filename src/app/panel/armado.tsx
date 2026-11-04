@@ -2,7 +2,7 @@
 
 import { ArrowRight, CaretDown, CheckCircle, Circle } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
@@ -95,6 +95,14 @@ export function VistaDelArmado({ datos, messages, estados, status, error, devuel
   const cuantos = datos.lectura?.productos
   const boton = !ocupado && paso === 'conociendo' ? trasElBoton(messages, estados) : null
 
+  // Lo último de la carta es lo que el Dueño tiene que hacer. El turno termina escribiendo arriba de la tarjeta y la empuja, por eso también cuenta `ocupado`.
+  const finDeLaCarta = useRef<HTMLDivElement>(null)
+  const quieto = useReducedMotion()
+  const loQueToca = `${paso}:${espera?.propuesta ?? ''}:${boton ?? ''}:${ocupado}`
+  useEffect(() => {
+    finDeLaCarta.current?.scrollIntoView({ block: 'end', behavior: quieto ? 'auto' : 'smooth' })
+  }, [loQueToca, quieto])
+
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
       <motion.div className="cielo pointer-events-none absolute inset-x-0 top-0 h-[300px]" aria-hidden animate={saliendo ? { y: -300, opacity: 0 } : { y: 0, opacity: 1 }} transition={{ duration: SALE_EL_CIELO_MS / 1000, ease: ENTRA }} />
@@ -137,6 +145,7 @@ export function VistaDelArmado({ datos, messages, estados, status, error, devuel
             <div className="sticky bottom-0 mt-auto bg-linear-to-t from-background from-70% to-transparent pt-5 pb-4">
               <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} borrador={borrador} devuelto={devuelto} />
             </div>
+            <div ref={finDeLaCarta} aria-hidden />
           </div>
           <aside className="flex flex-col pb-8 lg:sticky lg:top-4 lg:self-start lg:pt-8">
             <p className="mb-2 flex items-center gap-2 text-sm font-medium">
