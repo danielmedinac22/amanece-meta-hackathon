@@ -131,6 +131,34 @@ export const pedidos = pgTable(
 )
 
 /** Algo que el Agente de clientes no resuelve solo y le trae al Dueño. */
+/** `pasada` solo la escribe guardar otra cita del mismo Cliente, para soltar `citas_una_por_cliente`: una `agendada` vieja también se pinta como pasada. */
+export const ESTADOS_DE_CITA = ['agendada', 'cancelada', 'pasada'] as const
+export type EstadoDeCita = (typeof ESTADOS_DE_CITA)[number]
+
+/** Solo escribe `src/nucleo/citas.ts`. La fila nace cuando el Cliente dijo que sí: una hora propuesta no guarda nada. */
+export const citas = pgTable(
+  'citas',
+  {
+    id: id(),
+    negocioId: negocioId(),
+    clienteId: uuid('cliente_id')
+      .notNull()
+      .references(() => clientes.id, { onDelete: 'cascade' }),
+    inicio: timestamp('inicio', { withTimezone: true }).notNull(),
+    asunto: text('asunto').notNull().default(''),
+    estado: text('estado', { enum: ESTADOS_DE_CITA }).notNull().default('agendada'),
+    movidaDe: timestamp('movida_de', { withTimezone: true }),
+    creado: creado(),
+    actualizado: timestamp('actualizado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('citas_negocio_inicio').on(t.negocioId, t.inicio),
+    // Lo atómico de un conflicto: dos Clientes en la misma hora, o una segunda cita del mismo Cliente.
+    uniqueIndex('citas_una_por_hora').on(t.negocioId, t.inicio).where(sql`${t.estado} = 'agendada'`),
+    uniqueIndex('citas_una_por_cliente').on(t.negocioId, t.clienteId).where(sql`${t.estado} = 'agendada'`),
+  ],
+)
+
 export const casos = pgTable(
   'casos',
   {

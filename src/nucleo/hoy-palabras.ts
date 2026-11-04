@@ -8,13 +8,15 @@ export type Cifras = {
   /** La semana pasada hasta este mismo momento: un martes no se compara contra una semana completa. */
   anterior: { ventas: number; pedidos: number }
   conversaciones: { total: number; resueltas: number }
+  /** Las de esta semana y las de hoy por su hora, no por cuándo se pidieron. Una cancelada no cuenta. */
+  citas: { semana: number; hoy: number }
 }
 
 export type Parte = string | { cifra: string }
 
-const RUBROS_DE_AGENDA = /\b(?:agenda|citas?|spa|unas|medic[oa]s?)\b|\b(?:peluquer|barber|estetic|manicur|odontolog|dentist|consultorio|clinica|psicolog|fisioterap|veterinari|nutricion|masaj|tatuaj)/
+const RUBROS_DE_AGENDA = /\b(?:agenda|citas?|spa|medic[oa]s?)\b|\b(?:de|en) unas\b|^unas\b|\b(?:peluquer|barber|estetic|belleza|manicur|odontolog|dentist|consultorio|clinica|psicolog|psiquiatr|terapia|terapeut|fisioterap|veterinari|nutricion|masaj|tatuaj|yoga|pilates|abogad)/
 
-/** `negocios.rubro` es texto libre. Lo que no se reconoce como agenda habla de ventas, porque `pedidos` es lo único que el Negocio registra con plata. */
+/** `negocios.rubro` es texto libre. Lo que no se reconoce como agenda habla de ventas. Equivocarse no le quita a nadie sus pedidos: una agenda conserva `crear_pedido` y la Sección Pedidos. */
 export function vozDelRubro(rubro: string): Voz {
   const limpio = rubro
     .normalize('NFD')
@@ -44,8 +46,7 @@ function contraLaAnterior(cifras: Cifras): string {
 
 const SEMANA: Record<Voz, (c: Cifras) => Parte[]> = {
   tienda: (c) => (c.semana.pedidos ? ['Esta semana vendiste ', { cifra: pesos(c.semana.ventas) }, ' en ', { cifra: cuantos(c.semana.pedidos, 'pedido') }, contraLaAnterior(c)] : ['Esta semana todavía no tienes ventas.']),
-  // Nada guarda una cita todavía: una agenda habla de quién le escribió. Cuando exista el dato, la frase cambia aquí.
-  agenda: ({ semana: { clientes } }) => (clientes ? ['Esta semana te ', escribieron(clientes), { cifra: cuantos(clientes, 'cliente') }, '.'] : ['Esta semana todavía no te ha escrito nadie.']),
+  agenda: ({ citas: { semana, hoy } }) => (semana ? ['Esta semana tienes ', { cifra: cuantos(semana, 'cita') }, ...(hoy ? [', ', { cifra: `${hoy} hoy` }] : []), '.'] : ['Esta semana todavía no tienes citas.']),
 }
 
 function hoy({ total, resueltas }: Cifras['conversaciones']): Parte[] {
@@ -59,7 +60,7 @@ export const fraseDeHoy = (voz: Voz, cifras: Cifras): Parte[] => [...SEMANA[voz]
 
 export const MIENTRAS_NADIE_ESCRIBE: Record<Voz, string> = {
   tienda: 'Pon este link en tu Instagram o mándalo a tus clientes. Cuando te escriban, aquí vas a ver cada pedido.',
-  agenda: 'Pon este link en tu Instagram o mándalo a tus clientes. Cuando te escriban, aquí vas a ver cada conversación.',
+  agenda: 'Pon este link en tu Instagram o mándalo a tus clientes. Cuando te escriban y pidan una cita, aquí la vas a ver.',
 }
 
 const LARGO_DE_LO_ESCRITO = 80

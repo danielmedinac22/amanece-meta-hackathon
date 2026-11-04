@@ -124,7 +124,7 @@ try {
   console.log(`\n=== 1. Agente de clientes en ensayo (${MODELO_ID}) ===`)
   const antes = await filasDeLadera(ladera.id)
   const estado = await leerAplicado(marcar.negocio(ladera.id))
-  const deEnsayo = { id: marcar.cliente(camila.id), nombre: 'Camila', telefono: null, pedidos: [] }
+  const deEnsayo = { id: marcar.cliente(camila.id), nombre: 'Camila', telefono: null, pedidos: [], agenda: null }
   const ensayo = entornoDeEnsayo(estado, deEnsayo)
   const historial: { rol: 'cliente' | 'agente'; texto: string }[] = []
   const mensajes = [

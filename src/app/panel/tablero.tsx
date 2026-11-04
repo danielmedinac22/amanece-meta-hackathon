@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react'
-import { ChatsCircle, CurrencyCircleDollar, Robot, Warning } from '@phosphor-icons/react/ssr'
+import { CalendarBlank, ChatsCircle, CurrencyCircleDollar, Robot, Warning } from '@phosphor-icons/react/ssr'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { pesos } from '@/nucleo/estado/elementos'
@@ -8,11 +8,13 @@ import { cifra } from '@/nucleo/listas-palabras'
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero, PedidoReciente } from '@/nucleo/tablero'
 import { ETIQUETA_DE_ORIGEN, tarjetasDelTablero, type TarjetaDelTablero } from '@/nucleo/tablero-palabras'
+import type { FilaDeCita } from '@/nucleo/citas'
+import { EstadoDeCita } from './agenda'
 import { Barras, Reparto } from './graficas'
 import { EstadoDePedido } from './listas'
 import { Indicadores } from './pieza'
 
-const ICONO: Record<TarjetaDelTablero['clave'], Icon> = { negocio: CurrencyCircleDollar, conversaciones: ChatsCircle, resueltas: Robot, atencion: Warning }
+const ICONO: Record<TarjetaDelTablero['clave'], Icon> = { negocio: CurrencyCircleDollar, citas: CalendarBlank, conversaciones: ChatsCircle, resueltas: Robot, atencion: Warning }
 
 function Tarjeta({ t }: { t: TarjetaDelTablero }) {
   const I = ICONO[t.clave]
@@ -85,11 +87,54 @@ function Recientes({ filas }: { filas: readonly PedidoReciente[] }) {
   )
 }
 
-export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonly SeccionPintada[]; tablero: DatosDelTablero }) {
-  const grafica = graficaDe(
-    tablero.porDia.map((d) => ({ etiqueta: d.dia, valor: d.pedidos })),
-    { tipo: 'cantidad', nombre: '' },
+function ProximasCitas({ filas }: { filas: readonly FilaDeCita[] }) {
+  return (
+    <div className="min-w-0 rounded-(--radius) border border-border bg-card px-3 pt-3 pb-1">
+      <p className="mb-1 px-1 text-sm font-medium">Próximas citas</p>
+      {filas.length === 0 ? (
+        <p className="px-1 pb-2 text-sm text-muted-foreground">No tienes citas por venir. Cuando un Cliente acepte una hora, aparece aquí.</p>
+      ) : (
+        <Table className="text-[13px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Cliente</TableHead>
+              <TableHead className="hidden @2xl:table-cell">Cuándo</TableHead>
+              <TableHead className="px-1 text-right @sm:px-2">Estado</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filas.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="w-full max-w-0 @2xl:w-[45%]">
+                  <div className="truncate font-medium" title={c.cliente}>
+                    {c.cliente}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground @2xl:hidden">{c.cuando}</div>
+                  {c.asunto && <div className="truncate text-xs text-muted-foreground">{c.asunto}</div>}
+                </TableCell>
+                <TableCell className="hidden whitespace-nowrap text-muted-foreground tabular-nums @2xl:table-cell">{c.cuando}</TableCell>
+                <TableCell className="px-1 text-right @sm:px-2">
+                  <EstadoDeCita estado={c.estado} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   )
+}
+
+/** Lo que cambia con la voz. Tarjetas, Indicadores y `De dónde llegan` son iguales para todos. */
+function porVoz({ citas, porDia }: DatosDelTablero) {
+  return citas
+    ? { titulo: 'Citas por día', nota: 'Esta semana, de lunes a domingo. No cuenta las canceladas.', vacio: 'Todavía no hay citas esta semana.', puntos: citas.porDia.map((d) => ({ etiqueta: d.dia, valor: d.citas })) }
+    : { titulo: 'Pedidos por día', nota: 'Últimos 7 días. No cuenta lo cancelado ni lo que falta confirmar.', vacio: 'Todavía no hay pedidos en estos 7 días.', puntos: porDia.map((d) => ({ etiqueta: d.dia, valor: d.pedidos })) }
+}
+
+export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonly SeccionPintada[]; tablero: DatosDelTablero }) {
+  const lado = porVoz(tablero)
+  const grafica = graficaDe(lado.puntos, { tipo: 'cantidad', nombre: '' })
   const deClientes = tablero.porOrigen.reduce((s, f) => s + f.cuenta, 0)
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -100,15 +145,17 @@ export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonl
       </div>
       {indicadores.length > 0 && <Indicadores indicadores={indicadores} />}
       <div className="grid gap-3 @3xl:grid-cols-[1.5fr_1fr]">
-        <Bloque titulo="Pedidos por día" nota="Últimos 7 días. No cuenta lo cancelado ni lo que falta confirmar.">
-          {grafica ? <Barras grafica={grafica} titulo="Pedidos por día" alto={168} /> : <p className="text-sm text-muted-foreground">Todavía no hay pedidos en estos 7 días.</p>}
+        <Bloque titulo={lado.titulo} nota={lado.nota}>
+          {grafica ? <Barras grafica={grafica} titulo={lado.titulo} alto={168} /> : <p className="text-sm text-muted-foreground">{lado.vacio}</p>}
         </Bloque>
         <Bloque titulo="De dónde llegan" nota="Todos tus Clientes, por cómo te escribieron la primera vez.">
           {deClientes > 0 ? <Reparto filas={tablero.porOrigen.map((f) => ({ clave: f.origen, etiqueta: ETIQUETA_DE_ORIGEN[f.origen], cifra: cifra(f.cuenta), parte: f.cuenta / deClientes }))} /> : <p className="text-sm text-muted-foreground">Todavía no tienes Clientes. Cuando alguien te escriba, aparece aquí.</p>}
           {tablero.porOrigen.some((f) => f.origen === 'sin_dato') && <p className="mt-3 text-xs text-pretty text-muted-foreground">Sin dato: no se sabe cómo llegaron. Aquí van también quienes te escribieron antes de que esto se guardara.</p>}
         </Bloque>
       </div>
-      <Recientes filas={tablero.recientes} />
+      {tablero.citas && <ProximasCitas filas={tablero.citas.proximas} />}
+      {/* Una agenda con pedidos también los ve: el Rubro es texto libre y puede haber reconocido mal una tienda. */}
+      {(!tablero.citas || tablero.recientes.length > 0) && <Recientes filas={tablero.recientes} />}
     </div>
   )
 }

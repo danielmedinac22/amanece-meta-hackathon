@@ -13,7 +13,7 @@ import { explicar } from './consultas/validar'
 /** Lista cerrada. El Agente del dueño clasifica contra ella; la cola del equipo agrupa por ella. */
 export const LO_QUE_NO_HAY = {
   cobrar: 'Cobrar, facturar o recibir pagos',
-  agendar: 'Agendar citas o reservas',
+  agendar: 'Mover o cancelar citas desde aquí, o conectarlas a un calendario externo',
   escribir_primero: 'Escribirle primero a un Cliente: campañas, recordatorios o publicidad',
   cotizar_con_transportadora: 'Cotizar o despachar con una transportadora',
   roles_del_negocio: 'Dueños con permisos distintos o empleados',

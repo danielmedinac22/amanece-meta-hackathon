@@ -42,7 +42,7 @@ export type Escenario = {
 }
 
 /** Las acciones del Agente de clientes, como las nombran los escenarios. `clientes/acciones.ts` comprueba que son las del puerto. */
-export const ACCIONES_DE_ESCENARIO = ['buscar_productos', 'crear_pedido', 'confirmar_pedido', 'consultar_pedido', 'abrir_caso'] as const
+export const ACCIONES_DE_ESCENARIO = ['buscar_productos', 'crear_pedido', 'confirmar_pedido', 'consultar_pedido', 'abrir_caso', 'guardar_cita', 'cancelar_cita'] as const
 export type AccionDeEscenario = (typeof ACCIONES_DE_ESCENARIO)[number]
 
 export type CondicionDePedido =

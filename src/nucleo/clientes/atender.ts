@@ -11,6 +11,8 @@ import { nombreDelCliente } from '../listas-palabras'
 import { despachar, intencion, type AlCliente, type DelAgente } from '../salida'
 import { alEntrar, alNacer, quienLaTiene, soltarLasVencidas, type Soltada } from '../salida/atencion'
 import { fueraDeVentana } from '../salida/compuerta'
+import { leerAgendaDelTurno } from '../citas'
+import { vozDelRubro } from '../hoy-palabras'
 import { entornoReal, pedidoDelCliente, turno, type ClienteDelTurno, type Conversacion, type Motores } from './turno'
 
 const HISTORIAL = 20
@@ -114,7 +116,7 @@ async function correrTurno(estado: EstadoPublicado, cliente: ClienteDelMensaje, 
         .orderBy(desc(esquema.pedidos.creado))
         .limit(5),
     ])
-    const delTurno: ClienteDelTurno = { ...cliente, pedidos: pedidos.map(pedidoDelCliente) }
+    const delTurno: ClienteDelTurno = { ...cliente, pedidos: pedidos.map(pedidoDelCliente), agenda: vozDelRubro(estado.identidad.rubro) === 'agenda' ? await leerAgendaDelTurno(negocio, cliente.id) : null }
     const conversacion = { cliente: delTurno, historial: anteriores.reverse(), mensaje }
     entorno = entornoReal(estado, cliente.id, await otrosNegocios(estado), habla)
     const t = await turno(estado, conversacion, entorno, motores)
@@ -161,7 +163,7 @@ async function correrTurno(estado: EstadoPublicado, cliente: ClienteDelMensaje, 
 const mensajeDeLaToma = (hizoAlgo = false) =>
   [
     'Un Cliente te escribió en la conversación que tienes tomada. Tu agente no le contesta. Si la conversación vuelve a él sin que le respondas, le contesta cuando abras el Panel o cuando escriba de nuevo.',
-    hizoAlgo ? 'Antes de que la tomaras, tu agente alcanzó a hacer algo por este Cliente. Revisa Pedidos y Casos.' : '',
+    hizoAlgo ? 'Antes de que la tomaras, tu agente alcanzó a hacer algo por este Cliente. Revisa Pedidos, Agenda y Casos.' : '',
   ]
     .filter(Boolean)
     .join(' ')

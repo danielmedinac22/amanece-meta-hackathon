@@ -1,7 +1,7 @@
 export type Idioma = 'es' | 'en'
 
 /** Solo las Secciones que tiene un Panel de verdad. Algo que el Panel no tiene no se puede poner en una tarjeta. */
-export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
+export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Agenda' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
 
 export const RUTA_DE_IDIOMA: Record<Idioma, string> = { es: '/', en: '/en' }
 
@@ -119,7 +119,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
       loQueVes: 'Lo que tú ves',
       loQueVeTuCliente: 'Lo que ve tu Cliente en WhatsApp',
       esDeEjemplo: 'es un negocio de ejemplo. Al remixear, tu agente arma el tuyo con tus datos, y nada de este ejemplo entra a tu negocio.',
-      secciones: { Inicio: 'Inicio', Casos: 'Casos', Conversaciones: 'Conversaciones', Pedidos: 'Pedidos', Clientes: 'Clientes', Tablero: 'Tablero' },
+      secciones: { Inicio: 'Inicio', Casos: 'Casos', Agenda: 'Agenda', Conversaciones: 'Conversaciones', Pedidos: 'Pedidos', Clientes: 'Clientes', Tablero: 'Tablero' },
     },
     dia: {
       titulo: 'Un día cualquiera en tu negocio.',
@@ -215,11 +215,11 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
         {
           icono: 'agenda',
           titulo: 'Servicios con agenda',
-          descripcion: 'Contesta precios, horarios y preguntas de tu consultorio o local. Todavía no agenda: quien quiere cita te llega a ti.',
+          descripcion: 'Contesta precios y horarios de tu consultorio o local, propone una hora, guarda la cita y la mueve si cambia. Las ves todas en tu Agenda.',
           negocio: 'Consultorio Arrayán',
           mensajes: [
             { de: 'cliente', texto: '¿Atienden los sábados?' },
-            { de: 'agente', texto: 'Sí, de 8 a 12. Si quieres cita, le aviso al consultorio.' },
+            { de: 'agente', texto: 'Sí, de 8 a 12. ¿Te sirve el sábado a las 9?' },
           ],
         },
       ],
@@ -281,7 +281,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
         { pregunta: '¿Usa mi número de WhatsApp?', respuesta: 'Todavía no. Tu agente atiende desde el número de Amanece y tú compartes un link con el código de tu negocio. Ponlo donde hoy das tu WhatsApp.' },
         { pregunta: '¿Y si el agente no sabe algo?', respuesta: 'Te trae el caso con una respuesta lista, y tú decides si se envía. A tu cliente le dice que ya se lo pasó al equipo.' },
         { pregunta: '¿Mis clientes ven lo que cambio?', respuesta: 'Solo lo que apruebes. Cada regla te llega en una tarjeta y empieza a contar cuando tocas Aplicar. Solo cambia tu negocio.' },
-        { pregunta: '¿Qué no hace todavía?', respuesta: 'No cobra, no agenda citas y no le escribe primero a tus clientes. Tampoco se conecta con tu tienda en línea ni con una transportadora. Si se lo pides, le queda anotado al equipo de Amanece.' },
+        { pregunta: '¿Qué no hace todavía?', respuesta: 'No cobra y no le escribe primero a tus clientes, así que tampoco manda recordatorios de citas. No se conecta con tu tienda en línea, con una transportadora ni con un calendario externo. Si se lo pides, le queda anotado al equipo de Amanece.' },
         { pregunta: '¿Funciona fuera de Colombia?', respuesta: 'Por ahora está hecho para Colombia, con precios en pesos y el agente en español.' },
       ],
     },
@@ -322,7 +322,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
       loQueVes: 'What you see',
       loQueVeTuCliente: 'What your customer sees on WhatsApp',
       esDeEjemplo: 'is a sample business. When you remix it, your agent builds yours with your data, and nothing from this sample enters your business.',
-      secciones: { Inicio: 'Home', Casos: 'Cases', Conversaciones: 'Conversations', Pedidos: 'Orders', Clientes: 'Customers', Tablero: 'Overview' },
+      secciones: { Inicio: 'Home', Casos: 'Cases', Agenda: 'Schedule', Conversaciones: 'Conversations', Pedidos: 'Orders', Clientes: 'Customers', Tablero: 'Overview' },
     },
     dia: {
       titulo: 'Any given day in your business.',
@@ -418,11 +418,11 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
         {
           icono: 'agenda',
           titulo: 'Appointment businesses',
-          descripcion: 'Answers prices, hours and questions for your practice or shop. It can’t book yet, so anyone who wants an appointment comes to you.',
+          descripcion: 'Answers prices and hours for your practice or shop, offers a time, books the appointment and moves it if plans change. You see them all in your Schedule.',
           negocio: 'Consultorio Arrayán',
           mensajes: [
             { de: 'cliente', texto: 'Are you open Saturdays?' },
-            { de: 'agente', texto: 'Yes, 8 to noon. If you want an appointment, I’ll let the office know.' },
+            { de: 'agente', texto: 'Yes, 8 to noon. Does Saturday at 9 work for you?' },
           ],
         },
       ],
@@ -484,7 +484,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
         { pregunta: 'Does it use my WhatsApp number?', respuesta: 'Not yet. Your agent answers from Amanece’s number, and you share a link with your business’s code. Put it wherever you share your WhatsApp today.' },
         { pregunta: 'What if the agent doesn’t know something?', respuesta: 'It brings you the case with a reply ready, and you decide whether it goes out. It tells your customer it has passed this to the team.' },
         { pregunta: 'Will my customers see what I change?', respuesta: 'Only what you approve. Each rule comes to you on a card and takes effect when you tap Apply. It only changes your business.' },
-        { pregunta: 'What can’t it do yet?', respuesta: 'It doesn’t take payments, book appointments or message customers first. It doesn’t connect to your online store or a carrier either. If you ask, your request goes to the Amanece team.' },
+        { pregunta: 'What can’t it do yet?', respuesta: 'It doesn’t take payments or message customers first, so it doesn’t send appointment reminders either. It doesn’t connect to your online store, a carrier or an outside calendar. If you ask, your request goes to the Amanece team.' },
         { pregunta: 'Does it work outside Colombia?', respuesta: 'Not yet. For now it’s built for Colombia, with prices in pesos and the agent in Spanish.' },
       ],
     },

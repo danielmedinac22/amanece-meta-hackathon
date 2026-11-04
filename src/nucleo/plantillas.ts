@@ -25,18 +25,6 @@ export type Partida = {
 
 const TRAE = 'trae cómo trabajo, no datos: nada del ejemplo entra a tu negocio. Para armarlo con lo tuyo necesito'
 
-// Nada guarda una cita (#61). Sin esta regla, el Agente de clientes podría dar por agendado algo que nadie va a recordar.
-const NO_DAR_POR_AGENDADA: ElementoDe<'regla'> = {
-  tipo: 'regla',
-  nombre: 'No dar una cita por agendada',
-  cuando: { tipo: 'siempre' },
-  efectos: [
-    { tipo: 'no_prometer', que: 'disponibilidad' },
-    { tipo: 'no_decir', frases: ['cita agendada', 'queda agendada', 'quedó agendada', 'te agendé', 'cita confirmada', 'te confirmo la cita'] },
-  ],
-  escenarios: { activan: [{ mensajeDelCliente: 'Quiero una cita para el jueves', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] },
-}
-
 export const PARTIDAS: Readonly<Record<IdDePlantilla, Partida>> = {
   tienda: {
     nombre: 'Venta contra entrega',
@@ -55,8 +43,8 @@ export const PARTIDAS: Readonly<Record<IdDePlantilla, Partida>> = {
   agenda: {
     nombre: 'Servicios con agenda',
     rubro: 'servicios con agenda',
-    reglas: [NO_DAR_POR_AGENDADA],
-    primero: `Servicios con agenda ${TRAE} tus servicios con su precio y tu horario. Todavía no guardo citas: quien pida o mueva una te llega como Caso para que la confirmes tú, y ya dejé una regla para que tu agente no dé ninguna por agendada.`,
+    reglas: [],
+    primero: `Servicios con agenda ${TRAE} tus servicios con su precio y tu horario. Propongo una hora libre, guardo la cita cuando el Cliente la acepta y la ves en Agenda, con quien la pidió. No mando recordatorios ni cobro por la cita.`,
     alAbrir: ['Muéstrame quién me escribió esta semana', 'Quiero ver cuántas conversaciones tengo por día'],
   },
 }

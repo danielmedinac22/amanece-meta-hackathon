@@ -1,7 +1,9 @@
 import { and, desc, eq, gte, isNotNull, ne, notExists, or, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
+import type { EstadoDeCita } from '@/db/esquema'
 import { CUENTA_COMO_VENTA } from './consultas/catalogo'
 import { pesos } from './estado/elementos'
+import { enPalabras } from './citas-palabras'
 import { sinSuFicha } from './ficha'
 import { haceCuanto, loQueEscribio, vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
 import type { NegocioId } from './identidad'
@@ -52,6 +54,8 @@ export async function leerCifras(negocio: NegocioId, zona: string): Promise<Cifr
       (select coalesce(sum(total), 0) from ventas, t where local >= lunes - interval '7 days' and local < ahora - interval '7 days')::float8 as ventas_antes,
       (select count(*) from ventas, t where local >= lunes - interval '7 days' and local < ahora - interval '7 days')::int as pedidos_antes,
       (select count(distinct m.cliente_id) from mensajes_cliente m, t where m.negocio_id = ${negocio} and m.rol = 'cliente' and m.creado at time zone ${z} >= lunes)::int as clientes,
+      (select count(*) from citas c, t where c.negocio_id = ${negocio} and c.estado <> 'cancelada' and c.inicio at time zone ${z} >= lunes and c.inicio at time zone ${z} < lunes + interval '7 days')::int as citas_semana,
+      (select count(*) from citas c, t where c.negocio_id = ${negocio} and c.estado <> 'cancelada' and (c.inicio at time zone ${z})::date = t.dia)::int as citas_hoy,
       (select count(*) from hablaron)::int as total,
       (select count(*) from hablaron h, t
         where (select u.rol from mensajes_cliente u where u.cliente_id = h.cliente_id and u.negocio_id = ${negocio} order by u.creado desc limit 1) = 'agente'
@@ -63,11 +67,12 @@ export async function leerCifras(negocio: NegocioId, zona: string): Promise<Cifr
         or exists (select 1 from pedidos p where p.negocio_id = ${negocio})
         or exists (select 1 from casos c where c.negocio_id = ${negocio}) as alguien_escribio
   `)
-  const f = rows[0] as Record<'ventas' | 'pedidos' | 'ventas_antes' | 'pedidos_antes' | 'clientes' | 'total' | 'resueltas', number> & { alguien_escribio: boolean }
+  const f = rows[0] as Record<'ventas' | 'pedidos' | 'ventas_antes' | 'pedidos_antes' | 'clientes' | 'citas_semana' | 'citas_hoy' | 'total' | 'resueltas', number> & { alguien_escribio: boolean }
   return {
     semana: { ventas: f.ventas, pedidos: f.pedidos, clientes: f.clientes },
     anterior: { ventas: f.ventas_antes, pedidos: f.pedidos_antes },
     conversaciones: { total: f.total, resueltas: f.resueltas },
+    citas: { semana: f.citas_semana, hoy: f.citas_hoy },
     alguienEscribio: f.alguien_escribio,
   }
 }
@@ -126,16 +131,23 @@ async function leerElOjo(negocio: NegocioId, ahora: Date, zona: string): Promise
   ]
 }
 
+/** Una línea por cita, con lo último que le pasó. Los tres verbos: el agente agenda, el Cliente mueve y cancela, porque lo pidió él. */
+function lineaDeCita(quien: string, c: { inicio: Date; estado: EstadoDeCita; movidaDe: Date | null }, zona: string): string {
+  const cuando = enPalabras(c.inicio, zona)
+  if (c.estado === 'cancelada') return `${conMayuscula(quien)} canceló su cita del ${cuando}`
+  return c.movidaDe ? `${conMayuscula(quien)} movió su cita al ${cuando}` : `Tu agente le agendó una cita a ${quien}: ${cuando}`
+}
+
 /** Solo lo que dejó un registro con su hora. Un pedido confirmado antes de guardarse esa hora cuenta como tomado y nada más. */
 async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Promise<CosaReciente[]> {
-  const { casos, clientes, mensajesCliente: m, negocios, pedidos } = esquema
+  const { casos, citas, clientes, mensajesCliente: m, negocios, pedidos } = esquema
   const ultimos = db
     .selectDistinctOn([m.clienteId], { clienteId: m.clienteId, texto: m.texto, creado: m.creado })
     .from(m)
     .where(and(eq(m.negocioId, negocio), eq(m.rol, 'cliente')))
     .orderBy(m.clienteId, desc(m.creado))
     .as('ultimos')
-  const [escribieron, tomados, confirmados, abiertos, resueltos] = await Promise.all([
+  const [escribieron, tomados, confirmados, abiertos, resueltos, deCitas] = await Promise.all([
     db
       .select({ id: clientes.id, nombre: clientes.nombre, texto: ultimos.texto, cuando: ultimos.creado, codigo: negocios.codigo })
       .from(ultimos)
@@ -164,6 +176,13 @@ async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Prom
       .where(and(eq(casos.negocioId, negocio), isNotNull(casos.resuelto)))
       .orderBy(desc(casos.resuelto))
       .limit(CUANTOS_RECIENTES),
+    db
+      .select({ id: citas.id, inicio: citas.inicio, estado: citas.estado, movidaDe: citas.movidaDe, cuando: citas.actualizado, nombre: clientes.nombre })
+      .from(citas)
+      .innerJoin(clientes, and(eq(clientes.id, citas.clienteId), eq(clientes.negocioId, negocio)))
+      .where(and(eq(citas.negocioId, negocio), ne(citas.estado, 'pasada')))
+      .orderBy(desc(citas.actualizado))
+      .limit(CUANTOS_RECIENTES),
   ])
   return [
     ...escribieron.map((e) => ({ clave: `escribio-${e.id}`, texto: loQueEscribio(conMayuscula(completo(e.nombre)), sinSuFicha(e.texto, e.codigo)), fecha: e.cuando })),
@@ -171,6 +190,7 @@ async function leerLoUltimo(negocio: NegocioId, ahora: Date, zona: string): Prom
     ...confirmados.map((p) => ({ clave: `confirmado-${p.id}`, texto: `${conMayuscula(completo(p.nombre))} confirmó su pedido`, fecha: p.cuando! })),
     ...abiertos.map((c) => ({ clave: `abierto-${c.id}`, texto: `Tu agente abrió un Caso: ${c.titulo}`, fecha: c.cuando })),
     ...resueltos.map((c) => ({ clave: `resuelto-${c.id}`, texto: `Resolviste un Caso: ${c.titulo}`, fecha: c.cuando! })),
+    ...deCitas.map((c) => ({ clave: `cita-${c.id}`, texto: lineaDeCita(completo(c.nombre), c, zona), fecha: c.cuando })),
   ]
     .sort((a, b) => b.fecha.getTime() - a.fecha.getTime())
     .slice(0, CUANTOS_RECIENTES)

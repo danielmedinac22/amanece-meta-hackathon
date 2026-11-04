@@ -117,7 +117,7 @@ try {
   afirmar('Rubro: uñas es agenda', vozDelRubro('Salón de uñas') === 'agenda')
   afirmar('Rubro: lunas y cosméticos no son agenda', vozDelRubro('lunas de miel') === 'tienda' && vozDelRubro('Cosméticos') === 'tienda' && vozDelRubro('Medicamentos') === 'tienda')
 
-  const nada = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } }
+  const nada = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 }, citas: { semana: 0, hoy: 0 } }
   const conVentas = (ventas: number, pedidos: number, antes = 0, pedidosAntes = 0) => ({ ...nada, semana: { ventas, pedidos, clientes: 0 }, anterior: { ventas: antes, pedidos: pedidosAntes } })
   afirmar('Frase: cero pedidos no dice $0', texto(fraseDeHoy('tienda', nada)) === 'Esta semana todavía no tienes ventas.', texto(fraseDeHoy('tienda', nada)))
   afirmar('Frase: un pedido en singular y sin semana anterior no compara', texto(fraseDeHoy('tienda', conVentas(76_000, 1))) === 'Esta semana vendiste $76.000 en 1 pedido.', texto(fraseDeHoy('tienda', conVentas(76_000, 1))))
@@ -125,7 +125,10 @@ try {
   afirmar('Frase: sube', texto(fraseDeHoy('tienda', conVentas(1_284_000, 23, 1_088_000, 19))) === 'Esta semana vendiste $1.284.000 en 23 pedidos, 18\u00a0% más que la anterior.', texto(fraseDeHoy('tienda', conVentas(1_284_000, 23, 1_088_000, 19))))
   afirmar('Frase: baja', texto(fraseDeHoy('tienda', conVentas(50_000, 4, 100_000, 8))).endsWith('50\u00a0% menos que la anterior.'))
   afirmar('Frase: igual', texto(fraseDeHoy('tienda', conVentas(100_000, 4, 100_000, 8))).endsWith('igual que la anterior.'))
-  afirmar('Frase: una agenda no dice ventas ni pedidos', !/vendiste|ventas|pedido/.test(texto(fraseDeHoy('agenda', { ...conVentas(100_000, 4), semana: { ventas: 100_000, pedidos: 4, clientes: 2 } }))))
+  afirmar('Frase: una agenda no dice ventas ni pedidos', !/vendiste|ventas|pedido/.test(texto(fraseDeHoy('agenda', { ...conVentas(100_000, 4), semana: { ventas: 100_000, pedidos: 4, clientes: 2 }, citas: { semana: 3, hoy: 1 } }))))
+  afirmar('Frase: una agenda cuenta sus citas', texto(fraseDeHoy('agenda', { ...nada, citas: { semana: 3, hoy: 1 } })) === 'Esta semana tienes 3 citas, 1 hoy.', texto(fraseDeHoy('agenda', { ...nada, citas: { semana: 3, hoy: 1 } })))
+  afirmar('Frase: una agenda sin citas hoy no dice 0 hoy', texto(fraseDeHoy('agenda', { ...nada, citas: { semana: 1, hoy: 0 } })) === 'Esta semana tienes 1 cita.')
+  afirmar('Frase: una agenda sin citas no inventa cifras', texto(fraseDeHoy('agenda', nada)) === 'Esta semana todavía no tienes citas.')
   afirmar('Frase: una conversación resuelta no dice 1 de 1', texto(fraseDeHoy('tienda', { ...nada, conversaciones: { total: 1, resueltas: 1 } })).includes('la única conversación'))
   afirmar('Frase: con 0 resueltas no dice 0 de 2', texto(fraseDeHoy('tienda', { ...nada, conversaciones: { total: 2, resueltas: 0 } })).endsWith('Hoy te escribieron 2 clientes.'))
   afirmar('Frase: hoy sin conversaciones no habla de hoy', !texto(fraseDeHoy('tienda', nada)).includes('Hoy'))

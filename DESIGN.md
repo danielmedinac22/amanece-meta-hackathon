@@ -120,7 +120,7 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **El cielo amanece.** Abre de noche y aclara con cada letra. Una plantilla elegida lo deja al menos en 0,62. Al enviar sale el sol desde el botón y la pantalla sigue a los 700 ms, con lo escrito ya guardado. Con `prefers-reduced-motion` abre en el `--alba` final, sin ráfaga ni espera. Quien vuelve con algo guardado empieza en el nivel de lo que escribió. Son tres capas puras, `--alba`, `--madrugada` y `--noche`, y solo cambia su opacidad.
 
-**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Derivado**: una plantilla trae cómo trabajar y nunca datos (`src/nucleo/plantillas.ts`): el Rubro, las reglas que hacen cierta su promesa, lo que el agente pregunta primero y lo que se le pide ya abierto. Sus negocios inventados viven solo en la tarjeta. Cada tarjeta promete lo que el producto hace hoy, y solo nombra Secciones que el Panel tiene. **Destino**: cuando existan las citas, los envíos que se mueven y el cálculo por peso, las tarjetas vuelven al texto del prototipo.
+**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Derivado**: una plantilla trae cómo trabajar y nunca datos (`src/nucleo/plantillas.ts`): el Rubro, las reglas que hacen cierta su promesa, lo que el agente pregunta primero y lo que se le pide ya abierto. Sus negocios inventados viven solo en la tarjeta. Cada tarjeta promete lo que el producto hace hoy, y solo nombra Secciones que el Panel tiene. **Destino**: cuando existan los recordatorios, los envíos que se mueven y el cálculo por peso, las tarjetas vuelven al texto del prototipo.
 
 **Lo que puede hacer.** Cada fila es algo que el producto hace hoy. Lo que todavía no existe no se promete aquí.
 
@@ -157,6 +157,8 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **Decidido.** Lista simple: Inicio, Casos, Conversaciones, Pedidos, Clientes y Tablero. Debajo, `Tus secciones`, con las propias del Negocio. Un número solo donde algo espera decisión. Arriba, el Negocio; abajo, los Créditos de la Prueba gratis y el Dueño.
 
+**Derivado.** Un Negocio con agenda suma `Agenda`, después de Casos. No reemplaza a Pedidos: el Rubro es texto libre y puede equivocarse, y una Sección de más no le quita nada a nadie.
+
 ### Inicio: Hoy
 
 **Decidido.** Una frase con las cifras en negrita, `Necesita tu ojo` con cada cosa y su acción, y `Lo último`. Lo resuelto sale de la lista enseguida. Recién abierto el Negocio, muestra `Todavía no te ha escrito nadie.` con el link para copiar.
@@ -168,7 +170,8 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 - **Esta semana** va desde el lunes en la zona del Negocio. `la anterior` es la semana pasada hasta este mismo momento, y solo se compara con al menos 3 pedidos en ese tramo.
 - **Lo vendido** usa `CUENTA_COMO_VENTA`, la misma definición de las Secciones y los Indicadores.
 - **Una conversación de hoy** es un Cliente que escribió hoy. **Resuelta sin ti** es una donde el último mensaje es del agente y salió, y ese Cliente no tiene un Caso abierto ni un Caso abierto o resuelto hoy.
-- **El Rubro** es texto libre: lo que suena a agenda habla de quién escribió, porque nada guarda una cita todavía, y todo lo demás habla de ventas.
+- **El Rubro** es texto libre: lo que suena a agenda habla de citas, y todo lo demás habla de ventas.
+- **Una cita de la semana** es una cuya hora cae de lunes a domingo en la zona del Negocio, y no cuenta las canceladas. La frase dice `Esta semana tienes 8 citas, 2 hoy.`. Sin ninguna, `Esta semana todavía no tienes citas.`. No se compara con la semana anterior.
 - **Lo último** dice lo que dejó registro con hora. De un Cliente muestra su último mensaje tal cual, en una línea y recortado a 80 caracteres, sin el código del link. Un pedido confirmado antes de guardarse esa hora no sale como confirmado.
 
 ### Tablero
@@ -177,11 +180,23 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 
 **Derivado.** Las definiciones viven en `src/nucleo/tablero.ts`, las palabras en `tablero-palabras.ts` y la gráfica en `graficas.ts`:
 
-- **Las cifras** son las de Inicio. **Necesitan atención** es `Necesita tu ojo` contado sin su límite, y sin conversaciones `Resueltas sin ti` dice `—`, no `0 %`. Una agenda cambia `Ventas de la semana` por `Clientes de la semana`.
+- **Las cifras** son las de Inicio. **Necesitan atención** es `Necesita tu ojo` contado sin su límite, y sin conversaciones `Resueltas sin ti` dice `—`, no `0 %`. Una agenda cambia `Ventas de la semana` por `Citas de la semana`.
 - **Pedidos por día** son los últimos 7 días en la zona del Negocio, con `CUENTA_COMO_VENTA`. **De dónde llegan** son todos los Clientes, sin ventana, por cómo escribieron la primera vez: `Tu link` si el mensaje traía la ficha del Negocio, `Anuncio de Meta` si además traía un `referral` de anuncio, y `Sin dato` todo lo demás, también quien ya era Cliente antes de guardarlo. No se reparte. Va en cantidades, como lo demás del Tablero. `Pedidos por estado` salió, porque el diseño lleva un solo reparto y Pedidos ya agrupa por estado.
+- **Una agenda** lleva `Citas por día`, de lunes a domingo, para que sume lo mismo que `Citas de la semana`, y `Próximas citas` en lugar de `Pedidos recientes`. Si tiene pedidos, `Pedidos recientes` sale debajo, porque el Rubro puede haber reconocido mal una tienda.
 - **Una gráfica** lleva una sola tinta, `--primary`, un solo eje y barras de hasta 24 px. Se rotulan el último punto y el más alto si no se pisan; las demás cifras salen al tocar o enfocar la barra y las lee un lector de pantalla. Con más de 7 puntos, el eje de abajo solo rotula los extremos.
 - **Un Indicador propio** de una cifra va en una tarjeta. Uno por tiempo lleva su último valor y sus barras, y un ranking va en barras con su nombre, a todo el ancho.
 - **Una Sección propia** siempre muestra su primera y su última columna. Las de en medio entran según el ancho y, mientras no caben, suben debajo del nombre con su título: ningún dato se pierde en teléfono. Una columna de números va a la derecha.
+
+
+### Agenda
+
+**Derivado.** No tuvo ronda. Sigue la forma de Pedidos: de borde a borde, agrupada, sin tabla. Tres grupos: `Hoy`, `Próximas` y `Ya pasaron o se cancelaron`. Las definiciones viven en `src/nucleo/citas.ts` y las palabras en `citas-palabras.ts`:
+
+- **Una cita existe** cuando el Cliente aceptó una hora y `guardar_cita` respondió. Una hora que el agente propone no deja fila, así que el Dueño no ve lo que está en el aire y `Sin confirmar` del prototipo no sale.
+- **Los estados** son `Agendada`, `Movida`, `Cancelada` y `Ya pasó`. `Confirmada` del prototipo no sale, porque nada confirma que el Cliente va a llegar. `Ya pasó` no dice si llegó.
+- **Quién la escribe.** Solo el Agente de clientes. El Dueño la ve y no la cambia: la toca y llega a su Cliente, desde donde puede tomar la conversación.
+- **Lo que le llega al Cliente** es una constancia que escribe el núcleo desde la fila: `Cita agendada: jueves 5 de noviembre, 3:00 p. m.`. El modelo no la redacta.
+- **Si no se guardó nada** y la respuesta nombra una hora o sigue a un sí, el núcleo agrega una línea que sale de la fila: `Por ahora no tienes una cita guardada.` o `Tu cita guardada sigue siendo: …`. Es lo que sostiene la promesa, porque ninguna lista de frases reconoce todas las formas de dar una cita por hecha. Una oferta no la lleva.
 
 ### Pedidos: Lista
 

@@ -70,7 +70,7 @@ function probarLoPuro() {
     afirmar(`${p.id}: sus reglas no traen cifras`, PARTIDAS[p.id].reglas.every((r) => cifrasDe(r).length === 0))
   }
   afirmar('las tres plantillas tienen tarjeta y partida', PLANTILLAS.length === IDS_DE_PLANTILLA.length && IDS_DE_PLANTILLA.every((id) => PLANTILLAS.some((p) => p.id === id)))
-  afirmar('Servicios con agenda hace hablar a Inicio de quién escribe', vozDelRubro(PARTIDAS.agenda.rubro) === 'agenda')
+  afirmar('Servicios con agenda hace hablar a Inicio de citas', vozDelRubro(PARTIDAS.agenda.rubro) === 'agenda')
 
   const fuente = (ruta: string) => readFileSync(ruta, 'utf8')
   const importaDeVerdad = (ruta: string) => [...fuente(ruta).matchAll(/^import (?!type )[^\n]*from '([^']+)'/gm)].map((m) => m[1])
@@ -192,9 +192,9 @@ async function armarDesde(id: Id) {
   const { cifra } = GUIONES[id].cliente
   if (cifra) afirmar(`${id}, Muse Spark: el Cliente recibe la cifra del Dueño`, montosEn(respuesta).includes(cifra), respuesta)
   if (id === 'agenda') {
-    const casos = await db.select().from(esquema.casos).where(eq(esquema.casos.negocioId, negocio.id))
-    afirmar('agenda, Muse Spark: mover una cita le llega al Dueño como Caso', casos.length > 0, respuesta)
-    afirmar('agenda, Muse Spark: el Cliente no recibe una cita por agendada', !/agendad|te agend|cita confirmada/i.test(respuesta), respuesta)
+    // El Cliente no tiene cita guardada: lo que le digan no puede traer una constancia.
+    const citas = await db.select().from(esquema.citas).where(eq(esquema.citas.negocioId, negocio.id))
+    afirmar('agenda, Muse Spark: mover una cita que no existe no deja una fila ni una constancia', citas.length === 0 && !/Cita (agendada|movida):/.test(respuesta), respuesta)
   }
   console.log(`${id}: ${Math.round((Date.now() - inicio) / 1000)} s`)
 }

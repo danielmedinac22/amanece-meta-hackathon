@@ -8,11 +8,12 @@ import { modelo } from '@/lib/modelo'
 import { marcar, type CasoId, type ClienteId, type Instante, type Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoPublicado } from '../estado'
 import type { EstadoDePedido, ItemDePedido } from '@/db/esquema'
+import { calendarioParaElPrompt, citaEnRevision, constanciaDe, enPalabras, lineaDeLaVerdad, MINUTOS_DE_UN_CUPO, type AgendaDelTurno } from '../citas-palabras'
 import { claveDeProducto, comoClave, comoMonto, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type DelAgente, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
 import { vezActual } from '../salida/atencion'
-import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
+import { hablaDeUnaHora, montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
 import { conCerca, envolver, puertoDeLaBase, puertoEnMemoria, type AccionHecha, type PuertoDeAcciones, type PuertoParaElModelo } from './acciones'
 import { compilarReglas, sinRepetir, type ViolacionDeRegla } from './reglas'
 
@@ -47,6 +48,8 @@ export type ClienteDelTurno = {
   readonly nombre: string
   readonly telefono: string | null
   readonly pedidos: readonly PedidoDelCliente[]
+  /** `null` si el Rubro no es de agenda: sin esto no hay herramientas de citas ni calendario en el prompt. */
+  readonly agenda: AgendaDelTurno | null
 }
 
 export type Conversacion = {
@@ -103,6 +106,8 @@ export const MOTORES: Motores = {
 }
 
 export const RESPALDO = 'Déjame confirmarlo con el equipo del negocio y te cuento por aquí.'
+/** Junto a una constancia, `déjame confirmarlo` diría que la cita sigue en el aire. */
+const RESPALDO_CON_CITA = 'Lo demás se lo paso al equipo del negocio.'
 const SIN_TEXTO = 'Dame un momento, se me enredó algo. ¿Me repites lo último, por favor?'
 
 const MOTIVO_PARA_EL_MODELO = {
@@ -114,6 +119,7 @@ const MOTIVO_PARA_EL_MODELO = {
   dice_ser_persona: 'Dijiste que eres una persona. Eres el asistente virtual del Negocio.',
   pide_datos_de_pago: 'Pediste datos de pago o claves. Nunca los pidas.',
   afirmacion_de_salud: 'Hiciste una afirmación de salud. No opines de salud.',
+  cita_sin_respaldo: 'Diste una cita por hecha, movida o cancelada sin que esté guardada, o nombraste otra hora como si fuera la suya. Aquí no puedes guardar nada: si hablaban de una hora, pregúntale al Cliente si la confirma, sin decir que quedó.',
   habla_de_otro_negocio: 'Hablaste de otro negocio. Habla solo de este.',
 } as const satisfies Record<MotivoDeRevision, string>
 
@@ -162,6 +168,8 @@ export async function turno<M extends Modo>(
   let revision: Revision = { tipo: 'pasa' }
   let corregido: TurnoResuelto<M>['corregido'] = 'no'
   let casosPorReglas = 0
+  const zona = estado.identidad.zonaHoraria
+  const deLaCita = () => citaEnRevision(cliente.agenda, envuelto.citaDelTurno(), { historial: conversacion.historial, mensaje: mensaje.texto }, zona, new Date())
 
   const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
@@ -171,14 +179,14 @@ export async function turno<M extends Modo>(
   } else {
     const system = armarPrompt(estado, cliente, reglas.textoParaElPrompt)
     const mensajes = aMensajes(conversacion)
-    const b = await motores.responder({ system, mensajes, herramientas: herramientasPara(estado, envuelto.puerto), puerto: envuelto.puerto, senal })
+    const b = await motores.responder({ system, mensajes, herramientas: herramientasPara(estado, envuelto.puerto, cliente.agenda !== null), puerto: envuelto.puerto, senal })
     contar(b.uso)
-    const borrador = b.texto.trim() || SIN_TEXTO
+    const borrador = b.texto.trim() || (envuelto.citaDelTurno() ? 'Listo.' : SIN_TEXTO)
     activas = sinRepetir([...envuelto.activadas(), ...alEntrar])
     const deSalida = reglas.enSalida(activas, borrador, envuelto.casosDelModelo())
     for (const { titulo, pedido, regla } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido, reglas: [regla] })
     casosPorReglas += deSalida.casosPorAbrir.length
-    const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
+    const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios, deLaCita())
     texto = borrador
     violaciones = deSalida.violaciones
     revision = revisar(borrador, hechos())
@@ -192,12 +200,17 @@ export async function turno<M extends Modo>(
         texto = otra
         corregido = 'si'
       } else {
-        texto = RESPALDO
+        texto = envuelto.citaDelTurno() ? RESPALDO_CON_CITA : RESPALDO
         corregido = 'respaldo'
         await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, pedido: null, reglas: [] })
       }
     }
   }
+
+  // Después de `revisar` y de todas las ramas: lo que dice de la cita sale de la fila, y lo que escribió el modelo no lo cambia.
+  const escrita = envuelto.citaDelTurno()
+  if (escrita) texto = `${texto}\n\n${constanciaDe(escrita, zona)}`
+  else if (cliente.agenda && hablaDeUnaHora(texto, deLaCita())) texto = `${texto}\n\n${lineaDeLaVerdad(cliente.agenda.cita, zona)}`
 
   const datos = { destinatario: { tipo: 'cliente', negocio: estado.identidad.id, cliente: cliente.id }, texto, enRespuestaA: mensaje.wamid, habla: entorno.habla } as const
   return {
@@ -216,7 +229,7 @@ export async function turno<M extends Modo>(
 }
 
 /** Montos con respaldo: precios del catálogo y sus múltiplos chicos, lo que cotizó el turno, los pedidos del Cliente y las cifras del conocimiento. Teléfonos: los que el Negocio publica. */
-export function hechosDeRevision(estado: EstadoDelNegocio, cliente: ClienteDelTurno, cotizaciones: readonly Cotizacion[], otrosNegocios: readonly string[]): HechosDeRevision {
+export function hechosDeRevision(estado: EstadoDelNegocio, cliente: ClienteDelTurno, cotizaciones: readonly Cotizacion[], otrosNegocios: readonly string[], cita: HechosDeRevision['cita']): HechosDeRevision {
   const montos = new Set<number>()
   for (const v of estado.vigentes('producto')) for (let k = 1; k <= 5; k++) montos.add(v.elemento.precio * k)
   for (const c of cotizaciones) {
@@ -233,6 +246,7 @@ export function hechosDeRevision(estado: EstadoDelNegocio, cliente: ClienteDelTu
     nombresInternos: Object.keys(HERRAMIENTAS_EN_PALABRAS),
     otrosNegocios,
     emojisMaximos: estado.vigentes('voz')[0]?.elemento.emojisPorMensaje ?? 1,
+    cita,
   }
 }
 
@@ -271,6 +285,20 @@ export function armarPrompt(estado: EstadoDelNegocio, cliente: ClienteDelTurno, 
   const pendientes = cliente.pedidos.filter((p) => p.estado === 'pendiente')
   const ahora = new Date().toLocaleString('es-CO', { timeZone: zonaHoraria, dateStyle: 'full', timeStyle: 'short' })
   const trato = voz?.trato === 'usted' ? 'Trata al Cliente de usted.' : 'Tutea al Cliente.'
+  const agenda = cliente.agenda
+    ? `
+## Cómo dar una cita
+En este Negocio lo que tiene hora se agenda. crear_pedido es solo para un producto que se envía.
+1. Aclara qué servicio quiere y qué día. Propón una hora libre dentro del horario del Negocio y pregúntale si le sirve. Proponer no guarda nada.
+2. Cuando el Cliente acepte una hora, llama guardar_cita en ese mismo mensaje, con la fecha que sale en el calendario y la hora en 24 horas. Las citas van cada ${MINUTOS_DE_UN_CUPO} minutos.
+3. Si tiene cita y quiere otra hora, propónla y, cuando la acepte, llama guardar_cita con cambiaLaQueTiene en true. Si quiere cancelar, llama cancelar_cita.
+4. Nunca digas por tu cuenta que una cita quedó, se movió o se canceló. Solo existe si la herramienta respondió ok, y entonces el sistema agrega al final de tu mensaje una constancia con la fecha: no la repitas, solo agradece o pregunta si necesita algo más. Si no guardaste nada, el sistema agrega que no hay cita guardada.
+5. No mandas recordatorios ni cobras por una cita: no lo prometas. Para una segunda cita del mismo Cliente, abre un Caso.
+
+## Calendario (hora del Negocio)
+${calendarioParaElPrompt(cliente.agenda.ocupadas, zonaHoraria, new Date())}
+${cliente.agenda.cita ? `\nLa cita de este Cliente: ${enPalabras(cliente.agenda.cita.inicio, zonaHoraria)}${cliente.agenda.cita.asunto ? ` (${cliente.agenda.cita.asunto})` : ''}.\n` : ''}`
+    : ''
   const emojis = voz ? (voz.emojisPorMensaje === 0 ? 'Sin emojis.' : `Como mucho ${voz.emojisPorMensaje} emoji por mensaje.`) : 'Como mucho un emoji por mensaje.'
 
   return `Eres ${voz?.nombreDelAgente ? `${voz.nombreDelAgente}, ` : ''}el asistente virtual de ${nombre}${rubro ? `, un negocio de ${rubro}` : ''}. Atiendes por WhatsApp a las personas que le escriben al Negocio: cuentas qué vende, resuelves dudas, tomas pedidos y, cuando algo no lo puedes resolver tú, se lo pasas al Dueño abriendo un Caso.
@@ -310,7 +338,7 @@ ${preferencias || '(Ninguna por ahora)'}
 4. Si ya mostraste el resumen con su número y el Cliente dice que sí, llama confirmar_pedido con ESE número. No vuelvas a crear un pedido que ya tiene número, salvo que el Cliente cambie productos, cantidades o dirección.
 5. Después de confirmar, cuéntale cómo se paga según los pagos del Negocio y despídete corto.
 Para saber de un pedido usa consultar_pedido y no inventes estados. Si una herramienta falla, dilo con honestidad y abre un Caso.
-${
+${agenda}${
   pendientes.length
     ? `\n## Pedidos de este Cliente que esperan confirmación\n${pendientes.map((p) => `- Pedido #${p.numero}: ${p.resumen}; total ${pesos(p.total)}`).join('\n')}\nSi el Cliente confirma uno, llama confirmar_pedido con su número. No lo crees otra vez.\n`
     : ''
@@ -325,10 +353,12 @@ const HERRAMIENTAS_EN_PALABRAS = {
   confirmar_pedido: 'Confirma un pedido pendiente del Cliente. Llámala solo cuando el Cliente haya dicho claramente que sí al resumen.',
   consultar_pedido: 'Consulta un pedido del Cliente que escribe, por su número. Sin número devuelve sus últimos pedidos.',
   abrir_caso: 'Abre un Caso para que el Dueño lo resuelva: cuando no estás seguro, hay una queja, algo fuera de lo normal o el Cliente pide hablar con una persona. Después dile al Cliente que ya se lo pasaste al equipo.',
+  guardar_cita: 'Guarda la cita a la hora que el Cliente ya aceptó, o la cambia con cambiaLaQueTiene. Llámala solo después de que dijo que sí a esa hora.',
+  cancelar_cita: 'Cancela la cita por venir del Cliente. Llámala solo si el Cliente pidió cancelarla.',
 } as const satisfies Record<keyof PuertoParaElModelo, string>
 
 /** Las `tool()` de `ai` sobre el puerto envuelto. El modelo solo puede nombrar productos que existen; sin productos no hay `crear_pedido`. */
-export function herramientasPara(estado: EstadoDelNegocio, puerto: PuertoParaElModelo): ToolSet {
+export function herramientasPara(estado: EstadoDelNegocio, puerto: PuertoParaElModelo, conAgenda: boolean): ToolSet {
   const claves = estado
     .vigentes('producto')
     .filter((v) => v.elemento.activo)
@@ -390,6 +420,21 @@ export function herramientasPara(estado: EstadoDelNegocio, puerto: PuertoParaElM
         return { ok: true, mensaje: 'Caso abierto. El Dueño lo va a revisar y te responde por aquí. No le prometas una hora.' }
       },
     }),
+    ...(conAgenda
+      ? {
+          guardar_cita: tool({
+            description: HERRAMIENTAS_EN_PALABRAS.guardar_cita,
+            inputSchema: z.object({
+              fecha: z.string().describe('La fecha como sale en el calendario: AAAA-MM-DD'),
+              hora: z.string().describe('En 24 horas, en la hora del Negocio: HH:mm'),
+              asunto: z.string().max(80).describe('El servicio, en pocas palabras'),
+              cambiaLaQueTiene: z.boolean().describe('true solo si el Cliente ya tiene cita y pidió cambiarla por esta'),
+            }),
+            execute: (e) => puerto.guardar_cita(e),
+          }),
+          cancelar_cita: tool({ description: HERRAMIENTAS_EN_PALABRAS.cancelar_cita, inputSchema: z.object({}), execute: () => puerto.cancelar_cita() }),
+        }
+      : {}),
   }
 }
 

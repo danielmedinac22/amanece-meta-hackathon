@@ -184,6 +184,37 @@ export function EsqueletoDePedidos() {
   )
 }
 
+export function EsqueletoDeAgenda() {
+  return (
+    <Cargando que="tu agenda" className="-mx-4 -mt-4 lg:-mx-6 lg:-mt-6">
+      <GruposDeCitasCargando />
+    </Cargando>
+  )
+}
+
+function GruposDeCitasCargando() {
+  return [2, 4].map((filas, g) => (
+    <section key={g}>
+      <h3 className="flex items-center gap-2 bg-muted/70 px-4 py-1.5 text-xs">
+        <Linea className="h-4 w-20" />
+      </h3>
+      <ul>
+        {veces(filas).map((i) => (
+          <li key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-2 text-[13px]">
+            <span className="min-w-0 flex-1">
+              <Linea className="w-3/5" />
+              <span className="block text-xs">
+                <Linea className="w-2/5" />
+              </span>
+            </span>
+            <Forma className="h-5 w-16 rounded-4xl" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))
+}
+
 export function EsqueletoDeClientes() {
   return (
     <Cargando que="tus Clientes" className="mx-auto max-w-4xl">
