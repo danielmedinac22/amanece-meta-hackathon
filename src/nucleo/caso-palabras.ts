@@ -8,7 +8,8 @@ export type EnvioDeRespuesta =
 
 export const SIN_SABER = { tipo: 'sin_saber' } as const satisfies EnvioDeRespuesta
 
-const MOTIVO_EN_PALABRAS = {
+export const MOTIVO_EN_PALABRAS = {
+  no_le_toca: 'la conversación ya no está en tus manos.',
   emergencia: 'los envíos están detenidos por una emergencia.',
   negocio_en_sombra: 'el Negocio está en sombra y no le habla a nadie.',
   numero_no_permitido: 'el número de Amanece no está listo para enviar.',

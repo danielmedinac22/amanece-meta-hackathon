@@ -74,9 +74,16 @@ export const clientes = pgTable(
     /** El último mensaje que escribió el Cliente: abre la ventana de 24 horas de WhatsApp. */
     ultimoMensajeEntrante: timestamp('ultimo_mensaje_entrante', { withTimezone: true }),
     origen: text('origen', { enum: ORIGENES_DE_CLIENTE }).notNull().default('sin_dato'),
+    /** Quién atiende, y a estas cuatro columnas solo las escribe `salida/atencion.ts`. La toma vale con `tomadaPor` y `tomadaHasta` en el futuro. */
+    tomadaPor: uuid('tomada_por').references(() => duenos.id, { onDelete: 'set null' }),
+    tomadaHasta: timestamp('tomada_hasta', { withTimezone: true }),
+    /** Cuántas veces se ha tomado. Solo sube: un turno que empezó con otro valor ya no le habla al Cliente. */
+    vecesTomada: integer('veces_tomada').notNull().default(0),
+    /** El wamid del último mensaje del Cliente que nadie ha contestado. */
+    sinContestar: text('sin_contestar'),
     creado: creado(),
   },
-  (t) => [uniqueIndex('clientes_negocio_telefono').on(t.negocioId, t.telefono)],
+  (t) => [uniqueIndex('clientes_negocio_telefono').on(t.negocioId, t.telefono), index('clientes_tomadas').on(t.tomadaHasta).where(sql`${t.tomadaPor} is not null`)],
 )
 
 /** La conversación de un Cliente con el Agente de clientes de un Negocio. */
@@ -88,7 +95,7 @@ export const mensajesCliente = pgTable(
     clienteId: uuid('cliente_id')
       .notNull()
       .references(() => clientes.id, { onDelete: 'cascade' }),
-    rol: text('rol', { enum: ['cliente', 'agente'] }).notNull(),
+    rol: text('rol', { enum: ['cliente', 'agente', 'dueno'] }).notNull(),
     texto: text('texto').notNull(),
     /** Id del mensaje en WhatsApp, para no procesar dos veces el mismo. */
     wamid: text('wamid'),

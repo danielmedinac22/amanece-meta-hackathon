@@ -53,5 +53,5 @@ export const HiloEnLaOperacion = createContext<{ vista: string; controles: React
 /** Un objeto nuevo por cada pedido: tocar lo mismo dos veces vuelve a dejar el texto en el redactor. */
 export type Borrador = { texto: string }
 
-/** Lo que el lienzo le deja al Hilo: empieza un mensaje y el Dueño lo termina. */
+/** Empieza un mensaje en el redactor y el Dueño lo termina. Lo usan el lienzo y las tarjetas. */
 export const EscribirleAlAgente = createContext<(texto: string) => void>(() => {})

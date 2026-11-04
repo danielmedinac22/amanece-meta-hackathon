@@ -689,6 +689,31 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "tomada_por": {
+          "name": "tomada_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tomada_hasta": {
+          "name": "tomada_hasta",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "veces_tomada": {
+          "name": "veces_tomada",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "sin_contestar": {
+          "name": "sin_contestar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -712,6 +737,22 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "clientes_tomadas": {
+          "name": "clientes_tomadas",
+          "columns": [
+            {
+              "expression": "tomada_hasta",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"clientes\".\"tomada_por\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -726,6 +767,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "clientes_tomada_por_duenos_id_fk": {
+          "name": "clientes_tomada_por_duenos_id_fk",
+          "tableFrom": "clientes",
+          "tableTo": "duenos",
+          "columnsFrom": [
+            "tomada_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

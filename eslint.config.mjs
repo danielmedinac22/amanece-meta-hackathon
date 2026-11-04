@@ -18,6 +18,10 @@ const INTENCION = {
   importNames: ["intencion"],
   message: "Fuera de src/nucleo nadie arma intenciones. La respuesta a un Caso sale por aprobar.",
 };
+const ATENCION = {
+  regex: String.raw`^(.*/)?nucleo/salida/atencion` + EXTENSION,
+  message: "Quién atiende a un Cliente se cambia con @/nucleo/clientes/toma: salida/atencion es interno.",
+};
 const VIEJO = {
   regex: String.raw`(^|/)db/viejo` + EXTENSION,
   message: "Las tablas viejas no tienen lector: el estado de un Negocio se lee con leerAplicado o leerPublicado (@/nucleo/estado).",
@@ -69,16 +73,16 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/nucleo/**", "src/negocio/sesion.ts"],
-    rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA, CLERK),
+    rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA, CLERK),
   },
   {
     files: ["src/lib/auth/**/*.{ts,tsx}", "src/proxy.ts", "src/app/entrar/con-clerk.tsx", "src/app/entrar/google/page.tsx", "src/app/panel/salir-con-clerk.tsx"],
-    rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA),
+    rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, VITRINA),
   },
-  { files: ["src/app/vitrina/**/*.{ts,tsx}"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, CLERK, LECTURAS_EN_LA_VITRINA) },
-  { files: ["src/app/api/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, CLERK) },
-  { files: ["src/agentes/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES) },
-  { files: ["src/agentes/avisos.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES, LEER_APLICADO) },
+  { files: ["src/app/vitrina/**/*.{ts,tsx}"], rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, CLERK, LECTURAS_EN_LA_VITRINA) },
+  { files: ["src/app/api/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, CLERK) },
+  { files: ["src/agentes/**/*.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES) },
+  { files: ["src/agentes/avisos.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, BOTONES, LEER_APLICADO) },
   { files: ["src/negocio/sesion.ts"], rules: prohibir(KAPSO, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON, CLERK) },
   {
     files: ["src/nucleo/**/*.ts"],
@@ -91,7 +95,7 @@ const eslintConfig = defineConfig([
   { files: ["src/nucleo/estado/index.ts"], rules: prohibir(KAPSO, INTERNOS_DE_CAMBIOS, ESCRIBIR, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON) },
   { files: ["src/nucleo/cambios/**/*.ts"], rules: prohibir(KAPSO, VIEJO, LIBPG, NEON, ACTOR_DEL_BOTON) },
   { files: ["src/nucleo/consultas/validar.ts"], rules: prohibir(KAPSO, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, NEON, ACTOR_DEL_BOTON) },
-  { files: ["src/db/index.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG) },
+  { files: ["src/db/index.ts"], rules: prohibir(KAPSO, MARCAR, INTENCION, ATENCION, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG) },
   { files: ["src/nucleo/consultas/ejecutar.ts"], rules: prohibir(KAPSO, INTERNOS_DE_CAMBIOS, POOL, ESCRIBIR, VIEJO, LIBPG, ACTOR_DEL_BOTON) },
   // Override default ignores of eslint-config-next.
   globalIgnores([

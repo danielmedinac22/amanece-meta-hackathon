@@ -3,15 +3,17 @@
 import { ArrowsClockwise, ArrowUp, CaretUp, CheckCircle, NotePencil, Warning } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { PARTE_DE_ARCHIVO, type Adjunto } from '@/nucleo/archivos'
+import { rutaDeConversacion } from '@/nucleo/listas-palabras'
 import { PARTE_DE_PLANTILLA, PARTIDAS, plantillaDelHilo, type IdDePlantilla } from '@/nucleo/plantillas'
 import { decisionesEnEspera, decisionQueEspera, esCapacidadFaltante, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
 import { ArchivoEnElGlobo, BotonAdjuntar, TiraDeAdjuntos, useAdjuntos, type EnElRedactor } from './adjuntos'
 import { HiloEnLaOperacion } from './disposicion'
 import type { SubirArchivo } from './subir-archivo'
+import { IrASeccion } from './ir-a-seccion'
 import { etiquetaDe, Tarjeta } from './tarjeta'
 import type { TocarTarjeta } from './tocar-tarjeta'
 
@@ -21,6 +23,7 @@ const ETIQUETAS: Record<string, string> = {
   leer_archivo: 'Leyó tu archivo',
   guardar_conocimiento: 'Guardó lo que sabe de tu negocio',
   guardar_productos: 'Actualizó tu catálogo',
+  corregir_tarjeta: 'Corrigió lo que leyó',
   abrir_negocio: 'Dejó listo a tu agente de clientes',
   ver_negocio: 'Revisó tu negocio',
   proponer: 'Preparó lo que pediste',
@@ -174,6 +177,14 @@ export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boo
             const id = plantillaDelHilo([m])
             return id && <RastroDePlantilla key={i} id={id} />
           }
+          if (parte.type === 'data-toma') {
+            const { cliente, nombre } = parte.data as { cliente: string; nombre: string }
+            return (
+              <IrASeccion key={i} href={rutaDeConversacion(cliente)} className={buttonVariants({ variant: 'outline', size: 'sm', className: 'mt-1 self-start' })}>
+                {nombre ? `Ver la conversación de ${nombre}` : 'Ver la conversación'}
+              </IrASeccion>
+            )
+          }
           const t = tarjetaDeLaParte(parte)
           if (esCapacidadFaltante(parte)) return <CapacidadFaltante key={i} />
           if (parte.type.startsWith('tool-')) {
@@ -181,9 +192,10 @@ export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boo
             const conEstado = parte as { state: string; input?: unknown }
             // `proponer` sin tarjeta no preparó nada: el modelo tiene que corregir o explicar.
             const noPreparo = herramienta === 'proponer' && conEstado.state === 'output-available' && !t
+            const noCorrigio = herramienta === 'corregir_tarjeta' && conEstado.state === 'output-available' && !t
             return (
               <div key={i} className="flex flex-col gap-3">
-                <Rastro estado={conEstado.state}>{noPreparo ? 'Revisó lo que pediste' : etiquetaDelRastro(herramienta, conEstado)}</Rastro>
+                <Rastro estado={conEstado.state}>{noPreparo ? 'Revisó lo que pediste' : noCorrigio ? 'Revisó lo que leyó' : etiquetaDelRastro(herramienta, conEstado)}</Rastro>
                 {t && tarjeta(t)}
               </div>
             )

@@ -3,26 +3,30 @@ import { CuentaPorPasar } from '@/app/panel/espera'
 import type { ComponentProps, ReactNode } from 'react'
 import { InicioHoy } from '@/app/panel/inicio-hoy'
 import { ListaDePedidos, TablaDeClientes } from '@/app/panel/listas'
-import { rutaDeConversacion, VistaDeConversaciones } from '@/app/panel/conversaciones'
+import { VistaDeConversaciones, type ControlDeToma } from '@/app/panel/conversaciones'
 import { VistaDelTablero } from '@/app/panel/tablero'
 import { VistaDeUnaSeccion } from '@/app/panel/vista'
 import { rutaDePropia } from '@/app/panel/secciones'
 import type { UIMessage } from 'ai'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { VistaDeAjustes } from '@/app/panel/ajustes'
+import { ClienteQueNoEsta, PedidoQueNoEsta } from '@/app/panel/detalle'
+import { rutaDeCliente, rutaDeConversacion, rutaDePedido } from '@/nucleo/listas-palabras'
 import SeccionQueNoEsta from '@/app/panel/not-found'
-import { EsqueletoDeAjustes, EsqueletoDeCasos, EsqueletoDeClientes, EsqueletoDeConversaciones, EsqueletoDeInicio, EsqueletoDePedidos, EsqueletoDelTablero, EsqueletoDeUnaSeccion } from '@/app/panel/esqueletos'
+import { EsqueletoDeAjustes, EsqueletoDeCasos, EsqueletoDeClientes, EsqueletoDeConversaciones, EsqueletoDeInicio, EsqueletoDePedidos, EsqueletoDelTablero, EsqueletoDeUnaSeccion, EsqueletoDeUnCliente, EsqueletoDeUnPedido } from '@/app/panel/esqueletos'
 import { loQueTrae, RUTA_DE_AJUSTES } from '@/app/panel/secciones'
 import { Alba } from '@/app/alba'
 import { AlbaHastaElArmado } from './alba-de-muestra'
 import { ArmadoDeMuestra } from './armado-de-muestra'
-import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
+import { ARMADO_COBRO, ARMADO_COBRO_CON_MAS_FALTANTES, ARMADO_CONFIRMAR, ARMADO_CONOCIENDO, ARMADO_COBRO_CORREGIDO, ARMADO_CORREGIDA, HILO_CORREGIDA, HILO_NO_CORRIGIO, TARJETAS_CORREGIDA, ARMADO_FUERA_DE_ORDEN, ARMADO_LEYENDO, ARMADO_LISTO, ARMADO_TEXTOS_LARGOS, ARMADO_VACIO, HILO_COBRO, HILO_DESDE_PLANTILLA, HILO_CONFIRMAR, HILO_CONOCIENDO, HILO_FUERA_DE_ORDEN, HILO_LEYENDO, HILO_LISTO, TARJETAS_CONFIRMAR } from './datos-armado'
 import { Componentes } from './componentes'
 import { ADJUNTOS_EN_EL_REDACTOR, GUION_TARJETAS_QUE_VENCIERON, HILO_CAPACIDAD_FALTANTE, HILO_CON_ARCHIVOS, HILO_TARJETAS_QUE_VENCIERON, TARJETAS_QUE_VENCIERON } from './datos-de-estados'
 import { ConfirmarDeMuestra, EntradaDeMuestra, ErrorDeMuestra, QueFallaDeVerdad } from './estados-de-muestra'
+import { HILO_AVISO_DE_LA_TOMA, NEGOCIO_CLIENTE_ESPERA, NEGOCIO_CON_LA_TOMA_TUYA, NEGOCIO_DE_OTRO_DUENO, NEGOCIO_NO_SALIO, NEGOCIO_POR_VENCER, NEGOCIO_SE_ACABO_EL_TIEMPO, NEGOCIO_SIN_SABER_SI_SALIO, NEGOCIO_SIN_VENTANA, NEGOCIO_TOMADA_CON_EL_AGENTE_TERMINANDO, NEGOCIO_TUYA_SIN_VENTANA, NEGOCIO_WHATSAPP_NO_LO_TOMA } from './datos-de-la-toma'
 import { GUION_WHATSAPP_NO_LA_TOMA, HILO_CASO_CON_REGLA, HILO_CASO_VIEJO, HILO_DESENLACES_DEL_ENVIO, NEGOCIO_CASOS_CON_ENVIO, TARJETAS_CASO_CON_REGLA, TARJETAS_CASO_VIEJO, TARJETAS_DESENLACES_DEL_ENVIO } from './datos-del-caso'
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
+import { TomaDeMuestra } from './toma-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
 import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
@@ -42,13 +46,17 @@ function operacionDe(datos: NegocioDeMuestra) {
   }
 }
 
+const AGENTE_ATIENDE = { tipo: 'agente', vez: 0, ventana: true, espera: false } as const
+
 function paginasDe(datos: NegocioDeMuestra): Record<string, ReactNode> {
+  const atencionDe = (cliente: string | undefined) => (cliente && datos.atenciones?.[cliente]) || AGENTE_ATIENDE
+  const Toma: ControlDeToma = (p) => <TomaDeMuestra {...p} alEscribir={datos.alEscribir} />
   return {
     '/panel': <InicioHoy {...datos.hoy} />,
     '/panel/casos': <CasosDeMuestra {...datos.seccionDeCasos} />,
     '/panel/tablero': <VistaDelTablero indicadores={datos.indicadores} tablero={datos.tablero} />,
-    '/panel/conversaciones': <VistaDeConversaciones {...datos.conversaciones} />,
-    ...Object.fromEntries(Object.values(datos.detalles ?? {}).map((d) => [rutaDeConversacion(d.cliente), <VistaDeConversaciones key={d.cliente} {...datos.conversaciones} detalle={d} enDetalle />])),
+    '/panel/conversaciones': <VistaDeConversaciones {...datos.conversaciones} atencion={atencionDe(datos.conversaciones.detalle?.cliente)} Toma={Toma} />,
+    ...Object.fromEntries(Object.values(datos.detalles ?? {}).map((d) => [rutaDeConversacion(d.cliente), <VistaDeConversaciones key={d.cliente} {...datos.conversaciones} detalle={d} enDetalle atencion={atencionDe(d.cliente)} Toma={Toma} />])),
     '/panel/pedidos': <ListaDePedidos {...datos.pedidos} />,
     '/panel/clientes': <TablaDeClientes {...datos.clientes} />,
     [RUTA_DE_AJUSTES]: <VistaDeAjustes nombre={datos.nombre} ciudad="Manizales" link={datos.hoy.link} />,
@@ -56,8 +64,10 @@ function paginasDe(datos: NegocioDeMuestra): Record<string, ReactNode> {
   }
 }
 
+const filasDe = ({ pedidos, clientes, detalles }: NegocioDeMuestra) => ({ pedidos, clientes, detalles })
+
 function panel(datos: NegocioDeMuestra, mensajes: UIMessage[] = [], tarjetas: Record<string, EstadoDeTarjeta> = {}, disposicion: Disposicion = {}) {
-  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={paginasDe(datos)} tarjetas={tarjetas} hilo={<HiloDeMuestra messages={mensajes} />} {...disposicion} />
+  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={paginasDe(datos)} filas={filasDe(datos)} tarjetas={tarjetas} hilo={<HiloDeMuestra messages={mensajes} />} {...disposicion} />
 }
 
 /** En teléfono también abre el lienzo, donde vive la lista. */
@@ -65,7 +75,7 @@ const enLaSeccion = (datos: NegocioDeMuestra, rutaInicial: string) => panel(dato
 
 /** Publicar de punta a punta: la tarjeta, el botón y el lienzo cambian juntos, como con la base de verdad. */
 function publicando(datos: NegocioDeMuestra, mensajes: UIMessage[], tarjetas: Record<string, EstadoDeTarjeta>, guion: GuionDePublicar, rutaInicial = '/panel') {
-  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={paginasDe(datos)} tarjetas={tarjetas} guion={guion} rutaInicial={rutaInicial} hilo={<HiloDeMuestra messages={mensajes} />} />
+  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={paginasDe(datos)} filas={filasDe(datos)} tarjetas={tarjetas} guion={guion} rutaInicial={rutaInicial} hilo={<HiloDeMuestra messages={mensajes} />} />
 }
 
 function llegaUnaSeccion() {
@@ -81,10 +91,11 @@ function llegaUnaDecision() {
 }
 
 const LA_SECCION_PROPIA = rutaDePropia('pedidos-con-novedad')
+const NOMBRE_DE_MUCHAS_FILAS = NEGOCIO_CON_MUCHAS_FILAS.clientes.filas[0].nombre
 
 /** Una Sección con su estado en el lugar de la página: la cáscara no se mueve mientras carga ni si falla. */
 function conLaPagina(ruta: string, pagina: ReactNode, datos = NEGOCIO_FUNCIONANDO) {
-  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={{ ...paginasDe(datos), [ruta]: pagina }} rutaInicial={ruta} inicial={{ pestana: 'negocio' }} hilo={<HiloDeMuestra messages={[]} />} />
+  return <MarcoDeMuestra datos={operacionDe(datos)} paginas={{ ...paginasDe(datos), [ruta]: pagina }} filas={filasDe(datos)} rutaInicial={ruta} inicial={{ pestana: 'negocio' }} hilo={<HiloDeMuestra messages={[]} />} />
 }
 
 const ESTADOS_POR_SECCION: readonly { id: string; ruta: string; esqueleto: ReactNode }[] = [
@@ -93,6 +104,8 @@ const ESTADOS_POR_SECCION: readonly { id: string; ruta: string; esqueleto: React
   { id: 'conversaciones', ruta: '/panel/conversaciones', esqueleto: <EsqueletoDeConversaciones /> },
   { id: 'pedidos', ruta: '/panel/pedidos', esqueleto: <EsqueletoDePedidos /> },
   { id: 'clientes', ruta: '/panel/clientes', esqueleto: <EsqueletoDeClientes /> },
+  { id: 'pedido', ruta: rutaDePedido('p-41'), esqueleto: <EsqueletoDeUnPedido /> },
+  { id: 'cliente', ruta: rutaDeCliente('Daniela Quintero'), esqueleto: <EsqueletoDeUnCliente /> },
   { id: 'tablero', ruta: '/panel/tablero', esqueleto: <EsqueletoDelTablero /> },
   { id: 'seccion', ruta: LA_SECCION_PROPIA, esqueleto: <EsqueletoDeUnaSeccion /> },
   { id: 'ajustes', ruta: RUTA_DE_AJUSTES, esqueleto: <EsqueletoDeAjustes /> },
@@ -132,6 +145,9 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'panel-armandose', titulo: 'Armado: conversando, sin enlace', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_CONOCIENDO} /> },
   { id: 'armado-leyendo', titulo: 'Armado: leyendo su página', pinta: () => <ArmadoDeMuestra datos={ARMADO_LEYENDO} messages={HILO_LEYENDO} status="streaming" /> },
   { id: 'armado-confirmar', titulo: 'Armado: ¿están bien estos productos?', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONFIRMAR} messages={HILO_CONFIRMAR} tarjetas={TARJETAS_CONFIRMAR} siguiente={ARMADO_COBRO} /> },
+  { id: 'armado-corregida', titulo: 'Armado: lo leído, ya corregido en palabras', pinta: () => <ArmadoDeMuestra datos={ARMADO_CORREGIDA} messages={HILO_CORREGIDA} tarjetas={TARJETAS_CORREGIDA} siguiente={ARMADO_COBRO_CORREGIDO} /> },
+  { id: 'armado-no-corrigio', titulo: 'Armado: lo que dijo el Dueño no coincidió con la tarjeta', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONFIRMAR} messages={HILO_NO_CORRIGIO} tarjetas={TARJETAS_CONFIRMAR} /> },
+  { id: 'hilo-lectura-espera', titulo: 'Hilo: lo leído espera con el Negocio ya abierto', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CONFIRMAR, TARJETAS_CONFIRMAR) },
   { id: 'armado-cobro', titulo: 'Armado: cómo te pagan', pinta: () => <ArmadoDeMuestra datos={ARMADO_COBRO} messages={HILO_COBRO} siguiente={ARMADO_LISTO} /> },
   { id: 'armado-cobro-con-mas-faltantes', titulo: 'Armado: cómo te pagan, y faltan otras cosas', pinta: () => <ArmadoDeMuestra datos={ARMADO_COBRO_CON_MAS_FALTANTES} messages={HILO_COBRO} /> },
   { id: 'armado-listo', titulo: 'Armado: listo para abrir', pinta: () => <ArmadoDeMuestra datos={ARMADO_LISTO} messages={HILO_LISTO} despues={panel(NEGOCIO_RECIEN_ABIERTO)} /> },
@@ -159,6 +175,16 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'clientes-tabla', titulo: 'Clientes: la tabla', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/clientes') },
   { id: 'clientes-vacios', titulo: 'Clientes: todavía ninguno', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/clientes') },
   { id: 'clientes-muchos', titulo: 'Clientes: más filas que el límite y nombres largos', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, '/panel/clientes') },
+  { id: 'pedido-abierto', titulo: 'Un pedido: lo que pidió, el Cliente y su conversación', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDePedido('p-41')) },
+  { id: 'pedido-sin-conversacion', titulo: 'Un pedido: su Cliente no ha escrito', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDePedido('p-37')) },
+  { id: 'pedido-cancelado', titulo: 'Un pedido cancelado: su grupo se abre en la lista', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDePedido('p-31')) },
+  { id: 'pedido-largo', titulo: 'Un pedido: nombres y dirección largos, y uno al final de la lista', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDePedido('p-9950')) },
+  { id: 'pedido-no-esta', titulo: 'Un pedido que no es de este Negocio', pinta: () => conLaPagina(rutaDePedido('de-otro'), <PedidoQueNoEsta />) },
+  { id: 'cliente-abierto', titulo: 'Un Cliente: sus pedidos y su conversación', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDeCliente('Daniela Quintero')) },
+  { id: 'cliente-con-caso', titulo: 'Un Cliente: con un Caso que espera', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDeCliente('Camila Rojas')) },
+  { id: 'cliente-sin-nada', titulo: 'Un Cliente sin nombre, sin pedidos ni mensajes', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, rutaDeCliente('+573000000000')) },
+  { id: 'cliente-largo', titulo: 'Un Cliente: más pedidos que el límite y textos largos', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDeCliente(NOMBRE_DE_MUCHAS_FILAS)) },
+  { id: 'cliente-no-esta', titulo: 'Un Cliente que no es de este Negocio', pinta: () => conLaPagina(rutaDeCliente('de-otro'), <ClienteQueNoEsta />) },
   { id: 'casos-espera', titulo: 'Casos: uno espera tu decisión, el mismo del Hilo', pinta: () => panel(NEGOCIO_CON_UN_CASO, HILO_CON_UN_CASO, TARJETAS_CON_UN_CASO, { rutaInicial: '/panel/casos', inicial: { pestana: 'negocio' } }) },
   { id: 'casos-sin-boton', titulo: 'Casos: sin respuesta, descartada, vencida, y una que no salió', pinta: () => enLaSeccion(NEGOCIO_CASOS_SIN_BOTON, '/panel/casos') },
   { id: 'casos-vacios', titulo: 'Casos: todavía ninguno', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/casos') },
@@ -166,6 +192,18 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'conversaciones-lista', titulo: 'Conversaciones: lista y detalle', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/conversaciones') },
   { id: 'conversacion-con-caso', titulo: 'Conversaciones: una elegida, con un Caso que espera', pinta: () => enLaSeccion(NEGOCIO_CON_UN_CASO, rutaDeConversacion('camila')) },
   { id: 'conversaciones-vacias', titulo: 'Conversaciones: todavía ninguna', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/conversaciones') },
+  { id: 'conversacion-tomada', titulo: 'Conversaciones: la tienes tú, con lo que le escribiste y cuánto queda', pinta: () => enLaSeccion(NEGOCIO_CON_LA_TOMA_TUYA, '/panel/conversaciones') },
+  { id: 'conversacion-agente-terminando', titulo: 'Conversaciones: la tomaste y tu agente alcanzó a responder', pinta: () => enLaSeccion(NEGOCIO_TOMADA_CON_EL_AGENTE_TERMINANDO, '/panel/conversaciones') },
+  { id: 'conversacion-de-otro', titulo: 'Conversaciones: la tiene otro Dueño', pinta: () => enLaSeccion(NEGOCIO_DE_OTRO_DUENO, '/panel/conversaciones') },
+  { id: 'conversacion-tuya-sin-ventana', titulo: 'Conversaciones: la tienes tú y WhatsApp ya no deja escribirle', pinta: () => enLaSeccion(NEGOCIO_TUYA_SIN_VENTANA, '/panel/conversaciones') },
+  { id: 'conversacion-sin-ventana', titulo: 'Conversaciones: tu agente atiende y WhatsApp ya no deja escribirle', pinta: () => enLaSeccion(NEGOCIO_SIN_VENTANA, '/panel/conversaciones') },
+  { id: 'conversacion-cliente-espera', titulo: 'Conversaciones: volvió a tu agente y un Cliente espera respuesta', pinta: () => enLaSeccion(NEGOCIO_CLIENTE_ESPERA, '/panel/conversaciones') },
+  { id: 'conversacion-por-vencer', titulo: 'Conversaciones: el tiempo llega a cero y vuelve a tu agente', pinta: () => enLaSeccion(NEGOCIO_POR_VENCER, '/panel/conversaciones') },
+  { id: 'conversacion-se-acabo-el-tiempo', titulo: 'Conversaciones: escribes justo cuando se acabó el tiempo', pinta: () => enLaSeccion(NEGOCIO_SE_ACABO_EL_TIEMPO, '/panel/conversaciones') },
+  { id: 'conversacion-no-salio', titulo: 'Conversaciones: la compuerta no deja salir tu mensaje', pinta: () => enLaSeccion(NEGOCIO_NO_SALIO, '/panel/conversaciones') },
+  { id: 'conversacion-whatsapp-no-lo-toma', titulo: 'Conversaciones: WhatsApp no toma tu mensaje', pinta: () => enLaSeccion(NEGOCIO_WHATSAPP_NO_LO_TOMA, '/panel/conversaciones') },
+  { id: 'conversacion-sin-saber', titulo: 'Conversaciones: todavía no se sabe si tu mensaje salió', pinta: () => enLaSeccion(NEGOCIO_SIN_SABER_SI_SALIO, '/panel/conversaciones') },
+  { id: 'hilo-aviso-de-la-toma', titulo: 'El Hilo avisa que un Cliente escribió en la conversación que tienes', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_AVISO_DE_LA_TOMA) },
   { id: 'conversaciones-muchas', titulo: 'Conversaciones: más filas que el límite y textos largos', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDeConversacion('larga')) },
   { id: 'tablero', titulo: 'Tablero: cifras, Indicadores propios, gráfica, reparto y tabla', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/tablero') },
   { id: 'tablero-vacio', titulo: 'Tablero: todavía sin pedidos ni conversaciones', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/tablero') },

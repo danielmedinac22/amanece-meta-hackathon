@@ -123,7 +123,7 @@ function contextoDelCaso(
     pedido
       ? `Pedido #${pedido.numero} (${pedido.estado}): ${pedido.items.map((i) => `${i.cantidad} x ${i.nombre}`).join(', ')}. Total $${pedido.total.toLocaleString('es-CO')}. Ciudad: ${pedido.ciudad || 'sin dato'}. Dirección: ${pedido.direccion || 'sin dato'}.`
       : 'Sin pedido relacionado.',
-    `Últimos mensajes de ${nombreDelCliente}:\n${ultimos.map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Agente'}: ${m.texto}`).join('\n') || '(sin mensajes)'}`,
+    `Últimos mensajes de ${nombreDelCliente}:\n${ultimos.map((m) => `${m.rol === 'cliente' ? 'Cliente' : m.rol === 'dueno' ? 'Dueño' : 'Agente'}: ${m.texto}`).join('\n') || '(sin mensajes)'}`,
   ]
     .filter(Boolean)
     .join('\n\n')

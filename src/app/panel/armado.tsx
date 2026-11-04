@@ -14,6 +14,7 @@ import { abrioElAgente, cuantoGuardo, estaLeyendo, pasoDelArmado, titularDe, ult
 import type { DatosDelArmado, FilaQueYaSe, ProductoEnElPanel } from '@/nucleo/armado'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { plantillaDelHilo } from '@/nucleo/plantillas'
+import { EscribirleAlAgente, type Borrador } from './disposicion'
 import { useHilo } from './hilo'
 import { MensajeDelHilo, Puntos, RastroDePlantilla, Redactor, type AlEnviar } from './hilo-vista'
 import { subirArchivo, type SubirArchivo } from './subir-archivo'
@@ -69,6 +70,8 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
   const [pospusoElCobro, setPospusoElCobro] = useState(false)
   const [abierto, setAbierto] = useState(false)
   const [yaEstaban] = useState(messages.length)
+  const [borrador, setBorrador] = useState<Borrador | null>(null)
+  const escribir = useCallback((texto: string) => setBorrador({ texto }), [])
 
   const paso = pasoDelArmado(datos, { leyendo: ocupado && estaLeyendo(messages), pospusoElCobro })
   const saliendo = abierto || (!ocupado && abrioElAgente(messages))
@@ -80,7 +83,11 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
   }, [saliendo, alSalir])
 
   const espera = decisionesEnEspera(messages, estados).find((t) => t.accion === 'confirmar') ?? null
-  const decision = (t: TarjetaDeAprobacion, etiqueta?: string) => <Tarjeta key={t.propuesta} tarjeta={t} estado={estados[t.propuesta]} etiqueta={etiqueta} alTocar={alTocar} alCambiar={alCambiar} />
+  const decision = (t: TarjetaDeAprobacion, etiqueta?: string) => (
+    <EscribirleAlAgente.Provider key={t.propuesta} value={escribir}>
+      <Tarjeta tarjeta={t} estado={estados[t.propuesta]} etiqueta={etiqueta} alTocar={alTocar} alCambiar={alCambiar} />
+    </EscribirleAlAgente.Provider>
+  )
   // La que espera va abajo de la conversación, como la decisión de este paso, aunque haya llegado en un turno anterior.
   const enLaConversacion = (t: TarjetaDeAprobacion) => (t.propuesta === espera?.propuesta ? null : decision(t))
   const cuantos = datos.lectura?.productos
@@ -125,7 +132,7 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
               </motion.section>
             </main>
             <div className="sticky bottom-0 mt-auto bg-linear-to-t from-background from-70% to-transparent pt-5 pb-4">
-              <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} />
+              <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} borrador={borrador} />
             </div>
           </div>
           <aside className="pb-8 lg:sticky lg:top-4 lg:self-start lg:pt-8">

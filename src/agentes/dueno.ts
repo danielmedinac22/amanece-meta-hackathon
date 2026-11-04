@@ -13,6 +13,7 @@ import {
   armarLectura,
   armarLecturaDeArchivos,
   buscarProducto,
+  corregirLectura,
   descartar,
   ESQUEMA_DEL_PEDIDO,
   EXTRACTOR,
@@ -160,7 +161,8 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       return await trabajo()
     } catch (e) {
       console.error('[dueno] una herramienta falló', e)
-      return { resumen: `No pude hacerlo: ${e instanceof Error ? e.message : String(e)}. Díselo al Dueño con palabras sencillas.`, tarjeta: null }
+      // No el mensaje del error: el de una consulta trae sus parámetros, y ahí va lo leído de la página.
+      return { resumen: 'No pude hacerlo por un problema técnico. Díselo al Dueño con palabras sencillas.', tarjeta: null }
     }
   }
 
@@ -330,6 +332,23 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       }),
   })
 
+  const corregirTarjeta = tool({
+    description:
+      'Quita o renombra cosas de la tarjeta de lo leído que espera el botón. Tú no ves la tarjeta: pasa los nombres como los dijo el Dueño. No guarda ni confirma nada, y aquí no se cambia ningún precio. Te dice qué cambió de verdad.',
+    inputSchema: z.object({
+      quitar: z.array(z.string().trim().min(1)).optional().describe('Productos o datos (Descripción, Ciudad, Horario, Envíos, Pagos) que no van'),
+      renombrar: z.array(z.object({ de: z.string().trim().min(1), a: z.string().trim().min(1) })).optional().describe('Productos con otro nombre; el precio leído sigue en la tarjeta'),
+    }),
+    execute: ({ quitar = [], renombrar = [] }) =>
+      conTarjeta(async () => {
+        const r = await corregirLectura(ctx, { quitar, renombrar })
+        // Ya quedó hecho: si leer lo que falta se cae, la tarjeta nueva igual tiene que llegar, o nadie vería su botón.
+        const sigue = negocio.modo === 'armando' ? await faltaAhora().catch(() => '') : r.tarjeta ? '' : 'Si el Dueño quiere cambiar algo ya guardado, eso va con proponer.'
+        return { resumen: [r.resumen, sigue].filter(Boolean).join(' '), tarjeta: r.tarjeta }
+      }),
+    toModelOutput: ({ output }) => ({ type: 'text', value: output.resumen }),
+  })
+
   // --- Con el Negocio abierto: proponer -------------------------------------------------------------
 
   const proponerTool = tool({
@@ -410,7 +429,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
       }),
   })
 
-  const comunes = { ver_negocio: verNegocio, registrar_capacidad_faltante: registrarCapacidadFaltante, leer_archivo: leerArchivo }
+  const comunes = { ver_negocio: verNegocio, registrar_capacidad_faltante: registrarCapacidadFaltante, leer_archivo: leerArchivo, corregir_tarjeta: corregirTarjeta }
   const delAlta = { leer_enlace: leerEnlace, guardar_conocimiento: guardarConocimiento, guardar_productos: guardarProductosTool, abrir_negocio: abrirNegocio }
   const deAbierto = { proponer: proponerTool, descartar_propuesta: descartarPropuesta, listar_propuestas: listarPropuestas, listar_casos: listarCasos }
   const tools: ToolSet = { ...comunes, ...(negocio.modo === 'armando' ? delAlta : deAbierto) }
@@ -482,7 +501,11 @@ Ahora: es la primera conversación y el Negocio todavía se está armando.
 - Primero pregúntale si ya tiene su negocio publicado en algún lado, como su página o su Instagram, y pídele el enlace. Si te lo da, léelo con leer_enlace.
 - Lo que leas queda en una tarjeta que el Dueño confirma con el botón «Están bien y no falta ninguno». No lo guardes tú ni le digas precios que él no escribió: pídele que revise la tarjeta y toque el botón si está bien.
 - Si adjunta una foto o un PDF con sus productos, lo que traiga queda en esa misma tarjeta. No le pidas que te los escriba uno por uno.
-- Si el Dueño corrige algo de la tarjeta (un precio, un producto, un dato), guárdalo con guardar_productos o guardar_conocimiento: la tarjeta se rearma sola.
+- Si el Dueño corrige algo de la tarjeta:
+  - Un precio, un producto que falta o un dato que te dijo: guárdalo con guardar_productos o guardar_conocimiento. La tarjeta se rearma sola.
+  - Algo que no vende o que no va: corregir_tarjeta con quitar.
+  - Un nombre malo: corregir_tarjeta con renombrar, y el precio leído sigue en la tarjeta. Si además dice otro precio, guarda también el nombre nuevo con guardar_productos.
+  - Nunca digas que algo salió o cambió en la tarjeta si la herramienta no te lo dijo. Si te dice que no coincide o que hay varias, pregúntale al Dueño cómo sale en la tarjeta.
 - Si no tiene nada publicado o no se pudo leer, entrevístalo con una o dos preguntas por mensaje, nunca más: cómo se llama el Negocio y qué vende, los productos con sus precios en pesos colombianos, la ciudad, los envíos (a dónde, cuánto cuestan, cuánto demoran), las formas de pago, el horario y el tono con el que le gusta hablarles a sus clientes.
 - Cada vez que el Dueño te dé información, guárdala en ese momento con guardar_conocimiento (nombre, rubro, descripción, ciudad, horario, envíos, pagos, tono, preguntas frecuentes) y guardar_productos (nombre, frase corta, precio entero en pesos). No esperes a tener todo.
 - Pregunta solo lo que falta: cada herramienta te dice qué falta para abrir, qué ya está en la tarjeta y qué conviene preguntar. No preguntes lo que ya está guardado o en la tarjeta. Si no sabes cómo se llama el Negocio, pregúntalo.
@@ -514,6 +537,7 @@ Ahora: el Negocio ya está abierto y tu agente de clientes atiende por WhatsApp.
   - Si no encaja en nada de esto: dilo con honestidad y llama registrar_capacidad_faltante.
 - Tú no aplicas nada ni le escribes a nadie. Lo que llega a los clientes (reglas, datos, voz, preguntas, productos, respuestas a Casos) queda en una tarjeta y se aplica o se envía solo cuando el Dueño toca el botón. Lo del Panel (secciones e indicadores) queda de una en su vista previa, con un botón para deshacerlo.
 - Lo aplicado queda en la vista previa del Dueño: a sus clientes no les cambia nada hasta que él toque Publicar. Publicar es un botón del Dueño en su Panel: tú no lo tocas ni tienes cómo, así que si te lo pide, dile dónde está. Lo que falta por publicar sale en sinPublicar de ver_negocio: si te pregunta qué les está diciendo tu agente de clientes a los clientes, responde con eso en cuenta.
+- Si hay una tarjeta de lo leído esperando y el Dueño la corrige: corregir_tarjeta para quitar o renombrar. Si cambia un precio, quítalo con corregir_tarjeta y prepáralo con proponer. Nunca digas que cambió si la herramienta no te lo dijo.
 - Responder un Caso no espera Publicar: sale con Enviar. Revertir algo que los clientes ya tienen les llega de una, y la tarjeta lo dice.
 - Después de proponer, cuéntale en palabras sencillas lo que te devolvió proponer, sin código. Si dice que otro Dueño cambió lo mismo, vuelve a mirar ver_negocio y propónlo de nuevo si todavía lo quiere. Si quedó en una tarjeta, dile que la revise y toque el botón; no digas que ya quedó. Si te dice "sí" por escrito, recuérdale que toque el botón de la tarjeta: tú no puedes aplicarlo.
 - Si el Dueño quiere cargar a su catálogo lo que trae un archivo, llama leer_archivo con cargar en true: queda en una tarjeta con botón.

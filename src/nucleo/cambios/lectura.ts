@@ -10,14 +10,14 @@ import { generateText, Output } from 'ai'
 import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, esquema } from '@/db'
-import type { Transaccion } from '@/db/pool'
+import { conTransaccion, type Transaccion } from '@/db/pool'
 import type { PaginaLeida } from '@/lib/leer-enlace'
 import { modelo } from '@/lib/modelo'
 import { COMPARAR, esFuenteDeArchivo, type TipoDeArchivo } from '../archivos'
-import { valorDelDato, type ElementoVigente, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
+import { leerAplicado, otrosNegocios, valorDelDato, type CambioDeElemento, type ElementoVigente, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, definicionDe, ETIQUETA_DEL_DATO, pesos, type CampoDeConocimiento, type Elemento } from '../estado/elementos'
-import { marcar, type DuenoId, type NegocioId, type PropuestaId } from '../identidad'
-import { montosEn } from '../salida/revisar'
+import { marcar, type ContextoDelDueno, type DuenoId, type NegocioId, type PropuestaId } from '../identidad'
+import { montosEn, revisarTextoDelDueno } from '../salida/revisar'
 import { filaNueva, type TarjetaDeAprobacion } from './fila'
 import type { QuierePoner } from './traducir'
 
@@ -304,11 +304,11 @@ export function lineasDeLaTarjeta(estado: EstadoDelNegocio, escritura: Escritura
     return []
   })
   const comparar = esFuenteDeArchivo(fuente) ? [`${COMPARAR} ${fuente}: leer un archivo puede fallar.`] : []
-  // Con el Negocio abierto, lo vigente es todo el catálogo, y corregirle al agente no rearma esta tarjeta: sale otra.
-  if (estado.identidad.modo !== 'armando') return [`Esto leí de ${fuente}. A tus Clientes no les cambia nada hasta que lo apliques y toques Publicar.`, ...comparar, ...leidas, 'Si algo está mal, descártala y dile a tu agente cómo es.']
+  // Con el Negocio abierto, lo vigente es todo el catálogo: aquí no se lista.
+  if (estado.identidad.modo !== 'armando') return [`Esto leí de ${fuente}. A tus Clientes no les cambia nada hasta que lo apliques y toques Publicar.`, ...comparar, ...leidas, 'Si algo está mal, dile a tu agente cómo es.']
   const tuyas = estado
     .vigentes('producto')
-    .filter((v) => v.elemento.activo)
+    .filter((v) => v.elemento.activo && v.origen.tipo === 'entrevista')
     .map((v) => `${v.elemento.nombre} · ${pesos(v.elemento.precio)} · lo escribiste tú`)
   return [`Esto leí de ${fuente}. Tu agente de clientes no lo usa hasta que lo confirmes.`, ...comparar, ...leidas, ...tuyas, 'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.']
 }
@@ -336,17 +336,10 @@ export async function lecturaPendiente(negocio: NegocioId, x: Lector = db): Prom
 /** Las cifras que trae la tarjeta pendiente: las que el Dueño confirma con el botón y no por la entrevista. */
 export const cifrasDeLaTarjeta = (escritura: Escritura | null): ReadonlySet<number> => new Set((escritura?.elementos ?? []).flatMap((c) => (c.despues ? cifrasDe(c.despues) : [])))
 
-/**
- * La reconciliación, dentro de la transacción de la entrevista y después de `escribir`, con el estado que quedó. Toma
- * la tarjeta pendiente `FOR UPDATE` y le quita lo que el Dueño acaba de escribir. Si no cambió nada, la deja. Si no,
- * la descarta y, si algo queda, crea la nueva en la misma transacción: la vieja, con el precio que el Dueño corrigió,
- * nunca sigue aprobable.
- */
-export async function rearmarLectura(tx: Transaccion, negocio: NegocioId, estado: EstadoDelNegocio): Promise<TarjetaDeAprobacion | null> {
-  const [p] = await tx.select().from(esquema.propuestas).where(pendienteDe(negocio)).orderBy(desc(esquema.propuestas.creado)).limit(1).for('update')
-  if (!p) return null
-  const quedan = sinLoYaEscrito(estado, p.escritura)
-  if (quedan.elementos.length === p.escritura.elementos.length) return null
+type FilaDePropuesta = typeof esquema.propuestas.$inferSelect
+
+/** El único que cambia una tarjeta de lectura: la fila no se edita, se descarta y entra otra en la misma transacción. Si no queda nada, no hay tarjeta. */
+async function reemplazarPendiente(tx: Transaccion, negocio: NegocioId, p: FilaDePropuesta, quedan: Escritura, estado: EstadoDelNegocio, advertencias: readonly string[] = []): Promise<TarjetaDeAprobacion | null> {
   await tx.update(esquema.propuestas).set({ estado: 'descartada' }).where(eq(esquema.propuestas.id, p.id))
   if (!quedan.elementos.length) return null
   const fuente = fuenteDe(p.palabrasDelDueno)
@@ -359,8 +352,164 @@ export async function rearmarLectura(tx: Transaccion, negocio: NegocioId, estado
     actos: [],
     revierte: null,
     version: estado.version,
-    vistaPrevia: { lineas: lineasDeLaTarjeta(estado, quedan, fuente), advertencias: [] },
+    vistaPrevia: { lineas: lineasDeLaTarjeta(estado, quedan, fuente), advertencias },
   })
   await tx.insert(esquema.propuestas).values(valores)
   return tarjeta
+}
+
+/**
+ * La reconciliación, dentro de la transacción de la entrevista y después de `escribir`, con el estado que quedó. Toma
+ * la tarjeta pendiente `FOR UPDATE` y le quita lo que el Dueño acaba de escribir. Si no cambió nada, la deja. Si no,
+ * la descarta y, si algo queda, crea la nueva en la misma transacción: la vieja, con el precio que el Dueño corrigió,
+ * nunca sigue aprobable.
+ */
+export async function rearmarLectura(tx: Transaccion, negocio: NegocioId, estado: EstadoDelNegocio): Promise<TarjetaDeAprobacion | null> {
+  const [p] = await tx.select().from(esquema.propuestas).where(pendienteDe(negocio)).orderBy(desc(esquema.propuestas.creado)).limit(1).for('update')
+  if (!p) return null
+  const quedan = sinLoYaEscrito(estado, p.escritura)
+  if (quedan.elementos.length === p.escritura.elementos.length) return null
+  return reemplazarPendiente(tx, negocio, p, quedan, estado)
+}
+
+// ══ Corregir la tarjeta ═════════════════════════════════════════════════════════════════════════
+
+/** Lo que el Dueño dijo de la tarjeta, en sus palabras. No lleva precios: uno que cambia lo escribe él y va por `guardarEnElAlta`. */
+export type CorreccionDeTarjeta = { readonly quitar: readonly string[]; readonly renombrar: readonly { readonly de: string; readonly a: string }[] }
+
+export type ResultadoDeLinea = { readonly dicho: string } & (
+  | { readonly tipo: 'quitada'; readonly linea: string }
+  | { readonly tipo: 'renombrada'; readonly linea: string; readonly a: string }
+  | { readonly tipo: 'ya_guardado_con_ese_nombre'; readonly linea: string; readonly a: string }
+  | { readonly tipo: 'no_esta' }
+  | { readonly tipo: 'varias'; readonly cuantas: number }
+  | { readonly tipo: 'ya_guardado' }
+  | { readonly tipo: 'nombre_ocupado'; readonly a: string }
+  | { readonly tipo: 'cifra_sin_fuente'; readonly a: string }
+  | { readonly tipo: 'nombre_no_cabe'; readonly a: string }
+)
+
+type LineaDeProducto = CambioDeElemento & { readonly despues: Extract<Elemento, { tipo: 'producto' }> }
+const esDeProducto = (c: CambioDeElemento): c is LineaDeProducto => c.despues?.tipo === 'producto'
+
+type Encontrada = { readonly tipo: 'una'; readonly linea: LineaDeProducto } | { readonly tipo: 'no_esta' } | { readonly tipo: 'varias'; readonly cuantas: number }
+
+/**
+ * Primero el nombre igual. Si no, las líneas que traen todas las palabras dichas, y dos no se adivinan. Más estricta
+ * que `mismoProducto` a propósito: «latte frío» es el mismo producto que «Latte», pero quitar la línea equivocada no se recupera sin volver a leer.
+ */
+function buscarLinea(elementos: readonly CambioDeElemento[], dicho: string): Encontrada {
+  const productos = elementos.filter(esDeProducto)
+  const igual = productos.find((c) => plano(c.despues.nombre) === plano(dicho))
+  if (igual) return { tipo: 'una', linea: igual }
+  const palabras = [...palabrasDe(dicho)]
+  const conTodas = palabras.length ? productos.filter((c) => palabras.every((w) => palabrasDe(c.despues.nombre).has(w))) : []
+  if (conTodas.length > 1) return { tipo: 'varias', cuantas: conTodas.length }
+  return conTodas[0] ? { tipo: 'una', linea: conTodas[0] } : { tipo: 'no_esta' }
+}
+
+/**
+ * Pura. Dobla la corrección sobre la tarjeta, en orden. Solo saca líneas o les cambia el nombre, y el precio solo sale
+ * de la fila, así que un precio leído sigue esperando el botón.
+ */
+export function corregirEscritura(estado: EstadoDelNegocio, escritura: Escritura, c: CorreccionDeTarjeta, fuentes: { readonly escritoPorElDueno: ReadonlySet<number>; readonly otrosNegocios: readonly string[] }): { readonly escritura: Escritura; readonly resultados: readonly ResultadoDeLinea[]; readonly cambio: boolean } {
+  let elementos = escritura.elementos
+  const resultados: ResultadoDeLinea[] = []
+  const sinEncontrar = (dicho: string, e: Exclude<Encontrada, { tipo: 'una' }>): ResultadoDeLinea => (e.tipo === 'varias' ? { dicho, tipo: 'varias', cuantas: e.cuantas } : buscarProducto(estado, dicho) ? { dicho, tipo: 'ya_guardado' } : { dicho, tipo: 'no_esta' })
+
+  for (const dicho of c.quitar) {
+    const e = buscarLinea(elementos, dicho)
+    const dato = elementos.find((x) => x.despues?.tipo === 'dato' && plano(ETIQUETA_DEL_DATO[x.despues.campo]) === plano(dicho))
+    if (e.tipo === 'una') {
+      elementos = elementos.filter((x) => x !== e.linea)
+      resultados.push({ dicho, tipo: 'quitada', linea: e.linea.despues.nombre })
+    } else if (e.tipo === 'no_esta' && dato) {
+      elementos = elementos.filter((x) => x !== dato)
+      resultados.push({ dicho, tipo: 'quitada', linea: dicho })
+    } else resultados.push(sinEncontrar(dicho, e))
+  }
+
+  for (const { de, a: crudo } of c.renombrar) {
+    const a = crudo.replace(/\s+/g, ' ').trim()
+    const e = buscarLinea(elementos, de)
+    if (e.tipo !== 'una') {
+      resultados.push(sinEncontrar(de, e))
+      continue
+    }
+    const { linea } = e
+    const delNombreViejo = numerosEn(linea.despues.nombre)
+    const guardado = buscarProducto(estado, a)
+    if ([...numerosEn(a)].some((n) => !delNombreViejo.has(n) && !fuentes.escritoPorElDueno.has(n))) resultados.push({ dicho: de, tipo: 'cifra_sin_fuente', a })
+    else if (revisarTextoDelDueno(a, fuentes.otrosNegocios).length) resultados.push({ dicho: de, tipo: 'nombre_no_cabe', a })
+    else if (guardado?.elemento.activo && plano(guardado.elemento.nombre) === plano(a)) {
+      // Lo guardado manda, como en `sinLoYaEscrito`: da igual en qué orden llegan guardar y renombrar.
+      elementos = elementos.filter((x) => x !== linea)
+      resultados.push({ dicho: de, tipo: 'ya_guardado_con_ese_nombre', linea: linea.despues.nombre, a })
+    } else if (guardado || elementos.some((x) => x !== linea && esDeProducto(x) && mismoProducto(x.despues.nombre, a))) resultados.push({ dicho: de, tipo: 'nombre_ocupado', a })
+    else {
+      if (linea.despues.nombre !== a) elementos = elementos.map((x) => (x === linea ? { ...linea, despues: { ...linea.despues, nombre: a } } : x))
+      resultados.push({ dicho: de, tipo: 'renombrada', linea: linea.despues.nombre, a })
+    }
+  }
+
+  const cambio = elementos.length !== escritura.elementos.length || elementos.some((x, i) => x !== escritura.elementos[i])
+  return { escritura: { ...escritura, elementos }, resultados, cambio }
+}
+
+/** Lo que le llega al modelo: solo repite lo que él pasó, porque lo leído de la página no entra a su contexto. */
+function resultadoEnPalabras(r: ResultadoDeLinea): string {
+  switch (r.tipo) {
+    case 'quitada':
+      return `Quité «${r.dicho}» de la tarjeta.`
+    case 'renombrada':
+      return `En la tarjeta, «${r.dicho}» ahora se llama «${r.a}» y sigue con su precio.`
+    case 'ya_guardado_con_ese_nombre':
+      return `Quité «${r.dicho}» de la tarjeta, porque «${r.a}» ya está guardado y manda lo guardado.`
+    case 'no_esta':
+      return `Nada de la tarjeta coincide con «${r.dicho}»: eso no cambió. Pregúntale al Dueño cómo sale en la tarjeta.`
+    case 'varias':
+      return `«${r.dicho}» coincide con ${r.cuantas} líneas de la tarjeta: eso no cambió. Pregúntale al Dueño cuál es, con el nombre como sale en la tarjeta.`
+    case 'ya_guardado':
+      return `«${r.dicho}» no está en la tarjeta porque ya está guardado: esta herramienta no lo cambia.`
+    case 'nombre_ocupado':
+      return `«${r.dicho}» no cambió: ya hay otro producto con el nombre «${r.a}» o uno muy parecido. Pregúntale al Dueño si es otro producto.`
+    case 'cifra_sin_fuente':
+      return `«${r.dicho}» no cambió: el nombre «${r.a}» trae una cifra que el Dueño no escribió. Pregúntale cómo se llama.`
+    case 'nombre_no_cabe':
+      return `«${r.dicho}» no cambió: el nombre «${r.a}» no se puede usar. Pídele otro al Dueño.`
+  }
+}
+
+/** Lo que el Dueño lee arriba de la tarjeta nueva: la línea real que cambió, que puede no ser lo que él dijo. */
+function cambioEnLaTarjeta(r: ResultadoDeLinea): readonly string[] {
+  switch (r.tipo) {
+    case 'quitada':
+    case 'ya_guardado_con_ese_nombre':
+      return [`Quité ${r.linea}.`]
+    case 'renombrada':
+      return r.linea === r.a ? [] : [`${r.linea} ahora se llama ${r.a}.`]
+    default:
+      return []
+  }
+}
+
+/**
+ * Quita o renombra líneas de la tarjeta que espera el botón y le dice al modelo qué pasó de verdad. No escribe el
+ * estado: lo que quede sigue esperando el botón. El modelo no nombra una propuesta, así que no puede corregir una vieja.
+ */
+export async function corregirLectura(ctx: ContextoDelDueno, c: CorreccionDeTarjeta): Promise<{ readonly resumen: string; readonly tarjeta: TarjetaDeAprobacion | null }> {
+  if (!c.quitar.length && !c.renombrar.length) return { resumen: 'No mandaste nada para corregir.', tarjeta: null }
+  const [estado, escritoPorElDueno] = await Promise.all([leerAplicado(ctx.negocio), numerosDelDueno(ctx.dueno)])
+  const otros = c.renombrar.length ? await otrosNegocios(estado) : []
+  return conTransaccion(async (tx) => {
+    // El SDK corre herramientas a la vez. Sin este candado, la segunda esperaría la fila ya descartada y no vería la nueva: diría que no hay tarjeta.
+    await tx.select({ id: esquema.negocios.id }).from(esquema.negocios).where(eq(esquema.negocios.id, ctx.negocio)).for('no key update')
+    const [p] = await tx.select().from(esquema.propuestas).where(pendienteDe(ctx.negocio)).orderBy(desc(esquema.propuestas.creado)).limit(1).for('update')
+    if (!p) return { resumen: 'No hay ninguna tarjeta de lo leído esperando el botón: no cambié nada.', tarjeta: null }
+    const ahora = await leerAplicado(ctx.negocio, tx)
+    const r = corregirEscritura(ahora, p.escritura, c, { escritoPorElDueno, otrosNegocios: otros })
+    const tarjeta = r.cambio ? await reemplazarPendiente(tx, ctx.negocio, p, r.escritura, ahora, r.resultados.flatMap(cambioEnLaTarjeta)) : null
+    const cierre = !r.cambio ? '' : tarjeta ? 'Que el Dueño revise la tarjeta nueva y toque el botón.' : 'La tarjeta quedó vacía: ya no hay nada por confirmar.'
+    return { resumen: [...r.resultados.map(resultadoEnPalabras), cierre].filter(Boolean).join(' '), tarjeta }
+  })
 }

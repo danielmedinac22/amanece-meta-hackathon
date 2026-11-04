@@ -18,7 +18,7 @@ import { AlIrASeccion } from './ir-a-seccion'
 import { BotonPublicar } from './publicar'
 import { SinPublicar } from './sin-publicar'
 import type { Publicador } from './tocar-publicar'
-import { RUTA_DE_AJUSTES, SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
+import { esDeLaSeccion, RUTA_DE_AJUSTES, SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
 
 /** Lo que la cáscara pinta. Quien la arma lee; ella no toca datos. */
 export type DatosDeLaOperacion = {
@@ -123,7 +123,11 @@ export function Operacion({ datos, ruta, alIr, publicador, hilo, salir, children
               </Button>
             </div>
             <div className="min-h-0 flex-1 p-3 fijo:pt-0 flotante:p-0">
-              <HiloEnLaOperacion.Provider value={hiloEnLaOperacion}>{hilo}</HiloEnLaOperacion.Provider>
+              <HiloEnLaOperacion.Provider value={hiloEnLaOperacion}>
+                <AlIrASeccion.Provider value={alTocarUnaSeccion}>
+                  <EscribirleAlAgente.Provider value={escribirleAlAgente}>{hilo}</EscribirleAlAgente.Provider>
+                </AlIrASeccion.Provider>
+              </HiloEnLaOperacion.Provider>
             </div>
           </section>
 
@@ -231,7 +235,7 @@ function BarraLateral({ datos, ruta, alTocar, salir }: { datos: DatosDeLaOperaci
           <SidebarGroupContent>
             <SidebarMenu>
               {SECCIONES.map((s) => {
-                const activa = ruta === s.ruta
+                const activa = esDeLaSeccion(ruta, s)
                 const cuenta = negocio && s.cuenta?.(negocio)
                 return (
                   <SidebarMenuItem key={s.ruta}>

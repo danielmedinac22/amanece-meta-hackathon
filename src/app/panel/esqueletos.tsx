@@ -143,10 +143,32 @@ export function EsqueletoDeConversaciones() {
           <Forma className="h-9 w-2/5 rounded-xl" />
           <Forma className="ml-auto h-9 w-1/2 rounded-xl" />
         </div>
-        <div className="flex items-center gap-2 border-t border-border p-3 text-xs text-muted-foreground">Tu agente está atendiendo</div>
+        <div className="flex min-h-14 items-center gap-2 border-t border-border p-3 text-xs text-muted-foreground">Tu agente está atendiendo</div>
       </div>
     </Cargando>
   )
+}
+
+function GruposCargando() {
+  return [3, 5].map((filas, g) => (
+    <section key={g}>
+      <h3 className="flex items-center gap-2 bg-muted/70 px-4 py-1.5 text-xs">
+        <Forma className="h-5 w-20 rounded-4xl" />
+      </h3>
+      <ul>
+        {veces(filas).map((i) => (
+          <li key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-2 text-[13px]">
+            <span className="min-w-0 flex-1">
+              <Linea className="w-3/5" />
+            </span>
+            <span className="min-w-20">
+              <Linea className="ml-auto w-16" />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))
 }
 
 export function EsqueletoDePedidos() {
@@ -157,25 +179,7 @@ export function EsqueletoDePedidos() {
         <Linea className="w-36" />
         <Linea className="w-28" />
       </div>
-      {[3, 5].map((filas, g) => (
-        <section key={g}>
-          <h3 className="flex items-center gap-2 bg-muted/70 px-4 py-1.5 text-xs">
-            <Forma className="h-5 w-20 rounded-4xl" />
-          </h3>
-          <ul>
-            {veces(filas).map((i) => (
-              <li key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-2 text-[13px]">
-                <span className="min-w-0 flex-1">
-                  <Linea className="w-3/5" />
-                </span>
-                <span className="min-w-20">
-                  <Linea className="ml-auto w-16" />
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <GruposCargando />
     </Cargando>
   )
 }
@@ -183,6 +187,14 @@ export function EsqueletoDePedidos() {
 export function EsqueletoDeClientes() {
   return (
     <Cargando que="tus Clientes" className="mx-auto max-w-4xl">
+      <TablaCargando />
+    </Cargando>
+  )
+}
+
+function TablaCargando() {
+  return (
+    <>
       <Table className="text-[13px]">
         <TableHeader>
           <TableRow>
@@ -215,7 +227,7 @@ export function EsqueletoDeClientes() {
           ))}
         </TableBody>
       </Table>
-    </Cargando>
+    </>
   )
 }
 
@@ -354,5 +366,58 @@ export function EsqueletoDeAjustes() {
         <FilaDeAjuste />
       </ul>
     </Cargando>
+  )
+}
+
+function DetalleCargando({ que, lista, children }: { que: string; lista: ReactNode; children: ReactNode }) {
+  return (
+    <Cargando que={que} className="-m-4 flex h-[calc(100%+2rem)] min-h-[420px] lg:-m-6 lg:h-[calc(100%+3rem)]">
+      <div className="@container hidden w-[42%] max-w-72 shrink-0 overflow-hidden border-r border-border @xl:block">{lista}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 border-b border-border p-1.5">
+          <Forma className="size-8 rounded-md" />
+          <span className="w-24 text-sm">
+            <Linea className="w-full" />
+          </span>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-4">{children}</div>
+      </div>
+    </Cargando>
+  )
+}
+
+function BloqueCargando({ titulo, filas }: { titulo: string; filas: number }) {
+  return (
+    <section>
+      <h3 className="mb-2 text-xs font-medium text-muted-foreground">{titulo}</h3>
+      <ul className="text-[13px]">
+        {veces(filas).map((i) => (
+          <li key={i} className="border-b border-border/60 py-1.5">
+            <Linea className="w-3/5" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+export function EsqueletoDeUnPedido() {
+  return (
+    <DetalleCargando que="este pedido" lista={<GruposCargando />}>
+      <BloqueCargando titulo="Lo que pidió" filas={2} />
+      <BloqueCargando titulo="Entrega" filas={1} />
+      <BloqueCargando titulo="Cliente" filas={1} />
+    </DetalleCargando>
+  )
+}
+
+export function EsqueletoDeUnCliente() {
+  return (
+    <DetalleCargando que="este Cliente" lista={<TablaCargando />}>
+      <div className="text-[13px]">
+        <Linea className="w-40" />
+      </div>
+      <BloqueCargando titulo="Sus pedidos" filas={3} />
+    </DetalleCargando>
   )
 }

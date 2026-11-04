@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AsuntoDeTarjeta, EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { loQueSeSabe, noSalioEnPalabras, porTuRegla, SIN_SABER, type EnvioDeRespuesta } from '@/nucleo/caso-palabras'
+import { EMPIEZA_A_CORREGIR } from '@/nucleo/armado-paso'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import type { Elemento } from '@/nucleo/estado/elementos'
+import { EscribirleAlAgente } from './disposicion'
 import { ResultadoDelIndicador } from './pieza'
 import { SinPublicar } from './sin-publicar'
 import { COMPARAR } from '@/nucleo/archivos'
@@ -206,6 +208,7 @@ function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: Est
 export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, abierto = false, alTocar, alCambiar }: { /** Con el Negocio abierto, lo leído no termina en confirmar, sino en Aplicar y Publicar. */ abierto?: boolean; tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; ancla?: string; etiqueta?: string; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const [enCurso, setEnCurso] = useState(false)
   const [respuesta, setRespuesta] = useState<RespuestaDeTarjeta | null>(null)
+  const escribir = useContext(EscribirleAlAgente)
 
   // Recién llegada en el stream todavía no tiene estado: se deja tocar si no venció, y la ruta decide.
   const [vigente] = useState(() => Date.parse(tarjeta.vence) > Date.now())
@@ -248,6 +251,11 @@ export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, abi
               <Button disabled={enCurso} className="h-auto min-h-8 whitespace-normal" onClick={() => tocar('aprobar')}>
                 {verbo}
               </Button>
+              {tarjeta.accion === 'confirmar' && (
+                <Button variant="ghost" disabled={enCurso} onClick={() => escribir(EMPIEZA_A_CORREGIR)}>
+                  Corregir
+                </Button>
+              )}
               <Button variant="ghost" disabled={enCurso} onClick={() => tocar('descartar')}>
                 Descartar
               </Button>

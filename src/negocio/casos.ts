@@ -10,8 +10,8 @@ import { estadosDeTarjetas, type EstadoDeTarjeta } from './dueno-chat'
 
 export type DecisionDeUnCaso = { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta }
 /** `decision` es la última respuesta que se le propuso al Dueño, viva o no; null si nunca hubo una. */
-export type CasoQueEspera = { id: string; titulo: string; quien: string; detalle: string; propuesta: string; reglas: readonly string[]; porTuLado: string | null; hace: string; decision: DecisionDeUnCaso | null }
-export type CasoResuelto = { id: string; titulo: string; resolucion: string; hace: string; envio: EnvioDeRespuesta | null }
+export type CasoQueEspera = { id: string; titulo: string; quien: string; detalle: string; propuesta: string; reglas: readonly string[]; porTuLado: string | null; hace: string; pedido: string | null; decision: DecisionDeUnCaso | null }
+export type CasoResuelto = { id: string; titulo: string; resolucion: string; hace: string; pedido: string | null; envio: EnvioDeRespuesta | null }
 export type DatosDeCasos = { cuentaQueEspera: number; esperan: CasoQueEspera[]; cuentaDeResueltos: number; resueltos: CasoResuelto[] }
 
 export const CUANTOS_CASOS = 50
@@ -25,7 +25,7 @@ export async function casosDe(ctx: ContextoDelDueno, zona: string): Promise<Dato
   const resuelto = and(delNegocio, eq(c.estado, 'resuelto'))
   const [abiertos, cuentaQueEspera, cerrados, cuentaDeResueltos] = await Promise.all([
     db
-      .select({ id: c.id, titulo: c.titulo, detalle: c.detalle, propuesta: c.propuesta, reglas: c.reglas, porTuLado: c.porTuLado, creado: c.creado, nombre: clientes.nombre, telefono: clientes.telefono, numero: pedidos.numero })
+      .select({ id: c.id, titulo: c.titulo, detalle: c.detalle, propuesta: c.propuesta, reglas: c.reglas, porTuLado: c.porTuLado, creado: c.creado, nombre: clientes.nombre, telefono: clientes.telefono, numero: pedidos.numero, pedido: pedidos.id })
       .from(c)
       .leftJoin(clientes, and(eq(clientes.id, c.clienteId), eq(clientes.negocioId, ctx.negocio)))
       .leftJoin(pedidos, and(eq(pedidos.id, c.pedidoId), eq(pedidos.negocioId, ctx.negocio)))
@@ -40,8 +40,10 @@ export async function casosDe(ctx: ContextoDelDueno, zona: string): Promise<Dato
         resolucion: c.resolucion,
         creado: c.creado,
         resuelto: c.resuelto,
+        pedido: pedidos.id,
       })
       .from(c)
+      .leftJoin(pedidos, and(eq(pedidos.id, c.pedidoId), eq(pedidos.negocioId, ctx.negocio)))
       .where(resuelto)
       .orderBy(desc(c.resuelto))
       .limit(CUANTOS_CASOS),
@@ -59,10 +61,11 @@ export async function casosDe(ctx: ContextoDelDueno, zona: string): Promise<Dato
       reglas: a.reglas,
       porTuLado: a.porTuLado || null,
       hace: haceCuanto(a.creado, ahora, zona),
+      pedido: a.pedido,
       decision: decisiones.get(a.id) ?? null,
     })),
     cuentaDeResueltos,
-    resueltos: cerrados.map((f) => ({ id: f.id, titulo: f.titulo, resolucion: f.resolucion, hace: haceCuanto(f.resuelto ?? f.creado, ahora, zona), envio: envios.get(f.id) ?? null })),
+    resueltos: cerrados.map((f) => ({ id: f.id, titulo: f.titulo, resolucion: f.resolucion, hace: haceCuanto(f.resuelto ?? f.creado, ahora, zona), pedido: f.pedido, envio: envios.get(f.id) ?? null })),
   }
 }
 

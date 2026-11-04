@@ -8,8 +8,9 @@ import { lecturaPendiente, leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
+import { atencionDe } from '@/nucleo/clientes/toma'
 import { leerHoy } from '@/nucleo/hoy'
-import { leerClientes as clientesDe, leerConversaciones as conversacionesDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
+import { leerCliente as clienteDe, leerClientes as clientesDe, leerConversaciones as conversacionesDe, leerGruposDePedidos as gruposDe, leerPedido as pedidoDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
 import { pintarUna } from '@/nucleo/panel'
 import { leerTablero as tableroDe } from '@/nucleo/tablero'
 import { casosDe } from '@/negocio/casos'
@@ -93,14 +94,32 @@ export async function leerClientes() {
   return leido && clientesDe(leido.id, leido.negocio.zonaHoraria)
 }
 
+/** `pedido` es null si el id de la URL no es de este Negocio. La lista viene con él porque el detalle va a su lado. */
+export async function leerUnPedido(id: string) {
+  const leido = await negocioDelPanel()
+  if (!leido) return null
+  const [grupos, pedido] = await Promise.all([gruposDe(leido.id, leido.negocio.zonaHoraria), pedidoDe(leido.id, leido.negocio.zonaHoraria, id)])
+  return { grupos, pedido }
+}
+
+/** `cliente` es null si el id de la URL no es de este Negocio. La lista viene con él porque el detalle va a su lado. */
+export async function leerUnCliente(id: string) {
+  const leido = await negocioDelPanel()
+  if (!leido) return null
+  const [lista, cliente] = await Promise.all([clientesDe(leido.id, leido.negocio.zonaHoraria), clienteDe(leido.id, leido.negocio.zonaHoraria, id)])
+  return { lista, cliente }
+}
+
 export async function leerLosCasos() {
   const [{ ctx }, leido] = await Promise.all([duenoDelPanel(), negocioDelPanel()])
   return ctx && leido && casosDe(ctx, leido.negocio.zonaHoraria)
 }
 
 export async function leerConversaciones(elegido: string | undefined) {
-  const leido = await negocioDelPanel()
-  return leido && conversacionesDe(leido.id, leido.negocio.zonaHoraria, elegido)
+  const [{ ctx }, leido] = await Promise.all([duenoDelPanel(), negocioDelPanel()])
+  if (!ctx || !leido) return null
+  const datos = await conversacionesDe(leido.id, leido.negocio.zonaHoraria, elegido)
+  return { ...datos, atencion: datos.detalle ? await atencionDe(ctx, datos.detalle.cliente) : null }
 }
 
 export async function leerAjustes() {

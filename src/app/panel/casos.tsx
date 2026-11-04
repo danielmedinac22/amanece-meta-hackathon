@@ -1,14 +1,24 @@
 'use client'
 
-import { CheckCircle, Warning } from '@phosphor-icons/react'
+import { ArrowRight, CheckCircle, Warning } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import type { CasoQueEspera, CasoResuelto, DatosDeCasos } from '@/negocio/casos'
+import { buttonVariants } from '@/components/ui/button'
 import { noSalioEnPalabras } from '@/nucleo/caso-palabras'
-import { cifra } from '@/nucleo/listas-palabras'
+import { cifra, rutaDePedido } from '@/nucleo/listas-palabras'
+import { IrASeccion } from './ir-a-seccion'
 import { LineasDelCaso, Tarjeta } from './tarjeta'
 import { tocarTarjeta, type TocarTarjeta } from './tocar-tarjeta'
 
 const DILE = 'Dile a tu agente cómo quieres responderle.'
+
+function VerElPedido({ pedido, className }: { pedido: string; className?: string }) {
+  return (
+    <IrASeccion href={rutaDePedido(pedido)} className={buttonVariants({ size: 'sm', variant: 'secondary', className })}>
+      Ver el pedido <ArrowRight className="size-3.5" />
+    </IrASeccion>
+  )
+}
 
 function CasoSinTarjeta({ caso }: { caso: CasoQueEspera }) {
   return (
@@ -27,6 +37,7 @@ function CasoSinTarjeta({ caso }: { caso: CasoQueEspera }) {
         </div>
       )}
       <p className="mt-3 text-xs text-muted-foreground">Todavía no hay una respuesta lista para enviar. {DILE}</p>
+      {caso.pedido && <VerElPedido pedido={caso.pedido} className="mt-3" />}
     </div>
   )
 }
@@ -40,6 +51,7 @@ function FilaResuelta({ caso }: { caso: CasoResuelto }) {
         <p className="text-sm font-medium">{caso.titulo}</p>
         <p className="text-sm whitespace-pre-wrap text-muted-foreground">{caso.resolucion}</p>
         {noSalio && <p className="mt-1 text-sm text-ojo">{noSalioEnPalabras(noSalio)}</p>}
+        {caso.pedido && <VerElPedido pedido={caso.pedido} className="mt-2" />}
       </div>
       <span className="shrink-0 text-xs text-muted-foreground">{caso.hace}</span>
     </li>
@@ -66,6 +78,7 @@ export function VistaDeCasos({ cuentaQueEspera, esperan, cuentaDeResueltos, resu
                 <div key={c.id}>
                   <Tarjeta tarjeta={c.decision.tarjeta} estado={c.decision.estado} alTocar={alTocar} alCambiar={alCambiar} />
                   {c.decision.estado.estado !== 'espera_al_dueno' && <p className="mt-1.5 px-1 text-xs text-muted-foreground">Sigue sin resolver. {DILE}</p>}
+                  {c.pedido && <VerElPedido pedido={c.pedido} className="mt-2" />}
                 </div>
               ) : (
                 <CasoSinTarjeta key={c.id} caso={c} />

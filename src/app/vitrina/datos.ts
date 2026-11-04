@@ -12,13 +12,15 @@ import { loQueEscribio } from '@/nucleo/hoy-palabras'
 import type { DatosDeClientes, DatosDeConversaciones, DatosDePedidos, DetalleDeConversacion, FilaDeCliente, FilaDePedido } from '@/nucleo/listas'
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero } from '@/nucleo/tablero'
+import { rutaDePedido } from '@/nucleo/listas-palabras'
+import type { Atencion, ResultadoDeEscribir } from '@/nucleo/clientes/toma'
 
 const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. */
-export type NegocioDeMuestra = { nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+export type NegocioDeMuestra = { atenciones?: Record<string, Atencion>; alEscribir?: ResultadoDeEscribir; nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -94,8 +96,8 @@ const REGLAS = [
 ]
 
 const OJO_FUNCIONANDO = [
-  { clave: 'pedido-37', titulo: 'Paola tiene una novedad con su envío a Pasto', detalle: 'Pedido #37 · ayer', accion: 'Ver el pedido', ruta: '/panel/pedidos' },
-  { clave: 'pedido-41', titulo: 'Daniela todavía no confirma su pedido', detalle: 'Pedido #41 · $76.000 · hace 12 min', accion: 'Ver el pedido', ruta: '/panel/pedidos' },
+  { clave: 'pedido-37', titulo: 'Paola tiene una novedad con su envío a Pasto', detalle: 'Pedido #37 · ayer', accion: 'Ver el pedido', ruta: rutaDePedido('p-37') },
+  { clave: 'pedido-41', titulo: 'Daniela todavía no confirma su pedido', detalle: 'Pedido #41 · $76.000 · hace 12 min', accion: 'Ver el pedido', ruta: rutaDePedido('p-41') },
 ] as const
 
 const HOY_FUNCIONANDO: DatosDeHoy['hoy'] = {
@@ -155,14 +157,14 @@ const muchasFilas = (cuenta: number, base: number) => ({
 
 const SIN_CASOS: DatosDeCasos = { cuentaQueEspera: 0, esperan: [], cuentaDeResueltos: 0, resueltos: [] }
 const RESUELTOS: CasoResuelto[] = [
-  { id: 'r-1', titulo: 'Pregunta por envío a San Andrés', resolucion: 'Se le explicó que no hay envíos a islas por ahora.', hace: 'hace 6 días', envio: { tipo: 'salio' } },
-  { id: 'r-2', titulo: 'Cambio de dirección después de confirmar', resolucion: 'El pedido no había salido; se cambió la dirección.', hace: 'hace 9 días', envio: { tipo: 'salio' } },
+  { id: 'r-1', titulo: 'Pregunta por envío a San Andrés', resolucion: 'Se le explicó que no hay envíos a islas por ahora.', hace: 'hace 6 días', pedido: null, envio: { tipo: 'salio' } },
+  { id: 'r-2', titulo: 'Cambio de dirección después de confirmar', resolucion: 'El pedido no había salido; se cambió la dirección.', hace: 'hace 9 días', pedido: 'p-38', envio: { tipo: 'salio' } },
 ]
 const SOLO_RESUELTOS: DatosDeCasos = { ...SIN_CASOS, cuentaDeResueltos: RESUELTOS.length, resueltos: RESUELTOS }
 
 const SIN_CONVERSACIONES: Pick<NegocioDeMuestra, 'conversaciones' | 'detalles'> = { conversaciones: { cuenta: 0, filas: [], detalle: null, enDetalle: false }, detalles: {} }
 
-const conversacion = (cliente: string, nombre: string, hace: string, mensajes: ['cliente' | 'agente', string][], casoQueEspera: string | null = null) => ({
+const conversacion = (cliente: string, nombre: string, hace: string, mensajes: ['cliente' | 'agente' | 'dueno', string][], casoQueEspera: string | null = null) => ({
   fila: { cliente, nombre, ultima: mensajes.at(-1)![1], hace },
   detalle: { cliente, nombre, cuenta: mensajes.length, casoQueEspera, mensajes: mensajes.map(([de, texto], i) => ({ id: `${cliente}-${i}`, de, texto })) },
 })
@@ -360,9 +362,9 @@ export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
   },
   seccionDeCasos: {
     cuentaQueEspera: 60,
-    esperan: Array.from({ length: 50 }, (_, i) => ({ id: `e-${i}`, titulo: `${MENSAJE_LARGO} ${i}`, quien: `${NOMBRE_LARGO} · pedido #${1_000 + i}`, detalle: MENSAJE_LARGO, propuesta: '', reglas: [], porTuLado: null, hace: 'hace 3 días', decision: null })),
+    esperan: Array.from({ length: 50 }, (_, i) => ({ id: `e-${i}`, titulo: `${MENSAJE_LARGO} ${i}`, quien: `${NOMBRE_LARGO} · pedido #${1_000 + i}`, detalle: MENSAJE_LARGO, propuesta: '', reglas: [], porTuLado: null, hace: 'hace 3 días', pedido: 'p-9999', decision: null })),
     cuentaDeResueltos: 1_204,
-    resueltos: Array.from({ length: 50 }, (_, i) => ({ id: `m-${i}`, titulo: MENSAJE_LARGO, resolucion: MENSAJE_LARGO, hace: 'hace 12 min', envio: i === 0 ? { tipo: 'no_la_tomo' } : { tipo: 'salio' } })),
+    resueltos: Array.from({ length: 50 }, (_, i) => ({ id: `m-${i}`, titulo: MENSAJE_LARGO, resolucion: MENSAJE_LARGO, hace: 'hace 12 min', pedido: null, envio: i === 0 ? { tipo: 'no_la_tomo' } : { tipo: 'salio' } })),
   },
   ...MUCHAS_CONVERSACIONES,
 }
@@ -516,7 +518,8 @@ export const NEGOCIO_CON_CAMBIOS: NegocioDeMuestra = {
 export const NEGOCIO_CON_UN_CASO: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   casos: [CASO_DE_MUESTRA],
-  seccionDeCasos: { ...SOLO_RESUELTOS, cuentaQueEspera: 1, esperan: [{ id: 'caso-1', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 12 min', decision: { tarjeta: CASO, estado: TARJETAS_CON_UN_CASO['p-caso'] } }] },
+  pedidos: { ...PEDIDOS, grupos: PEDIDOS.grupos.map((g) => (g.estado === 'cancelado' ? grupo('cancelado', fila(31, 'Marcela Ríos', 'Manizales', 'Tueste claro, molido 250 g', 24_000, 'hace 3 días')) : g)) },
+  seccionDeCasos: { ...SOLO_RESUELTOS, cuentaQueEspera: 1, esperan: [{ id: 'caso-1', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 12 min', pedido: 'p-31', decision: { tarjeta: CASO, estado: TARJETAS_CON_UN_CASO['p-caso'] } }] },
   hoy: {
     hoy: {
       ...HOY_FUNCIONANDO,
@@ -536,12 +539,12 @@ export const NEGOCIO_CASOS_SIN_BOTON: NegocioDeMuestra = {
   seccionDeCasos: {
     cuentaQueEspera: 3,
     esperan: [
-      { id: 's-1', titulo: 'Pide factura a nombre de su empresa', quien: 'Julián Ramírez', detalle: 'Necesita factura electrónica y el agente no tiene cómo generarla.', propuesta: 'Responderle: "Hola Julián, ya te confirmo lo de la factura."\nPor tu lado: revisar si se puede facturar a empresa.', reglas: [], porTuLado: null, hace: 'ayer', decision: null },
-      { id: 's-2', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 2 días', decision: decisionDe('s-descartada', 'descartada') },
-      { id: 's-3', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 3 días', decision: decisionDe('s-vencida', 'vencida') },
+      { id: 's-1', titulo: 'Pide factura a nombre de su empresa', quien: 'Julián Ramírez', detalle: 'Necesita factura electrónica y el agente no tiene cómo generarla.', propuesta: 'Responderle: "Hola Julián, ya te confirmo lo de la factura."\nPor tu lado: revisar si se puede facturar a empresa.', reglas: [], porTuLado: null, hace: 'ayer', pedido: null, decision: null },
+      { id: 's-2', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 2 días', pedido: null, decision: decisionDe('s-descartada', 'descartada') },
+      { id: 's-3', titulo: CASO_DE_MARCELA.titulo, quien: 'Marcela Ríos · pedido #31', detalle: '', propuesta: '', reglas: [], porTuLado: null, hace: 'hace 3 días', pedido: null, decision: decisionDe('s-vencida', 'vencida') },
     ],
     cuentaDeResueltos: 1,
-    resueltos: [{ id: 's-4', titulo: 'La bolsa llegó rota', resolucion: 'Hola Camila, te la repongo sin costo.', hace: 'hace 3 h', envio: { tipo: 'no_la_tomo' } }],
+    resueltos: [{ id: 's-4', titulo: 'La bolsa llegó rota', resolucion: 'Hola Camila, te la repongo sin costo.', hace: 'hace 3 h', pedido: null, envio: { tipo: 'no_la_tomo' } }],
   },
 }
 

@@ -21,4 +21,11 @@ export const lineaDeItems = (items: readonly Pick<ItemDePedido, 'nombre' | 'cant
 /** Un Cliente que no ha dicho su nombre se reconoce por su teléfono. */
 export const nombreDelCliente = (nombre: string, telefono: string) => nombre.trim() || `+${telefono.replace(/^\+/, '')}`
 
+/** `null` si el teléfono ya es su nombre, para no decirlo dos veces. */
+export const telefonoAparte = (nombre: string, telefono: string) => (nombre.trim() ? nombreDelCliente('', telefono) : null)
+
+export const rutaDeConversacion = (cliente: string) => `/panel/conversaciones?cliente=${cliente}`
+export const rutaDePedido = (id: string) => `/panel/pedidos/${encodeURIComponent(id)}`
+export const rutaDeCliente = (id: string) => `/panel/clientes/${encodeURIComponent(id)}`
+
 export const cifra = (n: number) => n.toLocaleString('es-CO')

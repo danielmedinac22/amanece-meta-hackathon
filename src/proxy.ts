@@ -15,5 +15,5 @@ export default clerkMiddleware(async (auth, req) => {
 // Una lista y no el comodín de Clerk: `/`, el webhook de Kapso y la vitrina no dependen de que el login funcione.
 // `auth()` lanza en una ruta que no esté aquí, y `probar-sesion` falla si una que importa la puerta se queda fuera.
 export const config = {
-  matcher: ['/panel/:path*', '/medicion/:path*', '/entrar/:path*', '/api/dueno/:path*', '/api/propuestas/:path*', '/api/publicar'],
+  matcher: ['/panel/:path*', '/medicion/:path*', '/entrar/:path*', '/api/dueno/:path*', '/api/propuestas/:path*', '/api/conversaciones/:path*', '/api/publicar'],
 }

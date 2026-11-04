@@ -62,16 +62,17 @@ const SECCION: DatosDeCasos = {
       reglas: ['Pedidos para fuera de Manizales'],
       porTuLado: 'Preguntarle a la transportadora si cubre Pasto.',
       hace: 'hace 20 min',
+      pedido: 'p-42',
       decision: null,
     },
   ],
   cuentaDeResueltos: 5,
   resueltos: [
-    { id: 'z-1', titulo: 'Salió', resolucion: 'Te la repongo sin costo.', hace: 'hace 1 h', envio: { tipo: 'salio' } },
-    { id: 'z-2', titulo: 'WhatsApp no la tomó', resolucion: 'Te la repongo sin costo.', hace: 'hace 2 h', envio: { tipo: 'no_la_tomo' } },
-    { id: 'z-3', titulo: 'No salió', resolucion: 'Te la repongo sin costo.', hace: 'hace 3 h', envio: { tipo: 'no_salio', motivo: 'fuera_de_ventana' } },
-    { id: 'z-4', titulo: 'No consta', resolucion: 'Te la repongo sin costo.', hace: 'hace 4 h', envio: { tipo: 'sin_saber' } },
-    { id: 'z-5', titulo: 'Resuelto antes de esta salida', resolucion: 'Se le explicó por teléfono.', hace: 'hace 9 días', envio: null },
+    { id: 'z-1', titulo: 'Salió', resolucion: 'Te la repongo sin costo.', hace: 'hace 1 h', pedido: null, envio: { tipo: 'salio' } },
+    { id: 'z-2', titulo: 'WhatsApp no la tomó', resolucion: 'Te la repongo sin costo.', hace: 'hace 2 h', pedido: null, envio: { tipo: 'no_la_tomo' } },
+    { id: 'z-3', titulo: 'No salió', resolucion: 'Te la repongo sin costo.', hace: 'hace 3 h', pedido: null, envio: { tipo: 'no_salio', motivo: 'fuera_de_ventana' } },
+    { id: 'z-4', titulo: 'No consta', resolucion: 'Te la repongo sin costo.', hace: 'hace 4 h', pedido: null, envio: { tipo: 'sin_saber' } },
+    { id: 'z-5', titulo: 'Resuelto antes de esta salida', resolucion: 'Se le explicó por teléfono.', hace: 'hace 9 días', pedido: null, envio: null },
   ],
 }
 
