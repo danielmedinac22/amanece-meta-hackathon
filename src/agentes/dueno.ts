@@ -389,7 +389,8 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
           const hecho = e.caso && e.estado === 'aplicada' ? envios.get(e.caso) : undefined
           return hecho ? envioParaElModelo(hecho) : null
         }
-        return entradas.map((e) => ({ id: e.propuesta, lineas: e.lineas, estado: e.estado, envio: envio(e), pedidaPor: nombre(e.pedidoPor), aprobadaPor: nombre(e.aprobadoPor), cuando: e.cuando }))
+        const sinLoNoConfirmado = (e: (typeof entradas)[number]) => (e.accion === 'confirmar' && e.estado !== 'aplicada' ? ['Lo que se leyó de una página, sin confirmar.'] : e.lineas)
+        return entradas.map((e) => ({ id: e.propuesta, lineas: sinLoNoConfirmado(e), estado: e.estado, envio: envio(e), pedidaPor: nombre(e.pedidoPor), aprobadaPor: nombre(e.aprobadoPor), cuando: e.cuando }))
       }),
   })
 
