@@ -431,8 +431,9 @@ async function probarLaZona() {
   const enElLunes = instanteLocal({ fecha: lunes, hora: '00:30' }, T.zonaHoraria)!
   const domingoAntes = new Date(enElLunes.getTime() - 3_600_000)
   const lunesSiguiente = new Date(enElLunes.getTime() + 7 * 86_400_000)
+  await db.insert(esquema.citas).values({ negocioId: T.id, clienteId: (await clienteNuevo(T.id)).id, inicio: enElLunes })
+  afirmar('Zona: lunes 00:30 en Tokio cuenta en esta semana, aunque en UTC todavía sea domingo', (await leerCifras(T.id, T.zonaHoraria)).citas.semana === 1)
   await db.insert(esquema.citas).values([
-    { negocioId: T.id, clienteId: (await clienteNuevo(T.id)).id, inicio: enElLunes },
     { negocioId: T.id, clienteId: (await clienteNuevo(T.id)).id, inicio: domingoAntes },
     { negocioId: T.id, clienteId: (await clienteNuevo(T.id)).id, inicio: lunesSiguiente },
   ])
