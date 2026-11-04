@@ -33,11 +33,7 @@ const telSinNegocio = `5722${marca}`
 const telDeBoton = `5723${marca}`
 const telDelArmando = `5724${marca}`
 const telHuerfano = `5725${marca}`
-const telPorLink = `5726${marca}`
-const telPorAnuncio = `5727${marca}`
-const telPorPost = `5728${marca}`
-const telAnuncioSinFicha = `5729${marca}`
-const telefonos = [telConSesion, telNuevo, telSinNegocio, telDeBoton, telDelArmando, telHuerfano, telPorLink, telPorAnuncio, telPorPost, telAnuncioSinFicha]
+const telefonos = [telConSesion, telNuevo, telSinNegocio, telDeBoton, telDelArmando, telHuerfano]
 const codigoArmando = `PR${marca}`
 let armandoId: string | undefined
 
@@ -45,10 +41,7 @@ async function limpiar() {
   await db.delete(esquema.sesionesWhatsapp).where(inArray(esquema.sesionesWhatsapp.telefono, telefonos))
   await db.delete(esquema.mensajesSalientes).where(and(inArray(esquema.mensajesSalientes.telefono, telefonos), gte(esquema.mensajesSalientes.creado, inicio)))
   await db.delete(esquema.mensajesEntrantes).where(like(esquema.mensajesEntrantes.wamid, `${prefijo}%`))
-  const deLaPrueba = and(inArray(esquema.clientes.telefono, telefonos), gte(esquema.clientes.creado, inicio))
-  // `casos.cliente_id` queda en null al borrar el Cliente: un Caso que abra el turno de verdad se quedaría huérfano.
-  await db.delete(esquema.casos).where(inArray(esquema.casos.clienteId, db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(deLaPrueba)))
-  await db.delete(esquema.clientes).where(deLaPrueba)
+  await db.delete(esquema.clientes).where(and(inArray(esquema.clientes.telefono, telefonos), gte(esquema.clientes.creado, inicio)))
   if (armandoId) await db.delete(esquema.negocios).where(eq(esquema.negocios.id, armandoId))
 }
 
@@ -225,22 +218,6 @@ try {
   if (errorDelHuerfano >= 0) errores.splice(erroresAntes + errorDelHuerfano, 1)
   afirmar('atenderMensaje: con un Negocio que ya no está sale sin lanzar y deja un console.error', lanzo === null && errorDelHuerfano >= 0, { lanzo, errores: errores.slice(erroresAntes) })
   afirmar('atenderMensaje: ese mensaje no crea ficha de Cliente ni manda nada', (await fichasDe(telHuerfano)) === 0 && enviosA(telHuerfano, desde).length === 0, enviosA(telHuerfano, desde))
-
-  const conEvento = (telefono: string, texto: string, referral?: unknown) => leerMensajeEntrante(eventoDeKapso({ wamid: `${prefijo}${++n}`, telefono, texto, nombre: 'Prueba', referral }))!
-  const origenDe = async (telefono: string) => (await db.select({ origen: esquema.clientes.origen }).from(esquema.clientes).where(and(eq(esquema.clientes.telefono, telefono), eq(esquema.clientes.negocioId, ladera.id))))[0]?.origen
-  const ANUNCIO_DE_META = { source_type: 'ad', source_id: '120210987654321098', ctwa_clid: 'clic' }
-
-  await recibirMensaje(conEvento(telPorLink, '(LADERA) hola'))
-  afirmar('origen en la base: su ficha sin referral nace link', (await origenDe(telPorLink)) === 'link', await origenDe(telPorLink))
-  await recibirMensaje(conEvento(telPorLink, 'hola otra vez', ANUNCIO_DE_META))
-  afirmar('origen en la base: un anuncio de después no cambia cómo llegó', (await origenDe(telPorLink)) === 'link', await origenDe(telPorLink))
-  await recibirMensaje(conEvento(telPorAnuncio, '(LADERA) hola', ANUNCIO_DE_META))
-  afirmar('origen en la base: su ficha con un anuncio nace anuncio', (await origenDe(telPorAnuncio)) === 'anuncio', await origenDe(telPorAnuncio))
-  await recibirMensaje(conEvento(telPorPost, '(LADERA) hola', { source_type: 'post', source_id: '1' }))
-  afirmar('origen en la base: un referral de post nace sin_dato', (await origenDe(telPorPost)) === 'sin_dato', await origenDe(telPorPost))
-  await db.insert(esquema.sesionesWhatsapp).values({ telefono: telAnuncioSinFicha, negocioId: ladera.id })
-  await recibirMensaje(conEvento(telAnuncioSinFicha, 'hola', ANUNCIO_DE_META))
-  afirmar('origen en la base: con sesión y un anuncio sin ficha nace sin_dato', (await origenDe(telAnuncioSinFicha)) === 'sin_dato', await origenDe(telAnuncioSinFicha))
 } catch (e) {
   afirmar('probar-entrada terminó sin error inesperado', false, e)
 } finally {

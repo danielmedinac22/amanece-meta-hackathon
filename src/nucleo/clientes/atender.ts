@@ -93,6 +93,8 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
       JSON.stringify({
         wamid: m.wamid,
         negocio,
+        // Nadie ha visto un anuncio real en este número: este dato es el que confirma que `message.referral` sigue llegando.
+        referido: m.referido,
         corregido: t.corregido,
         revision: t.revision.tipo === 'corregir' ? t.revision.motivos : [],
         violaciones: t.violaciones.map((v) => v.efecto),

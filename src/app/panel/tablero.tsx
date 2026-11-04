@@ -105,7 +105,7 @@ export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonl
         </Bloque>
         <Bloque titulo="De dónde llegan" nota="Todos tus Clientes, por cómo te escribieron la primera vez.">
           {deClientes > 0 ? <Reparto filas={tablero.porOrigen.map((f) => ({ clave: f.origen, etiqueta: ETIQUETA_DE_ORIGEN[f.origen], cifra: cifra(f.cuenta), parte: f.cuenta / deClientes }))} /> : <p className="text-sm text-muted-foreground">Todavía no tienes Clientes. Cuando alguien te escriba, aparece aquí.</p>}
-          {tablero.porOrigen.some((f) => f.origen === 'sin_dato') && <p className="mt-3 text-xs text-pretty text-muted-foreground">Sin dato: no se sabe cómo llegaron. Los Clientes que ya tenías cuentan aquí.</p>}
+          {tablero.porOrigen.some((f) => f.origen === 'sin_dato') && <p className="mt-3 text-xs text-pretty text-muted-foreground">Sin dato: no se sabe cómo llegaron. Aquí van también quienes te escribieron antes de que esto se guardara.</p>}
         </Bloque>
       </div>
       <Recientes filas={tablero.recientes} />
