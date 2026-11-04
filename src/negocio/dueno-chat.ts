@@ -1,5 +1,5 @@
 import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, generateId, isStepCount, streamText, toUIMessageStream, type LanguageModel, type ToolSet, type UIMessage } from 'ai'
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, lte } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { crearAgenteDelDueno, parteDeDatosParaElModelo, type PuertosDelDueno } from '@/agentes/dueno'
 import { modelo } from '@/lib/modelo'
@@ -8,6 +8,7 @@ import { adjuntosDelMensaje, PARTE_DE_ARCHIVO, type Adjunto } from '@/nucleo/arc
 import { comoPropuesta, SIN_SABER, type EnvioDeRespuesta } from '@/nucleo/caso-palabras'
 import { historial, type EstadoDePropuesta, type TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { enviosDeCasos } from '@/nucleo/casos'
+import { propuestasSelladas } from '@/nucleo/estado'
 import type { Elemento } from '@/nucleo/estado/elementos'
 import type { ContextoDelDueno } from '@/nucleo/identidad'
 import { registrarTurno } from '@/negocio/medir'
@@ -172,24 +173,10 @@ export async function estadosDeTarjetas(ctx: ContextoDelDueno, propuestas: reado
   const entradas = await historial(ctx, { propuestas })
   const ids = [...new Set(entradas.map((e) => e.aprobadoPor).filter((id) => id !== null))]
   const duenos = ids.length ? await db.select({ id: esquema.duenos.id, nombre: esquema.duenos.nombre }).from(esquema.duenos).where(and(eq(esquema.duenos.negocioId, ctx.negocio), inArray(esquema.duenos.id, ids))) : []
-  const [asuntos, selladas] = await Promise.all([asuntosDe(ctx, entradas.map((e) => e.propuesta)), selladasDe(ctx, entradas.filter((e) => e.estado === 'aplicada').map((e) => e.propuesta))])
+  const [asuntos, selladas] = await Promise.all([asuntosDe(ctx, entradas.map((e) => e.propuesta)), propuestasSelladas(ctx.negocio, entradas.filter((e) => e.estado === 'aplicada').map((e) => e.propuesta))])
   return Object.fromEntries(
     entradas.map((e) => [e.propuesta, { estado: e.estado, accion: e.accion, aprobadaPor: e.aprobadoPor ? duenos.find((d) => d.id === e.aprobadoPor)?.nombre || 'un Dueño' : null, asunto: asuntos.get(e.propuesta) ?? null, publicada: e.estado === 'aplicada' && selladas.has(e.propuesta) } satisfies EstadoDeTarjeta]),
   )
-}
-
-/** Una fila enterrada se queda con el bit arriba para siempre, porque nunca les llegó a los Clientes: por eso se pide que todas estén selladas. */
-async function selladasDe(ctx: ContextoDelDueno, propuestas: readonly string[]): Promise<ReadonlySet<string>> {
-  if (!propuestas.length) return new Set()
-  const { elementos: e, negocios: n } = esquema
-  const filas = await db
-    .select({ propuesta: e.propuestaId })
-    .from(e)
-    .innerJoin(n, eq(n.id, e.negocioId))
-    .where(and(eq(e.negocioId, ctx.negocio), eq(n.estado, 'listo'), inArray(e.propuestaId, [...propuestas])))
-    .groupBy(e.propuestaId)
-    .having(sql`bool_and(not ${e.sinPublicar})`)
-  return new Set(filas.flatMap((f) => f.propuesta ?? []))
 }
 
 /** Una lectura por sondeo y no una por tarjeta, porque el Hilo la repite cada pocos segundos. Las propuestas ya vienen del Negocio de `ctx`. */
