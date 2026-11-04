@@ -25,7 +25,7 @@ function Fila({ c }: { c: FilaDeCita }) {
             <span className="font-medium">{c.cliente}</span>
             {c.asunto && <span className="text-muted-foreground"> · {c.asunto}</span>}
           </span>
-          <span className="block truncate text-xs text-muted-foreground tabular-nums">
+          <span className="block text-xs text-pretty text-muted-foreground tabular-nums">
             {c.cuando}
             {c.antes && ` · antes ${c.antes}`}
           </span>

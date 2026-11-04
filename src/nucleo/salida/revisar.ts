@@ -218,6 +218,9 @@ function citaSinRespaldo(texto: string, cita: CitaEnRevision): boolean {
 export function hablaDeUnaHora(texto: string, cita: CitaEnRevision): boolean {
   if (cita.tipo === 'sin_agenda' || cita.escritaEnElTurno) return false
   const todas = oraciones(texto)
+  // `Te puedo agendar el viernes a las 8, ¿te sirve?` es una oferta. Si eso afirmara algo, ya lo frenó `citaSinRespaldo`.
+  const ultima = todas.at(-1) ?? ''
+  if (esPregunta(ultima) && PREGUNTA_DE_HORA.test(ultima)) return false
   const { vigente } = cita
   const declarativas = todas.filter((o) => !esPregunta(o))
   if (declarativas.some((o) => nombraUnMomento(o) && !OFERTA.test(o) && (!vigente || noEsDe(o, vigente)))) return true

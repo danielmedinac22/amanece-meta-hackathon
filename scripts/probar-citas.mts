@@ -199,6 +199,7 @@ function probarElDetector() {
     ['El corte vale $38.000', sin()],
     ['Hola, ¿qué servicio buscas?', sin()],
     ['¿Te confirmo esa hora?', sin(true)],
+    ['Hola Camila, te puedo agendar el corte el viernes a las 8, ¿te sirve esa hora?', sin()],
     ['Esa hora ya está ocupada', sin(true)],
     ['Tu cita es el jueves a las 3', tiene],
     ['Listo, te agendé el jueves a las 3', recien],
@@ -640,7 +641,9 @@ async function medirElModelo(vueltas: number) {
   const N = await negocioNuevo('Z')
   const z = N.zonaHoraria
   const dia = diaEn(3, z)
-  const conteo = { pedir: { guardo: 0, sinConstancia: 0 }, ocupada: { noPiso: 0 }, mover: { movio: 0, unaSola: 0 }, cancelar: { cancelo: 0 }, pedidos: 0, frenadas: 0, tandas: 0, turnos: 0, lineaCierta: 0, sinGuardarSuenaACita: [] as string[], fallaron: [] as string[] }
+  const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+  const enSemana = (fecha: string) => DIAS[new Date(`${fecha}T12:00:00Z`).getUTCDay()]
+  const conteo = { fechaBien: 0, horaBien: 0, pedir: { guardo: 0, sinConstancia: 0 }, ocupada: { noPiso: 0 }, mover: { movio: 0, unaSola: 0 }, cancelar: { cancelo: 0 }, pedidos: 0, frenadas: 0, tandas: 0, turnos: 0, lineaCierta: 0, sinGuardarSuenaACita: [] as string[], fallaron: [] as string[] }
   let cupo = 0
   const uno = async (telefono: string, dice: string) => {
     const desde = envios.length
@@ -664,11 +667,13 @@ async function medirElModelo(vueltas: number) {
     conteo.tandas++
     const c = await clienteNuevo(N.id, `Camila ${i}`)
     const h = hora()
-    const primera = await uno(c.telefono, `Hola, quiero una cita para un corte el ${dia} a las ${horaEnPalabras(h)}`)
+    const primera = await uno(c.telefono, `Hola, quiero una cita para un corte el ${enSemana(dia)} a las ${horaEnPalabras(h)}`)
     const conUna = (await vivasDe(N.id)).some((f) => f.clienteId === c.id)
     const segunda = conUna ? '' : await uno(c.telefono, 'Sí, dale, esa hora me sirve')
     const fila = (await vivasDe(N.id)).find((f) => f.clienteId === c.id)
     if (fila) conteo.pedir.guardo++
+    if (fila && fechaDeCalendario(fila.inicio, z) === dia) conteo.fechaBien++
+    if (fila && new Intl.DateTimeFormat('en-CA', { timeZone: z, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(fila.inicio) === h) conteo.horaBien++
     else conteo.fallaron.push(`pedir ${i}: ${primera} || ${segunda}`)
     if (Boolean(fila) !== `${primera}\n${segunda}`.includes('Cita agendada:')) conteo.pedir.sinConstancia++
     const pedidosDeC = await db.select().from(esquema.pedidos).where(eq(esquema.pedidos.clienteId, c.id))
@@ -677,14 +682,14 @@ async function medirElModelo(vueltas: number) {
     const o = await clienteNuevo(N.id, `Otra ${i}`)
     if (fila) {
       const local = new Intl.DateTimeFormat('en-CA', { timeZone: z, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(fila.inicio)
-      await uno(o.telefono, `Hola, quiero una cita para un corte el ${fechaDeCalendario(fila.inicio, z)} a las ${horaEnPalabras(local)}`)
+      await uno(o.telefono, `Hola, quiero una cita para un corte el ${enSemana(fechaDeCalendario(fila.inicio, z))} a las ${horaEnPalabras(local)}`)
       await uno(o.telefono, 'Sí, a esa hora')
       if ((await vivasDe(N.id)).filter((f) => f.inicio.getTime() === fila.inicio.getTime()).length === 1 && (await vivasDe(N.id)).find((f) => f.inicio.getTime() === fila.inicio.getTime())?.clienteId === c.id) conteo.ocupada.noPiso++
       else conteo.fallaron.push(`ocupada ${i}`)
 
       const destino = hora()
       const otroDia = diaEn(4, z)
-      const propuesta = await uno(c.telefono, `Necesito mover mi cita para el ${otroDia} a las ${horaEnPalabras(destino)}`)
+      const propuesta = await uno(c.telefono, `Necesito mover mi cita para el ${enSemana(otroDia)} a las ${horaEnPalabras(destino)}`)
       const antesDeSi = (await vivasDe(N.id)).find((f) => f.clienteId === c.id)
       const dice = antesDeSi?.movidaDe ? '' : await uno(c.telefono, 'Sí, muévela a esa')
       const movida = (await vivasDe(N.id)).filter((f) => f.clienteId === c.id)
