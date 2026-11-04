@@ -7,6 +7,7 @@ import { PantallaDeEntrada, type Entrador, type ModoDeEntrada, type RespuestaDeE
 
 const EN_EL_PANEL = '/panel'
 const LISTO: RespuestaDeEntrada = { paso: { en: 'listo' } }
+const ESPERA_A_GOOGLE_MS = 8000
 
 type ErrorDeClerk = { code?: string; status?: number; errors?: readonly { code?: string }[] }
 
@@ -104,8 +105,13 @@ function useEntradorDeClerk(): Entrador {
           return error ? fallo(error) : segunElIntento()
         }
         case 'google': {
+          // Un intento abandonado queda vencido en el cliente: con él, `sso` termina sin error y sin ir a Google.
+          await signIn.reset()
           const { error } = await signIn.sso({ strategy: 'oauth_google', redirectCallbackUrl: '/entrar/google', redirectUrl: EN_EL_PANEL })
-          return error ? fallo(error) : LISTO
+          if (error) return fallo(error)
+          // Si Google abrió, esta página ya no existe cuando se cumpla la espera. Si no, el botón no se queda en `Entrando…`.
+          await new Promise((listo) => setTimeout(listo, ESPERA_A_GOOGLE_MS))
+          return { motivo: 'no_se_pudo' }
         }
         case 'volver':
           await Promise.all([signIn.reset(), signUp.reset()])
