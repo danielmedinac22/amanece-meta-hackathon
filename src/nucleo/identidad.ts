@@ -62,5 +62,5 @@ export const NUMERO_DE_AMANECE = {
   get id(): string {
     return process.env.KAPSO_PHONE_NUMBER_ID ?? ''
   },
-  telefono: process.env.NEXT_PUBLIC_TELEFONO_DE_AMANECE ?? '12058633828',
+  telefono: process.env.NEXT_PUBLIC_TELEFONO_DE_AMANECE ?? '12024745452',
 } as const

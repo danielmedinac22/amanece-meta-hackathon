@@ -106,7 +106,7 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
 }
 
 /** El Hilo de la vitrina: pinta la conversación inventada y sus sugerencias, botones y envíos no llegan a ninguna ruta. */
-export function HiloDeMuestra({ status = 'ready', seCorto, messages, adjuntos, ...datos }: Pick<DatosDelHilo, 'messages'> & { status?: DatosDelHilo['status']; seCorto?: boolean; adjuntos?: readonly EnElRedactor[] }) {
+export function HiloDeMuestra({ status = 'ready', seCorto, messages, adjuntos, ...datos }: Pick<DatosDelHilo, 'messages' | 'devuelto'> & { status?: DatosDelHilo['status']; seCorto?: boolean; adjuntos?: readonly EnElRedactor[] }) {
   const { estados, tocar, avisos } = useContext(LasDecisiones)
   return <VistaDelHilo {...datos} messages={[...messages, ...avisos]} estados={estados} status={status} error={seCorto ? new Error('Se cortó') : undefined} alEnviar={nada} alSubir={subirDeMuestra} adjuntosIniciales={adjuntos} alTocar={tocar} alCambiar={nada} />
 }

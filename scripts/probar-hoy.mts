@@ -182,6 +182,19 @@ try {
   const deB = await leerHoy(marcar.negocio(b.id), ZONA, b.rubro)
   afirmar('Otro Negocio tiene lo suyo', deB.cifras.semana.ventas === 7_957_777 && deB.cifras.conversaciones.total === 6 && deB.ojo.some((o) => o.titulo === 'Caso de B'), deB.cifras)
 
+  console.log('\nLos que ya tienen Caso no le quitan el lugar a otro')
+  const lleno = await negocioNuevo('L')
+  const deLleno = await clientesDe(lleno.id, ['Con Caso', 'Sin Caso'], 700)
+  const conCaso = await db
+    .insert(esquema.pedidos)
+    .values(Array.from({ length: 10 }, (_, i) => ({ negocioId: lleno.id, clienteId: deLleno['Con Caso'], numero: i + 1, items: [], total: 10_000, estado: 'novedad' as const, ciudad: 'Cali', creado: new Date(ahora.getTime() - i * MINUTO) })))
+    .returning()
+  const [viejo] = await db.insert(esquema.pedidos).values({ negocioId: lleno.id, clienteId: deLleno['Sin Caso'], numero: 11, items: [], total: 10_000, estado: 'novedad', ciudad: 'Pasto', creado: new Date(ahora.getTime() - 2 * DIA) }).returning()
+  await db.insert(esquema.casos).values(conCaso.map((p) => ({ negocioId: lleno.id, clienteId: deLleno['Con Caso'], pedidoId: p.id, titulo: `Caso del ${p.numero}`, estado: 'abierto' as const })))
+  const delLleno = await leerHoy(marcar.negocio(lleno.id), ZONA, lleno.rubro)
+  afirmar('Ojo: el pedido sin Caso sale aunque diez más nuevos tengan el suyo', delLleno.ojo.some((o) => o.clave === `pedido-${viejo.id}`), delLleno.ojo.map((o) => o.clave))
+  afirmar('Ojo: los que tienen Caso salen solo como Caso', delLleno.ojo.filter((o) => o.accion === 'Decidir').length === 10 && delLleno.ojo.filter((o) => o.accion === 'Ver el pedido').length === 1, delLleno.ojo.map((o) => o.clave))
+
   console.log('\nLo resuelto sale')
   const quiere = sembrado.casos.find((c) => c.titulo === 'Quiere 20 bolsas')!
   await db.update(esquema.casos).set({ estado: 'resuelto', resuelto: new Date() }).where(eq(esquema.casos.id, quiere.id))
