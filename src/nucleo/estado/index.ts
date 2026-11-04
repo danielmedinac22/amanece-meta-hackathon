@@ -2,7 +2,7 @@
  * El único lector del estado de un Negocio. Nadie más consulta `elementos`; `probar-elementos` lo verifica.
  */
 import { createHash } from 'node:crypto'
-import { and, desc, eq, inArray, lt, ne, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, ne, sql, type SQL } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import { canonico } from '@/lib/canonico'
@@ -178,6 +178,20 @@ const vivasDe = (filas: Awaited<ReturnType<typeof ultimasDe>>) =>
 export async function leerAplicado(negocio: NegocioId, x: Lector = db): Promise<EstadoAplicado> {
   const [{ identidad, version }, filas] = await Promise.all([identidadDe(x, negocio), ultimasDe(x, negocio)])
   return armarEstado(identidad, comoVersion(version), vivasDe(filas)) as EstadoAplicado
+}
+
+/** Una fila enterrada se queda con el bit arriba para siempre, porque nunca les llegó a los Clientes: por eso se pide que todas estén selladas. */
+export async function propuestasSelladas(negocio: NegocioId, propuestas: readonly string[]): Promise<ReadonlySet<string>> {
+  if (!propuestas.length) return new Set()
+  const { negocios: n } = esquema
+  const filas = await db
+    .select({ propuesta: ultimas.propuestaId })
+    .from(ultimas)
+    .innerJoin(n, eq(n.id, ultimas.negocioId))
+    .where(and(eq(ultimas.negocioId, negocio), eq(n.estado, 'listo'), inArray(ultimas.propuestaId, [...propuestas])))
+    .groupBy(ultimas.propuestaId)
+    .having(sql`bool_and(not ${ultimas.sinPublicar})`)
+  return new Set(filas.flatMap((f) => f.propuesta ?? []))
 }
 
 /**
