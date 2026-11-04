@@ -10,6 +10,7 @@ import { db, esquema } from '@/db'
 import { costoUsd } from '@/lib/modelo'
 import { conPropuesta, type CambioDeElemento, type EstadoBorrador, type EstadoDelNegocio, type Escritura } from '../estado'
 import { VISTA_PREVIA, type Clave, type ElementoDe, type ProfundidadDeVistaPrevia } from '../estado/elementos'
+import { vozDelRubro } from '../hoy-palabras'
 import type { ClienteId, Marca, Wamid } from '../identidad'
 import type { AccionHecha } from '../clientes/acciones'
 import { entornoDeEnsayo, MOTORES, pedidoDelCliente, turno, type ClienteDelTurno, type Conversacion, type Motores, type TurnoDeConversacion } from '../clientes/turno'
@@ -119,7 +120,7 @@ const loQuePaso = (t: { readonly acciones: readonly AccionHecha[]; readonly regl
 const huellaDelEnsayo = (l: LoQuePaso) => JSON.stringify([[...l.reglasActivas].sort(), l.casosPorReglas])
 const distinto = (a: LoQuePaso, b: LoQuePaso) => huellaDelEnsayo(a) !== huellaDelEnsayo(b)
 
-const CLIENTE_DE_EJEMPLO: ClienteDelTurno = { id: '00000000-0000-4000-8000-00000000e5e0' as ClienteId, nombre: '', telefono: null, pedidos: [] }
+const CLIENTE_DE_EJEMPLO: ClienteDelTurno = { id: '00000000-0000-4000-8000-00000000e5e0' as ClienteId, nombre: '', telefono: null, pedidos: [], agenda: null }
 
 type Real = { readonly mensaje: MensajeDeClienteId; readonly conversacion: Conversacion }
 
@@ -156,7 +157,7 @@ async function conversacionesReales(hoy: EstadoDelNegocio): Promise<readonly Rea
       return {
         mensaje: ultimo.id as MensajeDeClienteId,
         conversacion: {
-          cliente: { id: cliente as ClienteId, nombre: fila?.nombre ?? '', telefono: fila?.telefono ?? null, pedidos: pedidos.filter((p) => p.clienteId === cliente).slice(0, 5).map(pedidoDelCliente) },
+          cliente: { id: cliente as ClienteId, nombre: fila?.nombre ?? '', telefono: fila?.telefono ?? null, pedidos: pedidos.filter((p) => p.clienteId === cliente).slice(0, 5).map(pedidoDelCliente), agenda: null },
           historial: mensajes.slice(Math.max(0, i - MUESTRAS.historial), i).map((m): TurnoDeConversacion => ({ rol: m.rol, texto: m.texto })),
           mensaje: { texto: ultimo.texto, wamid: `ensayo:${ultimo.id}` as Wamid, enviadoEn: ultimo.creado.toISOString() as Conversacion['mensaje']['enviadoEn'] },
         },
@@ -262,7 +263,9 @@ async function ensayarConversaciones(vigente: EstadoDelNegocio, escritura: Escri
   let entrada = 0
   let salida = 0
   const ensayar = async (estado: EstadoDelNegocio, conversacion: Conversacion, senal: AbortSignal): Promise<LoQuePaso> => {
-    const t = await turno(estado, conversacion, entornoDeEnsayo(estado, conversacion.cliente), motores, senal)
+    // Una agenda vacía: el ensayo no lee citas de nadie, y lo que agende queda en la memoria de este turno.
+    const cliente = { ...conversacion.cliente, agenda: vozDelRubro(estado.identidad.rubro) === 'agenda' ? { ocupadas: [], cita: null } : null }
+    const t = await turno(estado, { ...conversacion, cliente }, entornoDeEnsayo(estado, cliente), motores, senal)
     llamadas += t.gasto.llamadas
     entrada += t.gasto.entrada
     salida += t.gasto.salida

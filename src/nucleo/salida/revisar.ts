@@ -12,7 +12,15 @@ export type HechosDeRevision = {
   readonly nombresInternos: readonly string[]
   readonly otrosNegocios: readonly string[]
   readonly emojisMaximos: 0 | 1 | 2 | 3
+  readonly cita: CitaEnRevision
 }
+
+/** Una hora de la cita, como se puede decir. `minutos` va en 12 horas: `a las 3` y `15:00` son la misma. */
+export type MomentoDeCita = { readonly diaDeSemana: string; readonly diaDelMes: number; readonly relativo: 'hoy' | 'manana' | null; readonly minutos: number }
+
+export type CitaEnRevision =
+  | { readonly tipo: 'sin_agenda' }
+  | { readonly tipo: 'con_agenda'; readonly vigente: MomentoDeCita | null; readonly escritaEnElTurno: boolean; readonly aceptoUnaHora: boolean }
 
 type Pruebas = { readonly dispara: readonly string[]; readonly noDispara: readonly string[] }
 
@@ -109,6 +117,87 @@ const SALUD = [
 
 const SER_PERSONA = [/\bno soy (un |una )?(bot|robot|asistente virtual|maquina|ia|inteligencia artificial)\b/, /\bsoy (una |un )?(persona|humano|humana|persona real|de carne y hueso)\b/]
 
+const NUMEROS_EN_PALABRAS: Record<string, number> = { una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12 }
+const HORA = `\\d{1,2}|${Object.keys(NUMEROS_EN_PALABRAS).join('|')}`
+const DIAS_DE_LA_SEMANA = /\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g
+
+/** Sin `a. m.` partido en dos oraciones. Una pregunta queda con su signo. */
+const oraciones = (t: string) =>
+  plano(t)
+    .replace(/\b([ap])\. ?m\b\.?/g, '$1m')
+    .split(/(?<=\?)|[.!;\n]+/)
+    .map((o) => o.trim())
+    .filter(Boolean)
+
+const esPregunta = (o: string) => /[?¿]/.test(o)
+
+function horasEn(o: string): number[] {
+  const horas: number[] = []
+  const anotar = (h: string, m = 0) => horas.push((((NUMEROS_EN_PALABRAS[h] ?? Number(h)) % 12) * 60 + m) % 720)
+  for (const x of o.matchAll(/\b(\d{1,2}):(\d{2})\b/g)) anotar(x[1], Number(x[2]))
+  const sinReloj = o.replace(/\b\d{1,2}:\d{2}\b/g, ' ')
+  for (const x of sinReloj.matchAll(new RegExp(`\\b(?:a|para|de|desde|hasta) las? (${HORA})\\b( y media)?`, 'g'))) anotar(x[1], x[2] ? 30 : 0)
+  for (const x of sinReloj.matchAll(/(?<!(?:a|para|de|desde|hasta) las? )\b(\d{1,2}) ?(?:am|pm)\b/g)) anotar(x[1])
+  return horas
+}
+
+const diasEn = (o: string) => [...o.matchAll(DIAS_DE_LA_SEMANA)].map((x) => x[1])
+const relativosEn = (o: string) => [...o.replace(/de la manana/g, ' ').matchAll(/\b(hoy|manana)\b/g)].map((x) => x[1])
+const diasDelMesEn = (o: string) => [...o.matchAll(/\bel (\d{1,2})(?: de [a-z]+)?\b(?! ?(?:am|pm))/g)].map((x) => Number(x[1]))
+
+function contradice(o: string, v: MomentoDeCita): boolean {
+  return horasEn(o).some((h) => h !== v.minutos) || diasEn(o).some((d) => d !== v.diaDeSemana) || relativosEn(o).some((r) => r !== v.relativo) || diasDelMesEn(o).some((d) => d !== v.diaDelMes)
+}
+
+const nombraDiaYHora = (o: string) => horasEn(o).length > 0 && diasEn(o).length + relativosEn(o).length + diasDelMesEn(o).length > 0
+
+/** Una parte de frase que no afirma nada todavía. `Listo, te agendé, si quieres algo me escribes` sigue afirmando en su otra parte. */
+const HIPOTETICA = /\bsi (quieres|prefieres|puedes|necesitas|deseas|gustas|tienes|hay|no|me|te (sirve|queda|parece|gusta))\b|\b(cuando|puedo|podemos|podria|podriamos|quieres|te gustaria|para que|antes de|apenas|en cuanto|tan pronto|hay que|debo|falta|necesito)\b/
+const NEGADA = /\b(no|nunca|todavia no|aun no|tampoco)\b/
+
+/** Vale en cualquier Negocio: nombra la cita, así que un café no dice esto por accidente. */
+const CITA_DADA = /\b(cita|turno|reserva)\b.*\b(agendad[ao]|confirmad[ao]|reservad[ao]|apartad[ao]|separad[ao]|anotad[ao]|list[ao]|queda|quedo)\b|\b(agendad[ao])\b|\bte confirmo la cita\b|\bte (agende|reserve|aparte|separe|anote)\b.*\b(cita|turno|hora|cupo)\b/
+/** Solo con agenda: `te esperamos` en una tienda es cortesía. */
+const SE_DIO = /\bte (agende|reserve|aparte|separe|anote|deje)\b|\bqued(o|a|aste|amos)\b.*\b(para|el|a las|a la|list[ao]|cuadrad[ao]|confirmad[ao])\b|\bya qued(o|a|aste)\b|\bte (espero|esperamos|esperan)\b|\bnos (vemos|pillamos)\b|\bvente\b|\bven (el|manana|hoy|a las)\b|\bcuenta con\b|\b(cuadrad[ao]|cuadramos|confirmad[ao]|reservad[ao]|apartad[ao])\b|\b(tu|la|su) cita (es|sera|va)\b|\blisto,? (el|para|a las|a la)\b/
+const SE_MOVIO = /\bte (pase|cambie|movi)\b|\b(pase|cambie|movi|mude)\b.* (cita|hora|turno)\b|\b(cita|hora|turno)\b.*\b(movid[ao]|cambiad[ao]|reprogramad[ao])\b/
+const SE_CANCELO = /\bcancele\b|\b(cita|turno|reserva)\b.*\bcancelad[ao]\b|\bya no tienes? cita\b/
+
+/** Una hora que se ofrece o se informa, sin darla por tomada. */
+const OFERTA = /\b(libres?|ocupad[ao]s?|atendemos|atiendo|abrimos|cerramos|horario|desde las|hasta las|tengo|hay|puede ser|podria ser|te sirve|te queda|prefieres|disponibles?|me cuenta|me dices|o el|o a las|no)\b/
+const ACEPTA = /^(si|sip|dale|de una|listo|perfecto|ok|okay|bueno|claro|esa|ese|me sirve|me queda bien|hagale|de acuerdo|vale|va)\b/
+const PREGUNTA_DE_HORA = /\b(sirve|prefieres|hora|dia|confirm|cuando|seguro|queda bien)\b/
+const NO_PUDO = /\b(ocupad[ao]s?|ya paso|ya no esta|no (puedo|tengo|hay|atiendo|atendemos))\b/
+
+/** El agente preguntó por una hora y el Cliente dijo que sí: lo que siga, sin escritura, se lee como un sí del Negocio. */
+export function aceptoUnaHora(historial: readonly { readonly rol: string; readonly texto: string }[], mensaje: string): boolean {
+  const antes = historial.at(-1)
+  const dijo = plano(mensaje).trim()
+  if (antes?.rol !== 'agente' || dijo.length > 40 || !ACEPTA.test(dijo)) return false
+  return oraciones(antes.texto).some((o) => esPregunta(o) && horasEn(o).length > 0)
+}
+
+function citaSinRespaldo(texto: string, cita: CitaEnRevision): boolean {
+  const todas = oraciones(texto)
+  const afirma = (o: string, familia: RegExp) => {
+    const partes = o.replace(/\bno te (preocupes|afanes)\b/g, ' ').split(',')
+    return !HIPOTETICA.test(partes[0]) && partes.some((c) => familia.test(c) && !HIPOTETICA.test(c) && !NEGADA.test(c))
+  }
+  const declarativas = todas.filter((o) => !esPregunta(o))
+  if (cita.tipo === 'sin_agenda') return declarativas.some((o) => afirma(o, CITA_DADA))
+  const { vigente, escritaEnElTurno } = cita
+  for (const o of declarativas) {
+    if (afirma(o, SE_CANCELO) && (!escritaEnElTurno || vigente)) return true
+    if (afirma(o, SE_MOVIO) && (!escritaEnElTurno || !vigente || contradice(o, vigente))) return true
+    if (afirma(o, CITA_DADA) || afirma(o, SE_DIO)) {
+      if (!vigente || contradice(o, vigente)) return true
+      if (!escritaEnElTurno && !nombraDiaYHora(o)) return true
+    }
+  }
+  const ofrece = todas.length > 0 && esPregunta(todas[todas.length - 1])
+  if (!ofrece && declarativas.some((o) => horasEn(o).length > 0 && !OFERTA.test(o) && !HIPOTETICA.test(o) && (!vigente || contradice(o, vigente)))) return true
+  return cita.aceptoUnaHora && !escritaEnElTurno && !todas.some((o) => (esPregunta(o) && PREGUNTA_DE_HORA.test(o)) || NO_PUDO.test(o))
+}
+
 /** Una fila por motivo. Agregar un motivo sin `detecta` ni `pruebas` no compila. */
 export const DETECTORES = {
   cifra_sin_respaldo: {
@@ -178,6 +267,15 @@ export const DETECTORES = {
       noDispara: ['No podemos decir que cure nada: consulta a tu médico', 'Es un café suave, de tueste medio', 'Para prevenir que pierda aroma, guárdalo en un frasco cerrado.', 'Este té no cura nada'],
     },
   },
+  /** Vale para todo Negocio. Lo que se pinta como cierto al Cliente es la constancia que escribe el núcleo: esto frena lo que el modelo afirme por su cuenta. */
+  cita_sin_respaldo: {
+    alcance: 'respuesta',
+    detecta: (t, h) => citaSinRespaldo(t, h.cita),
+    pruebas: {
+      dispara: ['Listo, tu cita quedó agendada para el jueves', 'Te agendé la cita', 'Tu turno quedó confirmado'],
+      noDispara: ['Te esperamos pronto en la tienda', 'Tu pedido quedó confirmado', 'Todavía no agendamos citas por aquí', '¿Quieres que te ayude con algo más?'],
+    },
+  },
   habla_de_otro_negocio: {
     alcance: 'todo_texto',
     detecta: (t, h) => h.otrosNegocios.some((n) => n.trim().length >= 3 && new RegExp(`\\b${plano(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(plano(t))),
@@ -199,6 +297,7 @@ export const HECHOS_DE_PRUEBA: HechosDeRevision = {
   nombresInternos: ['crear_pedido', 'buscar_productos'],
   otrosNegocios: ['Panadería Trigo'],
   emojisMaximos: 1,
+  cita: { tipo: 'sin_agenda' },
 }
 
 /** Pura. Corre todos los detectores sobre la respuesta del Agente de clientes. */
@@ -209,7 +308,7 @@ export function revisar(texto: string, hechos: HechosDeRevision): Revision {
 
 /** Pura. Solo los de `todo_texto`, sobre un texto del Dueño que puede llegar a un Cliente. */
 export function revisarTextoDelDueno(texto: string, otrosNegocios: readonly string[]): readonly MotivoDeRevision[] {
-  const hechos: HechosDeRevision = { montosConRespaldo: new Set(), telefonoDelCliente: null, telefonosDelNegocio: [], nombresInternos: [], otrosNegocios, emojisMaximos: 3 }
+  const hechos: HechosDeRevision = { montosConRespaldo: new Set(), telefonoDelCliente: null, telefonosDelNegocio: [], nombresInternos: [], otrosNegocios, emojisMaximos: 3, cita: { tipo: 'sin_agenda' } }
   return MOTIVOS.filter((m) => DETECTORES[m].alcance === 'todo_texto' && DETECTORES[m].detecta(texto, hechos))
 }
 

@@ -4,6 +4,8 @@
 import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { ItemDePedido } from '@/db/esquema'
+import { cancelarCita, guardarCita, type NegativaDeCita, type PedidoDeCita } from '../citas'
+import { enPalabras, resolverHora, POR_QUE_NO_ESA_HORA, type EscrituraDeCita, type HoraPedida } from '../citas-palabras'
 import { marcar, type CasoId, type ClienteId } from '../identidad'
 import type { EstadoAplicado, EstadoDelNegocio, EstadoPublicado } from '../estado'
 import { ciudadDe, claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
@@ -20,7 +22,11 @@ export interface PuertoDeAcciones {
   consultar_pedido(numero: number | null): Promise<readonly PedidoConsultado[]>
   /** Con `reusar`, suma el detalle y las reglas al Caso sin resolver de este Cliente con el mismo título y el mismo pedido en vez de abrir otro; `nuevo` dice cuál pasó. */
   abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reusar: boolean; readonly reglas: readonly string[] }): Promise<{ readonly caso: CasoId | null; readonly nuevo: boolean }>
+  guardar_cita(e: PedidoDeCita): Promise<EscrituraDeCita | NegativaDeCita | NoLeToca>
+  cancelar_cita(): Promise<EscrituraDeCita | NoLeToca | null>
 }
+
+type NoLeToca = { readonly negada: 'no_le_toca' }
 
 /** `pasar_al_dueno` es un efecto, no una acción: en un escenario se espera `abrir_caso`. */
 export type NombreDeAccion = keyof PuertoDeAcciones
@@ -28,10 +34,15 @@ export type NombreDeAccion = keyof PuertoDeAcciones
 export type AccionHecha = { readonly nombre: NombreDeAccion; readonly detalle: string }
 
 /** El precio lo pone la envoltura con `cotizar`: el modelo no tiene por dónde dictar un total. */
-export type PuertoParaElModelo = Omit<PuertoDeAcciones, 'crear_pedido' | 'abrir_caso'> & {
+export type PuertoParaElModelo = Omit<PuertoDeAcciones, 'crear_pedido' | 'abrir_caso' | 'guardar_cita' | 'cancelar_cita'> & {
   crear_pedido(e: { readonly pedido: BorradorDePedido; readonly direccion: string }): Promise<{ readonly numero: number; readonly cotizacion: Cotizacion } | { readonly negado: string }>
   abrir_caso(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null }): Promise<{ readonly caso: CasoId | null }>
+  guardar_cita(e: HoraPedida & { readonly asunto: string; readonly cambiaLaQueTiene: boolean }): Promise<ResultadoDeCita>
+  cancelar_cita(): Promise<ResultadoDeCita>
 }
+
+/** El modelo solo recibe lo que puede decir: nunca un instante. */
+export type ResultadoDeCita = { readonly ok: true; readonly tipo: EscrituraDeCita['tipo'] } | { readonly ok: false; readonly error: string; readonly ocupadas?: readonly string[] }
 
 export type Envuelto = {
   readonly puerto: PuertoParaElModelo
@@ -44,41 +55,43 @@ export type Envuelto = {
   casosDelModelo(): readonly (number | null)[]
   /** Un Caso que abre el núcleo por una regla o por el respaldo: reusa el abierto del mismo título y pedido. Queda en `hechas()` como `abrir_caso`. */
   abrirCasoDelNucleo(e: { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reglas: readonly string[] }): Promise<CasoId | null>
+  /** Lo último que este turno guardó de verdad. De aquí sale la constancia. */
+  citaDelTurno(): EscrituraDeCita | null
 }
 
 const YA_NO_TE_TOCA = 'El Dueño tomó esta conversación: no hagas nada más.'
 
+type Lectura = 'buscar_productos' | 'consultar_pedido'
+type Escritura = Exclude<NombreDeAccion, Lectura>
+type Salida<K extends Escritura> = Awaited<ReturnType<PuertoDeAcciones[K]>>
+
+/** Una acción nueva que no sea `Lectura` no compila hasta tener su fila: no hay cómo dejarla sin cerca. */
+const CERCA: { readonly [K in Escritura]: { readonly negado: Salida<K>; hizo(r: Salida<K>): boolean } } = {
+  crear_pedido: { negado: { negado: YA_NO_TE_TOCA }, hizo: (r) => !('negado' in r) },
+  confirmar_pedido: { negado: { ok: false, porQue: YA_NO_TE_TOCA }, hizo: (r) => r.ok },
+  abrir_caso: { negado: { caso: null, nuevo: false }, hizo: (r) => r.caso !== null },
+  guardar_cita: { negado: { negada: 'no_le_toca' }, hizo: (r) => 'tipo' in r },
+  cancelar_cita: { negado: { negada: 'no_le_toca' }, hizo: (r) => r !== null && 'tipo' in r },
+}
+
 /**
- * Tras una toma, un turno viejo no crea, confirma ni abre nada. Revisa y luego escribe, así que un efecto puede entrar
- * milisegundos después de la toma: `hizoAlgo` lo cuenta y la línea del Hilo lo dice.
+ * Tras una toma, un turno viejo no crea, confirma, agenda ni abre nada. Revisa y luego escribe, así que un efecto puede
+ * entrar milisegundos después de la toma: `hizoAlgo` lo cuenta y la línea del Hilo lo dice.
  */
 export function conCerca(p: PuertoDeAcciones, sigue: () => Promise<boolean>): { readonly puerto: PuertoDeAcciones; hizoAlgo(): boolean } {
   let hizo = false
-  return {
-    hizoAlgo: () => hizo,
-    puerto: {
-      buscar_productos: (t) => p.buscar_productos(t),
-      consultar_pedido: (n) => p.consultar_pedido(n),
-      async crear_pedido(e) {
-        if (!(await sigue())) return { negado: YA_NO_TE_TOCA }
-        const r = await p.crear_pedido(e)
-        hizo ||= !('negado' in r)
-        return r
-      },
-      async confirmar_pedido(n) {
-        if (!(await sigue())) return { ok: false, porQue: YA_NO_TE_TOCA }
-        const r = await p.confirmar_pedido(n)
-        hizo ||= r.ok
-        return r
-      },
-      async abrir_caso(e) {
-        if (!(await sigue())) return { caso: null, nuevo: false }
-        const r = await p.abrir_caso(e)
-        hizo ||= r.caso !== null
-        return r
-      },
-    },
+  const cercada = <K extends Escritura>(k: K) => {
+    const fila = CERCA[k] as { negado: unknown; hizo(r: unknown): boolean }
+    const accion = p[k] as (...a: unknown[]) => Promise<unknown>
+    return async (...a: unknown[]) => {
+      if (!(await sigue())) return fila.negado
+      const r = await accion(...a)
+      hizo ||= fila.hizo(r)
+      return r
+    }
   }
+  const cercadas = Object.fromEntries((Object.keys(CERCA) as Escritura[]).map((k) => [k, cercada(k)])) as unknown as Pick<PuertoDeAcciones, Escritura>
+  return { hizoAlgo: () => hizo, puerto: { buscar_productos: (t) => p.buscar_productos(t), consultar_pedido: (n) => p.consultar_pedido(n), ...cercadas } }
 }
 
 const SIN_CIUDAD = 'Falta la ciudad de entrega: pregúntasela al Cliente antes de crear el pedido.'
@@ -93,6 +106,8 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
   const casos: CasoId[] = []
   const activadas: PorPedidoNuevo[] = []
   const casosDelModelo: (number | null)[] = []
+  const zona = estado.identidad.zonaHoraria
+  let citaDelTurno: EscrituraDeCita | null = null
   const anotar = (nombre: NombreDeAccion, detalle: string) => hechas.push({ nombre, detalle })
   const abrir = async (e: Parameters<PuertoDeAcciones['abrir_caso']>[0]) => {
     const r = await puerto.abrir_caso(e)
@@ -140,6 +155,38 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
         casosDelModelo.push(e.pedido)
         return { caso: r.caso }
       },
+      async guardar_cita({ asunto, cambiaLaQueTiene, ...hora }) {
+        const resuelta = resolverHora(hora, zona, new Date())
+        if ('negada' in resuelta) {
+          anotar('guardar_cita', `negada: ${resuelta.negada}`)
+          return { ok: false, error: POR_QUE_NO_ESA_HORA[resuelta.negada] }
+        }
+        // Dos horas distintas en un turno: la segunda sería mover lo que el Cliente acaba de aceptar sin que lo haya pedido.
+        if (citaDelTurno && citaDelTurno.tipo !== 'cancelada' && citaDelTurno.inicio.getTime() !== resuelta.inicio.getTime()) {
+          anotar('guardar_cita', 'negada: otra en el turno')
+          return { ok: false, error: `Ya guardaste una cita en este mensaje. Si el Cliente quiere cambiarla, espera a que lo diga.` }
+        }
+        const r = await puerto.guardar_cita({ inicio: resuelta.inicio, asunto, cambiaLaQueTiene })
+        if ('tipo' in r) {
+          anotar('guardar_cita', r.tipo)
+          citaDelTurno = r
+          return { ok: true, tipo: r.tipo }
+        }
+        anotar('guardar_cita', `negada: ${r.negada}`)
+        if (r.negada === 'no_le_toca') return { ok: false, error: YA_NO_TE_TOCA }
+        if (r.negada === 'ya_tiene_cita') return { ok: false, error: `Este Cliente ya tiene cita el ${enPalabras(r.tiene, zona)}. Si quiere cambiarla por esta, llama de nuevo con cambiaLaQueTiene en true. Si quiere una segunda cita, abre un Caso.` }
+        return { ok: false, error: 'Esa hora se acaba de ocupar. Propón otra libre ese mismo día, sin decir que quedó.', ocupadas: r.ocupadasDelDia.map((d) => enPalabras(d, zona)) }
+      },
+      async cancelar_cita() {
+        const r = await puerto.cancelar_cita()
+        if (r && 'tipo' in r) {
+          anotar('cancelar_cita', 'cancelada')
+          citaDelTurno = r
+          return { ok: true, tipo: r.tipo }
+        }
+        anotar('cancelar_cita', r ? 'negada: no le toca' : 'negada: no tiene')
+        return { ok: false, error: r ? YA_NO_TE_TOCA : 'Este Cliente no tiene una cita por venir.' }
+      },
     },
     hechas: () => hechas,
     cotizaciones: () => cotizaciones,
@@ -147,6 +194,7 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
     activadas: () => activadas,
     casosDelModelo: () => casosDelModelo,
     abrirCasoDelNucleo: async (e) => (await abrir({ ...e, reusar: true })).caso,
+    citaDelTurno: () => citaDelTurno,
   }
 }
 
@@ -248,21 +296,44 @@ export function puertoDeLaBase(estado: EstadoPublicado, cliente: ClienteId): Pue
         .returning({ id: esquema.casos.id })
       return { caso: marcar.caso(caso.id), nuevo: true }
     },
+
+    guardar_cita: (e) => guardarCita(negocio, cliente, e),
+    cancelar_cita: () => cancelarCita(negocio, cliente),
   }
 }
 
 export type PuertoEnMemoria = PuertoDeAcciones & {
   readonly pedidos: readonly (PedidoConsultado & { readonly cotizacion: Cotizacion | null })[]
   readonly casos: readonly { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reglas: readonly string[] }[]
+  readonly citas: () => { readonly inicio: Date | null; readonly ocupadas: readonly Date[] }
 }
 
 /** El de ensayo: en memoria, encima de los datos del estado y de los pedidos del Cliente. No escribe nada. */
 export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTurno): PuertoEnMemoria {
   const pedidos = cliente.pedidos.map((p) => ({ numero: p.numero, estado: p.estado, total: p.total, items: [p.resumen], ciudad: p.paraReglas?.borrador.ciudad ?? '', direccion: '', cotizacion: null as Cotizacion | null }))
   const casos: { titulo: string; detalle: string; pedido: number | null; reglas: readonly string[] }[] = []
+  let ocupadas: readonly Date[] = cliente.agenda?.ocupadas ?? []
+  let suya: Date | null = cliente.agenda?.cita?.inicio ?? null
   return {
     pedidos,
     casos,
+    citas: () => ({ inicio: suya, ocupadas }),
+    async guardar_cita({ inicio, cambiaLaQueTiene }) {
+      const antes = suya
+      if (antes?.getTime() === inicio.getTime()) return { tipo: 'agendada', inicio, antes: null }
+      if (antes && !cambiaLaQueTiene) return { negada: 'ya_tiene_cita', tiene: antes }
+      if (ocupadas.some((o) => o.getTime() === inicio.getTime())) return { negada: 'ocupada', ocupadasDelDia: ocupadas }
+      ocupadas = [...ocupadas.filter((o) => o.getTime() !== antes?.getTime()), inicio]
+      suya = inicio
+      return antes ? { tipo: 'movida', inicio, antes } : { tipo: 'agendada', inicio, antes: null }
+    },
+    async cancelar_cita() {
+      if (!suya) return null
+      const cancelada = suya
+      ocupadas = ocupadas.filter((o) => o.getTime() !== cancelada.getTime())
+      suya = null
+      return { tipo: 'cancelada', inicio: cancelada, antes: null }
+    },
     buscar_productos: async (texto) => buscarEn(estado, texto),
     async crear_pedido({ pedido, direccion, cotizacion }) {
       const numero = Math.max(0, ...pedidos.map((p) => p.numero)) + 1

@@ -42,7 +42,7 @@ const regla = (nombre: string, efectos: Regla['efectos']): [string, Elemento] =>
   { tipo: 'regla', nombre, cuando: { tipo: 'siempre' }, efectos, escenarios: { activan: [{ mensajeDelCliente: '¿Cuándo llega?', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] } },
 ]
 
-const cliente: ClienteDelTurno = { id: marcar.cliente('00000000-0000-4000-8000-0000000000aa'), nombre: 'Camila', telefono: '573001112233', pedidos: [] }
+const cliente: ClienteDelTurno = { id: marcar.cliente('00000000-0000-4000-8000-0000000000aa'), nombre: 'Camila', telefono: '573001112233', pedidos: [], agenda: null }
 const conversacion = (texto: string) => ({ cliente, historial: [], mensaje: { texto, wamid: marcar.wamid(`wamid.ENSAYO.${texto.length}`), enviadoEn: marcar.instante(new Date()) } })
 
 function guion(responder: Motores['responder'] | string, reescribir: string | null = null) {
