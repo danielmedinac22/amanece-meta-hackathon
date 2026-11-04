@@ -143,6 +143,8 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **Al tocar el botón.** Tocar la tarjeta no corre un turno del modelo. Si todavía falta algo para abrir, la carta dice qué sigue con una frase escrita por el código, porque sin ella nadie habla y el Dueño no sabe qué hacer. Lo que sigue también sale en el titular. Si lo que falta es cómo cobra o ya se puede abrir, lo dice su propia tarjeta.
 
+**Lo que toca, a la vista.** **Derivado.** Cuando cambia lo que el Dueño tiene que hacer, la carta baja hasta que se vea entero encima del redactor. Una tarjeta larga no deja su botón tapado.
+
 ### Operación: tres paños
 
 **Decidido.** En PC, de izquierda a derecha:

@@ -64,6 +64,10 @@ try {
   await foto('1-tarjeta')
   afirmar(`Lee ${enlace} y deja la tarjeta`, hayTarjeta, (await nav.texto()).slice(0, 600))
   await terminoElTurno()
+  afirmar(
+    'La tarjeta deja el botón a la vista, sin tocar el redactor',
+    await nav.hastaQue(`(() => { const boton = [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Están bien y no falta ninguno').getBoundingClientRect(); const redactor = [...document.querySelectorAll('textarea')].find((t) => t.offsetParent !== null).closest('.sticky').getBoundingClientRect(); return boton.top >= 0 && boton.bottom <= redactor.top })()`, 5000),
+  )
   const antes = await nav.texto()
   console.log(`  Titular con la tarjeta: ${await titular()}`)
 

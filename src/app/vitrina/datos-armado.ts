@@ -61,6 +61,28 @@ export const HILO_CONFIRMAR: UIMessage[] = [
 ]
 export const TARJETAS_CONFIRMAR: Record<string, EstadoDeTarjeta> = { 'p-lectura': { estado: 'espera_al_dueno', accion: 'confirmar', aprobadaPor: null, asunto: null, publicada: false } }
 
+/** Una tarjeta real de una página con productos y descripción: más alta de lo que cabe en una pantalla de 900 px. */
+const LO_LEIDO_LARGO: TarjetaDeAprobacion = {
+  ...LO_LEIDO,
+  propuesta: 'p-larga' as PropuestaId,
+  huella: 'huella-larga' as Huella,
+  lineas: [
+    'Esto leí de tu página (cafeladera.com). Tu agente de clientes no lo usa hasta que lo confirmes.',
+    'Nombre: «Café Ladera» · lo leí',
+    'Tueste medio, grano 500 g · $38.000 · lo leí',
+    'Tueste medio, molido 500 g · $38.000 · lo leí',
+    'Tueste claro, grano 250 g · $24.000 · lo leí',
+    'Micro lote Honey, grano 250 g · $32.000 · lo leí',
+    'Descripción: «Desde 2009 tostamos en Manizales café de fincas que conocemos por su nombre, y lo enviamos recién tostado a cualquier ciudad de Colombia para que llegue a tu casa con todo su sabor.» · lo leí',
+    'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.',
+  ],
+}
+export const HILO_TARJETA_LARGA: UIMessage[] = [
+  mensaje('g1', 'user', texto('cafeladera.com')),
+  mensaje('g2', 'assistant', { type: 'tool-leer_enlace', toolCallId: 'llamada-larga', state: 'output-available', input: { url: 'cafeladera.com' }, output: { resumen: 'Leído', tarjeta: LO_LEIDO_LARGO } }, texto('Ya leí tu página. Revisa la tarjeta y toca el botón si está bien.')),
+]
+export const TARJETAS_LARGA: Record<string, EstadoDeTarjeta> = { 'p-larga': TARJETAS_CONFIRMAR['p-lectura'] }
+
 /** Una página sin precios: la tarjeta solo trae texto, y después del botón todavía falta el nombre y lo que vende. */
 const LEIDO_SIN_PRECIOS: Partial<Record<DatoQueSe, string>> = { 'Qué haces': 'Café de especialidad de Manizales', Ciudad: 'Manizales' }
 export const ARMADO_SIN_PRECIOS: DatosDelArmado = { ...SIN_NADA, filas: filas(LEIDO_SIN_PRECIOS, 'en_la_tarjeta'), lectura: { productos: 0 } }
