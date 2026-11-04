@@ -203,7 +203,9 @@ function GruposDeCitasCargando() {
           <li key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-2 text-[13px]">
             <span className="min-w-0 flex-1">
               <Linea className="w-3/5" />
-              <Linea className="mt-1 h-4 w-2/5" />
+              <span className="block text-xs">
+                <Linea className="w-2/5" />
+              </span>
             </span>
             <Forma className="h-5 w-16 rounded-4xl" />
           </li>
