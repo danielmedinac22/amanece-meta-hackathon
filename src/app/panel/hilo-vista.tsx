@@ -220,9 +220,9 @@ export function Redactor({ ocupado, alEnviar, alSubir, adjuntosIniciales, borrad
     setBorradorPuesto(borrador)
     if (borrador) setTexto(borrador.texto)
   }
-  const [devueltoPuesto, setDevueltoPuesto] = useState(devuelto)
-  if (devuelto !== devueltoPuesto) {
-    setDevueltoPuesto(devuelto)
+  const [devueltoPuesto, setDevueltoPuesto] = useState<Devuelto | null>(null)
+  if ((devuelto ?? null) !== devueltoPuesto) {
+    setDevueltoPuesto(devuelto ?? null)
     if (devuelto) {
       // Pudo seguir escribiendo mientras esperaba: lo de después no se pisa.
       setTexto([devuelto.texto, texto].filter((t) => t.trim()).join('\n'))

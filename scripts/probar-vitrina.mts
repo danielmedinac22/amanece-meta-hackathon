@@ -551,7 +551,8 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
+  // Alba primero: sale a otra ruta, `/en`, y un `next dev` con cientos de páginas encima ya no la sirve a tiempo.
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_ALBA, ...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO]) {
     const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }
