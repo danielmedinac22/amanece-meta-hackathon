@@ -33,6 +33,7 @@ export type MensajeEntrante = {
 type CuerpoDeKapso = {
   readonly data?: CuerpoDeKapso
   readonly phone_number_id?: unknown
+  readonly type?: unknown
   readonly conversation?: { readonly contact_name?: unknown; readonly kapso?: { readonly contact_name?: unknown } }
   readonly message?: {
     readonly id?: unknown
@@ -45,7 +46,7 @@ type CuerpoDeKapso = {
       readonly button_reply?: { readonly id?: unknown; readonly title?: unknown }
       readonly list_reply?: { readonly id?: unknown; readonly title?: unknown }
     }
-    readonly kapso?: { readonly status?: unknown; readonly transcript?: { readonly text?: unknown }; readonly content?: unknown }
+    readonly kapso?: { readonly status?: unknown; readonly direction?: unknown; readonly transcript?: { readonly text?: unknown }; readonly content?: unknown }
     readonly referral?: unknown
   }
 }
@@ -63,7 +64,9 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
   const mensaje = raiz?.message
   if (!raiz || !mensaje?.id || !mensaje.from) return null
   if (raiz.phone_number_id && raiz.phone_number_id !== NUMERO_DE_AMANECE.id) return null
-  if (mensaje.kapso?.status && mensaje.kapso.status !== 'received') return null
+  // El tipo del evento manda: Kapso marca `delivered` un mensaje que entra, y ese estado también es el de un recibo.
+  const estaFuera = raiz.type ? raiz.type !== 'whatsapp.message.received' : mensaje.kapso?.status && mensaje.kapso.status !== 'received'
+  if (estaFuera || mensaje.kapso?.direction === 'outbound') return null
 
   const texto =
     mensaje.type === 'text'
@@ -98,6 +101,7 @@ export function porQueSeDescarta(cuerpo: unknown) {
     esteNumero: !raiz?.phone_number_id || raiz.phone_number_id === NUMERO_DE_AMANECE.id,
     largoDelIdRecibido: String(raiz?.phone_number_id ?? '').length,
     largoDelIdPropio: NUMERO_DE_AMANECE.id.length,
+    evento: raiz?.type,
     tipo: raiz?.message?.type,
     estado: raiz?.message?.kapso?.status,
   }
