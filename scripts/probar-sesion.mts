@@ -132,7 +132,7 @@ try {
     afirmar(`${ruta} manda a /entrar`, [302, 307].includes(r.status) && (r.headers.get('location') ?? '').endsWith('/entrar'), { estado: r.status, a: r.headers.get('location') })
   }
   const SIN_ID = '00000000-0000-4000-8000-000000000000'
-  for (const [metodo, ruta] of [['GET', '/api/dueno/chat'], ['POST', '/api/dueno/chat'], ['POST', '/api/dueno/abrir'], ['POST', '/api/dueno/plantilla'], ['POST', '/api/publicar'], ['POST', `/api/propuestas/${SIN_ID}/aprobar`], ['POST', `/api/propuestas/${SIN_ID}/descartar`], ['POST', `/api/propuestas/${SIN_ID}/deshacer`]]) {
+  for (const [metodo, ruta] of [['GET', '/api/dueno/chat'], ['POST', '/api/dueno/chat'], ['POST', '/api/dueno/abrir'], ['POST', '/api/dueno/plantilla'], ['POST', '/api/publicar'], ['POST', `/api/propuestas/${SIN_ID}/aprobar`], ['POST', `/api/propuestas/${SIN_ID}/descartar`], ['POST', `/api/propuestas/${SIN_ID}/deshacer`], ['POST', `/api/conversaciones/${SIN_ID}/tomar`], ['POST', `/api/conversaciones/${SIN_ID}/escribir`], ['POST', `/api/conversaciones/${SIN_ID}/devolver`]]) {
     const r = await ver(ruta, undefined, { method: metodo, body: metodo === 'POST' ? '{}' : undefined })
     afirmar(`${metodo} ${ruta} responde 401`, r.status === 401, r.status)
   }
