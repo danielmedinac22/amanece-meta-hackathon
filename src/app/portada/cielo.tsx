@@ -42,8 +42,8 @@ export function Cielo({ progreso, rafaga, children }: { progreso: MotionValue<nu
     raiz.current?.toggleAttribute('data-aclaro', p > ACLARA_LA_TINTA)
   })
   return (
-    <div ref={raiz} data-cielo className="cielo-que-amanece relative isolate min-h-[min(88svh,820px)] overflow-hidden pb-[120px]">
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+    <div ref={raiz} data-cielo className="cielo-que-amanece relative isolate min-h-[min(88svh,820px)] pb-[120px]">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 contain-paint">
         <div className="absolute inset-0 bg-(image:--alba)" />
         <motion.div data-capa-de-noche className="absolute inset-0 bg-(image:--madrugada)" style={{ opacity: madrugada }} />
         <motion.div data-capa-de-noche className="absolute inset-0 bg-(image:--noche)" style={{ opacity: noche }} />
