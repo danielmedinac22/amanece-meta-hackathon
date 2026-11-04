@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { Atencion, ResultadoDeDevolver, ResultadoDeEscribir, ResultadoDeTomar } from '@/nucleo/clientes/toma'
 import { rutaDeConversacion } from '@/nucleo/listas-palabras'
 import { tocarToma, type ConError } from './tocar-toma'
+import { intentoPara, type Intento } from './intento'
 
 export type EscritoDelDueno = { readonly vez: number; readonly texto: string; readonly intento: string; readonly visto: string | null }
 
@@ -90,8 +91,7 @@ export function ControlDeLaToma({ cliente, atencion, caso, acciones, alCambiar }
   const [texto, setTexto] = useState('')
   const [aviso, setAviso] = useState<string | null>(null)
   const [enviado, setEnviado] = useState(false)
-  // Se queda si la red falló: el reintento lleva el mismo, y si el primero sí llegó no sale dos veces.
-  const intento = useRef<string | null>(null)
+  const intento = useRef<Intento | null>(null)
 
   const hacer = async <T,>(accion: () => Promise<T>): Promise<T> => {
     setOcupado(true)
@@ -121,8 +121,9 @@ export function ControlDeLaToma({ cliente, atencion, caso, acciones, alCambiar }
 
   const escribir = async (a: Extract<Atencion, { tipo: 'tuya' }>) => {
     if (!texto.trim() || ocupado) return
-    intento.current ??= crypto.randomUUID()
-    const r = await hacer(() => acciones.escribir(cliente, { vez: a.vez, texto, intento: intento.current!, visto: a.sinContestar }))
+    intento.current = intentoPara(intento.current, texto, () => crypto.randomUUID())
+    const { id } = intento.current
+    const r = await hacer(() => acciones.escribir(cliente, { vez: a.vez, texto, intento: id, visto: a.sinContestar }))
     if (r.tipo === 'error') return setAviso(r.mensaje)
     if (r.tipo === 'sin_saber') {
       setAviso('Todavía no sé si le llegó. Mira la conversación antes de enviarlo de nuevo.')

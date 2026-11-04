@@ -16,6 +16,7 @@ import type { SubirArchivo } from './subir-archivo'
 import { IrASeccion } from './ir-a-seccion'
 import { etiquetaDe, Tarjeta } from './tarjeta'
 import type { TocarTarjeta } from './tocar-tarjeta'
+import type { Devuelto } from './lo-que-vuelve'
 
 /** Lo que el Dueño ve mientras su Agente del dueño usa una herramienta. */
 const ETIQUETAS: Record<string, string> = {
@@ -42,6 +43,7 @@ export type DatosDelHilo = {
   estados: Record<string, EstadoDeTarjeta>
   status: ChatStatus
   error: Error | undefined
+  devuelto?: Devuelto | null
 }
 
 export function Puntos() {
@@ -94,7 +96,7 @@ function CapacidadFaltante() {
 }
 
 /** Pinta la conversación. Quien la conecta decide qué pasa al enviar y al tocar una tarjeta: esta vista no habla con ninguna ruta. */
-export function VistaDelHilo({ messages, estados, status, error, alEnviar, alSubir, adjuntosIniciales, alTocar, alCambiar }: DatosDelHilo & { alEnviar: AlEnviar; alSubir: SubirArchivo; adjuntosIniciales?: readonly EnElRedactor[]; alTocar: TocarTarjeta; alCambiar: () => void }) {
+export function VistaDelHilo({ messages, estados, status, error, devuelto, alEnviar, alSubir, adjuntosIniciales, alTocar, alCambiar }: DatosDelHilo & { alEnviar: AlEnviar; alSubir: SubirArchivo; adjuntosIniciales?: readonly EnElRedactor[]; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const final = useRef<HTMLDivElement>(null)
   // Lo que ya estaba al abrir no entra con movimiento: solo lo que llega después.
   const [yaEstaban] = useState(messages.length)
@@ -144,7 +146,7 @@ export function VistaDelHilo({ messages, estados, status, error, alEnviar, alSub
             <Puntos />
           </span>
         )}
-        {error && <p role="alert" className="text-sm text-destructive">Se cortó mi respuesta. Escríbeme de nuevo.</p>}
+        {error && <p role="alert" className="text-sm text-destructive">{devuelto?.aviso ?? 'Se cortó mi respuesta. Escríbeme de nuevo.'}</p>}
         <div ref={final} />
       </div>
 
@@ -155,7 +157,7 @@ export function VistaDelHilo({ messages, estados, status, error, alEnviar, alSub
           </Button>
         ))}
       </div>
-      <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} adjuntosIniciales={adjuntosIniciales} borrador={borrador}>
+      <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} adjuntosIniciales={adjuntosIniciales} borrador={borrador} devuelto={devuelto}>
         {controles}
       </Redactor>
     </div>
@@ -208,7 +210,7 @@ export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boo
 }
 
 /** La caja donde el Dueño escribe, en el Hilo y en la carta del armado. `children` son los controles que van al lado de enviar. */
-export function Redactor({ ocupado, alEnviar, alSubir, adjuntosIniciales, borrador, children }: { ocupado: boolean; alEnviar: AlEnviar; alSubir: SubirArchivo; adjuntosIniciales?: readonly EnElRedactor[]; borrador?: { texto: string } | null; children?: ReactNode }) {
+export function Redactor({ ocupado, alEnviar, alSubir, adjuntosIniciales, borrador, devuelto, children }: { devuelto?: Devuelto | null; ocupado: boolean; alEnviar: AlEnviar; alSubir: SubirArchivo; adjuntosIniciales?: readonly EnElRedactor[]; borrador?: { texto: string } | null; children?: ReactNode }) {
   const [texto, setTexto] = useState('')
   const adjuntos = useAdjuntos(alSubir, adjuntosIniciales)
   const hayQueEnviar = !!texto.trim() || adjuntos.listos.length > 0
@@ -217,6 +219,15 @@ export function Redactor({ ocupado, alEnviar, alSubir, adjuntosIniciales, borrad
   if (borrador !== borradorPuesto) {
     setBorradorPuesto(borrador)
     if (borrador) setTexto(borrador.texto)
+  }
+  const [devueltoPuesto, setDevueltoPuesto] = useState(devuelto)
+  if (devuelto !== devueltoPuesto) {
+    setDevueltoPuesto(devuelto)
+    if (devuelto) {
+      // Pudo seguir escribiendo mientras esperaba: lo de después no se pisa.
+      setTexto([devuelto.texto, texto].filter((t) => t.trim()).join('\n'))
+      adjuntos.devolver(devuelto.adjuntos)
+    }
   }
 
   useEffect(() => {

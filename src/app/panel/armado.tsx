@@ -21,6 +21,7 @@ import { subirArchivo, type SubirArchivo } from './subir-archivo'
 import { SECCIONES } from './secciones'
 import { Tarjeta } from './tarjeta'
 import { tocarTarjeta, type TocarTarjeta } from './tocar-tarjeta'
+import type { Devuelto } from './lo-que-vuelve'
 
 const ENTRA = [0.22, 1, 0.36, 1] as const
 const SALE_EL_CIELO_MS = 500
@@ -38,13 +39,14 @@ type DatosDeLaCarta = {
   estados: Record<string, EstadoDeTarjeta>
   status: ChatStatus
   error: Error | undefined
+  devuelto?: Devuelto | null
 }
 
 /** Un Negocio armándose: la conexión de verdad. Lo que se guarda en medio de un turno también se vuelve a leer, para que las filas se marquen una por una. */
 export function ArmadoEnLaRuta({ datos, inicial, tarjetas, salir }: { datos: DatosDelArmado; inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta>; salir: ReactNode }) {
   const router = useRouter()
   // Si abrió el agente, la vista primero saca el cielo y después vuelve a leer.
-  const { messages, estados, status, error, ocupado, alEnviar, alCambiar } = useHilo({
+  const { messages, estados, status, error, devuelto, ocupado, alEnviar, alCambiar } = useHilo({
     inicial,
     tarjetas,
     alTerminar: (m) => {
@@ -56,7 +58,7 @@ export function ArmadoEnLaRuta({ datos, inicial, tarjetas, salir }: { datos: Dat
     if (ocupado && guardo) router.refresh()
   }, [ocupado, guardo, router])
   const alSalir = useCallback(() => router.refresh(), [router])
-  return <VistaDelArmado salir={salir} datos={datos} messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alSubir={subirArchivo} alTocar={tocarTarjeta} alCambiar={alCambiar} alAbrir={abrir} alSalir={alSalir} />
+  return <VistaDelArmado salir={salir} datos={datos} messages={messages} estados={estados} status={status} error={error} devuelto={devuelto} alEnviar={alEnviar} alSubir={subirArchivo} alTocar={tocarTarjeta} alCambiar={alCambiar} alAbrir={abrir} alSalir={alSalir} />
 }
 
 async function abrir(): Promise<RespuestaDeAbrir | { error: string }> {
@@ -65,7 +67,7 @@ async function abrir(): Promise<RespuestaDeAbrir | { error: string }> {
 }
 
 /** Pinta la carta y Tu Panel. Quien la conecta decide qué pasa al enviar, al tocar y al abrir: esta vista no habla con ninguna ruta. */
-export function VistaDelArmado({ datos, messages, estados, status, error, alEnviar, alSubir, alTocar, alCambiar, alAbrir, alSalir, salir }: DatosDeLaCarta & { salir?: ReactNode; alEnviar: AlEnviar; alSubir: SubirArchivo; alTocar: TocarTarjeta; alCambiar: () => void; alAbrir: () => Promise<RespuestaDeAbrir | { error: string }>; alSalir: () => void }) {
+export function VistaDelArmado({ datos, messages, estados, status, error, devuelto, alEnviar, alSubir, alTocar, alCambiar, alAbrir, alSalir, salir }: DatosDeLaCarta & { salir?: ReactNode; alEnviar: AlEnviar; alSubir: SubirArchivo; alTocar: TocarTarjeta; alCambiar: () => void; alAbrir: () => Promise<RespuestaDeAbrir | { error: string }>; alSalir: () => void }) {
   const ocupado = status === 'submitted' || status === 'streaming'
   const [pospusoElCobro, setPospusoElCobro] = useState(false)
   const [abierto, setAbierto] = useState(false)
@@ -120,7 +122,7 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
                   <Puntos />
                 </span>
               )}
-              {error && <p className="text-sm text-destructive">Algo falló. Intenta de nuevo.</p>}
+              {error && <p className="text-sm text-destructive">{devuelto?.aviso ?? 'Algo falló. Intenta de nuevo.'}</p>}
 
               {espera && <div className="shadow-alzada rounded-(--radius)">{decision(espera, cuantos ? `Lo que encontré · ${cuantos} productos` : undefined)}</div>}
               {paso === 'cobro' && <ComoTePagan ocupado={ocupado} alElegir={alEnviar} alPosponer={() => setPospusoElCobro(true)} />}
@@ -132,7 +134,7 @@ export function VistaDelArmado({ datos, messages, estados, status, error, alEnvi
               </motion.section>
             </main>
             <div className="sticky bottom-0 mt-auto bg-linear-to-t from-background from-70% to-transparent pt-5 pb-4">
-              <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} borrador={borrador} />
+              <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} borrador={borrador} devuelto={devuelto} />
             </div>
           </div>
           <aside className="pb-8 lg:sticky lg:top-4 lg:self-start lg:pt-8">
