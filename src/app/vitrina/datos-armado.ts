@@ -10,7 +10,7 @@ import { PARTE_DE_PLANTILLA, PARTIDAS, type IdDePlantilla } from '@/nucleo/plant
 const mensaje = (id: string, role: 'user' | 'assistant', ...partes: object[]) => ({ id, role, parts: partes }) as UIMessage
 const texto = (text: string) => ({ type: 'text', text })
 
-const LINK = 'https://wa.me/12058633828?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
+const LINK = 'https://wa.me/12024745452?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const ORDEN: readonly DatoQueSe[] = ['Nombre', 'Productos', 'Envíos', 'Horario', 'Cómo cobras', 'Tono']
 
 /** Lo que trae una página. El nombre no: lo dice el Dueño. */

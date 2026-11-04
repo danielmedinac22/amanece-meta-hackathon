@@ -30,6 +30,7 @@ import { TomaDeMuestra } from './toma-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
 import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 import { NO_LLEGO } from '../panel/lo-que-vuelve'
+import { PoliticaDePrivacidad } from '../privacidad/politica'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof MarcoDeMuestra>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial' | 'rutaInicial'>
@@ -133,6 +134,7 @@ const ESCENAS_DE_ESTADOS: readonly Escena[] = [
   { id: 'hilo-con-archivos', titulo: 'Hilo: una lista, una foto sin texto y un PDF recortado', pinta: () => panel(NEGOCIO_FUNCIONANDO, HILO_CON_ARCHIVOS) },
   { id: 'hilo-adjuntando', titulo: 'Hilo: subiendo, listo y con error en el redactor', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_ARMANDOSE.slice(0, 1)} adjuntos={ADJUNTOS_EN_EL_REDACTOR} />} /> },
   { id: 'hilo-tarjeta-vencio', titulo: 'Hilo: tocar tarjetas que vencieron sin refrescar', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} tarjetas={TARJETAS_QUE_VENCIERON} guion={GUION_TARJETAS_QUE_VENCIERON} hilo={<HiloDeMuestra messages={HILO_TARJETAS_QUE_VENCIERON} />} /> },
+  { id: 'privacidad', titulo: 'La política de privacidad', pinta: () => <PoliticaDePrivacidad /> },
   { id: 'hilo-no-llego', titulo: 'Hilo: el mensaje no llegó y vuelve a la caja', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_ARMANDOSE.slice(0, 1)} seCorto devuelto={{ texto: 'Cierro los domingos', adjuntos: [], aviso: NO_LLEGO }} />} /> },
   { id: 'hilo-error', titulo: 'Hilo: se cortó la respuesta', pinta: () => <MarcoDeMuestra datos={operacionDe(NEGOCIO_FUNCIONANDO)} paginas={paginasDe(NEGOCIO_FUNCIONANDO)} hilo={<HiloDeMuestra messages={HILO_ARMANDOSE.slice(0, 1)} seCorto />} /> },
 ]

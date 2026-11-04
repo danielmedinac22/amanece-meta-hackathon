@@ -182,6 +182,7 @@ const RECORRIDOS_DE_ESTADOS: typeof RECORRIDOS = [
   ['Hilo: lo que no sabe hacer queda anotado, sin botón, venga de donde venga', 'hilo-capacidad-faltante', '1440', `--cierto=document.querySelector('[data-conversacion]').innerText.split('Todavía no sé hacer esto').length === 3`, '--ve=Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Aplicar|Enviar)/.test(b.textContent.trim()))`, '--no-ve=Preparó lo que pediste', '--no-ve=Anotó algo'],
   ['Hilo: proponer sin tarjeta dice que revisó, no que preparó', 'hilo-capacidad-faltante', '1440', '--ve=Revisó lo que pediste'],
   ['Hilo: lo que no sabe hacer, en teléfono', 'hilo-capacidad-faltante', '390', '--ve=Todavía no sé hacer esto'],
+  ['Privacidad: dice quién responde y qué se guarda', 'privacidad', '390', '--ve=Quién responde', '--ve=Ley 1581'],
   ['Hilo: lo que no llegó vuelve a la caja y lo dice', 'hilo-no-llego', '1440', '--ve=Te lo dejé en la caja', '--no-ve=Se cortó mi respuesta', `--cierto=document.querySelector('form textarea').value === 'Cierro los domingos'`],
   ['Hilo: si se corta la respuesta dice qué hacer', 'hilo-error', '1440', '--ve=Se cortó mi respuesta. Escríbeme de nuevo.', '--no-ve=Algo falló'],
   ['Tarjeta que venció sin refrescar: dice que venció y ya no deja tocar', 'hilo-tarjeta-vencio', '1440', '--ve=1 de 4', TOCAR_EN_TARJETA('v-aplicar', 'Aplicar'), '--espera=400', TARJETA_DICE('v-aplicar', 'Venció sin aplicarse. Pídela de nuevo'), TARJETA_SIN_BOTONES('v-aplicar'), '--ve=1 de 3', TOCAR_EN_TARJETA('v-enviar', 'Enviar'), '--espera=400', TARJETA_DICE('v-enviar', 'Venció sin enviarse. Pídele a tu agente'), TARJETA_SIN_BOTONES('v-enviar')],
@@ -551,8 +552,7 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  // Alba primero: sale a otra ruta, `/en`, y un `next dev` con cientos de páginas encima ya no la sirve a tiempo.
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_ALBA, ...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
     const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }

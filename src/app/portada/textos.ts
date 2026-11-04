@@ -81,7 +81,7 @@ export type TextosDePortada = {
   readonly qr: { readonly alt: string; readonly titulo: string; readonly descripcion: string; readonly aviso: string; readonly boton: string }
   readonly preguntas: { readonly titulo: string; readonly lista: readonly { readonly pregunta: string; readonly respuesta: string }[] }
   readonly cierre: { readonly titulo: string }
-  readonly pie: { readonly texto: string }
+  readonly pie: { readonly texto: string; readonly privacidad: string }
 }
 
 export const TEXTOS: Record<Idioma, TextosDePortada> = {
@@ -286,7 +286,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
       ],
     },
     cierre: { titulo: 'Esta noche alguien te va a escribir. Que tenga quién le conteste.' },
-    pie: { texto: 'Funciona con Muse Spark de Meta. Hecho en Colombia.' },
+    pie: { texto: 'Funciona con Muse Spark de Meta. Hecho en Colombia.', privacidad: 'Privacidad' },
   },
   en: {
     meta: { titulo: 'Amanece: build your agent for free', descripcion: 'Build, just by talking, the agent that answers your customers on WhatsApp.' },
@@ -489,6 +489,6 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
       ],
     },
     cierre: { titulo: 'Someone’s going to text you tonight. Make sure they get an answer.' },
-    pie: { texto: 'Runs on Muse Spark from Meta. Made in Colombia.' },
+    pie: { texto: 'Runs on Muse Spark from Meta. Made in Colombia.', privacidad: 'Privacy' },
   },
 }
