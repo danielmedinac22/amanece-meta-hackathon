@@ -22,7 +22,6 @@ function responder(c: Conversacion, preguntas: readonly Pregunta[]): Conversacio
   return { ...c, mensajes: [...c.mensajes, { id: c.mensajes.length, de: 'agente', texto: preguntas[c.escribiendo].respuesta }], escribiendo: null, respondida: c.escribiendo }
 }
 
-/** Pura. Preguntar mientras escribe no deja una pregunta sin respuesta: primero contesta la que iba. */
 const avanzar = (preguntas: readonly Pregunta[]) => (c: Conversacion, paso: Paso): Conversacion => {
   if (paso.tipo === 'responder') return responder(c, preguntas)
   const antes = responder(c, preguntas)

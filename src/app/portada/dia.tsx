@@ -5,13 +5,13 @@ import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { CIELO_ABAJO, CIELO_ARRIBA, PARADAS_DEL_CIELO } from './cielo-del-dia'
 
 const ENTRA = [0.22, 1, 0.36, 1] as const
-// En este tramo el cielo va de oscuro arriba a claro abajo, y ninguna tinta sirve en todo. Medido, aquí falla menos.
-const ACLARA_LA_TINTA = 0.38
+const TINTA_OSCURA_DESDE_EL_SCROLL = 0.38
+const SOL_TENUE = 0.26
+const SOL_TENUE_HASTA_EL_SCROLL = 0.405
 const CAMBIA_EL_RELOJ = 0.56
 
 type Hora = { hora: string; meridiano: string }
 
-/** Las piezas llegan pintadas del servidor: de cada momento, este cascarón solo lee su hora. */
 export function Dia({ titulo, nota, primera, children }: { titulo: string; nota: string; primera: Hora; children: ReactNode }) {
   const raiz = useRef<HTMLElement>(null)
   const contenido = useRef<HTMLDivElement>(null)
@@ -23,11 +23,10 @@ export function Dia({ titulo, nota, primera, children }: { titulo: string; nota:
   const fondo = useMotionTemplate`linear-gradient(180deg, ${arriba}, ${abajo})`
   const estrellas = useTransform(p, [0, 0.34], [1, 0])
   const solSube = useTransform(p, [0.24, 0.54], ['92svh', '-3svh'])
-  // Hasta .405 el sol queda tenue: más fuerte, detrás de la tinta clara, no deja leer.
-  const sol = useTransform(p, [0.33, 0.4, 0.405, 0.43, 0.62, 0.82], [0, 0.26, 0.26, 1, 1, 0])
+  const sol = useTransform(p, [0.33, 0.4, SOL_TENUE_HASTA_EL_SCROLL, 0.43, 0.62, 0.82], [0, SOL_TENUE, SOL_TENUE, 1, 1, 0])
 
   useMotionValueEvent(p, 'change', (v) => {
-    contenido.current?.toggleAttribute('data-aclaro', v > ACLARA_LA_TINTA)
+    contenido.current?.toggleAttribute('data-aclaro', v > TINTA_OSCURA_DESDE_EL_SCROLL)
     const linea = innerHeight * CAMBIA_EL_RELOJ
     let actual: HTMLElement | null = null
     for (const m of raiz.current?.querySelectorAll<HTMLElement>('[data-hora]') ?? []) if (m.getBoundingClientRect().top < linea) actual = m

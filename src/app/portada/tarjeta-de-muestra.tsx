@@ -8,7 +8,6 @@ import type { AccionDeMuestra } from './textos'
 
 type Resuelta = { resultado: string; negativa: boolean } | null
 
-/** Una tarjeta de decisión de mentiras: confirma en su sitio y no le avisa a nadie. */
 export function TarjetaDeMuestra({ etiqueta, titulo, principal, secundaria, nota, children }: { etiqueta: string; titulo: string; principal: AccionDeMuestra; secundaria: AccionDeMuestra; nota: string; children: ReactNode }) {
   const [resuelta, setResuelta] = useState<Resuelta>(null)
   const Icono = resuelta?.negativa ? MinusCircle : CheckCircle

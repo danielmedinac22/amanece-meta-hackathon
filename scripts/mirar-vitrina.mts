@@ -100,7 +100,7 @@ try {
   for (const bandera of banderas) {
     const [, paso, valor] = bandera.match(/^--(\w[\w-]*)=([\s\S]*)$/) ?? []
     if (paso === 'clic') {
-      // Un clic de verdad: Base UI abre sus menús con los eventos del puntero, y `element.click()` no los dispara. Como el Dueño, primero lleva a la vista lo que va a tocar: un clic fuera de la pantalla se pierde.
+      // Un clic de verdad: Base UI abre sus menús con los eventos del puntero, y `element.click()` no los dispara. Un clic fuera de la pantalla se pierde, por eso lleva a la vista lo que va a tocar.
       // `__reactProps`: React ya hidrató ese botón. `viva` solo dice que empezó por la raíz, y a un botón sin hidratar el clic se le pierde.
       const punto = await hastaQue(() => evaluar<{ x: number; y: number } | null>(`(() => { const e = [...document.querySelectorAll('button,summary,a,[role=tab]')].find((x) => x.checkVisibility() && Object.keys(x).some((k) => k.startsWith('__reactProps')) && (x.textContent.trim().startsWith(${JSON.stringify(valor)}) || x.getAttribute('aria-label')?.startsWith(${JSON.stringify(valor)}))); if (!e) return null; e.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' }); const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`))
       if (!punto) throw new Error(`No encontré: ${valor}`)

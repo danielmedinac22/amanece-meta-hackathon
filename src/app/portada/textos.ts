@@ -3,10 +3,8 @@ export type Idioma = 'es' | 'en'
 /** Solo las Secciones que tiene un Panel de verdad. Algo que el Panel no tiene no se puede poner en una tarjeta. */
 export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
 
-/** Dónde vive la portada de cada idioma. */
 export const RUTA_DE_IDIOMA: Record<Idioma, string> = { es: '/', en: '/en' }
 
-/** Un texto con partes en negrita, para que el diccionario no lleve HTML. */
 export type Frase = readonly (string | { readonly fuerte: string })[]
 
 export type MensajeDeMuestra = { readonly de: 'cliente' | 'agente'; readonly texto: string; readonly hora?: string }

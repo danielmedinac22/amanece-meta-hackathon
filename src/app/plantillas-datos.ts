@@ -104,7 +104,6 @@ export const PLANTILLAS: Plantilla[] = [
 
 type LoQueSeTraduce = Pick<Plantilla, 'nombre' | 'promesa' | 'indicadores' | 'tituloBarras' | 'filas' | 'chat' | 'globos'>
 
-/** Los mismos ids, negocios y barras: remixear en inglés deja la misma plantilla que en español. */
 const EN_INGLES: Readonly<Record<IdDePlantilla, LoQueSeTraduce>> = {
   tienda: {
     nombre: 'Cash on delivery',

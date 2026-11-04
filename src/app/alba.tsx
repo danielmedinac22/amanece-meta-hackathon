@@ -20,7 +20,7 @@ const DURA_LA_SALIDA_MS = 700
 
 const conMenosMovimiento = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Escribe los ejemplos dentro del marcador, uno tras otro, mientras la caja siga vacía. `fraccion` es cuánto lleva escrito el ejemplo. */
+/** Escribe los ejemplos dentro del marcador, uno tras otro, mientras la caja siga vacía. */
 function useMaquina(pausa: boolean, ejemplos: readonly string[]) {
   const [escribiendo, setEscribiendo] = useState<{ texto: string; fraccion: number } | null>(null)
   useEffect(() => {

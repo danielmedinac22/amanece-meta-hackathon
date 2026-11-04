@@ -132,7 +132,7 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **Decidido** el 3 de noviembre de 2026. Es la página para el Dueño que todavía no tiene cuenta, en español en `/` y en inglés en `/en`, con los textos en `src/app/portada/textos.ts`. De arriba abajo: Alba con sus Plantillas, `Un día cualquiera en tu negocio`, tres Rubros, `Hazle la pregunta difícil`, Café Ladera con su QR, preguntas y cierre.
 
-- **El día.** Se recorre con el scroll: el cielo pasa de la noche a la tarde y el reloj fijo muestra el momento que cruzó el 56 % de la pantalla. Cada momento trae una pieza de muestra, y sus botones responden ahí mismo sin llamar a nadie.
+- **El día.** Se recorre con el scroll: el cielo pasa de la noche a la tarde y el reloj fijo muestra el momento que cruzó el 56 % de la pantalla. Cada momento trae una pieza de muestra, y sus botones responden ahí mismo sin llamar a nadie. La tinta pasa a oscura en el 38 % del scroll y el sol se queda tenue hasta el 40,5 %. Medido en la página: en ese tramo el cielo va de oscuro arriba a claro abajo y ninguna tinta sirve en toda la pantalla. Muy cerca del borde inferior el contraste baja a 2,3 por un momento.
 - **La pregunta difícil.** Las respuestas son las que el código deja salir: `scripts/probar-portada.mts` pasa cada una por `revisar`. Nada de la muestra llama al modelo.
 - **Lo que no va.** Ninguna cifra de otra operación, ningún nombre de cliente de Amanece y nada de `LO_QUE_NO_HAY` como promesa. Un Rubro que todavía no hace algo lo dice.
 

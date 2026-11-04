@@ -6,12 +6,10 @@ import { useEffect, useRef, type ReactNode } from 'react'
 const NIVEL_DE_NOCHE = 0.06
 const ALCANZA_LA_MAQUINA = 0.26
 const NIVEL_CON_PLANTILLA = 0.62
-// Medido en la portada: aquí se cruzan la tinta clara y la oscura. Es el punto donde la peor de las dos se lee mejor.
-const ACLARA_LA_TINTA = 0.7
+const TINTA_OSCURA_DESDE_EL_NIVEL = 0.7
 
 export type LoQueAclara = { largo: number; conPlantilla: boolean; maquina: number; saliendo: boolean }
 
-/** Pura. Cuánto ha amanecido, de 0 a 1, según lo que hay en la caja. */
 export function nivelDelCielo({ largo, conPlantilla, maquina, saliendo }: LoQueAclara): number {
   if (saliendo) return 1
   const escrito = largo ? Math.min(1, 0.3 + largo / 72) : 0
@@ -19,13 +17,12 @@ export function nivelDelCielo({ largo, conPlantilla, maquina, saliendo }: LoQueA
   return largo ? escrito : NIVEL_DE_NOCHE + ALCANZA_LA_MAQUINA * maquina
 }
 
-/** `saltar`: quien vuelve con algo guardado no ve amanecer otra vez lo que ya escribió. */
-export function useAmanecer(nivel: number, saltar: boolean): MotionValue<number> {
+export function useAmanecer(nivel: number, sinAnimar: boolean): MotionValue<number> {
   const progreso = useSpring(NIVEL_DE_NOCHE, { stiffness: 90, damping: 24 })
   useEffect(() => {
-    if (saltar) progreso.jump(nivel)
+    if (sinAnimar) progreso.jump(nivel)
     else progreso.set(nivel)
-  }, [progreso, nivel, saltar])
+  }, [progreso, nivel, sinAnimar])
   return progreso
 }
 
@@ -39,7 +36,7 @@ export function Cielo({ progreso, rafaga, children }: { progreso: MotionValue<nu
   const sol = useTransform(progreso, [0.1, 0.35], [0, 1])
   const solSube = useTransform(progreso, [0, 0.85], ['42%', '0%'])
   useMotionValueEvent(progreso, 'change', (p) => {
-    raiz.current?.toggleAttribute('data-aclaro', p > ACLARA_LA_TINTA)
+    raiz.current?.toggleAttribute('data-aclaro', p > TINTA_OSCURA_DESDE_EL_NIVEL)
   })
   return (
     <div ref={raiz} data-cielo className="cielo-que-amanece relative isolate min-h-[min(88svh,820px)] pb-[120px]">

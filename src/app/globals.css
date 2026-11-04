@@ -242,7 +242,6 @@
   mask-image: linear-gradient(to bottom, black 20%, transparent);
 }
 
-/* En oscuro `--foreground` ya es tinta clara: la misma regla sirve para los dos temas, sin mirar el tema desde JS. */
 .cielo-que-amanece {
   color: oklch(0.95 0.008 250);
   transition: color 200ms var(--ease-entra);
@@ -272,7 +271,6 @@
   background: radial-gradient(closest-side, #fff7e2, #ffd59a 30%, #ff9f7a55 58%, transparent 72%);
 }
 
-/* El cielo del día es de la hora, no del tema: su tinta tampoco cambia en oscuro. */
 .tinta-del-dia {
   color: #f3f5fb;
   transition: color 200ms var(--ease-entra);
