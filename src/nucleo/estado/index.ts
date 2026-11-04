@@ -76,8 +76,11 @@ export type CambioDeElemento = {
   readonly despues: Elemento | null
 }
 
-/** Lo que se escribe junto o no se escribe. Nadie escribe filas hasta que exista `tabla`. */
-export type Escritura = { readonly elementos: readonly CambioDeElemento[]; readonly filas: readonly never[] }
+/**
+ * Lo que se escribe junto o no se escribe. Nadie escribe filas hasta que exista `tabla`. `nombre`: el que se leyó de una
+ * página, que solo llena el nombre temporal.
+ */
+export type Escritura = { readonly elementos: readonly CambioDeElemento[]; readonly filas: readonly never[]; readonly nombre?: string }
 
 export type EstadoBorrador = Marca<EstadoDelNegocio & { readonly base: VersionDelNegocio; readonly propuesta: Escritura }, 'EstadoBorrador'>
 
@@ -254,30 +257,40 @@ export function nombresAjenos(nombres: readonly string[], estado: EstadoDelNegoc
   return nombres.filter((n) => n.trim().split(/\s+/).length >= 2 && !propio.includes(normalizar(n)))
 }
 
-/** Los nombres de los otros Negocios abiertos que se vigilan en lo que llega a un Cliente. El único que los consulta. */
+const nombresDeLosOtros = async (estado: EstadoDelNegocio) =>
+  (
+    await db
+      .select({ nombre: esquema.negocios.nombre })
+      .from(esquema.negocios)
+      .where(and(ne(esquema.negocios.id, estado.identidad.id), eq(esquema.negocios.estado, 'listo'), ne(esquema.negocios.nombre, NOMBRE_TEMPORAL)))
+  ).map((f) => f.nombre)
+
+/** Los nombres de los otros Negocios abiertos que se vigilan en lo que llega a un Cliente. */
 export async function otrosNegocios(estado: EstadoDelNegocio): Promise<readonly string[]> {
-  const filas = await db
-    .select({ nombre: esquema.negocios.nombre })
-    .from(esquema.negocios)
-    .where(and(ne(esquema.negocios.id, estado.identidad.id), eq(esquema.negocios.estado, 'listo'), ne(esquema.negocios.nombre, NOMBRE_TEMPORAL)))
-  return nombresAjenos(
-    filas.map((f) => f.nombre),
-    estado,
-  )
+  return nombresAjenos(await nombresDeLosOtros(estado), estado)
 }
+
+/** Que otro Negocio abierto ya se llame así, sea de una palabra o de varias. */
+export async function nombreOcupado(estado: EstadoDelNegocio, nombre: string): Promise<boolean> {
+  return (await nombresDeLosOtros(estado)).some((n) => normalizar(n) === normalizar(nombre))
+}
+
+/** Pura. El Negocio todavía no tiene un nombre que alguien haya dicho o confirmado. */
+export const sinNombrePropio = ({ nombre }: { readonly nombre: string }) => !nombre.trim() || nombre === NOMBRE_TEMPORAL
 
 export function valorDelDato(estado: EstadoDelNegocio, campo: CampoDeConocimiento): string {
   return estado.vigentes('dato').find((v) => v.elemento.campo === campo)?.elemento.valor ?? ''
 }
 
-/** Pura. El mismo estado con lo propuesto encima. */
+/** Pura. El mismo estado con lo propuesto encima. El nombre del Dueño manda sobre el de la propuesta. */
 export function conPropuesta(estado: EstadoDelNegocio, escritura: Escritura): EstadoBorrador {
   const tocadas = new Map(escritura.elementos.map((c) => [c.clave, c]))
   const sin = estado.todos().filter((v) => !tocadas.has(v.clave))
   const propuestas = escritura.elementos.flatMap((c): ElementoVigente[] =>
     c.despues ? [vigenteDe(c.clave, comoVersion(estado.version + 1), { tipo: 'entrevista' }, c.despues)] : [],
   )
-  return { ...armarEstado(estado.identidad, estado.version, [...sin, ...propuestas]), base: estado.version, propuesta: escritura } as EstadoBorrador
+  const identidad = escritura.nombre && sinNombrePropio(estado.identidad) ? { ...estado.identidad, nombre: escritura.nombre } : estado.identidad
+  return { ...armarEstado(identidad, estado.version, [...sin, ...propuestas]), base: estado.version, propuesta: escritura } as EstadoBorrador
 }
 
 export type ResultadoDeValidar = { readonly tipo: 'valida'; readonly escritura: Escritura } | { readonly tipo: 'invalida'; readonly problemas: readonly Problema[] }

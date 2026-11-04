@@ -336,7 +336,7 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     description:
       'Quita o renombra cosas de la tarjeta de lo leído que espera el botón. Tú no ves la tarjeta: pasa los nombres como los dijo el Dueño. No guarda ni confirma nada, y aquí no se cambia ningún precio. Te dice qué cambió de verdad.',
     inputSchema: z.object({
-      quitar: z.array(z.string().trim().min(1)).optional().describe('Productos o datos (Descripción, Ciudad, Horario, Envíos, Pagos) que no van'),
+      quitar: z.array(z.string().trim().min(1)).optional().describe('Productos o datos (Nombre, Descripción, Ciudad, Horario, Envíos, Pagos) que no van'),
       renombrar: z.array(z.object({ de: z.string().trim().min(1), a: z.string().trim().min(1) })).optional().describe('Productos con otro nombre; el precio leído sigue en la tarjeta'),
     }),
     execute: ({ quitar = [], renombrar = [] }) =>
@@ -507,6 +507,7 @@ Ahora: es la primera conversación y el Negocio todavía se está armando.
   - Un precio, un producto que falta o un dato que te dijo: guárdalo con guardar_productos o guardar_conocimiento. La tarjeta se rearma sola.
   - Algo que no vende o que no va: corregir_tarjeta con quitar.
   - Un nombre malo: corregir_tarjeta con renombrar, y el precio leído sigue en la tarjeta. Si además dice otro precio, guarda también el nombre nuevo con guardar_productos.
+  - El nombre del Negocio: si dice cómo se llama, guárdalo con guardar_conocimiento y la tarjeta se rearma sola. Si solo dice que ese no es, corregir_tarjeta con quitar Nombre y pregúntale cómo se llama.
   - Nunca digas que algo salió o cambió en la tarjeta si la herramienta no te lo dijo. Si te dice que no coincide o que hay varias, pregúntale al Dueño cómo sale en la tarjeta.
 - Si no tiene nada publicado o no se pudo leer, entrevístalo con una o dos preguntas por mensaje, nunca más: cómo se llama el Negocio y qué vende, los productos con sus precios en pesos colombianos, la ciudad, los envíos (a dónde, cuánto cuestan, cuánto demoran), las formas de pago, el horario y el tono con el que le gusta hablarles a sus clientes.
 - Cada vez que el Dueño te dé información, guárdala en ese momento con guardar_conocimiento (nombre, rubro, descripción, ciudad, horario, envíos, pagos, tono, preguntas frecuentes) y guardar_productos (nombre, frase corta, precio entero en pesos). No esperes a tener todo.

@@ -140,7 +140,7 @@ try {
       },
       guion().motores,
     )
-    const lectura = await proponerLectura(ctx, { fuente: 'tu página (prueba.co)', quiere: [poner({ tipo: 'producto', nombre: 'Pandebono especial', descripcion: '', precio: el.comoMonto(4200), activo: true })], descartados: 0 })
+    const lectura = await proponerLectura(ctx, { fuente: 'tu página (prueba.co)', nombre: null, quiere: [poner({ tipo: 'producto', nombre: 'Pandebono especial', descripcion: '', precio: el.comoMonto(4200), activo: true })], descartados: 0 })
     const otra = guion()
     const r = await proponer(ctx, { origen: 'hilo', palabrasDelDueno: 'Otra vez la de Manizales', quiere: [poner(manizales('Fuera de Manizales, otra'))] }, otra.motores)
     afirmar('pendientes: hay una regla y una lectura esperando', sinGratis.desenlace === 'espera_al_dueno' && lectura.tarjeta !== null && r.desenlace === 'espera_al_dueno', { sinGratis: sinGratis.desenlace, lectura: lectura.tarjeta?.propuesta, r: r.desenlace })

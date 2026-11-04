@@ -5,8 +5,8 @@
 import { and, eq } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { MotivoDeFaltante } from '../capacidades'
-import { conPropuesta, historiaParaRevertir, otrosNegocios, validarEscritura, validarReversion, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
-import { alcanceDeLaClave, claveNueva, comoVersion, definicionDe, describirCambio, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
+import { conPropuesta, historiaParaRevertir, nombreOcupado, otrosNegocios, validarEscritura, validarReversion, type CambioDeElemento, type Escritura, type EstadoAplicado } from '../estado'
+import { alcanceDeLaClave, claveNueva, comoVersion, definicionDe, describirCambio, nombreQueCabe, normalizar, sinCumplidorHoy, type Alcance, type Clave, type Elemento, type Problema } from '../estado/elementos'
 import { marcar, type CasoId, type NegocioId, type PropuestaId } from '../identidad'
 import { fueraDeVentana } from '../salida/compuerta'
 import { revisarTextoDelDueno } from '../salida/revisar'
@@ -16,6 +16,8 @@ import { MOTOR_DEL_REDACTOR, redactarConsulta, type MotorDelRedactor } from './r
 export const LARGO_DE_UNA_RESPUESTA = 4000
 
 export type QuierePoner = { readonly tipo: 'poner'; readonly elemento: Elemento; readonly reemplaza: Clave | null }
+export type QuiereNombre = { readonly tipo: 'nombre'; readonly nombre: string }
+export type QuiereDeLaLectura = QuierePoner | QuiereNombre
 export type Acto = { readonly tipo: 'responder_caso'; readonly caso: CasoId; readonly texto: string }
 /** Una Sección o un Indicador que el Dueño pidió en palabras: `traducir` le pide la consulta al redactor. */
 export type QuiereDelPanel = { readonly tipo: 'panel'; readonly nombre: string; readonly queQuiereVer: string; readonly reemplaza: Clave | null } & (
@@ -56,7 +58,7 @@ const ahora = () => marcar.instante(new Date())
  * Varias `Quiere` se suman en una sola Escritura; dos sobre la misma clave se corrigen. Una Sección o un Indicador va
  * solo y es lo único que llama a un modelo: el redactor (`redactor` solo lo cambian los `probar`).
  */
-export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDeElementos[], redactor: MotorDelRedactor = MOTOR_DEL_REDACTOR): Promise<Traduccion | SinTraduccion> {
+export async function traducir(estado: EstadoAplicado, quiere: readonly (QuiereDeElementos | QuiereNombre)[], redactor: MotorDelRedactor = MOTOR_DEL_REDACTOR): Promise<Traduccion | SinTraduccion> {
   const negocio = estado.identidad.id
   const cambios: CambioDeElemento[] = []
   const actos: Acto[] = []
@@ -65,6 +67,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
   const soloVistaPrevia: Clave[] = []
   const problemas: Problema[] = []
   let revierte: PropuestaId | null = null
+  let nombre: string | null = null
   let gasto = SIN_GASTO
   const tocar = (c: CambioDeElemento) => {
     if (cambios.some((x) => x.clave === c.clave)) problemas.push(invalido('quiere', `Dos cosas del mismo pedido tocan ${c.clave}: júntalas en una`))
@@ -90,6 +93,11 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
         tocar({ clave, base: estado.vigente(clave)?.version ?? 'nueva', despues: q.elemento })
         break
       }
+      case 'nombre':
+        nombre = nombreQueCabe(q.nombre)
+        if (!nombre) problemas.push(invalido('nombre', 'Ese nombre no se puede usar'))
+        else if (await nombreOcupado(estado, nombre)) problemas.push(invalido('nombre', 'Otro Negocio abierto ya se llama así'))
+        break
       case 'panel': {
         if (quiere.length > 1) return corregir(invalido('quiere', 'Una Sección o un Indicador van solos, en su propia propuesta'))
         const anterior = q.reemplaza ? estado.vigente(q.reemplaza) : null
@@ -139,14 +147,15 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
     }
   }
   if (problemas.length) return corregir(...problemas)
-  if (!cambios.length && !actos.length) return corregir(invalido('quiere', 'El pedido no dice qué cambiar'))
+  if (!cambios.length && !actos.length && !nombre) return corregir(invalido('quiere', 'El pedido no dice qué cambiar'))
 
-  const escritura: Escritura = { elementos: cambios, filas: [] }
+  const escritura: Escritura = { elementos: cambios, filas: [], ...(nombre ? { nombre } : {}) }
   const sinCumplidor = new Set(cambios.flatMap((c) => (c.despues?.tipo === 'regla' ? sinCumplidorHoy(c.despues) : [])))
   if (sinCumplidor.size) return { tipo: 'faltante', motivo: { tipo: 'sin_cumplidor', que: [...sinCumplidor] }, gasto }
   const v = revierte ? validarReversion(estado, escritura) : validarEscritura(estado, escritura)
   if (v.tipo === 'invalida') problemas.push(...v.problemas)
-  const otros = cambios.some((c) => c.despues) ? await otrosNegocios(estado) : []
+  const otros = nombre || cambios.some((c) => c.despues) ? await otrosNegocios(estado) : []
+  if (nombre) for (const motivo of revisarTextoDelDueno(nombre, otros)) problemas.push({ tipo: 'norma', campo: 'nombre', motivo })
   for (const c of cambios) if (c.despues) for (const t of definicionDe(c.despues.tipo).textos(c.despues)) for (const motivo of revisarTextoDelDueno(t.texto, otros)) problemas.push({ tipo: 'norma', campo: t.campo, motivo })
   if (problemas.length) return corregir(...problemas)
 
@@ -154,7 +163,7 @@ export async function traducir(estado: EstadoAplicado, quiere: readonly QuiereDe
     escritura,
     actos,
     revierte,
-    alcance: actos.length || cambios.some((c) => alcanceDeLaClave(c.clave) === 'clientes') ? 'clientes' : 'panel',
+    alcance: actos.length || nombre || cambios.some((c) => alcanceDeLaClave(c.clave) === 'clientes') ? 'clientes' : 'panel',
     gasto,
     advertencias,
     soloVistaPrevia,
@@ -179,12 +188,12 @@ async function reversion(estado: EstadoAplicado, propuesta: PropuestaId): Promis
     .from(esquema.propuestas)
     .where(and(eq(esquema.propuestas.revierte, propuesta), eq(esquema.propuestas.estado, 'aplicada')))
   if (revertida) return no('Eso ya se deshizo')
-  if (!p.escritura.elementos.length) return no('Eso se aplicó antes del cambio de sistema: pídelo de nuevo')
+  if (!p.escritura.elementos.length) return no(p.escritura.nombre ? 'El nombre del Negocio no se deshace' : 'Eso se aplicó antes del cambio de sistema: pídelo de nuevo')
 
   const historia = await historiaParaRevertir(estado.identidad.id, p.escritura.elementos.map((c) => c.clave), comoVersion(p.version))
   const cambios: CambioDeElemento[] = []
   const lineas: string[] = []
-  const advertencias: string[] = []
+  const advertencias: string[] = p.escritura.nombre ? ['El nombre del Negocio no cambia.'] : []
   const soloVistaPrevia: Clave[] = []
   const atendiendo = estado.identidad.modo === 'atendiendo'
   for (const { clave } of p.escritura.elementos) {

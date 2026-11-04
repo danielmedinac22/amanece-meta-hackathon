@@ -69,7 +69,7 @@ async function negocioDePrueba() {
   return ladera
 }
 
-async function aplicar(ctx: Ctx, palabras: string, quiere: Parameters<typeof proponer>[1]['quiere']) {
+async function aplicar(ctx: Ctx, palabras: string, quiere: Extract<Parameters<typeof proponer>[1], { origen: 'hilo' }>['quiere']) {
   const p = await proponer(ctx, { palabrasDelDueno: palabras, origen: 'hilo', quiere })
   if (p.desenlace !== 'espera_al_dueno') throw new Error(`proponer dio ${p.desenlace}: ${p.resumen}`)
   const r = await aprobar(ctx, p.tarjeta.propuesta, p.tarjeta.huella)
