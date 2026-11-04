@@ -1,5 +1,5 @@
 /** El mínimo de la instancia de Clerk. Se cambia allá y aquí a la vez: si no, esta pantalla promete algo que Clerk rechaza. */
-export const MINIMO_DE_CONTRASENA = 15
+export const MINIMO_DE_CONTRASENA = 8
 
 /** Lo que le puede pasar al Dueño al entrar, sin importar quién autentica. Las palabras son de Amanece. */
 export type MotivoDeEntrada =
