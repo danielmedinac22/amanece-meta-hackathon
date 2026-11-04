@@ -18,7 +18,7 @@ import { EscribirleAlAgente, type Borrador } from './disposicion'
 import { useHilo } from './hilo'
 import { MensajeDelHilo, Puntos, RastroDePlantilla, Redactor, type AlEnviar } from './hilo-vista'
 import { subirArchivo, type SubirArchivo } from './subir-archivo'
-import { SECCIONES } from './secciones'
+import { seccionesDe } from './secciones'
 import { Tarjeta } from './tarjeta'
 import { tocarTarjeta, type TocarTarjeta } from './tocar-tarjeta'
 
@@ -303,7 +303,8 @@ const TONO_DEL_PRODUCTO: Record<ProductoEnElPanel['estado'], string> = { Listo: 
 function MiniPanel({ datos, completo }: { datos: DelMiniPanel; completo: boolean }) {
   const nombre = datos.nombre ?? 'Tu negocio'
   const sabidas = datos.filas.filter((f) => f.estado === 'sabido').length
-  const secciones = completo ? SECCIONES : SECCIONES.slice(0, 1 + sabidas)
+  const todas = seccionesDe('tienda')
+  const secciones = completo ? todas : todas.slice(0, 1 + sabidas)
   const conDatos = datos.productos.length > 0
   return (
     <div className="flex h-full w-full bg-card text-[15px] text-card-foreground" aria-hidden>

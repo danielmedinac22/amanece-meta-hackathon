@@ -4,21 +4,22 @@ import { cambioContraLaAnterior, type Cifras, type Voz } from './hoy-palabras'
 import { cifra, ETIQUETA_DE_PEDIDO } from './listas-palabras'
 import type { DatosDelTablero, PorAtender } from './tablero'
 
-export type TarjetaDelTablero = { clave: 'negocio' | 'conversaciones' | 'resueltas' | 'atencion'; dato: string; valor: string; nota: string; espera: boolean }
+export type TarjetaDelTablero = { clave: 'negocio' | 'citas' | 'conversaciones' | 'resueltas' | 'atencion'; dato: string; valor: string; nota: string; espera: boolean }
 
 /** `Tu link`, no `Tu link en Instagram` como el prototipo: la ficha dice que usó el link, no dónde lo vio. */
 export const ETIQUETA_DE_ORIGEN: Record<OrigenDeCliente, string> = { link: 'Tu link', anuncio: 'Anuncio de Meta', sin_dato: 'Sin dato' }
 
 const pedidos = (n: number) => `${cifra(n)} ${n === 1 ? 'pedido' : 'pedidos'}`
 
-/** La primera tarjeta dice lo que el Negocio registra: una agenda no vende por `pedidos`, y mostrarle `$0` no dice nada. */
-const PRIMERA: Record<Voz, (c: Cifras) => Pick<TarjetaDelTablero, 'dato' | 'valor' | 'nota'>> = {
+/** La primera tarjeta dice lo que el Negocio registra: una agenda cuenta citas, y mostrarle `$0` no dice nada. */
+const PRIMERA: Record<Voz, (c: Cifras) => Pick<TarjetaDelTablero, 'clave' | 'dato' | 'valor' | 'nota'>> = {
   tienda: (c) => ({
+    clave: 'negocio',
     dato: 'Ventas de la semana',
     valor: pesos(c.semana.ventas),
     nota: c.semana.pedidos ? (cambioContraLaAnterior(c) ?? pedidos(c.semana.pedidos)) : 'Todavía sin ventas esta semana',
   }),
-  agenda: (c) => ({ dato: 'Clientes de la semana', valor: cifra(c.semana.clientes), nota: c.semana.clientes ? 'Clientes que te escribieron' : 'Todavía no te ha escrito nadie' }),
+  agenda: ({ citas: { semana, hoy } }) => ({ clave: 'citas', dato: 'Citas de la semana', valor: cifra(semana), nota: semana ? (hoy ? `${cifra(hoy)} hoy` : 'Ninguna hoy') : 'Todavía sin citas esta semana' }),
 }
 
 function notaDeAtencion({ casos, novedad, pendiente }: PorAtender): string {
@@ -30,7 +31,7 @@ export function tarjetasDelTablero({ voz, cifras, porAtender }: Pick<DatosDelTab
   const { total, resueltas } = cifras.conversaciones
   const atencion = porAtender.casos + porAtender.novedad + porAtender.pendiente
   return [
-    { clave: 'negocio', ...PRIMERA[voz](cifras), espera: false },
+    { ...PRIMERA[voz](cifras), espera: false },
     { clave: 'conversaciones', dato: 'Conversaciones hoy', valor: cifra(total), nota: total ? 'Clientes que escribieron' : 'Hoy no ha escrito nadie', espera: false },
     {
       clave: 'resueltas',

@@ -18,7 +18,8 @@ import { AlIrASeccion } from './ir-a-seccion'
 import { BotonPublicar } from './publicar'
 import { SinPublicar } from './sin-publicar'
 import type { Publicador } from './tocar-publicar'
-import { esDeLaSeccion, RUTA_DE_AJUSTES, SECCIONES, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
+import type { Voz } from '@/nucleo/hoy-palabras'
+import { esDeLaSeccion, RUTA_DE_AJUSTES, seccionesDe, nombreDeLaRuta, rutaDePropia, type Cuentas, type SeccionPropia } from './secciones'
 
 /** Lo que la cáscara pinta. Quien la arma lee; ella no toca datos. */
 export type DatosDeLaOperacion = {
@@ -27,6 +28,7 @@ export type DatosDeLaOperacion = {
     | (Cuentas & {
         nombre: string
         ciudad: string
+        voz: Voz
         propias: readonly SeccionPropia[]
         publicar: LoPendiente & { link: string; nuevos: readonly SeccionPintada[] }
       })
@@ -234,7 +236,7 @@ function BarraLateral({ datos, ruta, alTocar, salir }: { datos: DatosDeLaOperaci
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {SECCIONES.map((s) => {
+              {seccionesDe(negocio?.voz ?? 'tienda').map((s) => {
                 const activa = esDeLaSeccion(ruta, s)
                 const cuenta = negocio && s.cuenta?.(negocio)
                 return (

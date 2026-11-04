@@ -48,18 +48,18 @@ afirmar('Con muchos puntos solo se rotulan los extremos del eje, con su fecha', 
 afirmar('Una etiqueta de mes se lee como mes, y lo que no es fecha queda igual', etiquetaLarga('2026-10') === 'oct 2026' && etiquetaLarga('Manizales') === 'Manizales')
 afirmar('Un valor negativo no pinta barra, pero dice su cifra', (() => { const n = graficaDe(dias([-5, 10]), unidad)!; return n.barras[0].alto === 0 && n.barras[0].cifra === '-5' })())
 
-const sinNada = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } }
+const sinNada = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 }, citas: { semana: 0, hoy: 0 } }
 const nada = { casos: 0, novedad: 0, pendiente: 0 }
 const tarjetas = (t: Parameters<typeof tarjetasDelTablero>[0]) => Object.fromEntries(tarjetasDelTablero(t).map((c) => [c.clave, c]))
 const vacias = tarjetas({ voz: 'tienda', cifras: sinNada, porAtender: nada })
 afirmar('Sin conversaciones no hay porcentaje: un 0 % diría que el agente falló', vacias.resueltas.valor === '—', vacias.resueltas)
 afirmar('Sin ventas lo dice, y nada espera', vacias.negocio.nota === 'Todavía sin ventas esta semana' && vacias.atencion.nota === 'Nada espera por ti' && !vacias.atencion.espera, vacias)
-const llenas = tarjetas({ voz: 'tienda', cifras: { semana: { ventas: 1_284_000, pedidos: 23, clientes: 31 }, anterior: { ventas: 1_088_000, pedidos: 19 }, conversaciones: { total: 14, resueltas: 13 } }, porAtender: { casos: 1, novedad: 1, pendiente: 2 } })
+const llenas = tarjetas({ voz: 'tienda', cifras: { semana: { ventas: 1_284_000, pedidos: 23, clientes: 31 }, anterior: { ventas: 1_088_000, pedidos: 19 }, conversaciones: { total: 14, resueltas: 13 }, citas: { semana: 0, hoy: 0 } }, porAtender: { casos: 1, novedad: 1, pendiente: 2 } })
 afirmar('Las ventas comparan con la anterior como la frase de Inicio', llenas.negocio.valor === '$1.284.000' && llenas.negocio.nota === '18 % más que la anterior', llenas.negocio)
 afirmar('Resueltas sin ti son porcentaje y cuenta', llenas.resueltas.valor === '93 %' && llenas.resueltas.nota === '13 de 14 conversaciones', llenas.resueltas)
 afirmar('Necesitan atención suma y dice de qué', llenas.atencion.valor === '4' && llenas.atencion.nota === '1 Caso, 1 con novedad, 2 por confirmar' && llenas.atencion.espera, llenas.atencion)
 afirmar('Con pocos pedidos no compara', tarjetas({ voz: 'tienda', cifras: { ...sinNada, semana: { ventas: 90_000, pedidos: 1, clientes: 1 }, anterior: { ventas: 30_000, pedidos: 2 } }, porAtender: nada }).negocio.nota === '1 pedido')
-afirmar('Una agenda no habla de ventas', tarjetas({ voz: 'agenda', cifras: { ...sinNada, semana: { ventas: 0, pedidos: 0, clientes: 12 } }, porAtender: nada }).negocio.dato === 'Clientes de la semana')
+afirmar('Una agenda habla de citas, no de ventas', tarjetas({ voz: 'agenda', cifras: { ...sinNada, citas: { semana: 12, hoy: 3 } }, porAtender: nada }).citas.dato === 'Citas de la semana')
 
 async function negocioNuevo(sufijo: string, rubro = 'café') {
   const [n] = await db.insert(esquema.negocios).values({ nombre: `Café Tablero ${sufijo}${marca}`, codigo: `TAB${sufijo}${marca}`, rubro, estado: 'listo' }).returning()

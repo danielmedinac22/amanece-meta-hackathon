@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, ne, notExists, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import { ORIGENES_DE_CLIENTE, type EstadoDePedido, type OrigenDeCliente } from '@/db/esquema'
+import { leerCitasDelTablero, type CitasDelTablero } from './citas'
 import { CUENTA_COMO_VENTA } from './consultas/catalogo'
 import { DIAS_QUE_ESPERA_UNA_CONFIRMACION, leerCifras } from './hoy'
 import { vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
@@ -18,6 +19,8 @@ export type DatosDelTablero = {
   porDia: { dia: string; pedidos: number }[]
   porOrigen: { origen: OrigenDeCliente; cuenta: number }[]
   recientes: PedidoReciente[]
+  /** Lo de la agenda reemplaza a la gráfica y la tabla de pedidos. `null` en una tienda. */
+  citas: CitasDelTablero | null
 }
 
 const CUANTOS_RECIENTES = 5
@@ -38,7 +41,9 @@ export async function leerTablero(negocio: NegocioId, zona: string, rubro: strin
     .from(casos)
     .where(and(eq(casos.negocioId, negocio), eq(casos.pedidoId, pedidos.id), ne(casos.estado, 'resuelto')))
 
-  const [cifras, casosAbiertos, [porAtender], dias, porOrigen, recientes] = await Promise.all([
+  const voz = vozDelRubro(rubro)
+  const [citas, cifras, casosAbiertos, [porAtender], dias, porOrigen, recientes] = await Promise.all([
+    voz === 'agenda' ? leerCitasDelTablero(negocio, zona) : null,
     leerCifras(negocio, zona),
     db.$count(casos, and(eq(casos.negocioId, negocio), ne(casos.estado, 'resuelto'))),
     db
@@ -76,7 +81,8 @@ export async function leerTablero(negocio: NegocioId, zona: string, rubro: strin
   ])
 
   return {
-    voz: vozDelRubro(rubro),
+    voz,
+    citas,
     cifras,
     porAtender: { casos: casosAbiertos, ...porAtender },
     porDia: dias.rows as DatosDelTablero['porDia'],

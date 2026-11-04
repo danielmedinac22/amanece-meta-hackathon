@@ -8,8 +8,10 @@ import { lecturaPendiente, leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
+import { leerAgenda } from '@/nucleo/citas'
 import { atencionDe } from '@/nucleo/clientes/toma'
 import { leerHoy } from '@/nucleo/hoy'
+import { vozDelRubro } from '@/nucleo/hoy-palabras'
 import { leerCliente as clienteDe, leerClientes as clientesDe, leerConversaciones as conversacionesDe, leerGruposDePedidos as gruposDe, leerPedido as pedidoDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
 import { pintarUna } from '@/nucleo/panel'
 import { leerTablero as tableroDe } from '@/nucleo/tablero'
@@ -61,6 +63,7 @@ export async function leerOperacion(): Promise<DatosDeLaOperacion> {
         ? {
             nombre: leido.estado.identidad.nombre,
             ciudad: valorDelDato(leido.estado, 'ciudad'),
+            voz: vozDelRubro(leido.estado.identidad.rubro),
             casosAbiertos: casos.length,
             propias: leido.estado.vigentes('seccion').map((s) => ({ clave: s.clave, nombre: s.elemento.nombre })),
             publicar: { ...pendiente, link: linkDeWhatsapp(leido.negocio.nombre, leido.negocio.codigo), nuevos },
@@ -87,6 +90,11 @@ export async function leerArmado() {
 export async function leerPedidos() {
   const leido = await negocioDelPanel()
   return leido && pedidosDe(leido.id, leido.negocio.zonaHoraria)
+}
+
+export async function leerLaAgenda() {
+  const leido = await negocioDelPanel()
+  return leido && leerAgenda(leido.id, leido.negocio.zonaHoraria)
 }
 
 export async function leerClientes() {

@@ -1,3 +1,4 @@
+import { VistaDeAgenda } from '@/app/panel/agenda'
 import { Button } from '@/components/ui/button'
 import { CuentaPorPasar } from '@/app/panel/espera'
 import type { ComponentProps, ReactNode } from 'react'
@@ -13,7 +14,7 @@ import { VistaDeAjustes } from '@/app/panel/ajustes'
 import { ClienteQueNoEsta, PedidoQueNoEsta } from '@/app/panel/detalle'
 import { rutaDeCliente, rutaDeConversacion, rutaDePedido } from '@/nucleo/listas-palabras'
 import SeccionQueNoEsta from '@/app/panel/not-found'
-import { EsqueletoDeAjustes, EsqueletoDeCasos, EsqueletoDeClientes, EsqueletoDeConversaciones, EsqueletoDeInicio, EsqueletoDePedidos, EsqueletoDelTablero, EsqueletoDeUnaSeccion, EsqueletoDeUnCliente, EsqueletoDeUnPedido } from '@/app/panel/esqueletos'
+import { EsqueletoDeAjustes, EsqueletoDeCasos, EsqueletoDeClientes, EsqueletoDeConversaciones, EsqueletoDeInicio, EsqueletoDeAgenda, EsqueletoDePedidos, EsqueletoDelTablero, EsqueletoDeUnaSeccion, EsqueletoDeUnCliente, EsqueletoDeUnPedido } from '@/app/panel/esqueletos'
 import { loQueTrae, RUTA_DE_AJUSTES } from '@/app/panel/secciones'
 import { Alba } from '@/app/alba'
 import { AlbaHastaElArmado } from './alba-de-muestra'
@@ -28,7 +29,7 @@ import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePu
 import { MarcoDeMuestra } from './marco-de-muestra'
 import { TomaDeMuestra } from './toma-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_AGENDA_SIN_CITAS, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof MarcoDeMuestra>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial' | 'rutaInicial'>
@@ -39,6 +40,7 @@ function operacionDe(datos: NegocioDeMuestra) {
     negocio: {
       nombre: datos.nombre,
       ciudad: 'Manizales',
+      voz: datos.hoy.hoy.voz,
       casosAbiertos: datos.casos.length,
       propias: datos.secciones.map((s) => ({ clave: s.clave, nombre: s.nombre })),
       publicar: { ...datos.pendiente, link: datos.hoy.link, nuevos: datos.nuevos ?? [] },
@@ -58,6 +60,7 @@ function paginasDe(datos: NegocioDeMuestra): Record<string, ReactNode> {
     '/panel/conversaciones': <VistaDeConversaciones {...datos.conversaciones} atencion={atencionDe(datos.conversaciones.detalle?.cliente)} Toma={Toma} />,
     ...Object.fromEntries(Object.values(datos.detalles ?? {}).map((d) => [rutaDeConversacion(d.cliente), <VistaDeConversaciones key={d.cliente} {...datos.conversaciones} detalle={d} enDetalle atencion={atencionDe(d.cliente)} Toma={Toma} />])),
     '/panel/pedidos': <ListaDePedidos {...datos.pedidos} />,
+    '/panel/agenda': <VistaDeAgenda {...(datos.agenda ?? { grupos: [] })} />,
     '/panel/clientes': <TablaDeClientes {...datos.clientes} />,
     [RUTA_DE_AJUSTES]: <VistaDeAjustes nombre={datos.nombre} ciudad="Manizales" link={datos.hoy.link} />,
     ...Object.fromEntries(datos.secciones.map((p) => [rutaDePropia(p.clave), <VistaDeUnaSeccion key={p.clave} p={p} />])),
@@ -103,6 +106,7 @@ const ESTADOS_POR_SECCION: readonly { id: string; ruta: string; esqueleto: React
   { id: 'casos', ruta: '/panel/casos', esqueleto: <EsqueletoDeCasos /> },
   { id: 'conversaciones', ruta: '/panel/conversaciones', esqueleto: <EsqueletoDeConversaciones /> },
   { id: 'pedidos', ruta: '/panel/pedidos', esqueleto: <EsqueletoDePedidos /> },
+  { id: 'agenda', ruta: '/panel/agenda', esqueleto: <EsqueletoDeAgenda /> },
   { id: 'clientes', ruta: '/panel/clientes', esqueleto: <EsqueletoDeClientes /> },
   { id: 'pedido', ruta: rutaDePedido('p-41'), esqueleto: <EsqueletoDeUnPedido /> },
   { id: 'cliente', ruta: rutaDeCliente('Daniela Quintero'), esqueleto: <EsqueletoDeUnCliente /> },
@@ -168,6 +172,10 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'panel-recien-abierto', titulo: 'Inicio: recién abierto, nadie ha escrito', pinta: () => panel(NEGOCIO_RECIEN_ABIERTO) },
   { id: 'hoy-sin-ventas', titulo: 'Inicio: una semana sin ventas y nada que mirar', pinta: () => panel(NEGOCIO_SIN_VENTAS) },
   { id: 'hoy-agenda', titulo: 'Inicio: un Negocio de citas', pinta: () => panel(NEGOCIO_AGENDA) },
+  { id: 'hoy-agenda-sin-citas', titulo: 'Inicio: un Negocio de citas, sin ninguna', pinta: () => panel(NEGOCIO_AGENDA_SIN_CITAS) },
+  { id: 'agenda-lista', titulo: 'Agenda: hoy, próximas y lo que ya pasó', pinta: () => enLaSeccion(NEGOCIO_AGENDA, '/panel/agenda') },
+  { id: 'agenda-vacia', titulo: 'Agenda: todavía ninguna', pinta: () => enLaSeccion(NEGOCIO_AGENDA_SIN_CITAS, '/panel/agenda') },
+  { id: 'tablero-agenda-sin-citas', titulo: 'Tablero: un Negocio de citas, sin ninguna', pinta: () => enLaSeccion(NEGOCIO_AGENDA_SIN_CITAS, '/panel/tablero') },
   { id: 'hoy-lo-ultimo', titulo: 'Inicio: lo último, con un mensaje largo, un link y un pedido confirmado', pinta: () => panel(NEGOCIO_LO_ULTIMO) },
   { id: 'pedidos-lista', titulo: 'Pedidos: agrupados por lo que falta hacer', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/pedidos') },
   { id: 'pedidos-vacios', titulo: 'Pedidos: todavía ninguno', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/pedidos') },

@@ -20,12 +20,12 @@ import { afirmar, terminar } from './afirmar.mjs'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 const NEXT = join(RAIZ, 'node_modules/next/dist/bin/next')
-const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'hoy-lo-ultimo', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
+const ESCENAS_ESPERADAS = ['panel-vacio', 'panel-armandose', 'panel-funcionando', 'panel-un-caso', 'panel-con-cambios', 'panel-recien-abierto', 'hoy-sin-ventas', 'hoy-agenda', 'hoy-agenda-sin-citas', 'agenda-lista', 'agenda-vacia', 'tablero-agenda-sin-citas', 'hoy-lo-ultimo', 'pedidos-lista', 'pedidos-vacios', 'pedidos-muchos', 'clientes-tabla', 'clientes-vacios', 'clientes-muchos', 'casos-espera', 'casos-sin-boton', 'casos-vacios', 'casos-muchos', 'conversaciones-lista', 'conversacion-con-caso', 'conversaciones-vacias', 'conversaciones-muchas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo', 'operacion-sidebar-plegado', 'operacion-hilo-oculto', 'operacion-conversacion-flotante', 'operacion-llega-decision', 'telefono-tu-negocio', 'telefono-cajon', 'hilo-constancias', 'hilo-varias-decisiones', 'hilo-trabajando', 'componentes']
 const ESCENAS_DE_PUBLICAR = ['publicar-indicador', 'publicar-indicador-tablero', 'publicar-indicador-pedidos', 'publicar-regla', 'publicar-seccion', 'publicar-seccion-sin-publicar', 'publicar-otro-dueno', 'publicar-falla', 'publicar-muchos']
 const ESCENAS_DEL_ARMADO = ['armado-leyendo', 'armado-confirmar', 'armado-corregida', 'armado-no-corrigio', 'hilo-lectura-espera', 'armado-cobro', 'armado-cobro-con-mas-faltantes', 'armado-listo', 'armado-fuera-de-orden', 'armado-textos-largos']
 const ESCENAS_DE_ALBA = ['alba', 'alba-al-armado']
 const ESCENAS_DEL_CASO = ['caso-con-regla', 'caso-viejo', 'caso-desenlaces', 'caso-no-la-toma', 'casos-envio']
-const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion', '/panel/pedidos/un-pedido', '/panel/clientes/un-cliente']
+const RUTAS_DEL_PANEL = ['/panel', '/panel/casos', '/panel/conversaciones', '/panel/pedidos', '/panel/agenda', '/panel/clientes', '/panel/tablero', '/panel/ajustes', '/panel/secciones/una-seccion', '/panel/pedidos/un-pedido', '/panel/clientes/un-cliente']
 
 const ancho = (selector: string) => `document.querySelector('${selector}').getBoundingClientRect().width`
 const HILO = '[data-pano=hilo]'
@@ -79,7 +79,15 @@ const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['Inicio: con cero ventas no dice $0 y el ojo vacío dice qué sigue', 'hoy-sin-ventas', '1440', '--ve=Esta semana todavía no tienes ventas.', '--ve=la única conversación', '--ve=Nada por ahora', '--no-ve=$0'],
   ['Lo último: un mensaje largo sale recortado en una línea, y dice quién confirmó', 'hoy-lo-ultimo', '1440', '--ve=Mariana Ospina te escribió: «Hola, buenas tardes. Quería saber', '--ve=…»', '--ve=Daniela Quintero confirmó su pedido', '--no-ve=me quedó muy amargo'],
   ['Lo último: a 320 de ancho un link largo no desborda', 'hoy-lo-ultimo', '320', '--clic=Tu negocio', '--ve=Un cliente te escribió: «https://www.instagram.com', `--cierto=[...document.querySelectorAll('[data-pano=lienzo] li span')].every((s) => s.scrollWidth <= s.clientWidth)`],
-  ['Inicio: una agenda no habla de ventas', 'hoy-agenda', '1440', '--ve=te escribieron', '--ve=3 de 4', '--no-ve=vendiste', '--no-ve=pedidos,'],
+  ['Inicio: una agenda habla de citas', 'hoy-agenda', '1440', '--ve=Esta semana tienes', '--ve=17 citas', '--ve=2 hoy', '--ve=3 de 4', '--ve=Tu agente le agendó una cita a Daniela Quintero', '--no-ve=vendiste', '--no-ve=te escribieron'],
+  ['Inicio: una agenda sin citas no inventa cifras', 'hoy-agenda-sin-citas', '1440', '--ve=Esta semana todavía no tienes citas.', '--no-ve=citas,', '--no-ve=Tu agente le agendó'],
+  ['Sidebar: una agenda lleva Agenda y sigue con Pedidos', 'hoy-agenda', '1440', `--cierto=[...document.querySelectorAll('[data-sidebar=menu-button], [data-slot=sidebar-menu-button]')].map((b) => b.textContent.trim()).join('|').startsWith('Inicio|Casos|Agenda|Conversaciones|Pedidos|Clientes|Tablero')`],
+  ['Sidebar: una tienda no lleva Agenda', 'panel-funcionando', '1440', `--cierto=![...document.querySelectorAll('[data-slot=sidebar-menu-button]')].some((b) => b.textContent.trim() === 'Agenda')`],
+  ['Agenda: agrupa y dice cada estado', 'agenda-lista', '1440', '--ve=Hoy', '--ve=Próximas', '--ve=Ya pasaron o se cancelaron', '--ve=Agendada', '--ve=Movida', '--ve=Cancelada', '--ve=Ya pasó', '--ve=antes jueves 5 de noviembre'],
+  ['Agenda: en teléfono', 'agenda-lista', '390', '--ve=Daniela Quintero', '--ve=Agendada'],
+  ['Agenda: a 320 un nombre largo se recorta', 'agenda-lista', '320', '--ve=Una Clienta Con Un Nombre'],
+  ['Agenda: vacía dice qué sigue, sin cifras', 'agenda-vacia', '1440', '--ve=Todavía no tienes citas.', '--no-ve=Agendada'],
+  ['Agenda: tocar una cita lleva a su Cliente', 'agenda-lista', '1440', '--clic=Daniela Quintero', '--ve=Sus pedidos'],
   ['Teléfono: pestañas, punto y cajón', 'panel-un-caso', '390', '--ve=Una clienta preguntó', '--no-ve=Necesita tu ojo', `--cierto=!document.querySelector('${PUNTO}')`, '--clic=Tu negocio', '--ve=Necesita tu ojo', '--no-ve=Una clienta preguntó', `--cierto=!!document.querySelector('${PUNTO}')`, '--clic=Menú', '--ve=Conversaciones', '--clic=Casos', '--no-ve=Conversaciones', '--ve=Espera tu decisión', '--clic=Tu agente', '--ve=Una clienta preguntó', `--cierto=!document.querySelector('${PUNTO}')`],
   ['Teléfono: tocar una Sección lleva a Tu negocio', 'panel-funcionando', '390', '--clic=Menú', '--clic=Pedidos', '--ve=Por confirmar'],
   ['El corte: en 1023 son pestañas', 'panel-funcionando', '1023', `--cierto=document.querySelector('${PESTANAS}').checkVisibility()`, '--no-ve=Necesita tu ojo'],
@@ -97,7 +105,7 @@ const NOMBRE_RECORTADO = `(() => { const t = document.querySelector('[data-slot=
 
 const BARRA = (n: number) => `document.querySelector('[data-pano=lienzo] ol[aria-label="Pedidos por día"] li:nth-child(${n})')`
 const COLUMNA = (titulo: string) => `[...document.querySelectorAll('[data-pano=lienzo] th')].find((h) => h.textContent === '${titulo}')`
-const ESCENAS_DE_320 = ['tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo']
+const ESCENAS_DE_320 = ['agenda-lista', 'agenda-vacia', 'tablero-agenda-sin-citas', 'tablero', 'tablero-vacio', 'tablero-agenda', 'tablero-armandose', 'tablero-muchos', 'seccion-propia', 'seccion-larga', 'seccion-sin-filas', 'seccion-fallo']
 
 const VENTANA_DE_PUBLICAR = '[data-slot=popover-content]'
 /** El botón de abajo de la lista, no el que la abre: los dos dicen Publicar. */
@@ -143,7 +151,7 @@ const EL_TITULO = (texto: string) => `--cierto=document.querySelector('h1').text
 const TOCAR_EN_TARJETA = (id: string, texto: string) => `--cierto=(() => { const b = [...document.querySelectorAll('[id="tarjeta-${id}"] button')].find((x) => x.textContent.trim() === '${texto}'); if (!b) return false; b.click(); return true })()`
 const TARJETA_DICE = (id: string, texto: string) => `--cierto=document.getElementById('tarjeta-${id}').textContent.includes('${texto}')`
 const TARJETA_SIN_BOTONES = (id: string) => `--cierto=![...document.querySelectorAll('[id="tarjeta-${id}"] button')].some((b) => /^(Aplicar|Enviar|Descartar)/.test(b.textContent.trim()))`
-const SECCIONES_CON_ESTADOS: [string, string][] = [['inicio', 'lo de hoy'], ['casos', 'tus Casos'], ['conversaciones', 'tus conversaciones'], ['pedidos', 'tus pedidos'], ['clientes', 'tus Clientes'], ['pedido', 'este pedido'], ['cliente', 'este Cliente'], ['tablero', 'tu Tablero'], ['seccion', 'esta Sección'], ['ajustes', 'los ajustes de tu negocio']]
+const SECCIONES_CON_ESTADOS: [string, string][] = [['inicio', 'lo de hoy'], ['casos', 'tus Casos'], ['conversaciones', 'tus conversaciones'], ['pedidos', 'tus pedidos'], ['agenda', 'tu agenda'], ['clientes', 'tus Clientes'], ['pedido', 'este pedido'], ['cliente', 'este Cliente'], ['tablero', 'tu Tablero'], ['seccion', 'esta Sección'], ['ajustes', 'los ajustes de tu negocio']]
 const ESCENAS_DE_ESTADOS = ['entrar', 'entrar-registro', 'entrar-codigo', 'entrar-dispositivo', 'entrar-olvido', 'cuenta-por-pasar', 'cuenta-por-confirmar', 'ajustes', 'ajustes-armandose', 'ajustes-sin-ciudad', 'ajustes-largo', ...SECCIONES_CON_ESTADOS.flatMap(([id]) => [`cargando-${id}`, `error-${id}`]), 'seccion-sin-advertencia', 'error-de-verdad', 'seccion-no-esta', 'hilo-capacidad-faltante', 'hilo-tarjeta-vencio', 'hilo-error']
 
 const ESCENAS_DEL_DETALLE = ['pedido-abierto', 'pedido-sin-conversacion', 'pedido-cancelado', 'pedido-largo', 'pedido-no-esta', 'cliente-abierto', 'cliente-con-caso', 'cliente-sin-nada', 'cliente-largo', 'cliente-no-esta']
@@ -194,6 +202,7 @@ const ESQUELETOS_QUE_NO_SALTAN: { vista: string; esqueleto: string; arriba: stri
   { vista: 'conversaciones-lista', esqueleto: 'cargando-conversaciones', arriba: ['li', ENESIMA(2)] },
   { vista: 'pedidos-lista', esqueleto: 'cargando-pedidos', arriba: ['h3', 'li'] },
   { vista: 'clientes-tabla', esqueleto: 'cargando-clientes', arriba: ['thead tr', 'tbody tr'] },
+  { vista: 'agenda-lista', esqueleto: 'cargando-agenda', arriba: ['h3', 'li'] },
   { vista: 'pedido-abierto', esqueleto: 'cargando-pedido', arriba: ['.gap-6 h3', '.gap-6 li'] },
   { vista: 'cliente-abierto', esqueleto: 'cargando-cliente', arriba: ['.gap-6 > div', '.gap-6 h3'] },
   { vista: 'tablero', esqueleto: 'cargando-tablero', arriba: ['.grid > div'] },
@@ -239,7 +248,8 @@ const RECORRIDOS_DEL_TABLERO: typeof RECORRIDOS = [
   ['Tablero: una barra enfocada no saca la página de su ancho a 320 px', 'tablero', '320', `--evalua=${BARRA(7)}.focus()`, `--cierto=${BARRA(7)}.lastElementChild.getBoundingClientRect().right <= innerWidth`],
   ['Tablero: las cifras nunca parten a 320 px', 'tablero', '320', `--cierto=[...document.querySelectorAll('[data-pano=lienzo] .font-heading')].filter((p) => p.textContent.startsWith('$1')).every((p) => p.getClientRects().length === 1 && p.getBoundingClientRect().height < 40)`],
   ['Tablero: sin pedidos dice qué falta, sin barras en cero', 'tablero-vacio', '1440', '--ve=Todavía no hay pedidos en estos 7 días', '--ve=Todavía no tienes pedidos', '--ve=—', `--cierto=!document.querySelector('[data-pano=lienzo] ol')`],
-  ['Tablero: una agenda no habla de ventas', 'tablero-agenda', '1440', '--ve=Clientes de la semana', '--no-ve=Ventas de la semana'],
+  ['Tablero: una agenda habla de citas', 'tablero-agenda', '1440', '--ve=Citas de la semana', '--ve=Citas por día', '--ve=Próximas citas', '--ve=Mariana Ospina', '--no-ve=Ventas de la semana', '--no-ve=Pedidos por día', '--no-ve=Pedidos recientes'],
+  ['Tablero: una agenda sin citas dice 0 y por qué', 'tablero-agenda-sin-citas', '1440', '--ve=Todavía sin citas esta semana', '--ve=Todavía no hay citas esta semana.', '--ve=No tienes citas por venir.'],
   ['Tablero: armándose ve la carta, sin cifras en cero', 'tablero-armandose', '1440', '--ve=Cuéntame de tu negocio.', '--no-ve=Conversaciones hoy', '--no-ve=$0', `--cierto=!document.querySelector('[data-pano=lienzo]')`],
   ['Tablero: un ranking va en barras con su nombre y sin cifra grande', 'tablero-muchos', '1440', '--ve=Ventas por ciudad', '--ve=$12.840.000', '--ve=Manizales'],
   ['Tablero: 30 días rotulan solo los extremos del eje', 'tablero-muchos', '1440', `--cierto=document.querySelector('[data-pano=lienzo] ol[aria-label^="Ventas de los"]').parentElement.nextElementSibling.innerText.replace(/\\s+/g, ' ') === '1 oct 30 oct'`],
@@ -359,7 +369,7 @@ const RECORRIDOS_DE_ALBA: typeof RECORRIDOS = [
   ['Alba: con prefers-reduced-motion no hay máquina de escribir', 'alba', '1440', '--menos-movimiento', '--espera=1500', MARCADOR_FIJO],
   ['Alba: Lo que puede hacer dice cuatro cosas', 'alba', '390', '--clic=Lo que puede hacer', '--espera=600', '--ve=Tomo pedidos y los confirmo', '--ve=Te busco solo cuando algo necesita tu decisión', `--cierto=document.querySelectorAll('[role=tabpanel] li').length === 4`],
   ['Alba: Ver abre lo que ve el Dueño junto a lo que ve el Cliente', 'alba', '390', '--clic=Ver', '--ve=Lo que ve tu Cliente en WhatsApp', '--ve=es un negocio de ejemplo', '--clic=Cerrar', '--espera=400', '--no-ve=Lo que ve tu Cliente en WhatsApp'],
-  ['Alba: ninguna tarjeta nombra lo que el Panel no tiene', 'alba', '1440', '--no-ve=Bandeja', '--no-ve=Contactos', '--no-ve=Tarifas', '--no-ve=Pacientes', '--no-ve=Citas de hoy', '--no-ve=Agenda de hoy', '--no-ve=Agenda citas', '--no-ve=sigue cada envío'],
+  ['Alba: ninguna tarjeta nombra lo que el Panel no tiene', 'alba', '1440', '--no-ve=Bandeja', '--no-ve=Contactos', '--no-ve=Tarifas', '--no-ve=Pacientes', '--no-ve=Citas de hoy', '--no-ve=Agenda de hoy', '--no-ve=Agenda citas', '--no-ve=las recuerda', '--no-ve=sigue cada envío'],
   ['Alba: Remixear pone el chip en la caja y el cursor queda ahí', 'alba', '390', '--clic=Remixear', '--espera=500', '--ve=Parte de Venta contra entrega', '--ve=Elegida', `--cierto=document.activeElement === ${CAJA}`, '--clic=Quitar la plantilla', '--espera=400', '--no-ve=Parte de Venta contra entrega', '--no-ve=Elegida'],
   ['Alba: desde Ver también se remixea', 'alba', '1440', '--clic=Ver', '--espera=300', '--ve=nada de este ejemplo entra a tu negocio', `--evalua=[...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.includes('Remixear')).click()`, '--espera=500', '--ve=Parte de Venta contra entrega', '--no-ve=Lo que ve tu Cliente en WhatsApp', `--cierto=document.activeElement === ${CAJA}`],
   ['Alba: la plantilla viaja con lo escrito y llega al armado con su rastro', 'alba-al-armado', '1440', '--clic=Remixear', '--espera=400', '--escribe=Vendo mochilas en Cali', '--clic=Empezar', '--espera=800', '--ve=Vendo mochilas en Cali', '--ve=Parto de Venta contra entrega', `--cierto=${CLAVE_ESCRITO} === null`],

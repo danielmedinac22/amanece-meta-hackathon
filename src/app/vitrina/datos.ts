@@ -12,6 +12,7 @@ import { loQueEscribio } from '@/nucleo/hoy-palabras'
 import type { DatosDeClientes, DatosDeConversaciones, DatosDePedidos, DetalleDeConversacion, FilaDeCliente, FilaDePedido } from '@/nucleo/listas'
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero } from '@/nucleo/tablero'
+import type { CitasDelTablero, DatosDeAgenda, FilaDeCita } from '@/nucleo/citas'
 import { rutaDePedido } from '@/nucleo/listas-palabras'
 import type { Atencion, ResultadoDeEscribir } from '@/nucleo/clientes/toma'
 
@@ -20,7 +21,7 @@ const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Lade
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. */
-export type NegocioDeMuestra = { atenciones?: Record<string, Atencion>; alEscribir?: ResultadoDeEscribir; nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+export type NegocioDeMuestra = { agenda?: DatosDeAgenda; atenciones?: Record<string, Atencion>; alEscribir?: ResultadoDeEscribir; nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -107,6 +108,7 @@ const HOY_FUNCIONANDO: DatosDeHoy['hoy'] = {
     semana: { ventas: 1284000, pedidos: 23, clientes: 31 },
     anterior: { ventas: 1088000, pedidos: 19 },
     conversaciones: { total: 14, resueltas: 13 },
+    citas: { semana: 0, hoy: 0 },
   },
   ojo: [...OJO_FUNCIONANDO],
   ultimo: [
@@ -209,7 +211,8 @@ const MUCHAS_CONVERSACIONES = conConversaciones([{ ...UNA_LARGA, detalle: { ...U
 
 const TABLERO: DatosDelTablero = {
   voz: 'tienda',
-  cifras: { semana: { ventas: 1_284_000, pedidos: 23, clientes: 31 }, anterior: { ventas: 1_088_000, pedidos: 19 }, conversaciones: { total: 14, resueltas: 13 } },
+  citas: null,
+  cifras: { semana: { ventas: 1_284_000, pedidos: 23, clientes: 31 }, anterior: { ventas: 1_088_000, pedidos: 19 }, conversaciones: { total: 14, resueltas: 13 }, citas: { semana: 0, hoy: 0 } },
   porAtender: { casos: 0, novedad: 1, pendiente: 1 },
   porDia: [
     { dia: '2026-10-28', pedidos: 3 },
@@ -236,7 +239,8 @@ const TABLERO: DatosDelTablero = {
 
 const TABLERO_VACIO: DatosDelTablero = {
   voz: 'tienda',
-  cifras: { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } },
+  citas: null,
+  cifras: { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 }, citas: { semana: 0, hoy: 0 } },
   porAtender: { casos: 0, novedad: 0, pendiente: 0 },
   porDia: TABLERO.porDia.map((d) => ({ ...d, pedidos: 0 })),
   porOrigen: [],
@@ -317,7 +321,7 @@ export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
 
 const CASO_DE_MUESTRA = { id: 'caso-1', titulo: 'Quiere 20 bolsas de café para un evento en Cali', propuesta: 'Ofrecerle 10% de descuento y entrega en 4 días' }
 
-const NADA_TODAVIA = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } }
+const NADA_TODAVIA = { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 }, citas: { semana: 0, hoy: 0 } }
 
 export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
@@ -401,22 +405,68 @@ export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
   },
 }
 
+const FILAS_DE_CITAS: FilaDeCita[] = [
+  { id: 'c-1', clienteId: 'Daniela Quintero', cliente: 'Daniela Quintero', cuando: '3:00 p. m.', asunto: 'Corte y barba', estado: 'Agendada', antes: null },
+  { id: 'c-2', clienteId: 'Julián Ramírez', cliente: 'Julián Ramírez', cuando: '4:30 p. m.', asunto: 'Corte', estado: 'Movida', antes: 'jueves 5 de noviembre, 10:00 a. m.' },
+]
+
+const CITAS_DEL_TABLERO: CitasDelTablero = {
+  porDia: [
+    { dia: '2026-11-02', citas: 2 },
+    { dia: '2026-11-03', citas: 4 },
+    { dia: '2026-11-04', citas: 3 },
+    { dia: '2026-11-05', citas: 2 },
+    { dia: '2026-11-06', citas: 5 },
+    { dia: '2026-11-07', citas: 1 },
+    { dia: '2026-11-08', citas: 0 },
+  ],
+  proximas: [...FILAS_DE_CITAS, { id: 'c-3', clienteId: 'Mariana Ospina', cliente: 'Mariana Ospina', cuando: 'vie 6 nov, 9:00 a. m.', asunto: 'Tinte', estado: 'Agendada', antes: null }],
+}
+
+const CIFRAS_DE_AGENDA: DatosDeHoy['hoy']['cifras'] = { ...NADA_TODAVIA, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 }, citas: { semana: 17, hoy: 2 } }
+
 export const NEGOCIO_AGENDA: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   nombre: 'Barbería Central',
-  tablero: { ...TABLERO_VACIO, voz: 'agenda', porOrigen: [{ origen: 'link', cuenta: 12 }], cifras: { ...TABLERO_VACIO.cifras, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } }, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
+  tablero: { ...TABLERO_VACIO, voz: 'agenda', citas: CITAS_DEL_TABLERO, porOrigen: [{ origen: 'link', cuenta: 12 }], cifras: CIFRAS_DE_AGENDA, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
   indicadores: [],
   hoy: {
     hoy: {
       voz: 'agenda',
       recienAbierto: false,
-      cifras: { ...NADA_TODAVIA, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } },
+      cifras: CIFRAS_DE_AGENDA,
       ojo: [{ clave: 'caso-2', titulo: 'Pregunta si atienden el festivo', detalle: 'Julián Ramírez', accion: 'Decidir', ruta: '/panel/casos' }],
-      ultimo: [{ clave: 'julian', texto: 'Julián Ramírez te escribió', cuando: 'hace 8 min' }],
+      ultimo: [
+        { clave: 'cita-1', texto: 'Tu agente le agendó una cita a Daniela Quintero: jueves 5 de noviembre, 3:00 p. m.', cuando: 'hace 8 min' },
+        { clave: 'cita-2', texto: 'Julián Ramírez movió su cita al jueves 5 de noviembre, 4:30 p. m.', cuando: 'hace 40 min' },
+      ],
     },
     link: LINK,
     reglas: [],
   },
+  agenda: {
+    grupos: [
+      { clave: 'hoy', nombre: 'Hoy', cuenta: 2, filas: FILAS_DE_CITAS },
+      { clave: 'proximas', nombre: 'Próximas', cuenta: 15, filas: [{ id: 'c-3', clienteId: 'Mariana Ospina', cliente: 'Mariana Ospina', cuando: 'vie 6 nov, 9:00 a. m.', asunto: 'Tinte', estado: 'Agendada', antes: null }] },
+      {
+        clave: 'anteriores',
+        nombre: 'Ya pasaron o se cancelaron',
+        cuenta: 2,
+        filas: [
+          { id: 'c-4', clienteId: 'Andrés Salazar', cliente: 'Andrés Salazar', cuando: 'mié 4 nov, 11:00 a. m.', asunto: 'Corte', estado: 'Cancelada', antes: null },
+          { id: 'c-5', clienteId: 'Una Clienta Con Un Nombre Bastante Largo Que No Cabe En La Fila', cliente: 'Una Clienta Con Un Nombre Bastante Largo Que No Cabe En La Fila', cuando: 'lun 2 nov, 9:30 a. m.', asunto: 'Manicure completo con diseño y retoque de cejas', estado: 'Ya pasó', antes: null },
+        ],
+      },
+    ],
+  },
+}
+
+/** Una agenda sin una sola cita: ninguna cifra inventada, y lo demás sigue siendo de verdad. */
+export const NEGOCIO_AGENDA_SIN_CITAS: NegocioDeMuestra = {
+  ...NEGOCIO_AGENDA,
+  agenda: { grupos: [] },
+  tablero: { ...NEGOCIO_AGENDA.tablero, citas: { porDia: CITAS_DEL_TABLERO.porDia.map((d) => ({ ...d, citas: 0 })), proximas: [] }, cifras: { ...CIFRAS_DE_AGENDA, citas: { semana: 0, hoy: 0 } } },
+  hoy: { ...NEGOCIO_AGENDA.hoy, hoy: { ...NEGOCIO_AGENDA.hoy.hoy, cifras: { ...CIFRAS_DE_AGENDA, citas: { semana: 0, hoy: 0 } }, ultimo: [{ clave: 'julian', texto: 'Julián Ramírez te escribió', cuando: 'hace 8 min' }] } },
 }
 
 const tarjeta = (propuesta: string, accion: TarjetaDeAprobacion['accion'], lineas: string[], advertencias: string[] = []): TarjetaDeAprobacion => ({
