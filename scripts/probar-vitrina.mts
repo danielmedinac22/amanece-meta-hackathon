@@ -22,7 +22,8 @@ import { decisionesEnEspera, decisionQueEspera } from '../src/negocio/partes-del
 import { EMPIEZA_A_CORREGIR } from '../src/nucleo/armado-paso'
 import { afirmar, terminar } from './afirmar.mjs'
 
-const SOLO = process.argv.find((a) => a.startsWith('--solo='))?.slice('--solo='.length).split(',') ?? null
+const SOLO = process.argv.find((a) => a.startsWith('--solo='))?.slice('--solo='.length).split(',').filter(Boolean) ?? null
+if (SOLO) console.log(`CORRIDA PARCIAL, no reemplaza la suite completa: solo escenas ${SOLO.join(', ') || '(ninguna)'}, sin esqueletos.`)
 const toca = (escena: string) => !SOLO || SOLO.some((p) => escena.startsWith(p))
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
@@ -545,6 +546,7 @@ try {
   afirmar('dev: el índice enlaza las escenas esperadas', TODAS_LAS_ESCENAS.every((id) => ids.includes(id)), ids)
 
   const escenasACorrer = [...new Set([...ids, ...TODAS_LAS_ESCENAS])].filter(toca)
+  afirmar('Hay escenas para correr', escenasACorrer.length > 0, SOLO)
   for (const id of escenasACorrer) {
     const r = await ver(`${desarrollo.base}/vitrina/${id}`)
     afirmar(`dev: /vitrina/${id} da 200`, r.status === 200, { estado: r.status, servidor: desarrollo.salida() })

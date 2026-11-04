@@ -118,6 +118,13 @@ async function probarLoQueFaltaPorLeer() {
   afirmar('cobro: no bloquea abrir', d.faltaParaAbrir.length === 0, d.faltaParaAbrir)
 }
 
+async function probarAgendaNoEnvia() {
+  const { ctx } = await darDeAlta('Agenda')
+  await guardarEnElAlta(ctx, { nombre: 'Consultorio Trigo', rubro: 'Consultorio de fisioterapia', quiere: [] })
+  const faltan = porCompletar(await leerAplicado(ctx.negocio)).map((f) => f.dato)
+  afirmar('Inicio: una agenda no pide envíos, y sí lo demás', !faltan.includes('Envíos') && faltan.includes('Horario'), faltan)
+}
+
 async function probarOtroNegocio() {
   const una = await darDeAlta('Una')
   const otra = await darDeAlta('Otra')
@@ -211,6 +218,7 @@ try {
   await probarSinModelo()
   await probarLoQueFaltaPorLeer()
   await probarOtroNegocio()
+  await probarAgendaNoEnvia()
   await probarWebSinPrecios()
   await probarConMuseSpark()
 } catch (e) {

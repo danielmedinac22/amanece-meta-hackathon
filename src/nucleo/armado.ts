@@ -7,6 +7,7 @@ import { queFaltaParaAbrir } from './cambios'
 import { linkDeWhatsapp } from './entrada'
 import { conPropuesta, valorDelDato, type Escritura, type EstadoDelNegocio } from './estado'
 import { pesos } from './estado/elementos'
+import { vozDelRubro } from './hoy-palabras'
 
 export type DatoQueSe = 'Nombre' | 'Qué haces' | 'Ciudad' | 'Productos' | 'Envíos' | 'Horario' | 'Cómo cobras' | 'Tono'
 
@@ -55,8 +56,9 @@ const POR_COMPLETAR: readonly PorCompletar[] = [
   { dato: 'Tono', para: 'Para que hable como tú', empieza: 'Agrega cómo quiero que les hables a mis clientes: ' },
 ]
 
-/** Pura. Lo que Inicio le sigue pidiendo al Dueño con el Negocio recién abierto. */
-export const porCompletar = (e: EstadoDelNegocio): readonly PorCompletar[] => POR_COMPLETAR.filter((p) => !FILAS.find((f) => f.dato === p.dato)?.valor(e))
+/** Pura. Lo que Inicio le sigue pidiendo al Dueño con el Negocio recién abierto. Una agenda no envía nada. */
+export const porCompletar = (e: EstadoDelNegocio): readonly PorCompletar[] =>
+  POR_COMPLETAR.filter((p) => !(p.dato === 'Envíos' && vozDelRubro(e.identidad.rubro) === 'agenda') && !FILAS.find((f) => f.dato === p.dato)?.valor(e))
 
 /** Pura. Lo que se confirmó manda; lo que solo está en la tarjeta se muestra sin marcar. */
 export function armadoDe(estado: EstadoDelNegocio, pendiente: Escritura | null): DatosDelArmado {
