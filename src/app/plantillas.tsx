@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import type { IdDePlantilla } from '@/nucleo/plantillas'
 import { AEscala } from './panel/armado'
 import type { Plantilla, Tono } from './plantillas-datos'
+import { TEXTOS, type Idioma, type TextosDePortada } from './portada/textos'
 
 const TONO: Record<Tono, string> = {
   bien: 'bg-(--bien-suave) text-(--bien)',
@@ -17,7 +18,7 @@ const TONO: Record<Tono, string> = {
 
 const GLOBO = { cliente: 'bg-globo-cliente text-globo-cliente-foreground', agente: 'bg-popover text-popover-foreground' } as const
 
-function PanelDePlantilla({ p }: { p: Plantilla }) {
+function PanelDePlantilla({ p, t }: { p: Plantilla; t: TextosDePortada['plantillas'] }) {
   const max = Math.max(...p.barras, 1)
   return (
     <div className="flex h-full w-full bg-card text-[15px] text-card-foreground" aria-hidden>
@@ -28,7 +29,7 @@ function PanelDePlantilla({ p }: { p: Plantilla }) {
         </div>
         {p.secciones.map((s, i) => (
           <div key={s} className={cn('truncate rounded-md px-2.5 py-1.5 text-[13px]', i === 0 ? 'bg-sidebar-accent font-medium text-foreground' : 'text-muted-foreground')}>
-            {s}
+            {t.secciones[s]}
           </div>
         ))}
       </div>
@@ -64,7 +65,7 @@ function PanelDePlantilla({ p }: { p: Plantilla }) {
   )
 }
 
-function VerPlantilla({ p, abierta, alCerrar, alRemixear }: { p: Plantilla; abierta: boolean; alCerrar: () => void; alRemixear: () => void }) {
+function VerPlantilla({ p, t, abierta, alCerrar, alRemixear }: { p: Plantilla; t: TextosDePortada['plantillas']; abierta: boolean; alCerrar: () => void; alRemixear: () => void }) {
   return (
     <Dialog open={abierta} onOpenChange={(a) => !a && alCerrar()}>
       <DialogContent className="max-h-[92dvh] gap-0 overflow-y-auto p-0 sm:max-w-4xl" showCloseButton={false}>
@@ -79,23 +80,23 @@ function VerPlantilla({ p, abierta, alCerrar, alRemixear }: { p: Plantilla; abie
               alCerrar()
             }}
           >
-            <ArrowsClockwise className="size-4" /> Remixear
+            <ArrowsClockwise className="size-4" /> {t.remixear}
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Cerrar" onClick={alCerrar}>
+          <Button variant="ghost" size="icon" aria-label={t.cerrar} onClick={alCerrar}>
             <X className="size-4" />
           </Button>
         </div>
         <div className="grid gap-4 bg-muted/40 p-4 md:grid-cols-[1fr_270px]">
           <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Lo que tú ves</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">{t.loQueVes}</p>
             <div className="overflow-hidden rounded-(--radius) border border-border">
               <AEscala ancho={640} alto={440}>
-                <PanelDePlantilla p={p} />
+                <PanelDePlantilla p={p} t={t} />
               </AEscala>
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Lo que ve tu Cliente en WhatsApp</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">{t.loQueVeTuCliente}</p>
             <div className="flex flex-col gap-1.5">
               {p.chat.map((c, i) => (
                 <p key={i} className={cn('max-w-[86%] rounded-2xl px-3 py-2 text-[13px] leading-snug text-pretty', c.de === 'cliente' ? 'self-end bg-globo-cliente text-globo-cliente-foreground' : 'self-start border border-border bg-card')}>
@@ -105,19 +106,20 @@ function VerPlantilla({ p, abierta, alCerrar, alRemixear }: { p: Plantilla; abie
             </div>
           </div>
         </div>
-        <p className="p-4 text-sm text-pretty text-muted-foreground">{p.negocio} es un negocio de ejemplo. Al remixear, tu agente arma el tuyo con tus datos, y nada de este ejemplo entra a tu negocio.</p>
+        <p className="p-4 text-sm text-pretty text-muted-foreground">{p.negocio} {t.esDeEjemplo}</p>
       </DialogContent>
     </Dialog>
   )
 }
 
-export function TarjetaPlantilla({ p, elegida, alRemixear }: { p: Plantilla; elegida: boolean; alRemixear: (id: IdDePlantilla | null) => void }) {
+export function TarjetaPlantilla({ p, idioma, elegida, alRemixear }: { p: Plantilla; idioma: Idioma; elegida: boolean; alRemixear: (id: IdDePlantilla | null) => void }) {
+  const t = TEXTOS[idioma].plantillas
   const [viendo, setViendo] = useState(false)
   return (
     <article className={cn('flex w-full min-w-0 flex-col overflow-hidden rounded-(--radius) border bg-card transition-[border-color,box-shadow] duration-200', elegida ? 'border-primary shadow-[0_0_0_1px_var(--primary)]' : 'border-border hover:shadow-alzada')}>
-      <button type="button" onClick={() => setViendo(true)} className="relative block w-full cursor-zoom-in overflow-hidden border-b border-border text-left" aria-label={`Ver cómo queda ${p.nombre}`}>
+      <button type="button" onClick={() => setViendo(true)} className="relative block w-full cursor-zoom-in overflow-hidden border-b border-border text-left" aria-label={`${t.verComoQueda} ${p.nombre}`}>
         <AEscala ancho={640} alto={400}>
-          <PanelDePlantilla p={p} />
+          <PanelDePlantilla p={p} t={t} />
         </AEscala>
         <div className="pointer-events-none absolute right-2.5 bottom-2.5 flex w-[72%] flex-col gap-1">
           {p.globos.map((g, i) => (
@@ -134,14 +136,14 @@ export function TarjetaPlantilla({ p, elegida, alRemixear }: { p: Plantilla; ele
         </div>
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant={elegida ? 'default' : 'secondary'} className="flex-1" onClick={() => alRemixear(elegida ? null : p.id)}>
-            <ArrowsClockwise className="size-3.5" /> {elegida ? 'Elegida' : 'Remixear'}
+            <ArrowsClockwise className="size-3.5" /> {elegida ? t.elegida : t.remixear}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setViendo(true)}>
-            <Eye className="size-3.5" /> Ver
+            <Eye className="size-3.5" /> {t.ver}
           </Button>
         </div>
       </div>
-      <VerPlantilla p={p} abierta={viendo} alCerrar={() => setViendo(false)} alRemixear={() => alRemixear(p.id)} />
+      <VerPlantilla p={p} t={t} abierta={viendo} alCerrar={() => setViendo(false)} alRemixear={() => alRemixear(p.id)} />
     </article>
   )
 }

@@ -42,8 +42,9 @@ Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de refer
 | `--primary` | El botón principal, el activo y las barras. Un solo botón principal por tarjeta. |
 | `--bien` | Lo resuelto o funcionando: `Atendiendo`, `Confirmado`, el check de una constancia |
 | `--ojo` | Lo que espera al Dueño o está en vista previa: `Vista previa`, `Con novedad`, el número de Casos |
-| `--alba` | Solo el cielo de la entrada y del armado |
-| `--sol` | Solo el botón de enviar activo, siempre con ícono en `--sol-foreground`, la tinta `oklch(0.23 0.035 265)`, que no cambia en oscuro |
+| `--alba` | Solo el cielo de la entrada, de la portada y del armado |
+| `--noche`, `--madrugada` | Solo las dos capas de la portada que se aclaran sobre `--alba` mientras el Dueño escribe. No cambian en oscuro. |
+| `--sol` | Solo el botón de enviar activo, siempre con ícono en `--sol-foreground`, la tinta `oklch(0.23 0.035 265)`, que no cambia en oscuro. Una sola excepción: la ráfaga que sale de ese botón al enviar desde la portada. |
 | `--globo-cliente` | **Derivado.** El globo de lo que escribe el Cliente en una muestra de WhatsApp. El texto va en `--globo-cliente-foreground`. |
 | `--velo` | **Derivado.** El velo que oscurece lo de atrás cuando abre un diálogo o un cajón. Es el de `base-nova`. |
 | `--destructive` | **Derivado.** Errores y acciones que borran. Valores de `base-nova`: `oklch(0.577 0.245 27.325)` en claro y `oklch(0.704 0.191 22.216)` en oscuro. Su contraste está medido en la tabla de abajo. |
@@ -66,6 +67,7 @@ Medido sobre los tokens de `src/app/globals.css`, en claro y oscuro. `scripts/pr
 | Tinta sobre `--sol` | de 6,2 a 8,1 | de 6,2 a 8,1 |
 
 - Sobre `--alba` escribe con `--foreground` o `text-foreground/75`. `--muted-foreground` se queda corto en la parte alta del cielo (3,6).
+- Sobre el cielo de la portada la tinta es clara hasta el nivel 0,7, donde se cruzan las dos tintas. Ahí, en el tono medio, el peor caso medido es 3,4; por eso el texto sobre ese cielo va sin transparencia.
 - El blanco sobre `--sol` no llega a 3:1, por eso el ícono va en tinta.
 - `--border` es decorativo (1,2). Un campo se distingue también por su marcador, su sombra o su posición.
 
@@ -116,13 +118,24 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **Decidido.** Como Lovable: cielo completo, `¿Qué hace tu negocio?` al centro y una caja grande que escribe ejemplos sola mientras está vacía y se detiene cuando el Dueño escribe. Debajo sube una hoja con dos pestañas: `Plantillas` y `Lo que puede hacer`.
 
+**El cielo amanece.** Abre de noche y aclara con cada letra. Una plantilla elegida lo deja al menos en 0,62. Al enviar sale el sol desde el botón y la pantalla sigue a los 700 ms, con lo escrito ya guardado. Con `prefers-reduced-motion` abre en el `--alba` final, sin ráfaga ni espera. Quien vuelve con algo guardado empieza en el nivel de lo que escribió. Son tres capas puras, `--alba`, `--madrugada` y `--noche`, y solo cambia su opacidad.
+
 **Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Derivado**: una plantilla trae cómo trabajar y nunca datos (`src/nucleo/plantillas.ts`): el Rubro, las reglas que hacen cierta su promesa, lo que el agente pregunta primero y lo que se le pide ya abierto. Sus negocios inventados viven solo en la tarjeta. Cada tarjeta promete lo que el producto hace hoy, y solo nombra Secciones que el Panel tiene. **Destino**: cuando existan los recordatorios, los envíos que se mueven y el cálculo por peso, las tarjetas vuelven al texto del prototipo.
 
 **Lo que puede hacer.** Cada fila es algo que el producto hace hoy. Lo que todavía no existe no se promete aquí.
 
-**Portada.** Alba vive en `/`, con `Entrar` arriba. Nada de esta pantalla llama al servidor, así que un visitante sin cuenta no gasta modelo.
+**Portada.** Alba vive en `/` y `/en`, con `Entrar` arriba. Nada de esta pantalla llama al servidor, así que un visitante sin cuenta no gasta modelo.
 
-**Lo escrito.** **Derivado.** La caja lo guarda en el navegador por un día, sigue a `/panel` y la puerta de sesión pide la cuenta si hace falta. Después de cualquier entrada, lo guardado llega al agente sin volver a escribirlo.
+**Lo escrito.** **Derivado.** La caja lo guarda en el navegador por un día al enviar y al salir por cualquier enlace de la página, sigue a `/panel` y la puerta de sesión pide la cuenta si hace falta. Después de cualquier entrada, lo guardado llega al agente sin volver a escribirlo.
+
+### Portada pública
+
+**Decidido** el 3 de noviembre de 2026. Es la página para el Dueño que todavía no tiene cuenta, en español en `/` y en inglés en `/en`, con los textos en `src/app/portada/textos.ts`. De arriba abajo: Alba con sus Plantillas, `Un día cualquiera en tu negocio`, tres Rubros, `Hazle la pregunta difícil`, Café Ladera con su QR, preguntas y cierre.
+
+- **El día.** Se recorre con el scroll: el cielo pasa de la noche a la tarde y el reloj fijo muestra el momento que cruzó el 56 % de la pantalla. Cada momento trae una pieza de muestra, y sus botones responden ahí mismo sin llamar a nadie. La tinta pasa a oscura en el 38 % del scroll y el sol se queda tenue hasta el 40,5 %. Medido en la página: en ese tramo el cielo va de oscuro arriba a claro abajo y ninguna tinta sirve en toda la pantalla. Muy cerca del borde inferior el contraste baja a 2,3 por un momento.
+- **La pregunta difícil.** Las respuestas son las que el código deja salir: `scripts/probar-portada.mts` pasa cada una por `revisar`. Nada de la muestra llama al modelo.
+- **Café Ladera.** El QR es la única puerta de la portada que gasta: quien le escribe usa el número real, el modelo y Kapso. Solo sirve si el Negocio `LADERA` existe en producción.
+- **Lo que no va.** Ninguna cifra de otra operación, ningún nombre de cliente de Amanece y nada de `LO_QUE_NO_HAY` como promesa. Un Rubro que todavía no hace algo lo dice.
 
 ### Armado
 
@@ -266,6 +279,5 @@ Hoy el único link es el de WhatsApp. **Destino**: el del Panel, para el equipo,
 
 ## Lo que falta decidir
 
-- **Demo en vivo.** Si la portada lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
 - **Clientes, formularios, ajustes y errores** no tuvieron ronda. Son **Derivado**.
 - **Lo que ve el equipo** cuando exista un rol distinto del Dueño.
