@@ -538,7 +538,7 @@ const CASOS: Record<string, () => Promise<void>> = {
     afirmar('tarjeta: aplicada y sin publicar no dice Publicada', antes?.estado === 'aplicada' && antes.publicada === false, antes)
     afirmar('tarjeta: dice la clave que está en la lista de Publicar', antes?.asunto?.tipo === 'elemento' && antes.asunto.clave === lista.items[0].clave, { antes, lista })
 
-    const otra = await duenoDe(await negocioAbierto('U'), 'Julia')
+    const otra = await duenoDe(await negocioAbierto('U2'), 'Julia')
     afirmar('tarjeta: otro Negocio no lee la de este', (await estadoDe(otra, tarjeta.propuesta)) === undefined)
 
     await publicarTodo(ana)
@@ -791,7 +791,7 @@ const CASOS: Record<string, () => Promise<void>> = {
     const f = ACCIONES.publicar
     afirmar('ACCIONES: solo el botón publica', f.actores.boton === 'libre' && f.actores.agente === 'nunca' && f.actores.vigilancia === 'nunca' && f.actores.panel === 'nunca', f.actores)
     afirmar('ACCIONES: no tiene herramienta y nadie la mueve', f.herramienta === null && f.mueve.quien === 'nadie', f)
-    const N = await negocioAbierto('T')
+    const N = await negocioAbierto('T2')
     const ana = await duenoDe(N, 'Ana')
     const [negocio] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, N))
     const [dueno] = await db.select().from(esquema.duenos).where(eq(esquema.duenos.id, ana.dueno))
