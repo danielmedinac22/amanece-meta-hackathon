@@ -119,6 +119,8 @@
   --alba: linear-gradient(180deg, #a9c7f2 0%, #d5d3ee 38%, #fbd6c6 72%, #ffe9c9 100%);
   --sol: linear-gradient(120deg, #ff9a5c, #ff6b8b);
   --sol-foreground: oklch(0.23 0.035 265);
+  --noche: linear-gradient(180deg, #070b20 0%, #0d1230 40%, #151a3a 76%, #1c2148 100%);
+  --madrugada: linear-gradient(180deg, #151a3a 0%, #2a2a5c 45%, #6b4468 80%, #b5665a 100%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -243,6 +245,51 @@
 .alba-llena {
   background: var(--alba);
   mask-image: linear-gradient(to bottom, black 62%, transparent);
+}
+
+/* En oscuro `--foreground` ya es tinta clara: la misma regla sirve para los dos temas, sin mirar el tema desde JS. */
+.cielo-que-amanece {
+  color: oklch(0.95 0.008 250);
+  transition: color 200ms var(--ease-entra);
+}
+.cielo-que-amanece[data-aclaro] {
+  color: var(--foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cielo-que-amanece {
+    color: var(--foreground);
+    transition: none;
+  }
+  .cielo-que-amanece [data-capa-de-noche] {
+    opacity: 0 !important;
+  }
+}
+
+.estrellas {
+  background-image: radial-gradient(1.4px 1.4px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 28% 42%, #fff, transparent), radial-gradient(1.5px 1.5px at 44% 12%, #fff, transparent), radial-gradient(1px 1px at 61% 30%, #fff, transparent), radial-gradient(1.3px 1.3px at 78% 16%, #fff, transparent), radial-gradient(1px 1px at 88% 44%, #fff, transparent), radial-gradient(1px 1px at 8% 58%, #fff, transparent), radial-gradient(1.2px 1.2px at 52% 56%, #fff, transparent), radial-gradient(1px 1px at 70% 62%, #fff, transparent), radial-gradient(1.2px 1.2px at 35% 68%, #fff, transparent);
+}
+
+.sol-de-portada {
+  background: radial-gradient(closest-side, #fff3d6 0, #ffd59a 28%, #ff9f7a66 56%, transparent 74%);
+}
+
+.rafaga-de-sol {
+  background: radial-gradient(closest-side, #fff7e2, #ffd59a 30%, #ff9f7a55 58%, transparent 72%);
+}
+
+/* El cielo del día es de la hora, no del tema: su tinta tampoco cambia en oscuro. */
+.tinta-del-dia {
+  color: #f3f5fb;
+  transition: color 200ms var(--ease-entra);
+}
+.tinta-del-dia[data-aclaro] {
+  color: #1a2138;
+}
+
+/* Un QR se lee oscuro sobre claro: no sigue al tema. */
+.qr-de-portada {
+  background: #fff;
+  color: #111b21;
 }
 
 .puntos i {

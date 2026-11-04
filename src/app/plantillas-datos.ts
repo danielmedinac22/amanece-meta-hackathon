@@ -1,9 +1,7 @@
 import { PARTIDAS, type IdDePlantilla } from '@/nucleo/plantillas'
+import type { Idioma, SeccionDePlantilla } from './portada/textos'
 
 export type Tono = 'bien' | 'ojo' | 'nada'
-
-/** Solo las Secciones que tiene un Panel de verdad. Algo que el Panel no tiene no se puede poner en una tarjeta. */
-export type SeccionDePlantilla = 'Inicio' | 'Casos' | 'Conversaciones' | 'Pedidos' | 'Clientes' | 'Tablero'
 
 export type Plantilla = {
   id: IdDePlantilla
@@ -103,3 +101,79 @@ export const PLANTILLAS: Plantilla[] = [
     globos: [{ de: 'cliente', texto: 'Necesito mover mi cita del jueves' }, { de: 'agente', texto: 'Se lo paso a Consultorio Alameda.' }],
   },
 ]
+
+type LoQueSeTraduce = Pick<Plantilla, 'nombre' | 'promesa' | 'indicadores' | 'tituloBarras' | 'filas' | 'chat' | 'globos'>
+
+/** Los mismos ids, negocios y barras: remixear en inglés deja la misma plantilla que en español. */
+const EN_INGLES: Readonly<Record<IdDePlantilla, LoQueSeTraduce>> = {
+  tienda: {
+    nombre: 'Cash on delivery',
+    promesa: 'Takes orders, confirms them and shows you what sold.',
+    indicadores: [
+      { dato: 'Sales this week (COP)', valor: '840,000' },
+      { dato: 'To confirm', valor: '8' },
+      { dato: 'Conversations', valor: '46' },
+    ],
+    tituloBarras: 'Orders per day',
+    filas: [
+      { nombre: 'Diana Salazar', detalle: 'Bucaramanga · COP 89,000', estado: 'To confirm', tono: 'nada' },
+      { nombre: 'Óscar Peña', detalle: 'Neiva · COP 124,000', estado: 'Confirmed', tono: 'bien' },
+      { nombre: 'Yuli Cortés', detalle: 'Ibagué · COP 65,000', estado: 'Confirmed', tono: 'bien' },
+    ],
+    chat: [
+      { de: 'cliente', texto: 'Hi, I want the black backpack. I’ll pay on delivery.' },
+      { de: 'agente', texto: 'Hi Diana, this is Tienda Nativa. Your order comes to COP 89,000 and you pay on delivery. Shall we confirm it?' },
+      { de: 'cliente', texto: 'Yes, confirm it' },
+      { de: 'agente', texto: 'Done, it’s confirmed.' },
+    ],
+    globos: [{ de: 'agente', texto: 'Shall we confirm your COP 89,000 order?' }, { de: 'cliente', texto: 'Yes, confirm it' }],
+  },
+  logistica: {
+    nombre: 'Shipping and parcels',
+    promesa: 'Answers with your rates and keeps every conversation in view.',
+    indicadores: [
+      { dato: 'Conversations', valor: '128' },
+      { dato: 'Solved without you', valor: '96' },
+      { dato: 'Need attention', valor: '7' },
+    ],
+    tituloBarras: 'Conversations per day',
+    filas: [
+      { nombre: 'Rosa Mendoza', detalle: 'How much per kilo to Madrid?', estado: 'Solved', tono: 'bien' },
+      { nombre: 'Jairo Duque', detalle: 'Can I send perfume?', estado: 'Awaiting your call', tono: 'ojo' },
+      { nombre: 'Marta Cano', detalle: 'Do you pick up in Pereira?', estado: 'Solved', tono: 'bien' },
+    ],
+    chat: [
+      { de: 'cliente', texto: 'Hi, how much to send to Madrid?' },
+      { de: 'agente', texto: 'By sea it’s COP 28,000 per kilo and takes about 6 weeks. By air, COP 65,000 per kilo and 8 days.' },
+      { de: 'cliente', texto: 'Can I send perfume?' },
+      { de: 'agente', texto: 'I’ll pass that to Envíos Puente, and they’ll answer you here.' },
+    ],
+    globos: [{ de: 'cliente', texto: 'How much to send to Madrid?' }, { de: 'agente', texto: 'By sea, COP 28,000 per kilo. It takes 6 weeks.' }],
+  },
+  agenda: {
+    nombre: 'Appointment businesses',
+    promesa: 'Answers about your services and passes you each appointment to confirm.',
+    indicadores: [
+      { dato: 'Customers this week', valor: '34' },
+      { dato: 'Conversations', valor: '52' },
+      { dato: 'Need attention', valor: '5' },
+    ],
+    tituloBarras: 'Conversations per day',
+    filas: [
+      { nombre: 'Felipe Rueda', detalle: 'Wants to move his Thursday appointment', estado: 'Awaiting your call', tono: 'ojo' },
+      { nombre: 'Ana Lucía Mora', detalle: 'Asked for a check-up', estado: 'Awaiting your call', tono: 'ojo' },
+      { nombre: 'Tomás Vélez', detalle: 'How much is a consultation?', estado: 'Solved', tono: 'bien' },
+    ],
+    chat: [
+      { de: 'cliente', texto: 'Hi, I need to move my Thursday appointment' },
+      { de: 'agente', texto: 'Sure, Felipe. I’ll pass that to Consultorio Alameda, and they’ll answer you here.' },
+      { de: 'cliente', texto: 'How much is a consultation?' },
+      { de: 'agente', texto: 'A consultation is COP 90,000.' },
+    ],
+    globos: [{ de: 'cliente', texto: 'I need to move my Thursday appointment' }, { de: 'agente', texto: 'I’ll pass that to Consultorio Alameda.' }],
+  },
+}
+
+export function plantillasDe(idioma: Idioma): Plantilla[] {
+  return idioma === 'es' ? PLANTILLAS : PLANTILLAS.map((p) => ({ ...p, ...EN_INGLES[p.id] }))
+}
