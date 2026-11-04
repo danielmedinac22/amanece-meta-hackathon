@@ -308,7 +308,7 @@ const seccionSinFilas: SeccionPintada = {
 export const NEGOCIO_FUNCIONANDO: NegocioDeMuestra = {
   nombre: 'Café Ladera',
   pendiente: NADA_PENDIENTE,
-  hoy: { hoy: HOY_FUNCIONANDO, link: LINK, reglas: REGLAS },
+  hoy: { hoy: HOY_FUNCIONANDO, link: LINK, reglas: REGLAS, porCompletar: [] },
   tablero: TABLERO,
   pedidos: PEDIDOS,
   clientes: CLIENTES,
@@ -329,7 +329,15 @@ export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
   clientes: SIN_CLIENTES,
   seccionDeCasos: SIN_CASOS,
   ...SIN_CONVERSACIONES,
-  hoy: { hoy: { voz: 'tienda', recienAbierto: true, cifras: NADA_TODAVIA, ojo: [], ultimo: [] }, link: LINK, reglas: [] },
+  hoy: {
+    hoy: { voz: 'tienda', recienAbierto: true, cifras: NADA_TODAVIA, ojo: [], ultimo: [] },
+    link: LINK,
+    reglas: [],
+    porCompletar: [
+      { dato: 'Cómo cobras', para: 'Para decirle a un Cliente cómo pagar', empieza: 'Agrega cómo me pagan mis clientes: ' },
+      { dato: 'Tono', para: 'Para que hable como tú', empieza: 'Agrega cómo quiero que les hables a mis clientes: ' },
+    ],
+  },
   tablero: TABLERO_VACIO,
   indicadores: [],
 }
@@ -402,6 +410,7 @@ export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
     },
     link: LINK,
     reglas: [],
+    porCompletar: [],
   },
 }
 
@@ -443,6 +452,7 @@ export const NEGOCIO_AGENDA: NegocioDeMuestra = {
     },
     link: LINK,
     reglas: [],
+    porCompletar: [],
   },
   agenda: {
     grupos: [
@@ -585,6 +595,7 @@ export const NEGOCIO_CON_UN_CASO: NegocioDeMuestra = {
     },
     link: LINK,
     reglas: REGLAS,
+    porCompletar: [],
   },
 }
 

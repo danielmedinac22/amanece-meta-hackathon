@@ -17,8 +17,9 @@ const { altaDeDueno } = await import('../src/negocio/alta')
 const { abrirConElBoton } = await import('../src/negocio/abrir')
 const { guardarEnElHilo, leerHilo, mensajeDelDuenoEnTexto } = await import('../src/negocio/dueno-hilo')
 const { mensajeDelDueno, responderEnElHilo } = await import('../src/negocio/dueno-chat')
-const { armadoDe } = await import('../src/nucleo/armado')
-const { abrioElAgente, cuantoGuardo, estaLeyendo, pasoDelArmado, titularDe, ultimoTurno } = await import('../src/nucleo/armado-paso')
+const { trasElBoton } = await import('../src/negocio/partes-del-hilo')
+const { armadoDe, porCompletar } = await import('../src/nucleo/armado')
+const { abrioElAgente, cuantoGuardo, estaLeyendo, loQueSigue, pasoDelArmado, titularDe, ultimoTurno } = await import('../src/nucleo/armado-paso')
 const { armarLectura, guardarEnElAlta, lecturaPendiente, proponerLectura, aprobar } = await import('../src/nucleo/cambios')
 const { leerAplicado } = await import('../src/nucleo/estado')
 const { marcar } = await import('../src/nucleo/identidad')
@@ -51,6 +52,15 @@ function probarLoPuro() {
   const t = ultimoTurno([u('assistant'), u('user'), u('assistant'), u('user'), u('assistant')])
   afirmar('puro: el turno va desde lo último que dijo el Dueño', t.antes.length === 3 && t.turno.length === 2)
   afirmar('puro: sin mensajes del Dueño, todo es el turno', ultimoTurno([u('assistant')]).turno.length === 1)
+
+  const tarjeta = { propuesta: 'p', huella: 'h', vence: '2030-01-01T00:00:00Z', advertencias: [], lineas: [], accion: 'confirmar' }
+  const conTarjeta = u('assistant', { type: 'tool-leer_enlace', state: 'output-available', output: { resumen: '', tarjeta } })
+  const con = (estado: string) => ({ p: { estado, accion: 'confirmar', aprobadaPor: null, asunto: null, publicada: false } }) as never
+  afirmar('tras el botón: la línea de lo aprobado cuenta', trasElBoton([conTarjeta, u('assistant', { type: 'data-aprobacion', data: {} })], {}) === 'aplicada')
+  afirmar('tras el botón: antes de la línea lo dice el estado', trasElBoton([conTarjeta], con('aplicada')) === 'aplicada' && trasElBoton([conTarjeta], con('descartada')) === 'descartada')
+  afirmar('tras el botón: si la tarjeta espera, no es momento', trasElBoton([conTarjeta], con('espera_al_dueno')) === null)
+  afirmar('tras el botón: si el Dueño ya escribió, no es momento', trasElBoton([conTarjeta, u('user', { type: 'text', text: 'hola' })], con('aplicada')) === null)
+  afirmar('tras el botón: sin mensajes no es momento', trasElBoton([], {}) === null)
 }
 
 /** El orden al revés del guion: tono y cobro, luego la tarjeta, luego lo que bloquea. */
@@ -108,6 +118,13 @@ async function probarLoQueFaltaPorLeer() {
   afirmar('cobro: no bloquea abrir', d.faltaParaAbrir.length === 0, d.faltaParaAbrir)
 }
 
+async function probarAgendaNoEnvia() {
+  const { ctx } = await darDeAlta('Agenda')
+  await guardarEnElAlta(ctx, { nombre: 'Consultorio Trigo', rubro: 'Consultorio de fisioterapia', quiere: [] })
+  const faltan = porCompletar(await leerAplicado(ctx.negocio)).map((f) => f.dato)
+  afirmar('Inicio: una agenda no pide envíos, y sí lo demás', !faltan.includes('Envíos') && faltan.includes('Horario'), faltan)
+}
+
 async function probarOtroNegocio() {
   const una = await darDeAlta('Una')
   const otra = await darDeAlta('Otra')
@@ -115,6 +132,50 @@ async function probarOtroNegocio() {
   await guardarEnElAlta(una.ctx, { nombre: 'Pan de Una', rubro: null, quiere: [{ tipo: 'poner', elemento: { tipo: 'producto', nombre: 'Pan', descripcion: '', precio: 5000, activo: true }, reemplaza: null } as never] })
   const d = await carta(otra.ctx)
   afirmar('aislamiento: lo de un Negocio no aparece en la carta de otro', d.nombre === null && d.productos.length === 0, d)
+}
+
+/** Una página sin precios, como la que dejó trabado al primer Dueño de producción: el botón no marcaba nada y nadie decía qué seguía. */
+async function probarWebSinPrecios() {
+  const { negocio, dueno, ctx } = await darDeAlta('Sin Precios')
+  const pagina = { tipo: 'leida', url: 'https://sinprecios.example.com', fuente: 'tu página (sinprecios.example.com)', titulo: 'Inicio', texto: 'Tostamos café de especialidad en Manizales.' } as never
+  const extraido = { productos: [], datos: { descripcion: 'Café de especialidad', ciudad: 'Manizales' } }
+  const lectura = await proponerLectura(ctx, armarLectura(await leerAplicado(ctx.negocio), pagina, extraido))
+  let d = await carta(ctx)
+  afirmar('sin precios: lo leído se ve por confirmar', pasoDelArmado(d, SIN_NADA_AHORA) === 'confirmar' && fila(d, 'Qué haces').estado === 'en_la_tarjeta' && fila(d, 'Ciudad').estado === 'en_la_tarjeta', d.filas)
+  await aprobar(ctx, lectura.tarjeta!.propuesta, lectura.tarjeta!.huella)
+  d = await carta(ctx)
+  afirmar('sin precios: el botón marca lo que trajo la página', fila(d, 'Qué haces').estado === 'sabido' && fila(d, 'Ciudad').estado === 'sabido', d.filas)
+  afirmar('sin precios: lo siguiente es el nombre, y no volver a pedir que cuente', pasoDelArmado(d, SIN_NADA_AHORA) === 'conociendo' && titularDe('conociendo', d) === '¿Cómo se llama tu negocio?', titularDe('conociendo', d))
+  const hilo = await leerHilo(ctx.dueno)
+  afirmar('sin precios: lo último del Hilo real es el botón', trasElBoton(hilo, {}) === 'aplicada', hilo.at(-1))
+  afirmar('sin precios: lo que sigue lo dice el código', loQueSigue(d, true) === 'Listo, ya lo tengo. ¿Cómo se llama tu negocio?', loQueSigue(d, true))
+
+  const turno = async (texto: string) => {
+    const [n] = await db.select().from(esquema.negocios).where(eq(esquema.negocios.id, negocio.id))
+    await (await responderEnElHilo({ ctx, negocio: n, dueno, mensaje: mensajeDelDueno({ parts: [{ type: 'text', text: texto }] })! })).text()
+    await new Promise((r) => setTimeout(r, 400))
+    return carta(ctx)
+  }
+  d = await turno('Café Trigo')
+  afirmar('Muse Spark: tras el botón, contestar solo el nombre lo guarda como nombre', d.nombre === 'Café Trigo', { nombre: d.nombre })
+  afirmar('sin precios: con nombre, lo que sigue es qué vende', loQueSigue(d, true) === 'Listo, ya lo tengo. ¿Qué vendes y a qué precio? Con uno me basta para abrir.', loQueSigue(d, true))
+  d = await turno('La bolsa de 500 g vale 38000')
+  afirmar('Muse Spark: contestar qué vende lo guarda con su precio', fila(d, 'Productos').estado === 'sabido' && d.productos.some((p) => p.precio === '$38.000'), d.filas)
+  afirmar('sin precios: ya no bloquea nada y el cobro se puede responder', pasoDelArmado(d, SIN_NADA_AHORA) === 'cobro', d.faltaParaAbrir)
+
+  const abre = await abrirConElBoton(ctx)
+  afirmar('abierto: el botón abre con nombre y un producto', abre.abierto, abre)
+  const faltan = porCompletar(await leerAplicado(ctx.negocio))
+  afirmar('Inicio: pide lo que no bloqueó abrir, y no lo que ya sabe', ['Cómo cobras', 'Envíos', 'Horario', 'Tono'].every((x) => faltan.some((f) => f.dato === x)) && !faltan.some((f) => f.dato === 'Ciudad'), faltan.map((f) => f.dato))
+  const contestar: Record<string, string> = { 'Cómo cobras': 'contra entrega', Horario: 'de lunes a viernes de 9 a 5', Tono: 'de tú y con cariño' }
+  for (const f of faltan.filter((x) => contestar[x.dato])) {
+    await turno(`${f.empieza}${contestar[f.dato]}`)
+    const propuestas = await db.select({ escritura: esquema.propuestas.escritura, estado: esquema.propuestas.estado }).from(esquema.propuestas).where(eq(esquema.propuestas.negocioId, negocio.id))
+    const tipo = f.dato === 'Tono' ? 'voz' : 'dato'
+    const campo = f.dato === 'Cómo cobras' ? 'pagos' : 'horario'
+    const preparada = propuestas.some((p) => p.estado === 'espera_al_dueno' && p.escritura.elementos.some((c) => c.despues?.tipo === tipo && (tipo === 'voz' || (c.despues as { campo?: string }).campo === campo)))
+    afirmar(`Muse Spark: lo que empieza Decírselo en ${f.dato} trae su tarjeta`, preparada, propuestas.map((p) => p.estado))
+  }
 }
 
 /** Con el modelo: afirma lo que quedó en la base, nunca lo que dijo. */
@@ -157,6 +218,8 @@ try {
   await probarSinModelo()
   await probarLoQueFaltaPorLeer()
   await probarOtroNegocio()
+  await probarAgendaNoEnvia()
+  await probarWebSinPrecios()
   await probarConMuseSpark()
 } catch (e) {
   afirmar('probar-armado terminó sin error inesperado', false, e)

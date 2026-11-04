@@ -11,7 +11,7 @@ const mensaje = (id: string, role: 'user' | 'assistant', ...partes: object[]) =>
 const texto = (text: string) => ({ type: 'text', text })
 
 const LINK = 'https://wa.me/12024745452?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
-const ORDEN: readonly DatoQueSe[] = ['Nombre', 'Productos', 'Envíos', 'Horario', 'Cómo cobras', 'Tono']
+const ORDEN: readonly DatoQueSe[] = ['Nombre', 'Qué haces', 'Ciudad', 'Productos', 'Envíos', 'Horario', 'Cómo cobras', 'Tono']
 
 /** Lo que trae una página. El nombre no: lo dice el Dueño. */
 const LEIDO: Partial<Record<DatoQueSe, string>> = {
@@ -60,6 +60,17 @@ export const HILO_CONFIRMAR: UIMessage[] = [
   mensaje('c2', 'assistant', { type: 'tool-leer_enlace', toolCallId: 'llamada-leer', state: 'output-available', input: { url: 'cafeladera.com' }, output: { resumen: 'Leído', tarjeta: LO_LEIDO } }, texto('Leí tu página. Revisa si estos productos están bien y toca el botón.')),
 ]
 export const TARJETAS_CONFIRMAR: Record<string, EstadoDeTarjeta> = { 'p-lectura': { estado: 'espera_al_dueno', accion: 'confirmar', aprobadaPor: null, asunto: null, publicada: false } }
+
+/** Una página sin precios: la tarjeta solo trae texto, y después del botón todavía falta el nombre y lo que vende. */
+const LEIDO_SIN_PRECIOS: Partial<Record<DatoQueSe, string>> = { 'Qué haces': 'Café de especialidad de Manizales', Ciudad: 'Manizales' }
+export const ARMADO_SIN_PRECIOS: DatosDelArmado = { ...SIN_NADA, filas: filas(LEIDO_SIN_PRECIOS, 'en_la_tarjeta'), lectura: { productos: 0 } }
+export const ARMADO_TRAS_EL_BOTON: DatosDelArmado = { ...SIN_NADA, filas: filas(LEIDO_SIN_PRECIOS) }
+const LO_LEIDO_SIN_PRECIOS: TarjetaDeAprobacion = { ...LO_LEIDO, propuesta: 'p-sin-precios' as PropuestaId, huella: 'huella-sin-precios' as Huella, lineas: ['Descripción: «Café de especialidad de Manizales» · lo leí', 'Ciudad: «Manizales» · lo leí'] }
+export const HILO_SIN_PRECIOS: UIMessage[] = [
+  mensaje('s1', 'user', texto('cafeladera.com')),
+  mensaje('s2', 'assistant', { type: 'tool-leer_enlace', toolCallId: 'llamada-sin-precios', state: 'output-available', input: { url: 'cafeladera.com' }, output: { resumen: 'Leído', tarjeta: LO_LEIDO_SIN_PRECIOS } }, texto('Ya leí tu página. Revisa la tarjeta y toca el botón si está bien. ¿Cómo se llama tu negocio?')),
+]
+export const TARJETAS_SIN_PRECIOS: Record<string, EstadoDeTarjeta> = { 'p-sin-precios': TARJETAS_CONFIRMAR['p-lectura'] }
 
 /** El Dueño dijo en palabras que un producto ya no va: la tarjeta se rearmó sin él. */
 const LO_LEIDO_CORREGIDO: TarjetaDeAprobacion = { ...LO_LEIDO, propuesta: 'p-lectura-corregida' as PropuestaId, huella: 'huella-corregida' as Huella, advertencias: ['Quité Tueste claro, grano 250 g.'], lineas: ['Tueste medio, grano 500 g: $38.000', 'Tueste medio, molido 500 g: $38.000', 'Micro lote Honey, grano 250 g: $32.000', 'Y 4 más'] }

@@ -31,6 +31,16 @@ export function esCapacidadFaltante(parte: UIMessage['parts'][number]): boolean 
   return parte.type === 'tool-proponer' && !salida?.tarjeta && typeof salida?.resumen === 'string' && salida.resumen.includes(QUEDO_ANOTADO)
 }
 
+/** Qué hizo el Dueño si lo último del Hilo es su botón, y por eso nadie ha dicho qué sigue. La línea de lo aprobado llega con el sondeo: antes de ella, lo dice el estado de la tarjeta. */
+export function trasElBoton(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>): 'aplicada' | 'descartada' | null {
+  const ultimo = mensajes.at(-1)
+  if (ultimo?.role !== 'assistant') return null
+  if (ultimo.parts.some((p) => p.type === 'data-aprobacion')) return 'aplicada'
+  const tarjeta = ultimo.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []).at(-1)
+  const estado = tarjeta && estados[tarjeta.propuesta]?.estado
+  return estado === 'aplicada' || estado === 'descartada' ? estado : null
+}
+
 /** Deshacer no cuenta: es de algo que ya pasó. Una recién llegada en el stream todavía no tiene estado y cuenta si no venció, igual que en la tarjeta. */
 function tarjetasQueEsperan(mensajes: readonly UIMessage[], estados: Record<string, EstadoDeTarjeta>, ahora: number): TarjetaDeAprobacion[] {
   const tarjetas = mensajes.flatMap((m) => m.parts.flatMap((p) => tarjetaDeLaParte(p) ?? []))

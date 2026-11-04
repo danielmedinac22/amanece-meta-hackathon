@@ -1,8 +1,11 @@
 /** Pura y sin servidor: el navegador la corre con los mensajes en vivo. El paso sale de lo que se sabe, nunca del tiempo. */
 import type { UIMessage } from 'ai'
-import type { DatosDelArmado } from './armado'
+import type { DatoQueSe, DatosDelArmado } from './armado'
 
 export type PasoDelArmado = 'conociendo' | 'leyendo' | 'confirmar' | 'cobro' | 'listo'
+
+/** Filas que la carta no pide: que falten no hace falso `Solo me falta una cosa`. */
+const SOLO_SE_MUESTRAN: ReadonlySet<DatoQueSe> = new Set<DatoQueSe>(['Qué haces', 'Ciudad'])
 
 const faltaCobrar = (d: DatosDelArmado) => d.filas.some((f) => f.dato === 'Cómo cobras' && f.estado === 'falta')
 
@@ -24,13 +27,22 @@ export function titularDe(paso: PasoDelArmado, d: DatosDelArmado): string {
     case 'confirmar':
       return d.lectura?.productos ? '¿Están bien estos productos?' : '¿Está bien lo que leí?'
     case 'cobro':
-      return d.filas.filter((f) => f.estado === 'falta').length === 1 ? 'Solo me falta una cosa.' : 'Me falta saber cómo te pagan.'
+      return d.filas.filter((f) => f.estado === 'falta' && !SOLO_SE_MUESTRAN.has(f.dato)).length === 1 ? 'Solo me falta una cosa.' : 'Me falta saber cómo te pagan.'
     case 'listo':
       return `${d.nombre} puede abrir.`
     case 'conociendo':
       if (d.nombre) return '¿Qué vendes y a qué precio?'
-      return d.filas.some((f) => f.dato === 'Productos' && f.estado === 'sabido') ? '¿Cómo se llama tu negocio?' : 'Cuéntame de tu negocio.'
+      return d.filas.some((f) => f.estado === 'sabido') ? '¿Cómo se llama tu negocio?' : 'Cuéntame de tu negocio.'
   }
+}
+
+/**
+ * Lo que dice la carta cuando el Dueño acaba de tocar el botón y falta algo para abrir. El botón no corre un turno del
+ * modelo, así que nadie más va a hablar. `confirmo` es que el botón guardó lo leído, y no que lo descartó.
+ */
+export function loQueSigue(d: DatosDelArmado, confirmo: boolean): string {
+  const pregunta = titularDe('conociendo', d)
+  return `${confirmo ? 'Listo, ya lo tengo. ' : ''}${pregunta}${d.nombre ? ' Con uno me basta para abrir.' : ''}`
 }
 
 /**

@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { RespuestaDeAbrir } from '@/negocio/abrir'
-import { decisionesEnEspera } from '@/negocio/partes-del-hilo'
-import { abrioElAgente, cuantoGuardo, estaLeyendo, pasoDelArmado, titularDe, ultimoTurno } from '@/nucleo/armado-paso'
+import { decisionesEnEspera, trasElBoton } from '@/negocio/partes-del-hilo'
+import { abrioElAgente, cuantoGuardo, estaLeyendo, loQueSigue, pasoDelArmado, titularDe, ultimoTurno } from '@/nucleo/armado-paso'
 import type { DatosDelArmado, FilaQueYaSe, ProductoEnElPanel } from '@/nucleo/armado'
 import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
 import { plantillaDelHilo } from '@/nucleo/plantillas'
@@ -93,17 +93,18 @@ export function VistaDelArmado({ datos, messages, estados, status, error, devuel
   // La que espera va abajo de la conversación, como la decisión de este paso, aunque haya llegado en un turno anterior.
   const enLaConversacion = (t: TarjetaDeAprobacion) => (t.propuesta === espera?.propuesta ? null : decision(t))
   const cuantos = datos.lectura?.productos
+  const boton = !ocupado && paso === 'conociendo' ? trasElBoton(messages, estados) : null
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
       <motion.div className="cielo pointer-events-none absolute inset-x-0 top-0 h-[300px]" aria-hidden animate={saliendo ? { y: -300, opacity: 0 } : { y: 0, opacity: 1 }} transition={{ duration: SALE_EL_CIELO_MS / 1000, ease: ENTRA }} />
       <div className="relative flex-1 overflow-y-auto">
-        <header className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between px-5">
+        <header className="mx-auto flex h-14 w-full max-w-[1240px] items-center justify-between px-5">
           <span className="font-heading text-[17px] font-semibold tracking-tight">Amanece</span>
           {salir}
         </header>
-        <div className="mx-auto grid w-full max-w-[1180px] gap-x-10 px-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="flex min-w-0 flex-col">
+        <div className="mx-auto grid w-full max-w-[1240px] gap-x-10 px-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <div className="flex min-w-0 flex-col lg:min-h-[calc(100dvh-3.5rem)]">
             <main className="flex flex-col gap-5 pt-4 pb-6 lg:pt-8">
               <div>
                 <p className="font-heading text-lg text-foreground/75">Tu agente</p>
@@ -125,19 +126,19 @@ export function VistaDelArmado({ datos, messages, estados, status, error, devuel
               {error && <p className="text-sm text-destructive">{devuelto?.aviso ?? 'Algo falló. Intenta de nuevo.'}</p>}
 
               {espera && <div className="shadow-alzada rounded-(--radius)">{decision(espera, cuantos ? `Lo que encontré · ${cuantos} productos` : undefined)}</div>}
+              {boton && (
+                <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, ease: ENTRA }} className="text-(length:--texto-hilo) leading-normal text-pretty">
+                  {loQueSigue(datos, boton === 'aplicada')}
+                </motion.p>
+              )}
               {paso === 'cobro' && <ComoTePagan ocupado={ocupado} alElegir={alEnviar} alPosponer={() => setPospusoElCobro(true)} />}
               {paso === 'listo' && datos.nombre && datos.link && <ListoParaAbrir nombre={datos.nombre} link={datos.link} ocupado={ocupado} alAbrir={alAbrir} alAbierto={() => setAbierto(true)} />}
-
-              <motion.section layout="position" className="mt-1">
-                <h2 className="mb-3 font-heading text-lg font-semibold">Lo que ya sé</h2>
-                <ListaQueYaSe filas={datos.filas} />
-              </motion.section>
             </main>
             <div className="sticky bottom-0 mt-auto bg-linear-to-t from-background from-70% to-transparent pt-5 pb-4">
               <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} borrador={borrador} devuelto={devuelto} />
             </div>
           </div>
-          <aside className="pb-8 lg:sticky lg:top-4 lg:self-start lg:pt-8">
+          <aside className="flex flex-col pb-8 lg:sticky lg:top-4 lg:self-start lg:pt-8">
             <p className="mb-2 flex items-center gap-2 text-sm font-medium">
               Tu Panel
               {paso === 'listo' ? (
@@ -153,6 +154,10 @@ export function VistaDelArmado({ datos, messages, estados, status, error, devuel
                 <MiniPanel datos={datos} completo={paso === 'listo'} />
               </AEscala>
             </div>
+            <section className="mt-6">
+              <h2 className="mb-3 font-heading text-lg font-semibold">Lo que ya sé</h2>
+              <ListaQueYaSe filas={datos.filas} />
+            </section>
           </aside>
         </div>
       </div>
@@ -250,19 +255,19 @@ function ListoParaAbrir({ nombre, link, ocupado, alAbrir, alAbierto }: { nombre:
 
 function ListaQueYaSe({ filas }: { filas: readonly FilaQueYaSe[] }) {
   return (
-    <ul className="flex flex-col gap-2.5 text-sm">
+    <ul className="grid gap-x-6 gap-y-2.5 text-sm sm:grid-cols-2">
       {filas.map((f) => (
-        <li key={f.dato} className="flex items-center gap-2.5">
+        <li key={f.dato} className="flex min-w-0 items-center gap-2.5">
           {f.estado === 'sabido' ? (
             <motion.span key="sabido" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', duration: 0.35, bounce: 0.35 }} className="shrink-0">
               <CheckCircle weight="fill" role="img" aria-label="Lo sé" className="size-4 text-bien" />
             </motion.span>
           ) : (
-            <Circle role="img" aria-label={f.estado === 'falta' ? 'Falta' : 'Por confirmar'} className="size-4 shrink-0 text-muted-foreground" />
+            <Circle role="img" aria-label={f.estado === 'falta' ? 'Falta' : 'Por confirmar'} className={cn('size-4 shrink-0', f.estado === 'falta' ? 'text-muted-foreground' : 'text-ojo')} />
           )}
-          <span className="w-24 shrink-0 text-muted-foreground">{f.dato}</span>
+          <span className="w-[88px] shrink-0 whitespace-nowrap text-muted-foreground">{f.dato}</span>
           <span title={f.valor ?? undefined} className={cn('min-w-0 truncate', f.estado !== 'sabido' && 'text-muted-foreground')}>
-            {f.valor ?? 'Falta confirmarlo'}
+            {f.valor ?? 'Falta'}
           </span>
         </li>
       ))}
