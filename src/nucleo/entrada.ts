@@ -33,7 +33,6 @@ export type MensajeEntrante = {
 type CuerpoDeKapso = {
   readonly data?: CuerpoDeKapso
   readonly phone_number_id?: unknown
-  readonly type?: unknown
   readonly conversation?: { readonly contact_name?: unknown; readonly kapso?: { readonly contact_name?: unknown } }
   readonly message?: {
     readonly id?: unknown
@@ -58,17 +57,14 @@ function leerReferido(referral: unknown): Referido {
 }
 
 /** `null` si el cuerpo no es un mensaje de texto al número de Amanece: un recibo de entrega, otro número, media sin texto. */
-export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date(), eventoDelEncabezado: string | null = null): MensajeEntrante | null {
+export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date()): MensajeEntrante | null {
   const crudo = cuerpo as CuerpoDeKapso | null
   const raiz = crudo?.data && !crudo.message ? crudo.data : crudo
   const mensaje = raiz?.message
   if (!raiz || !mensaje?.id || !mensaje.from) return null
   if (raiz.phone_number_id && raiz.phone_number_id !== NUMERO_DE_AMANECE.id) return null
-  // El evento manda: Kapso marca `delivered` un mensaje que entra, y ese estado también es el de un recibo.
-  const evento = eventoDelEncabezado ?? crudo?.type ?? raiz.type
-  if (evento && evento !== 'whatsapp.message.received') return null
-  if (mensaje.kapso?.direction === 'outbound') return null
-  if (!evento && !mensaje.kapso?.direction && mensaje.kapso?.status && mensaje.kapso.status !== 'received') return null
+  // La dirección manda, no el estado: un mensaje que entra viaja con `status: delivered`, que quiere decir que Kapso ya lo tiene.
+  if (mensaje.kapso?.direction && mensaje.kapso.direction !== 'inbound') return null
 
   const texto =
     mensaje.type === 'text'
@@ -95,7 +91,7 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
 }
 
 /** Pura y sin datos del Cliente: lo que se puede escribir en un log cuando `leerMensajeEntrante` da `null`. */
-export function porQueSeDescarta(cuerpo: unknown, eventoDelEncabezado: string | null = null) {
+export function porQueSeDescarta(cuerpo: unknown) {
   const crudo = cuerpo as CuerpoDeKapso | null
   const raiz = crudo?.data && !crudo.message ? crudo.data : crudo
   return {
@@ -103,7 +99,6 @@ export function porQueSeDescarta(cuerpo: unknown, eventoDelEncabezado: string | 
     esteNumero: !raiz?.phone_number_id || raiz.phone_number_id === NUMERO_DE_AMANECE.id,
     largoDelIdRecibido: String(raiz?.phone_number_id ?? '').length,
     largoDelIdPropio: NUMERO_DE_AMANECE.id.length,
-    evento: eventoDelEncabezado ?? crudo?.type ?? raiz?.type,
     direccion: raiz?.message?.kapso?.direction,
     tipo: raiz?.message?.type,
     estado: raiz?.message?.kapso?.status,

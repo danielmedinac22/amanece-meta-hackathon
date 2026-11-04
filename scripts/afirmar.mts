@@ -64,5 +64,5 @@ export function eventoDeKapso(m: { wamid: string; telefono: string; texto: strin
   const mensaje = m.boton
     ? { id: m.wamid, from: m.telefono, timestamp, type: 'interactive', interactive: { type: 'button_reply', button_reply: { id: m.boton, title: m.texto } } }
     : { id: m.wamid, from: m.telefono, timestamp, type: 'text', text: { body: m.texto } }
-  return { data: { message: { ...mensaje, ...(m.referral === undefined ? {} : { referral: m.referral }), kapso: { status: 'received' } }, conversation: { contact_name: m.nombre ?? '' } } }
+  return { data: { message: { ...mensaje, ...(m.referral === undefined ? {} : { referral: m.referral }), kapso: { direction: 'inbound', status: 'delivered' } }, conversation: { contact_name: m.nombre ?? '' } } }
 }
