@@ -17,7 +17,9 @@ export type FilaQueYaSe = { readonly dato: DatoQueSe; readonly valor: string | n
 export type ProductoEnElPanel = { readonly nombre: string; readonly precio: string; readonly estado: 'Listo' | 'Por confirmar' }
 
 export type DatosDelArmado = {
+  /** El confirmado o, mientras espera el botón, el de la tarjeta. */
   readonly nombre: string | null
+  /** Solo con el nombre confirmado. */
   readonly link: string | null
   readonly filas: readonly FilaQueYaSe[]
   /** La lectura que espera el botón. */
@@ -63,11 +65,11 @@ export const porCompletar = (e: EstadoDelNegocio): readonly PorCompletar[] =>
 /** Pura. Lo que se confirmó manda; lo que solo está en la tarjeta se muestra sin marcar. */
 export function armadoDe(estado: EstadoDelNegocio, pendiente: Escritura | null): DatosDelArmado {
   const conTarjeta = pendiente ? conPropuesta(estado, pendiente) : estado
-  const nombre = nombreDe(estado)
+  const confirmado = nombreDe(estado)
   const confirmados = new Set(conPrecio(estado).map((v) => v.clave))
   return {
-    nombre,
-    link: nombre && linkDeWhatsapp(nombre, estado.identidad.codigo),
+    nombre: nombreDe(conTarjeta),
+    link: confirmado && linkDeWhatsapp(confirmado, estado.identidad.codigo),
     filas: FILAS.map(({ dato, valor }): FilaQueYaSe => {
       const sabido = valor(estado)
       if (sabido) return { dato, valor: sabido, estado: 'sabido' }

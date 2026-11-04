@@ -178,6 +178,24 @@ async function probarWebSinPrecios() {
   }
 }
 
+async function probarElNombreLeido() {
+  const { ctx } = await darDeAlta('Nombre Leido')
+  const pagina = { tipo: 'leida', url: 'https://cafeladera-prueba.co', fuente: 'tu página (cafeladera-prueba.co)', titulo: 'Tostadora Altamira', texto: 'Tostadora Altamira. Bolsa de 500 g a $38.000.' } as const
+  const lectura = await proponerLectura(ctx, armarLectura(await leerAplicado(ctx.negocio), pagina, { nombre: 'Tostadora Altamira', productos: [{ nombre: 'Bolsa 500 g', precio: 38000 }], datos: {} }))
+  let d = await carta(ctx)
+  afirmar('nombre leído: Lo que ya sé lo muestra por confirmar', fila(d, 'Nombre').estado === 'en_la_tarjeta' && fila(d, 'Nombre').valor === 'Tostadora Altamira', d.filas)
+  afirmar('nombre leído: Tu Panel lo pinta antes del botón', d.nombre === 'Tostadora Altamira', d.nombre)
+  afirmar('nombre leído: sin botón no hay link ni se puede abrir', d.link === null && d.faltaParaAbrir.includes('el nombre del Negocio'), d)
+  afirmar('nombre leído: el paso es confirmar', pasoDelArmado(d, SIN_NADA_AHORA) === 'confirmar', pasoDelArmado(d, SIN_NADA_AHORA))
+  const noAbre = await abrirConElBoton(ctx)
+  afirmar('nombre leído: el botón Abrir no abre con el nombre en la tarjeta', !noAbre.abierto, noAbre)
+  await aprobar(ctx, lectura.tarjeta!.propuesta, lectura.tarjeta!.huella)
+  d = await carta(ctx)
+  afirmar('nombre leído: después del botón queda sabido, con su link', fila(d, 'Nombre').estado === 'sabido' && fila(d, 'Nombre').valor === 'Tostadora Altamira' && d.nombre === 'Tostadora Altamira' && decodeURIComponent(d.link ?? '').includes('Hola Tostadora Altamira'), d)
+  afirmar('nombre leído: lo que dice la carta tras el botón no pregunta el nombre', loQueSigue(d, true) === 'Listo, ya lo tengo. ¿Qué vendes y a qué precio? Con uno me basta para abrir.', loQueSigue(d, true))
+  afirmar('nombre leído: el paso ya no pregunta el nombre', titularDe(pasoDelArmado(d, SIN_NADA_AHORA), d) !== '¿Cómo se llama tu negocio?', titularDe(pasoDelArmado(d, SIN_NADA_AHORA), d))
+}
+
 /** Con el modelo: afirma lo que quedó en la base, nunca lo que dijo. */
 async function probarConMuseSpark() {
   const { negocio, dueno, ctx } = await darDeAlta('Marta')
@@ -220,6 +238,7 @@ try {
   await probarOtroNegocio()
   await probarAgendaNoEnvia()
   await probarWebSinPrecios()
+  await probarElNombreLeido()
   await probarConMuseSpark()
 } catch (e) {
   afirmar('probar-armado terminó sin error inesperado', false, e)

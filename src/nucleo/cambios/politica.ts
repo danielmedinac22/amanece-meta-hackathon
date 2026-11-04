@@ -1,6 +1,5 @@
 import type { Alcance } from '../estado/elementos'
-import { NOMBRE_TEMPORAL } from '@/negocio/alta'
-import { conPropuesta, valorDelDato, type EstadoDelNegocio, type Escritura } from '../estado'
+import { conPropuesta, sinNombrePropio, valorDelDato, type EstadoDelNegocio, type Escritura } from '../estado'
 import type { ModoDelNegocio } from '../identidad'
 import type { OrigenDelPedido } from './fila'
 
@@ -32,7 +31,7 @@ export type Falta = {
 }
 
 const BLOQUEA = {
-  nombre: { enPalabras: 'el nombre del Negocio', falta: (e: EstadoDelNegocio) => !e.identidad.nombre.trim() || e.identidad.nombre === NOMBRE_TEMPORAL },
+  nombre: { enPalabras: 'el nombre del Negocio', falta: (e: EstadoDelNegocio) => sinNombrePropio(e.identidad) },
   producto_con_precio: { enPalabras: 'al menos un producto con su precio', falta: (e: EstadoDelNegocio) => !e.vigentes('producto').some((v) => v.elemento.activo && v.elemento.precio > 0) },
 } as const satisfies Partial<Record<Falta['que'], { readonly enPalabras: string; falta(e: EstadoDelNegocio): boolean }>>
 
@@ -59,8 +58,8 @@ export type ComprobacionesDePolitica = [_CadaFaltaEnUnaTabla]
 
 /**
  * Pura. Lo que falta para abrir el Negocio. Bloquean el nombre propio y un producto activo con precio; lo demás solo
- * avisa. La voz y la zona no cuentan. Un producto que espera en la tarjeta de lectura no es vigente, así que sigue
- * bloqueando, con `enLaTarjeta`.
+ * avisa. La voz y la zona no cuentan. Un nombre o un producto que espera en la tarjeta de lectura no es vigente, así que
+ * sigue bloqueando, con `enLaTarjeta`.
  */
 export function queFaltaParaAbrir(estado: EstadoDelNegocio, pendiente: Escritura | null): { readonly bloquea: readonly Falta[]; readonly avisa: readonly Falta[] } {
   const conTarjeta = pendiente ? conPropuesta(estado, pendiente) : null

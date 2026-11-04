@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { COLUMNAS, esFuente, VERSION_DEL_CATALOGO } from '../consultas/catalogo'
 import type { ConsultaGuardada } from '../consultas/tipos'
 import type { CasoId, ClienteId, Marca } from '../identidad'
-import { PROMESAS, type MotivoDeRevision } from '../salida/revisar'
+import { montosEn, plano, PROMESAS, revisarTextoDelDueno, type MotivoDeRevision } from '../salida/revisar'
 
 /** Identidad estable de un Elemento entre versiones: `regla:<uuid>`, `dato:horario`, `voz`… */
 export type Clave = Marca<string, 'Clave'>
@@ -684,3 +684,42 @@ export type ComprobacionesDeElementos = [
   _ConsultaConMarca,
   _PanelConAlcancePanel,
 ]
+
+export const TOPES_DEL_NOMBRE = { largo: 60, palabras: 6, cifras: 4, puntos: 3 } as const
+
+const FORMA_DE_UN_NOMBRE = /^[a-z0-9 .&'’+-]+$/
+
+const SIN_ABREVIATURAS = /\b(dr|dra|sr|sra|sto|sta|cia)\. /g
+
+const DA_ORDENES = /\b(ignor[ae]\w*|olvida\w*|forget|omit[ae]\w*|disregard|instruc\w*|sistema|system|prompt|responde\w*|respond|reply|answer|debes|must|eres|you are|actua\w*|asistente|assistant|agente|agent|modelo|model|reglas?|rules?|gratis|free|descuentos?|promocion\w*|ofertas?|regal[ae]\w*|cobr[ae]\w*|nieg[ae]\w*|habla\w*|admin\w*|di que|dile|guarda\w*|abre|aprueba\w*|confirma\w*|herramienta\w*|tool|todo|siempre|nunca)\b/
+
+const NO_DICEN_UN_NOMBRE = new Set(
+  'inicio home tienda tiendas online virtual oficial pagina principal web sitio bienvenido bienvenidos bienvenida bienvenidas welcome mi mis tu tus su sus nuestra nuestro nuestras nuestros la el los las de del y a en contacto contactanos sobre nosotros producto productos catalogo menu carta shop store negocio empresa login iniciar sesion instagram facebook tiktok whatsapp linktree error not found compra compras comprar buenos buenas dias tardes noches muchas gracias hola envio envios nombre 404 just moment page mercado libre rappi shopify wix'.split(' '),
+)
+
+const cuantos = (texto: string, patron: RegExp) => texto.match(patron)?.length ?? 0
+
+/**
+ * Pura. El nombre limpio, o null si no cabe: una línea corta, de una sola frase, que no parece un dominio, un monto ni un
+ * teléfono, sin lo que no puede llegar a un Cliente, sin órdenes y que nombra a alguien.
+ */
+export function nombreQueCabe(crudo: string): string | null {
+  const nombre = crudo.normalize('NFKC').replace(/ +/g, ' ').trim()
+  const sinTildes = plano(nombre)
+  const palabras = sinTildes.replace(/[^a-z0-9]+/g, ' ').trim()
+  const cabe =
+    nombre.length <= TOPES_DEL_NOMBRE.largo &&
+    nombre.split(' ').length <= TOPES_DEL_NOMBRE.palabras &&
+    !/[^\S ]/.test(nombre) &&
+    FORMA_DE_UN_NOMBRE.test(sinTildes) &&
+    /[a-z].*[a-z]/.test(sinTildes) &&
+    cuantos(sinTildes, /\d/g) <= TOPES_DEL_NOMBRE.cifras &&
+    cuantos(sinTildes, /\./g) <= TOPES_DEL_NOMBRE.puntos &&
+    !sinTildes.replace(SIN_ABREVIATURAS, '').includes('. ') &&
+    !/\.[a-z]{2,}/.test(sinTildes) &&
+    !montosEn(nombre).length &&
+    !revisarTextoDelDueno(nombre, []).length &&
+    !DA_ORDENES.test(palabras) &&
+    palabras.split(' ').some((p) => !NO_DICEN_UN_NOMBRE.has(p))
+  return cabe ? nombre : null
+}

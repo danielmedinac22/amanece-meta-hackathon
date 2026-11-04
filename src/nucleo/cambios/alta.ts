@@ -59,10 +59,12 @@ export async function guardarEnElAlta(
       .for('no key update')
     if (!sigue) return deshacer('abierto')
     if (Object.keys(identidad).length) await tx.update(esquema.negocios).set(identidad).where(eq(esquema.negocios.id, ctx.negocio))
-    if (!t) return { tarjeta: null }
-    const w = await escribir(tx, ctx.negocio, { tipo: 'entrevista' }, t.escritura, null)
-    if (w.tipo === 'invalida') return deshacer({ problemas: w.problemas })
-    if (w.tipo === 'conflicto') return deshacer('conflicto')
+    if (!t && !pedido.nombre) return { tarjeta: null }
+    if (t) {
+      const w = await escribir(tx, ctx.negocio, { tipo: 'entrevista' }, t.escritura, null)
+      if (w.tipo === 'invalida') return deshacer({ problemas: w.problemas })
+      if (w.tipo === 'conflicto') return deshacer('conflicto')
+    }
     return { tarjeta: await rearmarLectura(tx, ctx.negocio, await leerAplicado(ctx.negocio, tx)) }
   })
   if (r === 'abierto') return { problemas: [SOLO_MIENTRAS_SE_ARMA] }

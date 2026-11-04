@@ -37,14 +37,14 @@ import { fueraDeVentana } from '../salida/compuerta'
 import type { Motores } from '../clientes/turno'
 import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
 import { accionDe, filaNueva, HUELLA, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
-import { confirmadaEnPalabras, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
+import { confirmadaEnPalabras, lecturaPendiente, lineasDeLaTarjeta, palabrasDeLaLectura, type Lectura } from './lectura'
 import { politicaDeAprobacion, type Alcance } from './politica'
 import type { MotorDelRedactor } from './redactar-consulta'
-import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuiereDelPanel, type QuierePoner } from './traducir'
+import { LARGO_DE_UNA_RESPUESTA, traducir, type Acto, type QuiereDeElementos, type QuiereDeLaLectura, type QuiereDelPanel, type QuierePoner } from './traducir'
 
 export type { Problema } from '../estado/elementos'
 export type { MotivoDeFaltante } from '../capacidades'
-export type { Acto, QuiereDelPanel, QuierePoner } from './traducir'
+export type { Acto, QuiereDeLaLectura, QuiereDelPanel, QuierePoner } from './traducir'
 export { INTENTOS_DE_REDACTAR, SALIDA_DEL_REDACTOR, type MotorDelRedactor, type SalidaDelRedactor } from './redactar-consulta'
 export type { ClaveEnConflicto } from '../estado/escribir'
 export { abrirEnElAlta, guardarEnElAlta, type ResultadoDelAlta } from './alta'
@@ -145,7 +145,7 @@ export const ESQUEMA_DEL_PEDIDO = z.object({
 type PedidoEnPalabras<O extends OrigenDelPedido> = { readonly origen: O; readonly palabrasDelDueno: string; readonly quiere: readonly [Quiere, ...Quiere[]] }
 
 /** `lectura` la arma solo `proponerLectura`: el modelo no tiene esquema para ella. */
-export type PedidoDelDueno = PedidoEnPalabras<'hilo'> | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuierePoner, ...QuierePoner[]] }
+export type PedidoDelDueno = PedidoEnPalabras<'hilo'> | { readonly origen: 'lectura'; readonly fuente: string; readonly quiere: readonly [QuiereDeLaLectura, ...QuiereDeLaLectura[]] }
 
 /** `panel`: el clic del Dueño es la aprobación, así que no puede entrar por `proponer`. Solo lo produce `deshacer`. */
 type PedidoConSuClic = PedidoDelDueno | PedidoEnPalabras<'panel'>
@@ -245,19 +245,22 @@ export async function proponerRespuestaAlCaso(caso: string, texto: string): Prom
  * La tarjeta de lo leído de un enlace: espera el botón aunque el Negocio se esté armando. Pasa por `traducir` ítem por
  * ítem (lo que no cabe o no pasa `revisarTextoDelDueno` se cae y se cuenta) y lo que queda va en una sola propuesta,
  * que descarta la lectura pendiente anterior. Si esa propuesta no se arma, `noSeArmo` dice por qué: lo leído no se
- * vuelve «nada nuevo».
+ * vuelve «nada nuevo». Una página que solo trae el nombre no borra lo que ya espera en la tarjeta: se le suma.
  */
 export async function proponerLectura(
   ctx: ContextoDelDueno,
   lectura: Lectura,
 ): Promise<{ readonly tarjeta: TarjetaDeAprobacion | null; readonly leidos: number; readonly descartados: number; readonly noSeArmo: string | null }> {
   const estado = await leerAplicado(ctx.negocio)
-  const quedan: QuierePoner[] = []
-  for (const q of lectura.quiere) if (!('tipo' in (await traducir(estado, [q])))) quedan.push(q)
-  const descartados = lectura.descartados + lectura.quiere.length - quedan.length
-  const [primero, ...resto] = quedan
+  const pedidos: readonly QuiereDeLaLectura[] = [...(lectura.nombre ? [{ tipo: 'nombre', nombre: lectura.nombre } as const] : []), ...lectura.quiere]
+  const quedan: QuiereDeLaLectura[] = []
+  for (const q of pedidos) if (!('tipo' in (await traducir(estado, [q])))) quedan.push(q)
+  const descartados = lectura.descartados + pedidos.length - quedan.length
+  const espera = quedan.length && quedan.every((q) => q.tipo === 'nombre') ? await lecturaPendiente(ctx.negocio) : null
+  const deLaTarjeta = (espera?.escritura.elementos ?? []).flatMap((c): QuierePoner[] => (c.despues ? [{ tipo: 'poner', elemento: c.despues, reemplaza: c.base === 'nueva' ? null : c.clave }] : []))
+  const [primero, ...resto] = [...quedan, ...deLaTarjeta]
   if (!primero) return { tarjeta: null, leidos: 0, descartados, noSeArmo: null }
-  const r = await proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, { origen: 'lectura', fuente: lectura.fuente, quiere: [primero, ...resto] })
+  const r = await proponerComo({ negocio: ctx.negocio, pedidoPor: ctx.dueno }, { origen: 'lectura', fuente: espera?.fuente ?? lectura.fuente, quiere: [primero, ...resto] })
   return { tarjeta: r.tarjeta, leidos: quedan.length, descartados, noSeArmo: r.tarjeta ? null : r.resumen }
 }
 
@@ -344,7 +347,7 @@ const sumarGasto = (a: Gasto, b: Gasto): Gasto => ({ llamadas: a.llamadas + b.ll
 
 async function traducirPedido(quien: Quien, pedido: PedidoConSuClic, redactor?: MotorDelRedactor): Promise<Traducida | SinPropuesta> {
   const estado = await leerAplicado(quien.negocio)
-  const t = await traducir(estado, pedido.quiere as readonly QuiereDeElementos[], redactor)
+  const t = await traducir(estado, pedido.quiere, redactor)
   if (!('tipo' in t)) return { ...t, version: estado.version, estado, ...(pedido.origen === 'lectura' ? { lineas: lineasDeLaTarjeta(estado, t.escritura, pedido.fuente) } : {}) }
   if (t.tipo === 'corregir') return corregir(t.problemas)
   return faltante(quien.negocio, pedido.origen === 'lectura' ? palabrasDeLaLectura(pedido.fuente) : pedido.palabrasDelDueno, t.motivo, t.gasto)
@@ -452,7 +455,7 @@ const versionDe = (f: FilaDePropuesta): VersionDelNegocio | null => (f.version =
 
 /**
  * La única manera de aplicar una propuesta: la usan el botón y la política. El reclamo va en una transacción de
- * `Pool` que sostiene la fila tomada mientras escribe: un segundo clic espera en el `UPDATE` y, al soltarse,
+ * `Pool` que sostiene la fila tomada mientras escribe: un segundo clic espera la fila del Negocio y, al soltarse,
  * relee. Si `escribir` lanza, hay ROLLBACK y nadie recibió `aplicado` sobre algo que no quedó. Una propuesta sin
  * Elementos ni actos es una pieza del puente de antes del 2-nov: ya no cabe y se pide de nuevo.
  */
@@ -466,6 +469,8 @@ async function aplicarConReclamo(a: {
   const reclamo = await conTransaccion<Reclamo>(async (tx, abortar) => {
     // Un primer clic colgado no deja esperando al segundo para siempre.
     await tx.execute(sql`set local lock_timeout = '10s'`)
+    // Primero la fila del Negocio y después la propuesta, como la entrevista y `corregirLectura`: al revés, un clic y un mensaje a la vez se bloquean entre sí.
+    const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
     const [fila] = await tx
       .update(esquema.propuestas)
       .set({ estado: 'aplicada', aprobadoPor: a.aprobadoPor })
@@ -481,8 +486,7 @@ async function aplicarConReclamo(a: {
       .returning()
     if (!fila) return { tipo: 'sin_reclamo' }
     if (a.sinBoton) {
-      // El modo se relee con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
-      const [n] = await tx.select({ modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, a.negocio)).for('no key update')
+      // El modo se leyó con la fila del Negocio tomada: si se abrió mientras tanto, ya no se aplica sin el botón.
       if (politicaDeAprobacion(n?.modo ?? 'armando', a.sinBoton.alcance, a.sinBoton.origen, fila.actos.length > 0) !== 'se_aplica') return abortar({ tipo: 'sigue_esperando' })
     }
     const [acto] = fila.actos
@@ -490,7 +494,7 @@ async function aplicarConReclamo(a: {
       const r = await cerrarCaso(tx, a.negocio, acto)
       return 'problema' in r ? abortar({ tipo: 'ya_no_cabe', problemas: [r.problema] }) : { tipo: 'reclamada', fila, respuesta: r, quedo: null }
     }
-    if (fila.escritura.elementos.length) {
+    if (fila.escritura.elementos.length || fila.escritura.nombre) {
       const r = await escribir(tx, a.negocio, { tipo: 'propuesta', propuesta: a.propuesta }, fila.escritura, await loRevertidoPor(tx, fila))
       if (r.tipo === 'conflicto') return abortar(r)
       if (r.tipo === 'invalida') return abortar({ tipo: 'ya_no_cabe', problemas: r.problemas })

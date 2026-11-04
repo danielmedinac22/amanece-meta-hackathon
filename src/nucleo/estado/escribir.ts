@@ -1,11 +1,12 @@
 /**
  * El único escritor del estado de un Negocio. Lo importan `src/nucleo/cambios/**` y `scripts/` (eslint).
  */
-import { and, eq, inArray, or } from 'drizzle-orm'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
+import { NOMBRE_TEMPORAL } from '@/negocio/alta'
 import { marcar, type DuenoId, type Instante, type ModoDelNegocio, type NegocioId } from '../identidad'
-import { alcanceDeLaClave, comoVersion, definicionDe, describirVigente, type Clave, type Problema, type VersionDelNegocio } from './elementos'
+import { alcanceDeLaClave, comoVersion, definicionDe, describirVigente, nombreQueCabe, type Clave, type Problema, type VersionDelNegocio } from './elementos'
 import {
   elementoDe,
   historiaParaRevertir,
@@ -54,16 +55,28 @@ export function naceSinPublicar(origen: OrigenDeEscritura['tipo'], modo: ModoDel
 
 const NO_SE_PUEDE: ComoSeRevierte = { tipo: 'no_se_puede' }
 
+async function ponerElNombreLeido(tx: Transaccion, negocio: NegocioId, nombre: string | undefined): Promise<void> {
+  if (!nombre || nombreQueCabe(nombre) !== nombre) return
+  const { negocios } = esquema
+  await tx
+    .update(negocios)
+    .set({ nombre })
+    .where(and(eq(negocios.id, negocio), eq(negocios.estado, 'armando'), inArray(sql`btrim(${negocios.nombre})`, ['', NOMBRE_TEMPORAL])))
+}
+
 /**
  * Dentro de la transacción de quien llama, después de tomar la fila del Negocio: ahí relee el estado y valida, así
- * dos escrituras a la vez no dejan dos productos con el mismo nombre. Una escritura vacía no sube la versión. Si
+ * dos escrituras a la vez no dejan dos productos con el mismo nombre. Una escritura sin Elementos no sube la versión. Si
  * una clave cambió desde la `base` que vio quien propuso, no escribe nada y devuelve `conflicto`.
  */
 export async function escribir(tx: Transaccion, negocio: NegocioId, origen: OrigenDeEscritura, escritura: Escritura, revierte: LoRevertido | null): Promise<ResultadoDeEscribir> {
   const [n] = await tx.select({ version: esquema.negocios.version, modo: esquema.negocios.modo }).from(esquema.negocios).where(eq(esquema.negocios.id, negocio)).for('no key update')
   if (!n) throw new Error(`No existe el Negocio ${negocio}`)
   const modo = n.modo ?? 'armando'
-  if (!escritura.elementos.length) return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0, modo }
+  if (!escritura.elementos.length) {
+    await ponerElNombreLeido(tx, negocio, escritura.nombre)
+    return { tipo: 'escrito', version: comoVersion(n.version), deUna: 0, modo }
+  }
 
   const estado = await leerAplicado(negocio, tx)
   const claves = escritura.elementos.map((c) => c.clave)
@@ -129,6 +142,7 @@ export async function escribir(tx: Transaccion, negocio: NegocioId, origen: Orig
     }),
   )
   await tx.update(esquema.negocios).set({ version }).where(eq(esquema.negocios.id, negocio))
+  await ponerElNombreLeido(tx, negocio, escritura.nombre)
   return { tipo: 'escrito', version: comoVersion(version), deUna: deFreno.filter((c) => alcanceDeLaClave(c.clave) === 'clientes').length, modo }
 }
 
