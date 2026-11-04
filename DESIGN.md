@@ -210,7 +210,7 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 
 **Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto.
 
-**Derivado: adjuntar.** Fotos y PDF, hasta 3 por mensaje. Encima del texto queda una fila por archivo con `Subiendo` o el error en palabras, y una X para quitarlo. Con un archivo listo se puede enviar sin texto; mientras sube, no. En el globo del Dueño el archivo es un enlace con su nombre. Lo leído de un archivo llega en la tarjeta de lo leído, que pide comparar cada precio con el archivo.
+**Derivado: adjuntar.** Fotos y PDF, hasta 3 por mensaje. Encima del texto queda una fila por archivo con `Subiendo` o el error en palabras, y una X para quitarlo. Con un archivo listo se puede enviar sin texto; mientras sube, no. En el globo del Dueño el archivo es un enlace con su nombre. Lo leído de un archivo llega en la tarjeta de lo leído, que pide comparar cada precio con el archivo. Con el Negocio abierto esa tarjeta dice `Aplicar`, y termina en Publicar como las demás. En la caja flotante no va adjuntar, como en el prototipo.
 
 ## Publicar
 

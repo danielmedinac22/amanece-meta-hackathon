@@ -71,8 +71,9 @@ export async function guardarArchivo(ctx: ContextoDelDueno, subido: { readonly n
  * demasiados, y entonces el mensaje entero no se guarda. Mandar dos veces el mismo id da lo mismo.
  */
 export async function adjuntosParaElMensaje(ctx: ContextoDelDueno, ids: readonly unknown[]): Promise<readonly Adjunto[] | null> {
-  const unicos = [...new Set(ids)]
-  if (unicos.length > TOPES.porMensaje || !unicos.every(pareceId)) return null
+  if (!ids.every(pareceId)) return null
+  const unicos = [...new Set(ids.map((id) => id.toLowerCase()))]
+  if (unicos.length > TOPES.porMensaje) return null
   if (!unicos.length) return []
   const filas = await db
     .update(a)
@@ -93,8 +94,9 @@ export async function verArchivo(ctx: ContextoDelDueno, id: string): Promise<{ r
 export type ParaLeer = { readonly tipo: TipoDeArchivo; readonly bytes: Uint8Array; readonly adjunto: Adjunto }
 
 /**
- * Gasta una lectura y entrega los bytes. Una sola sentencia, para que dos a la vez no pasen el tope. El cupo del día cuenta las
- * lecturas de los archivos leídos en las últimas 24 horas: si un archivo viejo se vuelve a leer, cuenta de más y nunca de menos.
+ * Gasta una lectura y entrega los bytes. Una sola sentencia, para que dos a la vez del mismo archivo no pasen su tope. El cupo del
+ * día cuenta las lecturas de los archivos leídos en las últimas 24 horas: un archivo viejo que se vuelve a leer cuenta de más.
+ * Archivos distintos a la vez pueden pasarlo por lo que quepa en un turno, que es poco y no vale un candado.
  */
 export async function tomarParaLeer(ctx: ContextoDelDueno, id: string): Promise<ParaLeer | 'agotado' | 'cupo_del_dia' | null> {
   if (!pareceId(id)) return null

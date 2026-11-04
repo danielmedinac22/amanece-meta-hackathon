@@ -20,15 +20,20 @@ const esPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().
  * la ubicación que guarda la cámara. Una imagen que el navegador no sabe abrir sube tal cual, y el servidor decide.
  */
 async function prepararFoto(f: File): Promise<Blob> {
-  const yaSirve = (f.type === 'image/jpeg' || f.type === 'image/png') && f.size <= 1_000_000
-  if (yaSirve) return f
+  if (f.type === 'image/png' && f.size <= 1_000_000) return f
   try {
     const imagen = await createImageBitmap(f)
     const escala = Math.min(1, LADO_MAXIMO_DE_LA_FOTO / Math.max(imagen.width, imagen.height))
     const lienzo = document.createElement('canvas')
     lienzo.width = Math.round(imagen.width * escala)
     lienzo.height = Math.round(imagen.height * escala)
-    lienzo.getContext('2d')?.drawImage(imagen, 0, 0, lienzo.width, lienzo.height)
+    const pincel = lienzo.getContext('2d')
+    if (pincel) {
+      // JPEG no tiene transparencia: sin fondo, lo transparente de un PNG saldría negro.
+      pincel.fillStyle = 'white'
+      pincel.fillRect(0, 0, lienzo.width, lienzo.height)
+      pincel.drawImage(imagen, 0, 0, lienzo.width, lienzo.height)
+    }
     imagen.close()
     const reducida = await new Promise<Blob | null>((listo) => lienzo.toBlob(listo, 'image/jpeg', CALIDAD_DE_LA_FOTO))
     return reducida ?? f
@@ -41,7 +46,6 @@ async function prepararFoto(f: File): Promise<Blob> {
 export function useAdjuntos(alSubir: SubirArchivo, iniciales: readonly EnElRedactor[] = []) {
   const [lista, setLista] = useState(iniciales)
   const secuencia = useRef(0)
-  const cuantos = useRef(iniciales.length)
 
   const poner = useCallback((local: string, cambio: Partial<EnElRedactor> & Pick<EnElRedactor, 'estado'>) => setLista((l) => l.map((x) => (x.local === local ? ({ ...x, ...cambio } as EnElRedactor) : x))), [])
 
@@ -55,36 +59,21 @@ export function useAdjuntos(alSubir: SubirArchivo, iniciales: readonly EnElRedac
     [alSubir, poner],
   )
 
-  const agregar = useCallback(
-    (archivos: readonly File[]) => {
-      const nuevos: EnElRedactor[] = []
-      for (const f of archivos) {
-        const local = `local-${++secuencia.current}`
-        const clase: ClaseDeArchivo = esPdf(f) ? 'pdf' : 'foto'
-        const cabe = cuantos.current < TOPES_DE_ARCHIVO.porMensaje
-        nuevos.push({ local, nombre: f.name, clase, ...(cabe ? { estado: 'subiendo' as const } : { estado: 'fallo' as const, error: RECHAZO_EN_PALABRAS.muchos }) })
-        if (cabe) {
-          cuantos.current++
-          void subir(local, f, clase)
-        }
-      }
-      setLista((l) => [...l, ...nuevos])
-    },
-    [subir],
-  )
-
-  const quitar = useCallback((local: string) => {
-    setLista((l) => {
-      const fuera = l.find((x) => x.local === local)
-      if (fuera && !(fuera.estado === 'fallo' && fuera.error === RECHAZO_EN_PALABRAS.muchos)) cuantos.current--
-      return l.filter((x) => x.local !== local)
+  const agregar = (archivos: readonly File[]) => {
+    let cuantos = lista.filter((x) => x.estado !== 'fallo').length
+    const nuevos = archivos.map((f): EnElRedactor => {
+      const local = `local-${++secuencia.current}`
+      const clase: ClaseDeArchivo = esPdf(f) ? 'pdf' : 'foto'
+      if (cuantos >= TOPES_DE_ARCHIVO.porMensaje) return { local, nombre: f.name, clase, estado: 'fallo', error: RECHAZO_EN_PALABRAS.muchos }
+      cuantos++
+      void subir(local, f, clase)
+      return { local, nombre: f.name, clase, estado: 'subiendo' }
     })
-  }, [])
+    setLista((l) => [...l, ...nuevos])
+  }
 
-  const vaciar = useCallback(() => {
-    cuantos.current = 0
-    setLista([])
-  }, [])
+  const quitar = (local: string) => setLista((l) => l.filter((x) => x.local !== local))
+  const vaciar = () => setLista([])
 
   return { lista, listos: lista.flatMap((x) => (x.estado === 'listo' ? [x.adjunto] : [])), subiendo: lista.some((x) => x.estado === 'subiendo'), agregar, quitar, vaciar }
 }
@@ -119,7 +108,7 @@ export function BotonAdjuntar({ alEscoger }: { alEscoger: (archivos: readonly Fi
 export function TiraDeAdjuntos({ lista, alQuitar }: { lista: readonly EnElRedactor[]; alQuitar: (local: string) => void }) {
   if (!lista.length) return null
   return (
-    <ul className="flex w-full basis-full flex-col gap-1.5" aria-label="Archivos para enviar">
+    <ul className="flex w-full basis-full flex-col gap-1.5" aria-label="Archivos para enviar" aria-live="polite">
       {lista.map((x) => (
         <li key={x.local} className="flex min-h-9 items-center gap-2 rounded-[calc(var(--radius)-4px)] bg-muted py-1 pr-1 pl-2.5 text-[13px]">
           {x.estado === 'subiendo' ? <CircleNotch className="size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" /> : x.estado === 'fallo' ? <Warning weight="fill" className="size-4 shrink-0 text-destructive" /> : <Icono clase={x.clase} className="size-4 shrink-0 text-muted-foreground" />}

@@ -66,7 +66,7 @@ export const HILO_CON_ARCHIVOS: UIMessage[] = [
     'assistant',
     salida('leer_archivo', {
       resumen: 'Leí 2 cosas de tu PDF.',
-      tarjeta: { ...TARJETA_DE_UN_ARCHIVO, lineas: ['Esto leí de tu PDF. Tu agente de clientes no lo usa hasta que lo confirmes.', 'Compara cada precio con tu PDF: leer un archivo puede fallar.', 'Tueste medio, grano 500 g · $38.000 · lo leí', 'Molino manual · $96.000 · lo leí', 'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.'] },
+      tarjeta: { ...TARJETA_DE_UN_ARCHIVO, lineas: ['Esto leí de tu PDF. A tus Clientes no les cambia nada hasta que lo apliques y toques Publicar.', 'Compara cada precio con tu PDF: leer un archivo puede fallar.', 'Tueste medio, grano 500 g · $42.000, antes $38.000 · lo leí', 'Molino manual · $96.000 · lo leí', 'Si algo está mal, descártala y dile a tu agente cómo es.'] },
     }),
     texto('Leí tu lista: trae 2 productos. Compáralos con tu PDF y toca el botón si están bien.'),
   ),

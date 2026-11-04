@@ -47,7 +47,7 @@ export const RECHAZO_EN_PALABRAS = {
   pdf_protegido: 'Ese PDF tiene clave. Quítasela y vuélvelo a subir.',
   pdf_ilegible: 'No pude abrir ese PDF. Mándame fotos de las páginas.',
   cupo_del_dia: 'Hoy ya subiste 20 archivos. Mañana puedes subir más.',
-  cupo_del_negocio: 'Ya no caben más archivos en tu negocio.',
+  cupo_del_negocio: 'Ya no caben más archivos en tu negocio. Escríbele a tu agente lo que necesitas.',
   muchos: 'Puedes mandar hasta 3 archivos en un mensaje.',
 } as const
 export type Rechazo = keyof typeof RECHAZO_EN_PALABRAS
@@ -75,7 +75,7 @@ export function adjuntoEnPalabras({ clase, paginas }: Pick<Adjunto, 'clase' | 'p
   return paginas === 1 ? 'PDF de 1 página' : `PDF de ${paginas} páginas`
 }
 
-export const FUENTES_DE_ARCHIVO = { foto: 'tu foto', pdf: 'tu PDF', varios: 'tus archivos' } as const
+export const FUENTES_DE_ARCHIVO = { foto: 'tu foto', pdf: 'tu PDF', varios: 'tus archivos', mezcla: 'lo que me mandaste' } as const
 const FUENTES = new Set<string>(Object.values(FUENTES_DE_ARCHIVO))
 
 /** De dónde dice la tarjeta que salió lo leído. Nunca el nombre del archivo: lo escribió quien lo creó y llegaría al modelo. */
@@ -85,3 +85,6 @@ export function fuenteDeArchivos(clases: readonly ClaseDeArchivo[]): string {
 }
 
 export const esFuenteDeArchivo = (fuente: string) => FUENTES.has(fuente)
+
+/** La línea de la tarjeta que pide comparar. Una foto no tiene texto contra el cual el código pueda revisar un precio. */
+export const COMPARAR = 'Compara cada precio con'

@@ -13,7 +13,7 @@ import { db, esquema } from '@/db'
 import type { Transaccion } from '@/db/pool'
 import type { PaginaLeida } from '@/lib/leer-enlace'
 import { modelo } from '@/lib/modelo'
-import { esFuenteDeArchivo, type TipoDeArchivo } from '../archivos'
+import { COMPARAR, esFuenteDeArchivo, type TipoDeArchivo } from '../archivos'
 import { valorDelDato, type ElementoVigente, type Escritura, type EstadoDelNegocio, type Lector } from '../estado'
 import { CAMPOS_DE_CONOCIMIENTO, comoMonto, definicionDe, ETIQUETA_DEL_DATO, pesos, type CampoDeConocimiento, type Elemento } from '../estado/elementos'
 import { marcar, type DuenoId, type NegocioId, type PropuestaId } from '../identidad'
@@ -230,8 +230,8 @@ export function armarLectura(estado: EstadoDelNegocio, pagina: PaginaLeida, extr
 /**
  * Pura. Lo mismo para archivos, con dos diferencias. No mira si el precio está en la fuente: el único texto de una foto
  * saldría del mismo modelo, y compararlo consigo mismo no prueba nada. Con el Negocio abierto, un producto vigente con otro
- * precio lo reemplaza, porque para eso se manda una lista de precios nueva. `pendiente` es la tarjeta que espera si también
- * salió de un archivo: entra primero, porque solo hay una por Negocio y la segunda foto de un menú no debe borrar la primera.
+ * precio cambia solo de precio, porque para eso se manda una lista nueva: conserva su nombre y no revive si ya no se vendía.
+ * `pendiente` es la tarjeta que espera: solo hay una por Negocio y la segunda foto de un menú no debe borrar la primera.
  */
 export function armarLecturaDeArchivos(estado: EstadoDelNegocio, fuente: string, extraidos: readonly LoExtraido[], pendiente: Escritura | null): Lectura {
   const elementos = (pendiente?.elementos ?? []).flatMap((c) => (c.despues ? [c.despues] : []))
@@ -239,8 +239,9 @@ export function armarLecturaDeArchivos(estado: EstadoDelNegocio, fuente: string,
     productos: elementos.flatMap((e) => (e.tipo === 'producto' ? [{ nombre: e.nombre, precio: e.precio }] : [])),
     datos: Object.fromEntries(elementos.flatMap((e) => (e.tipo === 'dato' ? [[e.campo, e.valor]] : []))),
   }
-  const todos = [delPendiente, ...extraidos]
-  const extraido: LoExtraido = { productos: todos.flatMap((x) => x.productos), datos: Object.assign({}, ...todos.map((x) => Object.fromEntries(Object.entries(x.datos).filter(([, v]) => v?.trim())))) }
+  // Lo más nuevo manda: una foto que corrige un precio le gana a lo que ya esperaba en la tarjeta.
+  const todos = [...extraidos, delPendiente]
+  const extraido: LoExtraido = { productos: todos.flatMap((x) => x.productos), datos: Object.assign({}, ...todos.toReversed().map((x) => Object.fromEntries(Object.entries(x.datos).filter(([, v]) => v?.trim())))) }
   return armar(estado, fuente, extraido, { creible: () => true, reemplaza: estado.identidad.modo !== 'armando' })
 }
 
@@ -258,7 +259,8 @@ function armar(estado: EstadoDelNegocio, fuente: string, extraido: LoExtraido, {
       descartados++
       continue
     }
-    const elemento = { tipo: 'producto', nombre, descripcion: loReemplaza?.elemento.descripcion ?? '', precio: comoMonto(precio), activo: true } as const
+    const antes = loReemplaza?.elemento
+    const elemento = { tipo: 'producto', nombre: antes?.nombre ?? nombre, descripcion: antes?.descripcion ?? '', precio: comoMonto(precio), activo: antes?.activo ?? true } as const
     productos.push(elemento)
     quiere.push({ tipo: 'poner', elemento, reemplaza: loReemplaza?.clave ?? null })
   }
@@ -294,19 +296,20 @@ export function sinLoYaEscrito(estado: EstadoDelNegocio, escritura: Escritura): 
 export function lineasDeLaTarjeta(estado: EstadoDelNegocio, escritura: Escritura, fuente: string): readonly string[] {
   const leidas = escritura.elementos.flatMap((c) => {
     const e = c.despues
-    if (e?.tipo === 'producto') return [`${e.nombre} · ${pesos(e.precio)} · lo leí`]
+    if (e?.tipo === 'producto') {
+      const antes = buscarProducto(estado, e.nombre)?.elemento
+      return [`${e.nombre} · ${pesos(e.precio)}${antes && antes.precio !== e.precio ? `, antes ${pesos(antes.precio)}` : ''} · lo leí`]
+    }
     if (e?.tipo === 'dato') return [`${ETIQUETA_DEL_DATO[e.campo]}: «${e.valor}» · lo leí`]
     return []
   })
-  // Con el Negocio abierto, lo vigente es todo el catálogo y no lo que el Dueño dictó para esta tarjeta.
-  const tuyas =
-    estado.identidad.modo === 'armando'
-      ? estado
-          .vigentes('producto')
-          .filter((v) => v.elemento.activo)
-          .map((v) => `${v.elemento.nombre} · ${pesos(v.elemento.precio)} · lo escribiste tú`)
-      : []
-  const comparar = esFuenteDeArchivo(fuente) ? [`Compara cada precio con ${fuente}: leer un archivo puede fallar.`] : []
+  const comparar = esFuenteDeArchivo(fuente) ? [`${COMPARAR} ${fuente}: leer un archivo puede fallar.`] : []
+  // Con el Negocio abierto, lo vigente es todo el catálogo, y corregirle al agente no rearma esta tarjeta: sale otra.
+  if (estado.identidad.modo !== 'armando') return [`Esto leí de ${fuente}. A tus Clientes no les cambia nada hasta que lo apliques y toques Publicar.`, ...comparar, ...leidas, 'Si algo está mal, descártala y dile a tu agente cómo es.']
+  const tuyas = estado
+    .vigentes('producto')
+    .filter((v) => v.elemento.activo)
+    .map((v) => `${v.elemento.nombre} · ${pesos(v.elemento.precio)} · lo escribiste tú`)
   return [`Esto leí de ${fuente}. Tu agente de clientes no lo usa hasta que lo confirmes.`, ...comparar, ...leidas, ...tuyas, 'Si algo está mal o falta un producto, escríbeselo a tu agente antes de confirmar.']
 }
 

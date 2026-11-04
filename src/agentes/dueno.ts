@@ -33,7 +33,7 @@ import {
   type ResultadoDelAlta,
   type TarjetaDeAprobacion,
 } from '@/nucleo/cambios'
-import { adjuntoEnPalabras, fuenteDeArchivos, esFuenteDeArchivo, PARTE_DE_ARCHIVO, TOPES_DE_ARCHIVO, type Adjunto, type ClaseDeArchivo } from '@/nucleo/archivos'
+import { adjuntoEnPalabras, FUENTES_DE_ARCHIVO, fuenteDeArchivos, PARTE_DE_ARCHIVO, TOPES_DE_ARCHIVO, type Adjunto, type ClaseDeArchivo } from '@/nucleo/archivos'
 import { envioParaElModelo } from '@/nucleo/caso-palabras'
 import { enviosDeResueltos } from '@/nucleo/casos'
 import { leerAplicado } from '@/nucleo/estado'
@@ -193,21 +193,23 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
   type LeidoDeUnArchivo = { readonly clase: ClaseDeArchivo; readonly enPalabras: string; readonly extraido: LoExtraido }
   let lecturasDelTurno = 0
 
-  async function leerUnArchivo(id: string, pregunta: string | null): Promise<LeidoDeUnArchivo | string> {
-    const ya = pregunta ? null : await loYaLeido(ctx, id)
+  async function leerUnArchivo(id: string, pregunta: string | null, carga: boolean): Promise<LeidoDeUnArchivo | string> {
+    // Sin pregunta y para cargar, lo ya leído sirve. Para contar algo hay que mirar el archivo.
+    const ya = !pregunta && carga ? await loYaLeido(ctx, id) : null
     if (ya) return { clase: ya.adjunto.clase, enPalabras: '', extraido: ya.extraido }
+    // Se cuenta antes del primer `await`: las llamadas de un mismo paso corren a la vez.
     if (lecturasDelTurno >= TOPES_DE_ARCHIVO.lecturasPorTurno) return 'En este mensaje ya leí varios archivos. Dile al Dueño que te lo pregunte en otro mensaje.'
+    lecturasDelTurno++
     const archivo = await tomarParaLeer(ctx, id)
     if (!archivo) return 'Ese archivo no está en este Negocio.'
     if (archivo === 'agotado') return 'Ese archivo ya lo leí varias veces. Pídele al Dueño que lo adjunte de nuevo si todavía necesita algo de él.'
     if (archivo === 'cupo_del_dia') return 'Hoy ya leí muchos archivos en este Negocio. Dile al Dueño que mañana puedo seguir, o que te escriba lo que necesita.'
-    lecturasDelTurno++
     const inicio = Date.now()
     try {
       const { lectura, uso } = await (puertos.lectorDeArchivos ?? LECTOR_DE_ARCHIVOS)(archivo, pregunta)
       await registrarTurno('dueno', negocioId, { inputTokens: uso.entrada, outputTokens: uso.salida }, Date.now() - inicio).catch((e) => console.warn('[dueno] no pude registrar el lector', e))
-      await guardarLoLeido(ctx, id, lectura.extraido)
       if (lectura.legible === 'no') return 'No se alcanza a leer ese archivo. Pídele al Dueño una foto más clara o que te escriba lo que necesita.'
+      await guardarLoLeido(ctx, id, lectura.extraido)
       return { clase: archivo.adjunto.clase, enPalabras: leidoEnPalabras(archivo.adjunto, lectura), extraido: lectura.extraido }
     } catch (e) {
       console.error('[dueno] el lector de archivos falló', e)
@@ -225,18 +227,19 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
     }),
     execute: ({ archivos, pregunta, cargar }) =>
       conTarjeta(async () => {
-        const leidos = await Promise.all(archivos.map((id) => leerUnArchivo(id, pregunta?.trim() || null)))
+        const armando = negocio.modo === 'armando'
+        const leidos = await Promise.all([...new Set(archivos)].map((id) => leerUnArchivo(id, pregunta?.trim() || null, armando || !!cargar)))
         const buenos = leidos.filter((l) => typeof l !== 'string')
         const contado = leidos.map((l) => (typeof l === 'string' ? l : l.enPalabras)).filter(Boolean)
-        const armando = negocio.modo === 'armando'
         const productos = buenos.reduce((n, l) => n + l.extraido.productos.length, 0)
         const hayQueCargar = buenos.some((l) => l.extraido.productos.length || Object.values(l.extraido.datos).some((v) => v?.trim()))
-        if (!hayQueCargar) return { resumen: [...contado, armando ? await faltaAhora() : ''].filter(Boolean).join(' '), tarjeta: null }
-        if (!cargar && !armando) return { resumen: [...contado, `Trae ${cosas(productos)} con precio. No quedó ninguna tarjeta. Si el Dueño quiere cargarlas a su catálogo, llama leer_archivo con cargar en true y sin pregunta.`].join(' '), tarjeta: null }
+        if (!hayQueCargar) return { resumen: [...contado, armando ? await faltaAhora() : ''].filter(Boolean).join(' ') || 'De ese archivo no saqué nada nuevo que se pueda usar.', tarjeta: null }
+        if (!cargar && !armando) return { resumen: [...contado, `${productos ? `Trae ${cosas(productos)} con precio.` : 'Trae datos de su negocio.'} No quedó ninguna tarjeta. Si el Dueño quiere cargarlo, llama leer_archivo con cargar en true y sin pregunta.`].join(' '), tarjeta: null }
 
         const pendiente = await lecturaPendiente(negocioId)
-        const fuente = fuenteDeArchivos(buenos.map((l) => l.clase))
-        const r = await proponerLectura(ctx, armarLecturaDeArchivos(await leerAplicado(negocioId), fuente, buenos.map((l) => l.extraido), pendiente && esFuenteDeArchivo(pendiente.fuente) ? pendiente.escritura : null))
+        const deEstosArchivos = fuenteDeArchivos(buenos.map((l) => l.clase))
+        const fuente = pendiente && pendiente.fuente !== deEstosArchivos ? FUENTES_DE_ARCHIVO.mezcla : deEstosArchivos
+        const r = await proponerLectura(ctx, armarLecturaDeArchivos(await leerAplicado(negocioId), fuente, buenos.map((l) => l.extraido), pendiente?.escritura ?? null))
         const leido = r.tarjeta
           ? `Leí ${cosas(r.leidos)} de ${fuente} y quedaron en una tarjeta que el Dueño compara con su archivo y confirma con el botón. No las guardes tú.`
           : r.noSeArmo
@@ -411,23 +414,27 @@ export function crearAgenteDelDueno(ctx: ContextoDelDueno, { negocio, dueno }: {
   const delAlta = { leer_enlace: leerEnlace, guardar_conocimiento: guardarConocimiento, guardar_productos: guardarProductosTool, abrir_negocio: abrirNegocio }
   const deAbierto = { proponer: proponerTool, descartar_propuesta: descartarPropuesta, listar_propuestas: listarPropuestas, listar_casos: listarCasos }
   const tools: ToolSet = { ...comunes, ...(negocio.modo === 'armando' ? delAlta : deAbierto) }
-  const todas: ToolSet = { ...comunes, ...delAlta, ...deAbierto }
+  const todas: ToolSet = { ...comunes, ...delAlta, ...deAbierto, leer_archivo: { ...leerArchivo, toModelOutput: () => ({ type: 'text' as const, value: YA_NO_ESTA_A_LA_VISTA }) } }
 
-  // Lo que un archivo cuenta le llega al modelo como dato, pero el modelo puede creerle: en ese turno nada escribe sin botón.
+  // Lo que un archivo cuenta le llega al modelo como dato, pero el modelo puede creerle: en ese turno nada del Negocio se escribe sin botón.
   const soloLeen = Object.keys(tools).filter((t) => TRAS_LEER_UN_ARCHIVO.has(t))
 
   return { system: instrucciones(negocio, dueno), tools, todas, soloLeen }
 }
 
+/** Lo que contó un archivo solo vale en el turno en que se leyó: en el siguiente ya están todas las herramientas que escriben. */
+const YA_NO_ESTA_A_LA_VISTA = 'Aquí leíste un archivo. Lo que contó ya no está a la vista: si hace falta, llama leer_archivo con esa pregunta. Lo que dejó en una tarjeta sigue esperando el botón.'
+
 const TRAS_LEER_UN_ARCHIVO = new Set(['ver_negocio', 'registrar_capacidad_faltante', 'leer_archivo', 'listar_propuestas', 'listar_casos'])
 
 /** Lo que el lector cuenta, cercado: el modelo lo trata como lo que trae cualquier otra herramienta. */
-function leidoEnPalabras(adjunto: Adjunto, lectura: { readonly queEs: string; readonly respuesta: string; readonly hayMas: boolean }) {
+function leidoEnPalabras(adjunto: Adjunto, lectura: { readonly legible: string; readonly queEs: string; readonly respuesta: string; readonly hayMas: boolean }) {
   const cercar = (texto: string) => texto.replace(/<\/?archivo>/gi, '')
   const contado = [`Es: ${cercar(lectura.queEs)}`, lectura.respuesta && `Respuesta: ${cercar(lectura.respuesta)}`].filter(Boolean).join(' ')
   const recorte = adjunto.paginasDelOriginal ? ` Solo leí las primeras ${adjunto.paginas} de ${adjunto.paginasDelOriginal} páginas: díselo al Dueño.` : ''
   const mas = lectura.hayMas ? ' Trae más productos de los que caben en una tarjeta: díselo al Dueño.' : ''
-  return `<archivo>${contado}</archivo>${recorte}${mas}`
+  const parcial = lectura.legible === 'parcial' ? ' Una parte no se alcanzó a leer: díselo al Dueño.' : ''
+  return `<archivo>${contado}</archivo>${recorte}${mas}${parcial}`
 }
 
 /** Lo que falta, como lo lee el modelo: si ya está en la tarjeta, se pide el botón y no se pregunta. */
