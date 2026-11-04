@@ -4,12 +4,14 @@
  *   pnpm tsx scripts/probar-portada.mts
  */
 import { plantillasDe } from '../src/app/plantillas-datos'
+import { imagenParaCompartir, TAMANO_DE_IMAGEN } from '../src/app/portada/imagen-para-compartir'
 import { TEXTOS, type Idioma } from '../src/app/portada/textos'
 import { HECHOS_DE_PRUEBA, revisar } from '../src/nucleo/salida/revisar'
 import { afirmar, terminar } from './afirmar.mjs'
 
 const NUNCA = [/cr[eé]dito/i, /credit/i, /122/, /waichat/i, /—/]
 const IDIOMAS: Idioma[] = ['es', 'en']
+const PESO_MAXIMO_DE_LA_IMAGEN = 300 * 1024
 
 const textosDe = (valor: unknown): string[] => {
   if (typeof valor === 'string') return [valor]
@@ -34,6 +36,12 @@ try {
       const con = todos.filter((t) => nunca.test(t))
       afirmar(`${idioma}: ningún texto tiene ${nunca}`, con.length === 0, con)
     }
+  }
+
+  for (const idioma of IDIOMAS) {
+    const png = Buffer.from(await (await imagenParaCompartir(idioma)).arrayBuffer())
+    afirmar(`${idioma}: la imagen para compartir mide lo que declara`, png.readUInt32BE(16) === TAMANO_DE_IMAGEN.width && png.readUInt32BE(20) === TAMANO_DE_IMAGEN.height, { ancho: png.readUInt32BE(16), alto: png.readUInt32BE(20) })
+    afirmar(`${idioma}: la imagen para compartir es liviana para que WhatsApp la muestre`, png.length < PESO_MAXIMO_DE_LA_IMAGEN, png.length)
   }
 
   const { es, en } = TEXTOS

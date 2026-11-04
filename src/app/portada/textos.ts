@@ -40,7 +40,7 @@ export type TextosDeDificil = {
 }
 
 export type TextosDePortada = {
-  readonly meta: { readonly titulo: string; readonly descripcion: string }
+  readonly meta: { readonly titulo: string; readonly descripcion: string; readonly altDeImagen: string }
   readonly idioma: { readonly grupo: string }
   readonly entrar: string
   readonly cta: string
@@ -86,7 +86,11 @@ export type TextosDePortada = {
 
 export const TEXTOS: Record<Idioma, TextosDePortada> = {
   es: {
-    meta: { titulo: 'Amanece: arma tu agente gratis', descripcion: 'Arma conversando el agente que atiende a tus clientes por WhatsApp.' },
+    meta: {
+      titulo: 'Amanece: el agente que atiende a tus clientes por WhatsApp',
+      descripcion: 'Contesta preguntas y toma pedidos a cualquier hora, y te busca solo cuando algo necesita tu decisión. Arma el tuyo gratis, conversando, sin saber de tecnología.',
+      altDeImagen: 'Una conversación de ejemplo en WhatsApp: a las 11:47 de la noche el agente le contesta a una clienta. Debajo, un Caso que espera la decisión del dueño.',
+    },
     idioma: { grupo: 'Idioma' },
     entrar: 'Entrar',
     cta: 'Arma tu agente gratis',
@@ -289,7 +293,11 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
     pie: { texto: 'Funciona con Muse Spark de Meta. Hecho en Colombia.', privacidad: 'Privacidad' },
   },
   en: {
-    meta: { titulo: 'Amanece: build your agent for free', descripcion: 'Build, just by talking, the agent that answers your customers on WhatsApp.' },
+    meta: {
+      titulo: 'Amanece: the agent that answers your customers on WhatsApp',
+      descripcion: 'It answers questions and takes orders at any hour, and only comes to you when something needs your decision. Build yours for free, just by talking, with no technical skills.',
+      altDeImagen: 'A sample WhatsApp conversation: at 11:47 at night the agent answers a customer. Below it, a Case waiting for the owner to decide.',
+    },
     idioma: { grupo: 'Language' },
     entrar: 'Log in',
     cta: 'Build your agent for free',
