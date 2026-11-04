@@ -59,10 +59,10 @@ export function capturarErrores(): unknown[][] {
 }
 
 /** Un evento `whatsapp.message.received` como lo manda Kapso, para entrar por `leerMensajeEntrante` igual que el webhook. */
-export function eventoDeKapso(m: { wamid: string; telefono: string; texto: string; nombre?: string; enviadoEn?: Date; boton?: string }) {
+export function eventoDeKapso(m: { wamid: string; telefono: string; texto: string; nombre?: string; enviadoEn?: Date; boton?: string; referral?: unknown }) {
   const timestamp = String(Math.floor((m.enviadoEn ?? new Date()).getTime() / 1000))
   const mensaje = m.boton
     ? { id: m.wamid, from: m.telefono, timestamp, type: 'interactive', interactive: { type: 'button_reply', button_reply: { id: m.boton, title: m.texto } } }
     : { id: m.wamid, from: m.telefono, timestamp, type: 'text', text: { body: m.texto } }
-  return { data: { message: { ...mensaje, kapso: { status: 'received' } }, conversation: { contact_name: m.nombre ?? '' } } }
+  return { data: { message: { ...mensaje, ...(m.referral === undefined ? {} : { referral: m.referral }), kapso: { status: 'received' } }, conversation: { contact_name: m.nombre ?? '' } } }
 }

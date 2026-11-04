@@ -20,6 +20,7 @@ const errores = capturarErrores()
 const { db, esquema } = await import('../src/db')
 const { FICHA_DE_ENRUTAMIENTO } = await import('../src/nucleo/ficha')
 const { elegirReparto, leerMensajeEntrante, linkDeWhatsapp, recibirMensaje, repartir } = await import('../src/nucleo/entrada')
+const { origenAlNacer } = await import('../src/nucleo/ficha')
 const { marcar } = await import('../src/nucleo/identidad')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
 
@@ -32,7 +33,11 @@ const telSinNegocio = `5722${marca}`
 const telDeBoton = `5723${marca}`
 const telDelArmando = `5724${marca}`
 const telHuerfano = `5725${marca}`
-const telefonos = [telConSesion, telNuevo, telSinNegocio, telDeBoton, telDelArmando, telHuerfano]
+const telPorLink = `5726${marca}`
+const telPorAnuncio = `5727${marca}`
+const telPorPost = `5728${marca}`
+const telAnuncioSinFicha = `5729${marca}`
+const telefonos = [telConSesion, telNuevo, telSinNegocio, telDeBoton, telDelArmando, telHuerfano, telPorLink, telPorAnuncio, telPorPost, telAnuncioSinFicha]
 const codigoArmando = `PR${marca}`
 let armandoId: string | undefined
 
@@ -40,7 +45,10 @@ async function limpiar() {
   await db.delete(esquema.sesionesWhatsapp).where(inArray(esquema.sesionesWhatsapp.telefono, telefonos))
   await db.delete(esquema.mensajesSalientes).where(and(inArray(esquema.mensajesSalientes.telefono, telefonos), gte(esquema.mensajesSalientes.creado, inicio)))
   await db.delete(esquema.mensajesEntrantes).where(like(esquema.mensajesEntrantes.wamid, `${prefijo}%`))
-  await db.delete(esquema.clientes).where(and(inArray(esquema.clientes.telefono, telefonos), gte(esquema.clientes.creado, inicio)))
+  const deLaPrueba = and(inArray(esquema.clientes.telefono, telefonos), gte(esquema.clientes.creado, inicio))
+  // `casos.cliente_id` queda en null al borrar el Cliente: un Caso que abra el turno de verdad se quedaría huérfano.
+  await db.delete(esquema.casos).where(inArray(esquema.casos.clienteId, db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(deLaPrueba)))
+  await db.delete(esquema.clientes).where(deLaPrueba)
   if (armandoId) await db.delete(esquema.negocios).where(eq(esquema.negocios.id, armandoId))
 }
 
@@ -59,6 +67,39 @@ try {
   afirmar('lectura: sin timestamp de Meta usa la hora de llegada', sinHora?.enviadoEn === recibidoEn.toISOString(), sinHora)
   afirmar('lectura: un recibo de entrega no es un mensaje', leerMensajeEntrante({ message: { id: 'w.5', from: '573000000001', type: 'text', text: { body: 'x' }, kapso: { status: 'delivered' } } }) === null)
   afirmar('lectura: un mensaje a otro número no es de Amanece', leerMensajeEntrante({ phone_number_id: 'otro-numero', message: { id: 'w.6', from: '573000000001', type: 'text', text: { body: 'x' } } }) === null)
+  const conReferral = (referral: unknown) => leerMensajeEntrante(eventoDeKapso({ wamid: 'w.r', telefono: '573000000001', texto: '(LADERA) hola', referral }), recibidoEn)
+  const ANUNCIO = { source_type: 'ad', source_id: '120210987654321098', ctwa_clid: 'clic', headline: 'Café', body: 'Envío', source_url: 'https://fb.me/x', media_type: 'image' }
+  const REFERIDOS: [string, unknown, string][] = [
+    ['sin referral', undefined, 'ninguno'],
+    ['referral null', null, 'ninguno'],
+    ['anuncio con su id', ANUNCIO, 'anuncio'],
+    ['anuncio de Status, sin ctwa_clid', { source_type: 'ad', source_id: '1' }, 'anuncio'],
+    ['anuncio sin source_id', { source_type: 'ad', ctwa_clid: 'clic' }, 'otro'],
+    ['anuncio con source_id vacío', { source_type: 'ad', source_id: '  ' }, 'otro'],
+    ['anuncio con source_id que no es texto', { source_type: 'ad', source_id: 1 }, 'otro'],
+    ['post', { source_type: 'post', source_id: '1' }, 'otro'],
+    ['organic', { source_type: 'organic', source_id: '1' }, 'otro'],
+    ['solo source_url', { source_url: 'https://fb.me/x' }, 'otro'],
+    ['referral vacío', {}, 'otro'],
+    ['referral que es texto', 'ad', 'otro'],
+    ['referral que es número', 7, 'otro'],
+    ['referral que es lista', [ANUNCIO], 'otro'],
+  ]
+  for (const [caso, referral, referido] of REFERIDOS) afirmar(`lectura: ${caso} se lee ${referido} y el mensaje sigue entrando`, conReferral(referral)?.referido === referido, conReferral(referral))
+
+  const ORIGENES: [string, string, 'anuncio' | 'otro' | 'ninguno', string][] = [
+    ['su ficha sin referral', '(LADERA) hola', 'ninguno', 'link'],
+    ['su ficha en minúsculas', '(ladera) hola', 'ninguno', 'link'],
+    ['su ficha con un anuncio', '(LADERA) hola', 'anuncio', 'anuncio'],
+    ['su ficha con un referral que no prueba un anuncio', '(LADERA) hola', 'otro', 'sin_dato'],
+    ['un anuncio sin ficha, porque el número es compartido', 'hola', 'anuncio', 'sin_dato'],
+    ['un anuncio con la ficha de otro Negocio', '(TRIGO) hola', 'anuncio', 'sin_dato'],
+    ['sin ficha ni referral', 'hola', 'ninguno', 'sin_dato'],
+    ['algo con forma de ficha que escribió el Cliente', '(sin) azúcar', 'ninguno', 'sin_dato'],
+    ['la ficha al final del texto', 'hola (LADERA)', 'ninguno', 'sin_dato'],
+  ]
+  for (const [caso, texto, referido, origen] of ORIGENES) afirmar(`origen: ${caso} es ${origen}`, origenAlNacer({ texto, referido }, 'LADERA') === origen, { texto, referido })
+
   afirmar('lectura: una imagen sin texto no es un mensaje', leerMensajeEntrante({ message: { id: 'w.7', from: '573000000001', type: 'image', image: { id: 'm1' } } }) === null)
 
   console.log('\n=== 2. La ficha ===')
@@ -184,6 +225,22 @@ try {
   if (errorDelHuerfano >= 0) errores.splice(erroresAntes + errorDelHuerfano, 1)
   afirmar('atenderMensaje: con un Negocio que ya no está sale sin lanzar y deja un console.error', lanzo === null && errorDelHuerfano >= 0, { lanzo, errores: errores.slice(erroresAntes) })
   afirmar('atenderMensaje: ese mensaje no crea ficha de Cliente ni manda nada', (await fichasDe(telHuerfano)) === 0 && enviosA(telHuerfano, desde).length === 0, enviosA(telHuerfano, desde))
+
+  const conEvento = (telefono: string, texto: string, referral?: unknown) => leerMensajeEntrante(eventoDeKapso({ wamid: `${prefijo}${++n}`, telefono, texto, nombre: 'Prueba', referral }))!
+  const origenDe = async (telefono: string) => (await db.select({ origen: esquema.clientes.origen }).from(esquema.clientes).where(and(eq(esquema.clientes.telefono, telefono), eq(esquema.clientes.negocioId, ladera.id))))[0]?.origen
+  const ANUNCIO_DE_META = { source_type: 'ad', source_id: '120210987654321098', ctwa_clid: 'clic' }
+
+  await recibirMensaje(conEvento(telPorLink, '(LADERA) hola'))
+  afirmar('origen en la base: su ficha sin referral nace link', (await origenDe(telPorLink)) === 'link', await origenDe(telPorLink))
+  await recibirMensaje(conEvento(telPorLink, 'hola otra vez', ANUNCIO_DE_META))
+  afirmar('origen en la base: un anuncio de después no cambia cómo llegó', (await origenDe(telPorLink)) === 'link', await origenDe(telPorLink))
+  await recibirMensaje(conEvento(telPorAnuncio, '(LADERA) hola', ANUNCIO_DE_META))
+  afirmar('origen en la base: su ficha con un anuncio nace anuncio', (await origenDe(telPorAnuncio)) === 'anuncio', await origenDe(telPorAnuncio))
+  await recibirMensaje(conEvento(telPorPost, '(LADERA) hola', { source_type: 'post', source_id: '1' }))
+  afirmar('origen en la base: un referral de post nace sin_dato', (await origenDe(telPorPost)) === 'sin_dato', await origenDe(telPorPost))
+  await db.insert(esquema.sesionesWhatsapp).values({ telefono: telAnuncioSinFicha, negocioId: ladera.id })
+  await recibirMensaje(conEvento(telAnuncioSinFicha, 'hola', ANUNCIO_DE_META))
+  afirmar('origen en la base: con sesión y un anuncio sin ficha nace sin_dato', (await origenDe(telAnuncioSinFicha)) === 'sin_dato', await origenDe(telAnuncioSinFicha))
 } catch (e) {
   afirmar('probar-entrada terminó sin error inesperado', false, e)
 } finally {

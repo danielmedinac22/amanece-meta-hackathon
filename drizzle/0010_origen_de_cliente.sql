@@ -1,0 +1,1 @@
+ALTER TABLE "clientes" ADD COLUMN "origen" text DEFAULT 'sin_dato' NOT NULL;

@@ -60,6 +60,10 @@ export const duenos = pgTable(
   (t) => [uniqueIndex('duenos_usuario').on(t.usuarioId), uniqueIndex('duenos_telefono').on(t.telefono).where(sql`${t.telefono} is not null`)],
 )
 
+/** Cómo llegó un Cliente la primera vez que escribió. `sin_dato` cuando nada lo prueba: es también el de todo Cliente anterior a la columna. */
+export const ORIGENES_DE_CLIENTE = ['link', 'anuncio', 'sin_dato'] as const
+export type OrigenDeCliente = (typeof ORIGENES_DE_CLIENTE)[number]
+
 export const clientes = pgTable(
   'clientes',
   {
@@ -69,6 +73,7 @@ export const clientes = pgTable(
     nombre: text('nombre').notNull().default(''),
     /** El último mensaje que escribió el Cliente: abre la ventana de 24 horas de WhatsApp. */
     ultimoMensajeEntrante: timestamp('ultimo_mensaje_entrante', { withTimezone: true }),
+    origen: text('origen', { enum: ORIGENES_DE_CLIENTE }).notNull().default('sin_dato'),
     creado: creado(),
   },
   (t) => [uniqueIndex('clientes_negocio_telefono').on(t.negocioId, t.telefono)],

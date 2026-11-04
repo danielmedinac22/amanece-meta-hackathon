@@ -4,6 +4,7 @@ import { traerCasoAlDueno } from '@/agentes/avisos'
 import { registrarTurno } from '@/negocio/medir'
 import type { MensajeEntrante } from '../entrada'
 import { leerPublicado, NegocioInexistente, otrosNegocios, type EstadoPublicado } from '../estado'
+import { origenAlNacer } from '../ficha'
 import { marcar, type CasoId, type NegocioId } from '../identidad'
 import { despachar, intencion, type AlCliente } from '../salida'
 import { entornoReal, pedidoDelCliente, turno, type ClienteDelTurno } from './turno'
@@ -40,7 +41,8 @@ export async function atenderMensaje(m: MensajeEntrante, negocio: NegocioId): Pr
   const enviadoEn = new Date(m.enviadoEn)
   const [cliente] = await db
     .insert(esquema.clientes)
-    .values({ negocioId: negocio, telefono: m.telefono, nombre: m.nombre, ultimoMensajeEntrante: enviadoEn })
+    // `origen` no va en `set`: es cómo llegó la primera vez, y un anuncio de después no lo cambia.
+    .values({ negocioId: negocio, telefono: m.telefono, nombre: m.nombre, ultimoMensajeEntrante: enviadoEn, origen: origenAlNacer(m, estado.identidad.codigo) })
     .onConflictDoUpdate({
       target: [esquema.clientes.negocioId, esquema.clientes.telefono],
       set: {

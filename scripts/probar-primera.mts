@@ -133,7 +133,7 @@ try {
     const salidosAntes = envios.length
     const inicioCliente = Date.now()
     if (abierto.estado === 'listo') {
-      await atenderMensaje({ wamid: marcar.wamid(`wamid.PRIMERA.${Date.now()}`), telefono, nombre: 'Lucía', texto: '¿Cuánto vale el latte?', enviadoEn: marcar.instante(new Date()), boton: null }, n.ctx.negocio)
+      await atenderMensaje({ wamid: marcar.wamid(`wamid.PRIMERA.${Date.now()}`), telefono, nombre: 'Lucía', texto: '¿Cuánto vale el latte?', enviadoEn: marcar.instante(new Date()), boton: null, referido: 'ninguno' }, n.ctx.negocio)
     }
     const respuesta = envios.slice(salidosAntes).filter((e) => e.telefono === telefono)
     const precios = new Set(vigentes.flatMap((v) => [1, 2, 3, 4, 5].map((k) => v.elemento.precio * k)))
