@@ -16,6 +16,12 @@ type Mutacion = Cambio & { readonly nombre: string; readonly archivo: string; re
 const ELEMENTOS = 'src/nucleo/estado/elementos.ts'
 const MUTACIONES: readonly Mutacion[] = [
   {
+    nombre: 'una acción que escribe sin su fila en la cerca',
+    archivo: 'src/nucleo/clientes/acciones.ts',
+    antes: "  cancelar_cita: { negado: { negada: 'no_le_toca' }, hizo: (r) => r !== null && 'tipo' in r },\n",
+    despues: '',
+  },
+  {
     nombre: 'guia de vuelta en Efecto',
     archivo: ELEMENTOS,
     antes: "  | { readonly tipo: 'no_decir'; readonly frases: readonly [string, ...string[]] }\n",

@@ -169,7 +169,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 
 - **Las cifras** son las de Inicio. **Necesitan atención** es `Necesita tu ojo` contado sin su límite, y sin conversaciones `Resueltas sin ti` dice `—`, no `0 %`. Una agenda cambia `Ventas de la semana` por `Citas de la semana`.
 - **Pedidos por día** son los últimos 7 días en la zona del Negocio, con `CUENTA_COMO_VENTA`. **De dónde llegan** son todos los Clientes, sin ventana, por cómo escribieron la primera vez: `Tu link` si el mensaje traía la ficha del Negocio, `Anuncio de Meta` si además traía un `referral` de anuncio, y `Sin dato` todo lo demás, también quien ya era Cliente antes de guardarlo. No se reparte. Va en cantidades, como lo demás del Tablero. `Pedidos por estado` salió, porque el diseño lleva un solo reparto y Pedidos ya agrupa por estado.
-- **Una agenda** lleva `Citas por día`, de lunes a domingo, para que sume lo mismo que `Citas de la semana`, y `Próximas citas` en lugar de `Pedidos recientes`.
+- **Una agenda** lleva `Citas por día`, de lunes a domingo, para que sume lo mismo que `Citas de la semana`, y `Próximas citas` en lugar de `Pedidos recientes`. Si tiene pedidos, `Pedidos recientes` sale debajo, porque el Rubro puede haber reconocido mal una tienda.
 - **Una gráfica** lleva una sola tinta, `--primary`, un solo eje y barras de hasta 24 px. Se rotulan el último punto y el más alto si no se pisan; las demás cifras salen al tocar o enfocar la barra y las lee un lector de pantalla. Con más de 7 puntos, el eje de abajo solo rotula los extremos.
 - **Un Indicador propio** de una cifra va en una tarjeta. Uno por tiempo lleva su último valor y sus barras, y un ranking va en barras con su nombre, a todo el ancho.
 - **Una Sección propia** siempre muestra su primera y su última columna. Las de en medio entran según el ancho y, mientras no caben, suben debajo del nombre con su título: ningún dato se pierde en teléfono. Una columna de números va a la derecha.
@@ -183,6 +183,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 - **Los estados** son `Agendada`, `Movida`, `Cancelada` y `Ya pasó`. `Confirmada` del prototipo no sale, porque nada confirma que el Cliente va a llegar. `Ya pasó` no dice si llegó.
 - **Quién la escribe.** Solo el Agente de clientes. El Dueño la ve y no la cambia: la toca y llega a su Cliente, desde donde puede tomar la conversación.
 - **Lo que le llega al Cliente** es una constancia que escribe el núcleo desde la fila: `Cita agendada: jueves 5 de noviembre, 3:00 p. m.`. El modelo no la redacta.
+- **Si no se guardó nada** y la respuesta nombra una hora o sigue a un sí, el núcleo agrega una línea que sale de la fila: `Por ahora no tienes una cita guardada.` o `Tu cita guardada sigue siendo: …`. Es lo que sostiene la promesa, porque ninguna lista de frases reconoce todas las formas de dar una cita por hecha. Una oferta no la lleva.
 
 ### Pedidos: Lista
 

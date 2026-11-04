@@ -100,6 +100,9 @@ export function constanciaDe(e: EscrituraDeCita, zona: string): string {
   return `Cita movida: ${enPalabras(e.inicio, zona)}${e.antes ? ` (antes ${enPalabras(e.antes, zona)})` : ''}.`
 }
 
+/** Cierta aunque el modelo haya dicho otra cosa, porque sale de la fila. La agrega el núcleo cuando un turno sin escritura habló de una hora. */
+export const lineaDeLaVerdad = (cita: AgendaDelTurno['cita'], zona: string) => (cita ? `Tu cita guardada sigue siendo: ${enPalabras(cita.inicio, zona)}` : 'Por ahora no tienes una cita guardada.')
+
 export function momentoDeCita(inicio: Date, zona: string, ahora: Date): MomentoDeCita {
   const { fecha, hora } = deParedEn(inicio, zona)
   const [h, m] = hora.split(':').map(Number)
@@ -118,7 +121,7 @@ export type AgendaDelTurno = { readonly ocupadas: readonly Date[]; readonly cita
 export function citaEnRevision(agenda: AgendaDelTurno | null, escrita: EscrituraDeCita | null, conversacion: { readonly historial: readonly { readonly rol: string; readonly texto: string }[]; readonly mensaje: string }, zona: string, ahora: Date): CitaEnRevision {
   if (!agenda) return { tipo: 'sin_agenda' }
   const inicio = escrita ? (escrita.tipo === 'cancelada' ? null : escrita.inicio) : (agenda.cita?.inicio ?? null)
-  return { tipo: 'con_agenda', vigente: inicio && momentoDeCita(inicio, zona, ahora), escritaEnElTurno: escrita !== null, aceptoUnaHora: aceptoUnaHora(conversacion.historial, conversacion.mensaje) }
+  return { tipo: 'con_agenda', vigente: inicio && momentoDeCita(inicio, zona, ahora), antes: escrita?.antes ? momentoDeCita(escrita.antes, zona, ahora) : null, escritaEnElTurno: escrita !== null, aceptoUnaHora: aceptoUnaHora(conversacion.historial, conversacion.mensaje) }
 }
 
 /** Lo que el Dueño ve. Una `agendada` cuya hora ya pasó no dice si vino: nada lo guarda. */

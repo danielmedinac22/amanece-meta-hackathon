@@ -423,7 +423,7 @@ const CITAS_DEL_TABLERO: CitasDelTablero = {
   proximas: [...FILAS_DE_CITAS, { id: 'c-3', clienteId: 'Mariana Ospina', cliente: 'Mariana Ospina', cuando: 'vie 6 nov, 9:00 a. m.', asunto: 'Tinte', estado: 'Agendada', antes: null }],
 }
 
-const CIFRAS_DE_AGENDA: DatosDeHoy['hoy']['cifras'] = { ...NADA_TODAVIA, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 }, citas: { semana: 17, hoy: 2 } }
+const CIFRAS_DE_AGENDA: DatosDeHoy['hoy']['cifras'] = { ...NADA_TODAVIA, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 }, citas: { semana: 3, hoy: 2 } }
 
 export const NEGOCIO_AGENDA: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
@@ -447,7 +447,7 @@ export const NEGOCIO_AGENDA: NegocioDeMuestra = {
   agenda: {
     grupos: [
       { clave: 'hoy', nombre: 'Hoy', cuenta: 2, filas: FILAS_DE_CITAS },
-      { clave: 'proximas', nombre: 'Próximas', cuenta: 15, filas: [{ id: 'c-3', clienteId: 'Mariana Ospina', cliente: 'Mariana Ospina', cuando: 'vie 6 nov, 9:00 a. m.', asunto: 'Tinte', estado: 'Agendada', antes: null }] },
+      { clave: 'proximas', nombre: 'Próximas', cuenta: 1, filas: [{ id: 'c-3', clienteId: 'Mariana Ospina', cliente: 'Mariana Ospina', cuando: 'vie 6 nov, 9:00 a. m.', asunto: 'Tinte', estado: 'Agendada', antes: null }] },
       {
         clave: 'anteriores',
         nombre: 'Ya pasaron o se cancelaron',
@@ -460,6 +460,14 @@ export const NEGOCIO_AGENDA: NegocioDeMuestra = {
     ],
   },
 }
+
+export const NEGOCIO_AGENDA_MUCHAS: NegocioDeMuestra = {
+  ...NEGOCIO_AGENDA,
+  agenda: { grupos: [{ clave: 'proximas', nombre: 'Próximas', cuenta: 312, filas: Array.from({ length: 50 }, (_, i) => ({ id: `m-${i}`, clienteId: `Cliente ${i}`, cliente: `Cliente ${i}`, cuando: 'vie 6 nov, 9:00 a. m.', asunto: 'Corte', estado: 'Agendada' as const, antes: null })) }] },
+}
+
+/** Reconocida como agenda, y con pedidos: no se le esconden. */
+export const NEGOCIO_AGENDA_CON_PEDIDOS: NegocioDeMuestra = { ...NEGOCIO_AGENDA, tablero: { ...NEGOCIO_AGENDA.tablero, recientes: TABLERO.recientes } }
 
 /** Una agenda sin una sola cita: ninguna cifra inventada, y lo demás sigue siendo de verdad. */
 export const NEGOCIO_AGENDA_SIN_CITAS: NegocioDeMuestra = {

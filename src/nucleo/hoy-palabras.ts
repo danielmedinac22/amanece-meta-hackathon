@@ -14,9 +14,9 @@ export type Cifras = {
 
 export type Parte = string | { cifra: string }
 
-const RUBROS_DE_AGENDA = /\b(?:agenda|citas?|spa|medic[oa]s?)\b|\bde unas\b|^unas\b|\b(?:peluquer|barber|estetic|manicur|odontolog|dentist|consultorio|clinica|psicolog|fisioterap|veterinari|nutricion|masaj|tatuaj)/
+const RUBROS_DE_AGENDA = /\b(?:agenda|citas?|spa|medic[oa]s?)\b|\b(?:de|en) unas\b|^unas\b|\b(?:peluquer|barber|estetic|belleza|manicur|odontolog|dentist|consultorio|clinica|psicolog|psiquiatr|terapia|terapeut|fisioterap|veterinari|nutricion|masaj|tatuaj|yoga|pilates|abogad)/
 
-/** `negocios.rubro` es texto libre. Lo que no se reconoce como agenda habla de ventas, porque `pedidos` es lo único que el Negocio registra con plata. */
+/** `negocios.rubro` es texto libre. Lo que no se reconoce como agenda habla de ventas. Equivocarse no le quita a nadie sus pedidos: una agenda conserva `crear_pedido` y la Sección Pedidos. */
 export function vozDelRubro(rubro: string): Voz {
   const limpio = rubro
     .normalize('NFD')

@@ -8,12 +8,12 @@ import { modelo } from '@/lib/modelo'
 import { marcar, type CasoId, type ClienteId, type Instante, type Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoPublicado } from '../estado'
 import type { EstadoDePedido, ItemDePedido } from '@/db/esquema'
-import { calendarioParaElPrompt, citaEnRevision, constanciaDe, enPalabras, MINUTOS_DE_UN_CUPO, type AgendaDelTurno } from '../citas-palabras'
+import { calendarioParaElPrompt, citaEnRevision, constanciaDe, enPalabras, lineaDeLaVerdad, MINUTOS_DE_UN_CUPO, type AgendaDelTurno } from '../citas-palabras'
 import { claveDeProducto, comoClave, comoMonto, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
 import { ensayo, intencion, type DelAgente, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
 import { vezActual } from '../salida/atencion'
-import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
+import { hablaDeUnaHora, montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
 import { conCerca, envolver, puertoDeLaBase, puertoEnMemoria, type AccionHecha, type PuertoDeAcciones, type PuertoParaElModelo } from './acciones'
 import { compilarReglas, sinRepetir, type ViolacionDeRegla } from './reglas'
 
@@ -119,7 +119,7 @@ const MOTIVO_PARA_EL_MODELO = {
   dice_ser_persona: 'Dijiste que eres una persona. Eres el asistente virtual del Negocio.',
   pide_datos_de_pago: 'Pediste datos de pago o claves. Nunca los pidas.',
   afirmacion_de_salud: 'Hiciste una afirmación de salud. No opines de salud.',
-  cita_sin_respaldo: 'Diste una cita por hecha, movida o cancelada sin que esté guardada, o nombraste otra hora como si fuera la suya. Solo vale lo que respondió guardar_cita o cancelar_cita, y aquí no puedes llamarlas: pregúntale al Cliente si confirma esa hora, sin decir que quedó.',
+  cita_sin_respaldo: 'Diste una cita por hecha, movida o cancelada sin que esté guardada, o nombraste otra hora como si fuera la suya. Aquí no puedes guardar nada: si hablaban de una hora, pregúntale al Cliente si la confirma, sin decir que quedó.',
   habla_de_otro_negocio: 'Hablaste de otro negocio. Habla solo de este.',
 } as const satisfies Record<MotivoDeRevision, string>
 
@@ -168,6 +168,8 @@ export async function turno<M extends Modo>(
   let revision: Revision = { tipo: 'pasa' }
   let corregido: TurnoResuelto<M>['corregido'] = 'no'
   let casosPorReglas = 0
+  const zona = estado.identidad.zonaHoraria
+  const deLaCita = () => citaEnRevision(cliente.agenda, envuelto.citaDelTurno(), { historial: conversacion.historial, mensaje: mensaje.texto }, zona, new Date())
 
   const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
@@ -184,7 +186,7 @@ export async function turno<M extends Modo>(
     const deSalida = reglas.enSalida(activas, borrador, envuelto.casosDelModelo())
     for (const { titulo, pedido, regla } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido, reglas: [regla] })
     casosPorReglas += deSalida.casosPorAbrir.length
-    const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios, citaEnRevision(cliente.agenda, envuelto.citaDelTurno(), { historial: conversacion.historial, mensaje: mensaje.texto }, estado.identidad.zonaHoraria, new Date()))
+    const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios, deLaCita())
     texto = borrador
     violaciones = deSalida.violaciones
     revision = revisar(borrador, hechos())
@@ -205,9 +207,10 @@ export async function turno<M extends Modo>(
     }
   }
 
-  // Después de `revisar` y de todas las ramas: lo que quedó guardado se dice aunque se haya frenado lo que escribió el modelo.
+  // Después de `revisar` y de todas las ramas: lo que dice de la cita sale de la fila, y lo que escribió el modelo no lo cambia.
   const escrita = envuelto.citaDelTurno()
-  if (escrita) texto = `${texto}\n\n${constanciaDe(escrita, estado.identidad.zonaHoraria)}`
+  if (escrita) texto = `${texto}\n\n${constanciaDe(escrita, zona)}`
+  else if (cliente.agenda && hablaDeUnaHora(texto, deLaCita())) texto = `${texto}\n\n${lineaDeLaVerdad(cliente.agenda.cita, zona)}`
 
   const datos = { destinatario: { tipo: 'cliente', negocio: estado.identidad.id, cliente: cliente.id }, texto, enRespuestaA: mensaje.wamid, habla: entorno.habla } as const
   return {
@@ -289,7 +292,7 @@ En este Negocio lo que tiene hora se agenda. crear_pedido es solo para un produc
 1. Aclara qué servicio quiere y qué día. Propón una hora libre dentro del horario del Negocio y pregúntale si le sirve. Proponer no guarda nada.
 2. Cuando el Cliente acepte una hora, llama guardar_cita en ese mismo mensaje, con la fecha que sale en el calendario y la hora en 24 horas. Las citas van cada ${MINUTOS_DE_UN_CUPO} minutos.
 3. Si tiene cita y quiere otra hora, propónla y, cuando la acepte, llama guardar_cita con cambiaLaQueTiene en true. Si quiere cancelar, llama cancelar_cita.
-4. Nunca digas por tu cuenta que una cita quedó, se movió o se canceló. Solo existe si la herramienta respondió ok, y entonces el sistema agrega al final de tu mensaje una constancia con la fecha: no la repitas, solo agradece o pregunta si necesita algo más.
+4. Nunca digas por tu cuenta que una cita quedó, se movió o se canceló. Solo existe si la herramienta respondió ok, y entonces el sistema agrega al final de tu mensaje una constancia con la fecha: no la repitas, solo agradece o pregunta si necesita algo más. Si no guardaste nada, el sistema agrega que no hay cita guardada.
 5. No mandas recordatorios ni cobras por una cita: no lo prometas. Para una segunda cita del mismo Cliente, abre un Caso.
 
 ## Calendario (hora del Negocio)

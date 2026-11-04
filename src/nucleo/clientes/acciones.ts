@@ -5,7 +5,7 @@ import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { ItemDePedido } from '@/db/esquema'
 import { cancelarCita, guardarCita, type NegativaDeCita, type PedidoDeCita } from '../citas'
-import { enPalabras, resolverHora, POR_QUE_NO_ESA_HORA, type EscrituraDeCita, type HoraPedida } from '../citas-palabras'
+import { enPalabras, fechaDeCalendario, horaDeCalendario, resolverHora, POR_QUE_NO_ESA_HORA, type EscrituraDeCita, type HoraPedida } from '../citas-palabras'
 import { marcar, type CasoId, type ClienteId } from '../identidad'
 import type { EstadoAplicado, EstadoDelNegocio, EstadoPublicado } from '../estado'
 import { ciudadDe, claveDeProducto, comoMonto, normalizar, type AccionDeEscenario, type BorradorDePedido, type Clave, type Monto } from '../estado/elementos'
@@ -175,7 +175,7 @@ export function envolver(puerto: PuertoDeAcciones, estado: EstadoDelNegocio, reg
         anotar('guardar_cita', `negada: ${r.negada}`)
         if (r.negada === 'no_le_toca') return { ok: false, error: YA_NO_TE_TOCA }
         if (r.negada === 'ya_tiene_cita') return { ok: false, error: `Este Cliente ya tiene cita el ${enPalabras(r.tiene, zona)}. Si quiere cambiarla por esta, llama de nuevo con cambiaLaQueTiene en true. Si quiere una segunda cita, abre un Caso.` }
-        return { ok: false, error: 'Esa hora se acaba de ocupar. Propón otra libre ese mismo día, sin decir que quedó.', ocupadas: r.ocupadasDelDia.map((d) => enPalabras(d, zona)) }
+        return { ok: false, error: 'Esa hora se acaba de ocupar. Propón otra libre ese mismo día, sin decir que quedó.', ocupadas: r.ocupadasDelDia.filter((d) => fechaDeCalendario(d, zona) === hora.fecha && d.getTime() > Date.now()).map((d) => horaDeCalendario(d, zona)) }
       },
       async cancelar_cita() {
         const r = await puerto.cancelar_cita()
@@ -305,7 +305,6 @@ export function puertoDeLaBase(estado: EstadoPublicado, cliente: ClienteId): Pue
 export type PuertoEnMemoria = PuertoDeAcciones & {
   readonly pedidos: readonly (PedidoConsultado & { readonly cotizacion: Cotizacion | null })[]
   readonly casos: readonly { readonly titulo: string; readonly detalle: string; readonly pedido: number | null; readonly reglas: readonly string[] }[]
-  readonly citas: () => { readonly inicio: Date | null; readonly ocupadas: readonly Date[] }
 }
 
 /** El de ensayo: en memoria, encima de los datos del estado y de los pedidos del Cliente. No escribe nada. */
@@ -317,7 +316,6 @@ export function puertoEnMemoria(estado: EstadoDelNegocio, cliente: ClienteDelTur
   return {
     pedidos,
     casos,
-    citas: () => ({ inicio: suya, ocupadas }),
     async guardar_cita({ inicio, cambiaLaQueTiene }) {
       const antes = suya
       if (antes?.getTime() === inicio.getTime()) return { tipo: 'agendada', inicio, antes: null }

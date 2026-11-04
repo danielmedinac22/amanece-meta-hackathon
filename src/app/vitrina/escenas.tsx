@@ -29,7 +29,7 @@ import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePu
 import { MarcoDeMuestra } from './marco-de-muestra'
 import { TomaDeMuestra } from './toma-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_AGENDA_SIN_CITAS, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_AGENDA_CON_PEDIDOS, NEGOCIO_AGENDA_MUCHAS, NEGOCIO_AGENDA_SIN_CITAS, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof MarcoDeMuestra>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial' | 'rutaInicial'>
@@ -174,7 +174,9 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'hoy-agenda', titulo: 'Inicio: un Negocio de citas', pinta: () => panel(NEGOCIO_AGENDA) },
   { id: 'hoy-agenda-sin-citas', titulo: 'Inicio: un Negocio de citas, sin ninguna', pinta: () => panel(NEGOCIO_AGENDA_SIN_CITAS) },
   { id: 'agenda-lista', titulo: 'Agenda: hoy, próximas y lo que ya pasó', pinta: () => enLaSeccion(NEGOCIO_AGENDA, '/panel/agenda') },
+  { id: 'agenda-muchas', titulo: 'Agenda: más filas que el límite', pinta: () => enLaSeccion(NEGOCIO_AGENDA_MUCHAS, '/panel/agenda') },
   { id: 'agenda-vacia', titulo: 'Agenda: todavía ninguna', pinta: () => enLaSeccion(NEGOCIO_AGENDA_SIN_CITAS, '/panel/agenda') },
+  { id: 'tablero-agenda-con-pedidos', titulo: 'Tablero: un Negocio de citas que también tiene pedidos', pinta: () => enLaSeccion(NEGOCIO_AGENDA_CON_PEDIDOS, '/panel/tablero') },
   { id: 'tablero-agenda-sin-citas', titulo: 'Tablero: un Negocio de citas, sin ninguna', pinta: () => enLaSeccion(NEGOCIO_AGENDA_SIN_CITAS, '/panel/tablero') },
   { id: 'hoy-lo-ultimo', titulo: 'Inicio: lo último, con un mensaje largo, un link y un pedido confirmado', pinta: () => panel(NEGOCIO_LO_ULTIMO) },
   { id: 'pedidos-lista', titulo: 'Pedidos: agrupados por lo que falta hacer', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/pedidos') },

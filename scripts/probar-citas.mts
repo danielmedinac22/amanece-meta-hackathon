@@ -28,7 +28,8 @@ const { leerTablero } = await import('../src/nucleo/tablero')
 const { tarjetasDelTablero } = await import('../src/nucleo/tablero-palabras')
 const { comoClave, comoMonto } = await import('../src/nucleo/estado/elementos')
 const { PARTIDAS } = await import('../src/nucleo/plantillas')
-const { revisar, HECHOS_DE_PRUEBA } = await import('../src/nucleo/salida/revisar')
+const { PLANTILLAS } = await import('../src/app/plantillas-datos')
+const { aceptoUnaHora, hablaDeUnaHora, revisar, HECHOS_DE_PRUEBA } = await import('../src/nucleo/salida/revisar')
 type Motores = import('../src/nucleo/clientes/turno').Motores
 type Hechos = import('../src/nucleo/salida/revisar').HechosDeRevision
 type CitaEnRevision = import('../src/nucleo/salida/revisar').CitaEnRevision
@@ -85,15 +86,19 @@ function probarElTiempo() {
   afirmar('Rubro: unas velas no son una agenda', vozDelRubro('Vendo unas velas') === 'tienda')
   afirmar('Rubro: salón de uñas sigue siendo agenda', vozDelRubro('Salón de uñas') === 'agenda' && vozDelRubro('uñas') === 'agenda')
   afirmar('Plantilla: no deja la regla que frenaría una respuesta honesta', PARTIDAS.agenda.reglas.length === 0)
-  afirmar('Plantilla: no promete recordatorios', !/recuerd/i.test(PARTIDAS.agenda.primero) || /no mando recordatorios/i.test(PARTIDAS.agenda.primero))
+  afirmar('Plantilla: dice que no manda recordatorios ni cobra', /no mando recordatorios ni cobro/i.test(PARTIDAS.agenda.primero), PARTIDAS.agenda.primero)
+  afirmar('Plantilla: la tarjeta no promete lo que no existe', !/recuerd|cobr|calendario/i.test(PLANTILLAS.find((p) => p.id === 'agenda')!.promesa))
+  afirmar('Rubro: lo que el Dueño dice de su agenda se reconoce', ['salón de belleza', 'terapia física', 'abogada', 'yoga', 'servicios con agenda'].every((r) => vozDelRubro(r) === 'agenda'))
 }
 
 function probarElDetector() {
   const JUEVES_3 = { diaDeSemana: 'jueves', diaDelMes: 5, relativo: null, minutos: 180 } as const
-  const sin = (acepto = false): CitaEnRevision => ({ tipo: 'con_agenda', vigente: null, escritaEnElTurno: false, aceptoUnaHora: acepto })
-  const tiene: CitaEnRevision = { tipo: 'con_agenda', vigente: JUEVES_3, escritaEnElTurno: false, aceptoUnaHora: false }
-  const recien: CitaEnRevision = { tipo: 'con_agenda', vigente: JUEVES_3, escritaEnElTurno: true, aceptoUnaHora: false }
-  const cancelo: CitaEnRevision = { tipo: 'con_agenda', vigente: null, escritaEnElTurno: true, aceptoUnaHora: false }
+  const sin = (acepto = false): CitaEnRevision => ({ tipo: 'con_agenda', vigente: null, antes: null, escritaEnElTurno: false, aceptoUnaHora: acepto })
+  const tiene: CitaEnRevision = { tipo: 'con_agenda', vigente: JUEVES_3, antes: null, escritaEnElTurno: false, aceptoUnaHora: false }
+  const recien: CitaEnRevision = { tipo: 'con_agenda', vigente: JUEVES_3, antes: null, escritaEnElTurno: true, aceptoUnaHora: false }
+  const movida: CitaEnRevision = { tipo: 'con_agenda', vigente: { ...JUEVES_3, diaDeSemana: 'viernes', diaDelMes: 6, minutos: 240 }, antes: JUEVES_3, escritaEnElTurno: true, aceptoUnaHora: false }
+  const cancelo: CitaEnRevision = { tipo: 'con_agenda', vigente: null, antes: null, escritaEnElTurno: true, aceptoUnaHora: false }
+  const tienda: CitaEnRevision = { tipo: 'sin_agenda' }
   const frena = (frase: string, cita: CitaEnRevision) => {
     const h: Hechos = { ...HECHOS_DE_PRUEBA, cita }
     const r = revisar(frase, h)
@@ -103,15 +108,21 @@ function probarElDetector() {
     ['Listo, te agendé para el viernes a las 3', sin()],
     ['Sí te agendé para el viernes', sin()],
     ['Te reservé el jueves a las 3', sin()],
+    ['Le agendé la cita del jueves', sin()],
+    ['Ya agendé tu cita para el jueves', sin()],
+    ['Te guardé el cupo del jueves', sin()],
+    ['Ya te cuadré el jueves', sin()],
+    ['Ya estás anotada para el jueves', sin()],
+    ['La esperamos el jueves', sin()],
     ['Dale, te espero mañana a las 9', sin()],
     ['Hágale, quedó para las 4', sin()],
     ['Listo, nos vemos el jueves', sin()],
     ['Todo listo, vente el jueves', sin()],
-    ['Cuenta con eso', sin(true)],
-    ['Perfecto, gracias', sin(true)],
     ['Dale, el viernes a las 4', sin()],
-    ['Listo, ya quedaste. ¿Le colaboro en algo más?', sin()],
     ['Te cambié la cita para el viernes', sin()],
+    ['Te corrí la cita para el viernes', sin()],
+    ['Listo, cancelada', tiene],
+    ['Ya no tienes cita', tiene],
     ['Te pasé para el viernes a las 10', tiene],
     ['Quedó para el viernes a las 4', tiene],
     ['Listo, te agendé el jueves a las 5', recien],
@@ -119,6 +130,14 @@ function probarElDetector() {
     ['Ya cancelé tu cita', tiene],
     ['No te preocupes, ya te agendé', sin()],
     ['Listo, te agendé, si quieres algo más me escribes', sin()],
+    ['Listo, tu cita quedó agendada, ¿necesitas algo más?', sin()],
+    ['Listo, te agendé para el jueves a las 3 ¿vale?', sin()],
+    ['Listo, tu cita quedó agendada, ¿te sirve algo más?', sin(true)],
+    ['Te agendé el jueves a las 3 y no pagas nada', sin()],
+    ['Para que estés tranquila, te agendé el jueves a las 3', sin()],
+    ['Te espero el jueves a las 3', tienda],
+    ['Te reservé el jueves a las 3', tienda],
+    ['Tu cita quedó confirmada', tienda],
   ]
   for (const [frase, cita] of dispara) afirmar(`Detector frena: ${frase}`, frena(frase, cita))
   const pasa: [string, CitaEnRevision][] = [
@@ -129,17 +148,68 @@ function probarElDetector() {
     ['Atendemos de 8 a 5, de lunes a sábado', sin()],
     ['Estamos abiertos hasta las 6', sin()],
     ['Todavía no te he agendado nada', sin()],
+    ['No alcancé a guardar la cita', sin()],
     ['Si me confirmas, te dejo agendada', sin()],
     ['Esa hora ya está ocupada, ¿te sirve a las 4?', sin(true)],
     ['Tu cita es el jueves a las 3', tiene],
     ['Te espero el jueves a las 3', tiene],
+    ['Ya tienes cita el jueves a las 3. ¿Quieres cambiarla por esta?', tiene],
+    ['Tuve un problema guardando la cita y ya se lo pasé al equipo', sin()],
     ['Listo, Felipe.', recien],
     ['Perfecto, nos vemos entonces', recien],
+    ['Te esperamos el jueves en la mañana a las 3', recien],
+    ['Te pasé del jueves a las 3 al viernes a las 4', movida],
     ['Listo, ya la cancelé', cancelo],
+    ['Tu cita quedó cancelada', cancelo],
     ['Claro, ¿para qué servicio y qué día quieres venir?', sin()],
     ['El corte vale $38.000', sin()],
+    ['Tu pedido quedó confirmado', sin()],
+    ['Listo, tu pedido quedó confirmado', sin()],
+    ['Pedido #12 confirmado', tiene],
+    ['Tu pedido quedó cancelado', sin()],
+    ['El consultorio cuenta con parqueadero', sin()],
+    ['El local cuenta con parqueadero', tiene],
+    ['Quedamos en el centro', sin()],
+    ['Queda a la vuelta del parque', sin()],
+    ['El consultorio queda en el Edificio Centro', sin()],
+    ['Quedo atento para lo que necesites', sin()],
+    ['Estamos en la 10, te esperamos', sin()],
+    ['El doctor llega a las 3', sin()],
+    ['Los domingos empezamos a las 9', sin()],
+    ['Déjame confirmarlo con el equipo del negocio y te cuento por aquí.', sin(true)],
   ]
   for (const [frase, cita] of pasa) afirmar(`Detector deja pasar: ${frase}`, !frena(frase, cita))
+
+  // La línea cierta: lo que el detector deja pasar y puede sonar a cita. Equivocarse aquí cuesta una línea de más.
+  const agregaLinea: [string, CitaEnRevision][] = [
+    ['Cuadrado, nos pillamos el viernes', sin()],
+    ['Todo bien para el jueves a las 3', sin()],
+    ['Cuenta con eso', sin(true)],
+    ['Perfecto, gracias', sin(true)],
+    ['Dale', sin(true)],
+    ['Tu cita es el viernes a las 4', tiene],
+    ['El doctor llega a las 3', sin()],
+  ]
+  for (const [frase, cita] of agregaLinea) afirmar(`Línea cierta se agrega: ${frase}`, hablaDeUnaHora(frase, cita))
+  const sinLinea: [string, CitaEnRevision][] = [
+    ['¿Te sirve el jueves a las 3?', sin()],
+    ['Tengo el jueves a las 3 o el viernes a las 10, me cuenta', sin()],
+    ['El jueves a las 3 está libre. ¿Te sirve?', sin()],
+    ['Atendemos de 8 a 5, de lunes a sábado', sin()],
+    ['El corte vale $38.000', sin()],
+    ['Hola, ¿qué servicio buscas?', sin()],
+    ['¿Te confirmo esa hora?', sin(true)],
+    ['Esa hora ya está ocupada', sin(true)],
+    ['Tu cita es el jueves a las 3', tiene],
+    ['Listo, te agendé el jueves a las 3', recien],
+    ['Nos vemos el jueves', tienda],
+  ]
+  for (const [frase, cita] of sinLinea) afirmar(`Línea cierta no hace falta: ${frase}`, !hablaDeUnaHora(frase, cita))
+
+  const acepta = (dijo: string, antes = '¿Te sirve el jueves a las 3?') => aceptoUnaHora([{ rol: 'agente', texto: antes }], dijo)
+  afirmar('Acepta: sí, dale, uy sí, sisas, está bien, melo', ['sí', 'Dale', 'uy sí', 'sisas', 'está bien', 'melo', 'De una'].every((d) => acepta(d)))
+  afirmar('Acepta: un sí con otra pregunta no acepta la hora', !acepta('Sí, ¿y cuánto vale?'))
+  afirmar('Acepta: un sí a algo que no era una hora no cuenta', !acepta('sí', '¿Quieres saber el precio?'))
 }
 
 const guion = (responder: Motores['responder'] | string, reescribir: string | null = null) => {
@@ -478,6 +548,61 @@ async function probarLoFalso() {
   await atenderMensaje(mensaje(f.telefono), N.id, guion(llama((p) => p.guardar_cita(pedido(8, z)), '')).motores)
   afirmar('Guardó y no escribió nada: sale la constancia', enviosA(f.telefono, antes).at(-1)?.texto.includes('Cita agendada:') === true, enviosA(f.telefono, antes))
 
+  const g1 = await clienteNuevo(N.id)
+  antes = envios.length
+  await atenderMensaje(mensaje(g1.telefono), N.id, guion('Todo bien para el viernes').motores)
+  afirmar('Una forma de decirlo que nadie anotó: sale con la línea cierta', enviosA(g1.telefono, antes).at(-1)?.texto === 'Todo bien para el viernes\n\nPor ahora no tienes una cita guardada.', enviosA(g1.telefono, antes))
+  const g2 = await clienteNuevo(N.id)
+  await guardarCita(N.id, g2.id, { inicio: elInstante(9, z), asunto: '', cambiaLaQueTiene: false })
+  antes = envios.length
+  await atenderMensaje(mensaje(g2.telefono), N.id, guion(`Nos pillamos el ${['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date(`${diaEn(11, z)}T12:00:00Z`).getUTCDay()]}`, '¿Te confirmo esa hora?').motores)
+  afirmar('Una cita guardada y otra hora: se frena, sin línea si la corrección solo pregunta', enviosA(g2.telefono, antes).at(-1)?.texto === '¿Te confirmo esa hora?', enviosA(g2.telefono, antes))
+  const g3 = await clienteNuevo(N.id)
+  await guardarCita(N.id, g3.id, { inicio: elInstante(12, z), asunto: '', cambiaLaQueTiene: false })
+  antes = envios.length
+  await atenderMensaje(mensaje(g3.telefono), N.id, guion(`Todo bien para el ${diaEn(13, z).slice(8)} a las 7`).motores)
+  afirmar('Otra hora dicha de otra forma: la línea dice cuál es la guardada', enviosA(g3.telefono, antes).at(-1)?.texto.endsWith(`Tu cita guardada sigue siendo: ${enPalabras(elInstante(12, z), z)}`) === true, enviosA(g3.telefono, antes))
+  const g4 = await clienteNuevo(N.id)
+  antes = envios.length
+  await atenderMensaje(mensaje(g4.telefono), N.id, guion('¿Te sirve el jueves a las 3?').motores)
+  afirmar('Una oferta sale limpia, sin línea', enviosA(g4.telefono, antes).at(-1)?.texto === '¿Te sirve el jueves a las 3?')
+  const g5 = await clienteNuevo(N.id)
+  await db.insert(esquema.mensajesCliente).values({ negocioId: N.id, clienteId: g5.id, rol: 'agente', texto: '¿Te sirve el jueves a las 3?' })
+  antes = envios.length
+  await atenderMensaje(mensaje(g5.telefono, 'sí, dale'), N.id, guion('Perfecto, gracias').motores)
+  afirmar('Aceptó y no se guardó: el Cliente sabe que no hay cita', enviosA(g5.telefono, antes).at(-1)?.texto === 'Perfecto, gracias\n\nPor ahora no tienes una cita guardada.' && (await citasDe(N.id)).every((f) => f.clienteId !== g5.id), enviosA(g5.telefono, antes))
+
+  // La regla de #48 está en `main`: un Negocio que partió de la plantilla la guarda como fila. No debe poder esconder una cita real.
+  const V = await negocioNuevo('V')
+  await db.insert(esquema.elementos).values({
+    negocioId: V.id,
+    clave: comoClave('regla:no-dar-una-cita-por-agendada'),
+    version: 3,
+    tipo: 'regla',
+    contrato: 1,
+    contenido: {
+      tipo: 'regla',
+      nombre: 'No dar una cita por agendada',
+      cuando: { tipo: 'siempre' },
+      efectos: [
+        { tipo: 'no_prometer', que: 'disponibilidad' },
+        { tipo: 'no_decir', frases: ['cita agendada', 'queda agendada', 'quedó agendada', 'te agendé', 'cita confirmada', 'te confirmo la cita'] },
+      ],
+      escenarios: { activan: [{ mensajeDelCliente: 'Quiero una cita para el jueves', momento: null, pedido: null, esperado: { hace: [], noHace: [] } }], noActivan: [] },
+    },
+    origen: 'tablas_viejas',
+    sinPublicar: false,
+  })
+  const conRegla = await clienteNuevo(V.id)
+  antes = envios.length
+  await atenderMensaje(mensaje(conRegla.telefono), V.id, guion(llama((p) => p.guardar_cita(pedido(2, z)), 'Gracias, Camila.')).motores)
+  const deLaRegla = (await citasDe(V.id)).find((f) => f.clienteId === conRegla.id)
+  afirmar('Con la regla vieja: la cita se guarda y su constancia sale', deLaRegla?.estado === 'agendada' && enviosA(conRegla.telefono, antes).at(-1)?.texto === `Gracias, Camila.\n\n${constanciaDe({ tipo: 'agendada', inicio: deLaRegla.inicio, antes: null }, z)}`, enviosA(conRegla.telefono, antes))
+  const sinGuardar = await clienteNuevo(V.id)
+  antes = envios.length
+  await atenderMensaje(mensaje(sinGuardar.telefono), V.id, guion('Listo, cita agendada', 'Tu cita queda agendada').motores)
+  afirmar('Con la regla vieja: lo dicho sin guardar sigue frenado', enviosA(sinGuardar.telefono, antes).at(-1)?.texto === RESPALDO, enviosA(sinGuardar.telefono, antes))
+
   const T = await negocioNuevo('L', 'café')
   const t = await clienteNuevo(T.id)
   let herramientas: string[] = []
@@ -515,12 +640,19 @@ async function medirElModelo(vueltas: number) {
   const N = await negocioNuevo('Z')
   const z = N.zonaHoraria
   const dia = diaEn(3, z)
-  const conteo = { pedir: { guardo: 0, sinConstancia: 0 }, ocupada: { noPiso: 0 }, mover: { movio: 0, unaSola: 0 }, cancelar: { cancelo: 0 }, pedidos: 0, frenadas: 0, tandas: 0, fallaron: [] as string[] }
+  const conteo = { pedir: { guardo: 0, sinConstancia: 0 }, ocupada: { noPiso: 0 }, mover: { movio: 0, unaSola: 0 }, cancelar: { cancelo: 0 }, pedidos: 0, frenadas: 0, tandas: 0, turnos: 0, lineaCierta: 0, sinGuardarSuenaACita: [] as string[], fallaron: [] as string[] }
   let cupo = 0
   const uno = async (telefono: string, dice: string) => {
     const desde = envios.length
+    const antesDeLaFila = (await citasDe(N.id)).map((f) => `${f.id}${f.estado}${f.inicio.toISOString()}`).join()
     await atenderMensaje(mensaje(telefono, dice), N.id)
-    return enviosA(telefono, desde).map((e) => e.texto).join('\n')
+    const dijo = enviosA(telefono, desde).map((e) => e.texto).join('\n')
+    conteo.turnos++
+    if (/Por ahora no tienes una cita guardada|Tu cita guardada sigue siendo/.test(dijo)) conteo.lineaCierta++
+    // Medida aparte del detector: una lectura a mano de lo que suena a cita en un turno que no cambió ninguna fila.
+    const cambio = antesDeLaFila !== (await citasDe(N.id)).map((f) => `${f.id}${f.estado}${f.inicio.toISOString()}`).join()
+    if (!cambio && /\b(agend|reserv|apart|qued|confirm|espero|esperamos|nos vemos|anot|listo)/i.test(dijo)) conteo.sinGuardarSuenaACita.push(dijo)
+    return dijo
   }
   const hora = () => `${String(8 + (cupo % 9)).padStart(2, '0')}:${cupo++ % 2 ? '30' : '00'}`
   const horaEnPalabras = (h: string) => {
@@ -568,7 +700,7 @@ async function medirElModelo(vueltas: number) {
     }
   }
   conteo.frenadas = (await casosDe(N.id)).filter((k) => k.titulo === 'Respuesta frenada por el núcleo').length
-  console.log(JSON.stringify({ ...conteo, fallaron: conteo.fallaron.map((f) => f.slice(0, 400)) }, null, 1))
+  console.log(JSON.stringify({ ...conteo, sinGuardarSuenaACita: conteo.sinGuardarSuenaACita.map((f) => f.slice(0, 300)), fallaron: conteo.fallaron.map((f) => f.slice(0, 400)) }, null, 1))
 }
 
 try {

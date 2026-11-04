@@ -20,7 +20,8 @@ export type MomentoDeCita = { readonly diaDeSemana: string; readonly diaDelMes: 
 
 export type CitaEnRevision =
   | { readonly tipo: 'sin_agenda' }
-  | { readonly tipo: 'con_agenda'; readonly vigente: MomentoDeCita | null; readonly escritaEnElTurno: boolean; readonly aceptoUnaHora: boolean }
+  /** `antes`: la hora de la que se movió en este turno, que también se puede nombrar. */
+  | { readonly tipo: 'con_agenda'; readonly vigente: MomentoDeCita | null; readonly antes: MomentoDeCita | null; readonly escritaEnElTurno: boolean; readonly aceptoUnaHora: boolean }
 
 type Pruebas = { readonly dispara: readonly string[]; readonly noDispara: readonly string[] }
 
@@ -121,12 +122,12 @@ const NUMEROS_EN_PALABRAS: Record<string, number> = { una: 1, uno: 1, dos: 2, tr
 const HORA = `\\d{1,2}|${Object.keys(NUMEROS_EN_PALABRAS).join('|')}`
 const DIAS_DE_LA_SEMANA = /\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g
 
-/** Sin `a. m.` partido en dos oraciones. Una pregunta queda con su signo. */
+/** Sin `a. m.` partido en dos oraciones. `Listo, quedó, ¿algo más?` son dos: la pregunta no le quita lo que afirma la primera. */
 const oraciones = (t: string) =>
   plano(t)
     .replace(/\b([ap])\. ?m\b\.?/g, '$1m')
-    .split(/(?<=\?)|[.!;\n]+/)
-    .map((o) => o.trim())
+    .split(/(?<=\?)|(?=¿)|[.!;\n]+/)
+    .map((o) => o.replace(/[,\s]+$/, '').trim())
     .filter(Boolean)
 
 const esPregunta = (o: string) => /[?¿]/.test(o)
@@ -142,60 +143,85 @@ function horasEn(o: string): number[] {
 }
 
 const diasEn = (o: string) => [...o.matchAll(DIAS_DE_LA_SEMANA)].map((x) => x[1])
-const relativosEn = (o: string) => [...o.replace(/de la manana/g, ' ').matchAll(/\b(hoy|manana)\b/g)].map((x) => x[1])
+const relativosEn = (o: string) => [...o.replace(/\b(?:de|en|por) la manana\b/g, ' ').matchAll(/\b(hoy|manana)\b/g)].map((x) => x[1])
 const diasDelMesEn = (o: string) => [...o.matchAll(/\bel (\d{1,2})(?: de [a-z]+)?\b(?! ?(?:am|pm))/g)].map((x) => Number(x[1]))
 
-function contradice(o: string, v: MomentoDeCita): boolean {
-  return horasEn(o).some((h) => h !== v.minutos) || diasEn(o).some((d) => d !== v.diaDeSemana) || relativosEn(o).some((r) => r !== v.relativo) || diasDelMesEn(o).some((d) => d !== v.diaDelMes)
-}
+/** Nombra un momento que no es de estos. Sin saber de qué mes habla, un jueves de otra semana no se distingue. */
+const noEsDe = (o: string, ...v: readonly MomentoDeCita[]) =>
+  horasEn(o).some((h) => !v.some((m) => m.minutos === h)) || diasEn(o).some((d) => !v.some((m) => m.diaDeSemana === d)) || relativosEn(o).some((r) => !v.some((m) => m.relativo === r)) || diasDelMesEn(o).some((d) => !v.some((m) => m.diaDelMes === d))
+const nombraUnMomento = (o: string) => horasEn(o).length + diasEn(o).length + relativosEn(o).length + diasDelMesEn(o).length > 0
+const nombraDiaYHora = (o: string) => horasEn(o).length > 0 && nombraUnMomento(o.replace(/\b\d{1,2}:\d{2}\b/g, ' ').replace(new RegExp(`\\b(?:a|para|de|desde|hasta) las? (?:${HORA})\\b`, 'g'), ' '))
 
-const nombraDiaYHora = (o: string) => horasEn(o).length > 0 && diasEn(o).length + relativosEn(o).length + diasDelMesEn(o).length > 0
+const NIEGA_LA_CITA = /\b(?:no|nunca|jamas|tampoco)(?: (?:te|le|la|lo|les|los|las|se|me|nos|he|hemos|ha|han|puedo|pude|alcance|quedo|queda|esta|tienes|tiene))*(?: (?:agendar|agendado|agendada|agende|reservar|reservado|reservada|reserve|apartar|apartado|apartada|aparte|guardar|guardado|guardada|guarde|mover|movido|movida|movi|cancelar|cancelado|cancelada|cancele|cita))\b/
+const ES_DE_OTRA_COSA = /\b(pedido|pedidos|entrega|envio|envios|recogida|domicilio|despacho|paquete|bolsa|compra)\b/
+const SI_ACASO = /^(?:si (?:quieres|prefieres|puedes|necesitas|deseas|gustas|tienes|hay|no|me|te (?:sirve|queda|parece|gusta)|lo|la)|cuando|apenas|en cuanto|tan pronto|antes de|puedo|podemos|podria|podriamos|quieres|te gustaria|hay que)\b/
 
-/** Una parte de frase que no afirma nada todavía. `Listo, te agendé, si quieres algo me escribes` sigue afirmando en su otra parte. */
-const HIPOTETICA = /\bsi (quieres|prefieres|puedes|necesitas|deseas|gustas|tienes|hay|no|me|te (sirve|queda|parece|gusta))\b|\b(cuando|puedo|podemos|podria|podriamos|quieres|te gustaria|para que|antes de|apenas|en cuanto|tan pronto|hay que|debo|falta|necesito)\b/
-const NEGADA = /\b(no|nunca|todavia no|aun no|tampoco)\b/
+const YO_AGENDE = /\b(?:te|le|la|lo|les|los|las) (?:agende|reserve|aparte|separe|anote|guarde|cuadre|deje)\b|\b(?:ya|listo,?) (?:agende|reserve|aparte|anote|guarde|cuadre)\b/
+const NOMBRA_LA_CITA = /\b(?:cita|turno|cupo)\b/
+const CITA_LISTA = /\b(?:cita|turno|cupo)\b.*\b(?:agendad[ao]|confirmad[ao]|reservad[ao]|apartad[ao]|separad[ao]|anotad[ao]|guardad[ao]|cuadrad[ao]|list[ao]|queda|quedo)\b|\b(?:agendad[ao]|confirmad[ao]|reservad[ao]|apartad[ao]|anotad[ao]|guardad[ao]|cuadrad[ao])\b.*\b(?:cita|turno|cupo)\b|\b(?:estas?|quedaste|quedo|queda) (?:agendad[ao]|anotad[ao]|reservad[ao])\b|\bya qued(?:o|a) (?:tu|la|su) (?:cita|turno|cupo)\b|\bte confirmo la cita\b/
+/** Solo cuenta con un día o una hora al lado: `te esperamos` a secas es cortesía, y `cuenta con` puede ser parqueadero. */
+const ACUSE = /\b(?:te|la|lo|los|las|les) (?:espero|esperamos|esperan)\b|\bnos (?:vemos|pillamos)\b|\bquedamos\b|\bquedas?(?:te)? para\b|\bquedo para\b|\bqueda para\b|\blisto\b|\bdale\b|\bhagale\b|\bcuadrad[ao]\b|\bcuadramos\b|\bya qued(?:o|a|aste)\b|\bvente\b|\bvenga\b|\bven\b|\bcuenta con\b/
+const SE_MOVIO = /\b(?:te|le) (?:pase|cambie|movi|corri)\b|\b(?:pase|cambie|movi|corri|mude) (?:la|tu|su) (?:cita|hora|turno)\b|\b(?:cita|turno)\b.*\b(?:movid[ao]|cambiad[ao]|reprogramad[ao]|corrid[ao])\b/
+const SE_CANCELO = /\bcancele\b|\bcancelad[ao]\b/
+const YA_NO_TIENE = /\bya no tienes? (?:una )?(?:cita|turno)\b/
 
-/** Vale en cualquier Negocio: nombra la cita, así que un café no dice esto por accidente. */
-const CITA_DADA = /\b(cita|turno|reserva)\b.*\b(agendad[ao]|confirmad[ao]|reservad[ao]|apartad[ao]|separad[ao]|anotad[ao]|list[ao]|queda|quedo)\b|\b(agendad[ao])\b|\bte confirmo la cita\b|\bte (agende|reserve|aparte|separe|anote)\b.*\b(cita|turno|hora|cupo)\b/
-/** Solo con agenda: `te esperamos` en una tienda es cortesía. */
-const SE_DIO = /\bte (agende|reserve|aparte|separe|anote|deje)\b|\bqued(o|a|aste|amos)\b.*\b(para|el|a las|a la|list[ao]|cuadrad[ao]|confirmad[ao])\b|\bya qued(o|a|aste)\b|\bte (espero|esperamos|esperan)\b|\bnos (vemos|pillamos)\b|\bvente\b|\bven (el|manana|hoy|a las)\b|\bcuenta con\b|\b(cuadrad[ao]|cuadramos|confirmad[ao]|reservad[ao]|apartad[ao])\b|\b(tu|la|su) cita (es|sera|va)\b|\blisto,? (el|para|a las|a la)\b/
-const SE_MOVIO = /\bte (pase|cambie|movi)\b|\b(pase|cambie|movi|mude)\b.* (cita|hora|turno)\b|\b(cita|hora|turno)\b.*\b(movid[ao]|cambiad[ao]|reprogramad[ao])\b/
-const SE_CANCELO = /\bcancele\b|\b(cita|turno|reserva)\b.*\bcancelad[ao]\b|\bya no tienes? cita\b/
-
-/** Una hora que se ofrece o se informa, sin darla por tomada. */
-const OFERTA = /\b(libres?|ocupad[ao]s?|atendemos|atiendo|abrimos|cerramos|horario|desde las|hasta las|tengo|hay|puede ser|podria ser|te sirve|te queda|prefieres|disponibles?|me cuenta|me dices|o el|o a las|no)\b/
-const ACEPTA = /^(si|sip|dale|de una|listo|perfecto|ok|okay|bueno|claro|esa|ese|me sirve|me queda bien|hagale|de acuerdo|vale|va)\b/
-const PREGUNTA_DE_HORA = /\b(sirve|prefieres|hora|dia|confirm|cuando|seguro|queda bien)\b/
-const NO_PUDO = /\b(ocupad[ao]s?|ya paso|ya no esta|no (puedo|tengo|hay|atiendo|atendemos))\b/
+/** Una hora que se ofrece o se informa, sin darla por tomada. Equivocarse aquí cuesta una línea cierta de más. */
+const OFERTA = /\b(libres?|ocupad[ao]s?|atendemos|atiendo|abrimos|cerramos|empezamos|horario|desde las|hasta las|tengo|hay|puede ser|podria ser|te sirve|te queda|prefieres|disponibles?|me cuenta|me dices|o el|o a las|si te|no)\b/
+const ACEPTA = /^(?:(?:uy|pues|ah|ay) )?(si|sip|sisas|dale|de una|listo|perfecto|ok|okay|bueno|claro|esa|ese|me sirve|me queda bien|esta bien|melo|hagale|hagamosle|de acuerdo|vale|va|confirmo)\b/
+const PREGUNTA_DE_HORA = /\b(te sirve|prefieres|que hora|que dia|confirm|cuando|seguro|queda bien|a esa hora|esa hora)\b/
+const NO_PUDO = /\b(ocupad[ao]s?|ya paso|ya no esta|no (puedo|pude|tengo|hay|atiendo|atendemos))\b/
 
 /** El agente preguntó por una hora y el Cliente dijo que sí: lo que siga, sin escritura, se lee como un sí del Negocio. */
 export function aceptoUnaHora(historial: readonly { readonly rol: string; readonly texto: string }[], mensaje: string): boolean {
   const antes = historial.at(-1)
   const dijo = plano(mensaje).trim()
-  if (antes?.rol !== 'agente' || dijo.length > 40 || !ACEPTA.test(dijo)) return false
+  if (antes?.rol !== 'agente' || dijo.length > 40 || esPregunta(dijo) || !ACEPTA.test(dijo)) return false
   return oraciones(antes.texto).some((o) => esPregunta(o) && horasEn(o).length > 0)
 }
 
+const afirma = (o: string, familia: RegExp) => {
+  const limpia = o.replace(/\bno te (preocupes|afanes)\b/g, ' ')
+  return limpia.split(',').some((c) => familia.test(c) && !SI_ACASO.test(c.trim()) && !NIEGA_LA_CITA.test(c) && !ES_DE_OTRA_COSA.test(c))
+}
+
+/** Lo que el modelo dio por hecho con palabras claras. Lo demás no se frena: lo cubre `hablaDeUnaHora`. */
 function citaSinRespaldo(texto: string, cita: CitaEnRevision): boolean {
-  const todas = oraciones(texto)
-  const afirma = (o: string, familia: RegExp) => {
-    const partes = o.replace(/\bno te (preocupes|afanes)\b/g, ' ').split(',')
-    return !HIPOTETICA.test(partes[0]) && partes.some((c) => familia.test(c) && !HIPOTETICA.test(c) && !NEGADA.test(c))
-  }
-  const declarativas = todas.filter((o) => !esPregunta(o))
-  if (cita.tipo === 'sin_agenda') return declarativas.some((o) => afirma(o, CITA_DADA))
-  const { vigente, escritaEnElTurno } = cita
+  const declarativas = oraciones(texto).filter((o) => !esPregunta(o))
+  const vigente = cita.tipo === 'con_agenda' ? cita.vigente : null
+  const escrita = cita.tipo === 'con_agenda' && cita.escritaEnElTurno
+  const anterior = cita.tipo === 'con_agenda' ? cita.antes : null
+  const contradice = (o: string) => vigente !== null && noEsDe(o, vigente, ...(anterior ? [anterior] : []))
   for (const o of declarativas) {
-    if (afirma(o, SE_CANCELO) && (!escritaEnElTurno || vigente)) return true
-    if (afirma(o, SE_MOVIO) && (!escritaEnElTurno || !vigente || contradice(o, vigente))) return true
-    if (afirma(o, CITA_DADA) || afirma(o, SE_DIO)) {
-      if (!vigente || contradice(o, vigente)) return true
-      if (!escritaEnElTurno && !nombraDiaYHora(o)) return true
+    if (YA_NO_TIENE.test(o) && (!escrita || vigente)) return true
+    if (afirma(o, SE_CANCELO) && (NOMBRA_LA_CITA.test(o) || cita.tipo === 'con_agenda')) {
+      if (!escrita || vigente) return true
+      continue
     }
+    if (afirma(o, SE_MOVIO)) {
+      if (!escrita || !vigente || contradice(o)) return true
+      continue
+    }
+    const yo = afirma(o, YO_AGENDE) && (NOMBRA_LA_CITA.test(o) || nombraUnMomento(o) || /\b(?:te|le) agende\b/.test(o))
+    const dada = yo || afirma(o, CITA_LISTA) || (afirma(o, ACUSE) && nombraUnMomento(o))
+    if (!dada) continue
+    if (!vigente || contradice(o)) return true
+    if (!escrita && !nombraDiaYHora(o)) return true
   }
-  const ofrece = todas.length > 0 && esPregunta(todas[todas.length - 1])
-  if (!ofrece && declarativas.some((o) => horasEn(o).length > 0 && !OFERTA.test(o) && !HIPOTETICA.test(o) && (!vigente || contradice(o, vigente)))) return true
-  return cita.aceptoUnaHora && !escritaEnElTurno && !todas.some((o) => (esPregunta(o) && PREGUNTA_DE_HORA.test(o)) || NO_PUDO.test(o))
+  return false
+}
+
+/**
+ * Pura. Si esta respuesta, sin escritura en el turno, puede dejar al Cliente creyendo algo de su cita. Ninguna lista de
+ * frases alcanza para saber si un mensaje afirma una cita, así que esto no frena nada: pide que el núcleo agregue una línea
+ * que es cierta se haya entendido como se haya entendido el mensaje, y equivocarse cuesta esa línea de más.
+ */
+export function hablaDeUnaHora(texto: string, cita: CitaEnRevision): boolean {
+  if (cita.tipo === 'sin_agenda' || cita.escritaEnElTurno) return false
+  const todas = oraciones(texto)
+  const { vigente } = cita
+  const declarativas = todas.filter((o) => !esPregunta(o))
+  if (declarativas.some((o) => nombraUnMomento(o) && !OFERTA.test(o) && (!vigente || noEsDe(o, vigente)))) return true
+  return cita.aceptoUnaHora && !todas.some((o) => (esPregunta(o) && PREGUNTA_DE_HORA.test(o)) || NO_PUDO.test(o))
 }
 
 /** Una fila por motivo. Agregar un motivo sin `detecta` ni `pruebas` no compila. */
@@ -267,13 +293,25 @@ export const DETECTORES = {
       noDispara: ['No podemos decir que cure nada: consulta a tu médico', 'Es un café suave, de tueste medio', 'Para prevenir que pierda aroma, guárdalo en un frasco cerrado.', 'Este té no cura nada'],
     },
   },
-  /** Vale para todo Negocio. Lo que se pinta como cierto al Cliente es la constancia que escribe el núcleo: esto frena lo que el modelo afirme por su cuenta. */
+  /** Vale para todo Negocio, porque un Rubro mal reconocido no tiene agenda y el modelo igual podría decirlo. */
   cita_sin_respaldo: {
     alcance: 'respuesta',
     detecta: (t, h) => citaSinRespaldo(t, h.cita),
     pruebas: {
-      dispara: ['Listo, tu cita quedó agendada para el jueves', 'Te agendé la cita', 'Tu turno quedó confirmado'],
-      noDispara: ['Te esperamos pronto en la tienda', 'Tu pedido quedó confirmado', 'Todavía no agendamos citas por aquí', '¿Quieres que te ayude con algo más?'],
+      dispara: ['Listo, tu cita quedó agendada para el jueves', 'Te agendé la cita', 'Tu turno quedó confirmado', 'Te espero el jueves a las 3', 'Le reservé el jueves a las 3'],
+      noDispara: [
+        'Te esperamos pronto en la tienda',
+        'Tu pedido quedó confirmado',
+        'Pedido #12 confirmado',
+        'Te aparté la bolsa',
+        'Te reservé la bolsa',
+        'Tu reserva de la bolsa quedó lista',
+        'El Café Reserva Especial queda en $38.000',
+        'Tu entrega quedó agendada para el jueves',
+        'Tu recogida está agendada para mañana',
+        'Todavía no agendamos citas por aquí',
+        '¿Quieres que te ayude con algo más?',
+      ],
     },
   },
   habla_de_otro_negocio: {

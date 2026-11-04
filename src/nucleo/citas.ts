@@ -54,8 +54,9 @@ export async function guardarCita(negocio: NegocioId, cliente: ClienteId, e: Ped
         .returning({ inicio: citas.inicio })
       if (movida) return { tipo: 'movida', inicio: movida.inicio, antes: tiene.inicio }
     } catch (error) {
-      if (!(await ocupadaPorOtro(negocio, cliente, e.inicio))) throw error
-      return { negada: 'ocupada', ocupadasDelDia: await ocupadasAlrededor(negocio, e.inicio) }
+      if (await ocupadaPorOtro(negocio, cliente, e.inicio)) return { negada: 'ocupada', ocupadasDelDia: await ocupadasAlrededor(negocio, e.inicio) }
+      // Quien la tenía la soltó justo después del choque: otra vuelta la puede tomar. Si era otro error, ahí se repite.
+      if (intento >= 1) throw error
     }
   } else {
     // La vieja suelta `citas_una_por_cliente` en el mismo batch. Si la inserción no entra, soltarla no daña nada: ya pasó.

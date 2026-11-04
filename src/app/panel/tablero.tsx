@@ -153,7 +153,9 @@ export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonl
           {tablero.porOrigen.some((f) => f.origen === 'sin_dato') && <p className="mt-3 text-xs text-pretty text-muted-foreground">Sin dato: no se sabe cómo llegaron. Aquí van también quienes te escribieron antes de que esto se guardara.</p>}
         </Bloque>
       </div>
-      {tablero.citas ? <ProximasCitas filas={tablero.citas.proximas} /> : <Recientes filas={tablero.recientes} />}
+      {tablero.citas && <ProximasCitas filas={tablero.citas.proximas} />}
+      {/* Una agenda con pedidos también los ve: el Rubro es texto libre y puede haber reconocido mal una tienda. */}
+      {(!tablero.citas || tablero.recientes.length > 0) && <Recientes filas={tablero.recientes} />}
     </div>
   )
 }
