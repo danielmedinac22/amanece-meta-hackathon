@@ -354,9 +354,11 @@ const EN_ENTRAR = `--cierto=location.pathname === '/entrar'`
 
 const RECORRIDOS_DE_ALBA: typeof RECORRIDOS = [
   ['Alba: pestañas y las tres plantillas, con Remixear y Ver', 'alba', '1440', '--ve=¿Qué hace tu negocio?', '--ve=Venta contra entrega', '--ve=Envíos y paquetería', '--ve=Servicios con agenda', '--ve=Remixear', '--ve=Ver', '--cierto=!!document.querySelector(\'a[href="/panel"]\')'],
-  ['Alba: el título sobre el cielo va con --foreground', 'alba', '1440', `--cierto=getComputedStyle(document.querySelector('h1')).color === getComputedStyle(document.body).color`],
+  ['Alba: de noche la tinta es clara y aclara al escribir', 'alba', '1440', `--cierto=!document.querySelector('[data-cielo]').hasAttribute('data-aclaro')`, '--escribe=Vendo café de origen en Manizales con envío a toda Colombia', `--cierto=document.querySelector('[data-cielo]').hasAttribute('data-aclaro')`],
+  ['Alba: con prefers-reduced-motion el título ya va con --foreground sobre el cielo final', 'alba', '1440', '--menos-movimiento', `--cierto=getComputedStyle(document.querySelector('h1')).color === getComputedStyle(document.body).color`],
   ['Alba: la caja escribe ejemplos sola y se detiene cuando el Dueño escribe', 'alba', '1440', '--espera=1200', `--cierto=${CAJA}.placeholder !== 'Pega el link de tu negocio o cuéntame qué haces' && 'cafeladera.co'.startsWith(${CAJA}.placeholder)`, '--escribe=Vendo café', MARCADOR_FIJO, '--espera=1000', MARCADOR_FIJO],
   ['Alba: con prefers-reduced-motion no hay máquina de escribir', 'alba', '1440', '--menos-movimiento', '--espera=1500', MARCADOR_FIJO],
+  ['Alba: lo escrito se guarda al salir por un enlace, sin enviarlo', 'alba', '1440', '--escribe=Vendo café', '--clic=EN', '--espera=800', `--cierto=location.pathname === '/en'`, `--cierto=JSON.parse(localStorage.getItem('amanece:lo-escrito')).texto === 'Vendo café'`],
   ['Alba: Lo que puede hacer dice cuatro cosas', 'alba', '390', '--clic=Lo que puede hacer', '--espera=600', '--ve=Tomo pedidos y los confirmo', '--ve=Te busco solo cuando algo necesita tu decisión', `--cierto=document.querySelectorAll('[role=tabpanel] li').length === 4`],
   ['Alba: Ver abre lo que ve el Dueño junto a lo que ve el Cliente', 'alba', '390', '--clic=Ver', '--ve=Lo que ve tu Cliente en WhatsApp', '--ve=es un negocio de ejemplo', '--clic=Cerrar', '--espera=400', '--no-ve=Lo que ve tu Cliente en WhatsApp'],
   ['Alba: ninguna tarjeta nombra lo que el Panel no tiene', 'alba', '1440', '--no-ve=Bandeja', '--no-ve=Contactos', '--no-ve=Tarifas', '--no-ve=Pacientes', '--no-ve=Citas de hoy', '--no-ve=Agenda de hoy', '--no-ve=Agenda citas', '--no-ve=sigue cada envío'],
@@ -572,7 +574,9 @@ try {
   const produccion = await servir('start')
   const portada = await ver(`${produccion.base}/`)
   const portadaEnTexto = await portada.text()
-  afirmar('start: / es Alba, público y sin sesión', portada.status === 200 && portadaEnTexto.includes('¿Qué hace tu negocio?') && !portadaEnTexto.includes('Escríbele a Café Ladera'), portada.status)
+  afirmar('start: / es la portada, pública y sin sesión', portada.status === 200 && portadaEnTexto.includes('¿Qué hace tu negocio?') && portadaEnTexto.includes('Escríbele a Café Ladera'), portada.status)
+  const enIngles = await ver(`${produccion.base}/en`)
+  afirmar('start: /en es la portada en inglés', enIngles.status === 200 && (await enIngles.text()).includes('What does your business do?'), enIngles.status)
   for (const ruta of ['/vitrina', '/vitrina/componentes']) {
     const r = await ver(`${produccion.base}${ruta}`)
     afirmar(`start: ${ruta} da 404`, r.status === 404, r.status)
