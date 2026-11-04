@@ -37,6 +37,29 @@ const tocarEn = (pano: 'lienzo' | 'hilo', texto: string) => `--cierto=(() => { c
 const enElPano = (pano: 'lienzo' | 'hilo', texto: string) => `--cierto=document.querySelector('[data-pano=${pano}]').innerText.includes('${texto}')`
 const SIDEBAR_ABIERTO = `--cierto=${ancho('[data-slot=sidebar-gap]')} === 216`
 
+const REDACTOR_DEL_CLIENTE = `document.querySelector('textarea[aria-label="Escríbele al Cliente"]')`
+const ESCRIBIR_AL_CLIENTE = `--cierto=(() => { const t = ${REDACTOR_DEL_CLIENTE}; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Ya voy'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`
+// El Hilo también tiene su botón de enviar: `--clic` por el texto tocaría el primero.
+const ENVIAR_AL_CLIENTE = `--cierto=(() => { ${REDACTOR_DEL_CLIENTE}.closest('form').requestSubmit(); return true })()`
+const RECORRIDOS_DE_LA_TOMA: [string, string, string, ...string[]][] = [
+  ['La toma: tomar da el tiempo y el redactor, y devolver vuelve al agente', 'conversaciones-lista', '1440', '--ve=Tu agente está atendiendo', `--cierto=${REDACTOR_DEL_CLIENTE} === null`, '--clic=Tomar la conversación', '--ve=La tienes tú', '--ve=vuelve a tu agente en 30 min', `--cierto=${REDACTOR_DEL_CLIENTE} !== null`, '--clic=Devolver al agente', '--ve=Tu agente está atendiendo', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
+  ['La toma, teléfono: tomar y devolver caben', 'conversacion-tomada', '390', '--clic=DQDaniela Quintero', '--ve=La tienes tú', '--ve=vuelve a tu agente en 28 min', '--ve=Devolver al agente'],
+  ['La toma: lo que escribió el Dueño se distingue del agente', 'conversacion-tomada', '1440', '--ve=Hola Daniela, soy Lucía', '--ve=Dueño', `--cierto=${REDACTOR_DEL_CLIENTE} !== null`],
+  ['La toma: enviar vacía el redactor y dice Enviado', 'conversacion-tomada', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=Enviado.', `--cierto=${REDACTOR_DEL_CLIENTE}.value === ''`],
+  ['La toma: otro Dueño ve quién la tiene y no le escribe', 'conversacion-de-otro', '1440', '--ve=La tiene Marcela', '--ve=vuelve a tu agente en 12 min', '--ve=Devolver al agente', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
+  ['La toma: sin ventana no hay redactor y la pantalla lo dice', 'conversacion-tuya-sin-ventana', '1440', '--ve=La tienes tú', '--ve=WhatsApp no deja escribirle', `--cierto=${REDACTOR_DEL_CLIENTE} === null`],
+  ['La toma: sin ventana no se ofrece tomarla', 'conversacion-sin-ventana', '1440', '--ve=Tu agente está atendiendo', '--ve=WhatsApp no deja escribirle', '--no-ve=Tomar la conversación'],
+  ['La toma: un Cliente sin respuesta se ve y se puede tomar', 'conversacion-cliente-espera', '1440', '--ve=Este Cliente espera respuesta', '--ve=Tomar la conversación'],
+  ['La toma: si tu agente alcanzó a responder, lo dice', 'conversacion-agente-terminando', '1440', '--ve=Tu agente alcanzó a responderle'],
+  ['La toma: el tiempo llega a cero y vuelve a tu agente sin tocar nada', 'conversacion-por-vencer', '1440', '--ve=La tienes tú', '--ve=en menos de 1 min', '--espera=3500', '--ve=Tu agente está atendiendo', '--no-ve=La tienes tú'],
+  ['La toma: si no salió lo dice y el texto se queda', 'conversacion-no-salio', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=No salió: pasaron más de 24 horas', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: si WhatsApp no lo tomó lo dice y el texto se queda', 'conversacion-whatsapp-no-lo-toma', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=WhatsApp no tomó tu mensaje', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: se acabó el tiempo, nada salió y vuelve a tu agente', 'conversacion-se-acabo-el-tiempo', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=Ya no tienes esta conversación y tu mensaje no salió', '--ve=Tu agente está atendiendo', '--ve=Lo que estabas escribiendo no salió', '--clic=Tomar la conversación', `--cierto=${REDACTOR_DEL_CLIENTE}.value === 'Ya voy'`],
+  ['La toma: si no se sabe si salió, lo dice y no invita a reenviar', 'conversacion-sin-saber', '1440', ESCRIBIR_AL_CLIENTE, '--espera=100', ENVIAR_AL_CLIENTE, '--ve=Todavía no sé si le llegó'],
+  ['La toma: el aviso del Hilo lleva a la conversación', 'hilo-aviso-de-la-toma', '1440', '--ve=Un Cliente te escribió en la conversación que tienes tomada', '--clic=Ver la conversación de Daniela Quintero', '--ve=Tomar la conversación'],
+  ['La toma, teléfono: el aviso del Hilo cambia a Tu negocio', 'hilo-aviso-de-la-toma', '390', '--clic=Ver la conversación de Daniela Quintero', '--ve=Tomar la conversación'],
+]
+
 /** Recorridos con clics de verdad: lo que el Dueño nota al tocar la cáscara. Título, escena, ancho y pasos. */
 const RECORRIDOS: [string, string, string, ...string[]][] = [
   ['PC: el sidebar mide 216 y el Hilo 348', 'panel-funcionando', '1440', SIDEBAR_ABIERTO, `--cierto=${ancho(HILO)} === 348`],
@@ -121,15 +144,23 @@ const TOCAR_EN_TARJETA = (id: string, texto: string) => `--cierto=(() => { const
 const TARJETA_DICE = (id: string, texto: string) => `--cierto=document.getElementById('tarjeta-${id}').textContent.includes('${texto}')`
 const TARJETA_SIN_BOTONES = (id: string) => `--cierto=![...document.querySelectorAll('[id="tarjeta-${id}"] button')].some((b) => /^(Aplicar|Enviar|Descartar)/.test(b.textContent.trim()))`
 const SECCIONES_CON_ESTADOS: [string, string][] = [['inicio', 'lo de hoy'], ['casos', 'tus Casos'], ['conversaciones', 'tus conversaciones'], ['pedidos', 'tus pedidos'], ['clientes', 'tus Clientes'], ['pedido', 'este pedido'], ['cliente', 'este Cliente'], ['tablero', 'tu Tablero'], ['seccion', 'esta Sección'], ['ajustes', 'los ajustes de tu negocio']]
-const ESCENAS_DE_ESTADOS = ['entrar', 'entrar-registro', 'ajustes', 'ajustes-armandose', 'ajustes-sin-ciudad', 'ajustes-largo', ...SECCIONES_CON_ESTADOS.flatMap(([id]) => [`cargando-${id}`, `error-${id}`]), 'seccion-sin-advertencia', 'error-de-verdad', 'seccion-no-esta', 'hilo-capacidad-faltante', 'hilo-tarjeta-vencio', 'hilo-error']
+const ESCENAS_DE_ESTADOS = ['entrar', 'entrar-registro', 'entrar-codigo', 'entrar-dispositivo', 'entrar-olvido', 'cuenta-por-pasar', 'cuenta-por-confirmar', 'ajustes', 'ajustes-armandose', 'ajustes-sin-ciudad', 'ajustes-largo', ...SECCIONES_CON_ESTADOS.flatMap(([id]) => [`cargando-${id}`, `error-${id}`]), 'seccion-sin-advertencia', 'error-de-verdad', 'seccion-no-esta', 'hilo-capacidad-faltante', 'hilo-tarjeta-vencio', 'hilo-error']
 
 const ESCENAS_DEL_DETALLE = ['pedido-abierto', 'pedido-sin-conversacion', 'pedido-cancelado', 'pedido-largo', 'pedido-no-esta', 'cliente-abierto', 'cliente-con-caso', 'cliente-sin-nada', 'cliente-largo', 'cliente-no-esta']
-const TODAS_LAS_ESCENAS = [...ESCENAS_DEL_CASO, ...ESCENAS_DEL_DETALLE, ...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA, ...ESCENAS_DE_ESTADOS]
+const ESCENAS_DE_LA_TOMA = ['conversacion-tomada', 'conversacion-agente-terminando', 'conversacion-de-otro', 'conversacion-tuya-sin-ventana', 'conversacion-sin-ventana', 'conversacion-cliente-espera', 'conversacion-por-vencer', 'conversacion-se-acabo-el-tiempo', 'conversacion-no-salio', 'conversacion-whatsapp-no-lo-toma', 'conversacion-sin-saber', 'hilo-aviso-de-la-toma']
+const TODAS_LAS_ESCENAS = [...ESCENAS_DE_LA_TOMA, ...ESCENAS_DEL_CASO, ...ESCENAS_DEL_DETALLE, ...ESCENAS_ESPERADAS, ...ESCENAS_DE_PUBLICAR, ...ESCENAS_DEL_ARMADO, ...ESCENAS_DE_ALBA, ...ESCENAS_DE_ESTADOS]
 
 const RECORRIDOS_DE_ESTADOS: typeof RECORRIDOS = [
   ['Entrar: cada falla dice qué pasó, se vuelve a tocar y al final entra', 'entrar', '1440', LLENAR_ENTRADA, '--clic=Entrar', '--ve=Entrando…', '--espera=500', '--ve=El correo o la contraseña no coinciden. Revísalos y vuelve a intentar.', `--cierto=document.querySelector('[name=email]').value === 'lucia@cafe.co' && document.querySelector('[name=password]').value === 'una-clave-larga'`, '--clic=Entrar', '--no-ve=no coinciden', '--espera=500', '--ve=No me pude conectar. Revisa tu internet', '--clic=Entrar', '--espera=500', '--ve=Ya van muchos intentos', '--clic=Entrar', '--espera=500', '--ve=Ya entraste.'],
   ['Entrar, teléfono: la hoja llega hasta abajo y el titular va en el cielo', 'entrar', '390', `--cierto=(() => { const r = document.querySelector('main section').getBoundingClientRect(); return Math.abs(r.bottom - innerHeight) < 1 && r.width === innerWidth && document.querySelector('h1').getBoundingClientRect().bottom <= r.top })()`, `--cierto=getComputedStyle(document.querySelector('main')).backgroundImage.includes('linear-gradient')`],
-  ['Entrar: cabe en 320 px con el registro abierto', 'entrar-registro', '320', '--ve=Tu nombre', '--ve=Mínimo 8 caracteres.'],
+  ['Entrar: el registro pide el código, uno equivocado lo dice y al final entra', 'entrar-codigo', '1440', LLENAR_ENTRADA, '--clic=Crear cuenta', '--ve=Confirma tu correo', '--ve=lucia@cafeladera.co', '--ve=Mándame otro código', `--cierto=(() => { document.querySelector('[name=codigo]').value = '000000'; return true })()`, '--clic=Confirmar', '--ve=Ese código no coincide.', `--cierto=(() => { document.querySelector('[name=codigo]').value = '424242'; return true })()`, '--clic=Confirmar', '--ve=Ya entraste.'],
+  ['Entrar: desde un dispositivo nuevo pide un código', 'entrar-dispositivo', '390', LLENAR_ENTRADA, '--clic=Entrar', '--ve=Confirma que eres tú', '--ve=Volver'],
+  ['Entrar: olvidó la contraseña, pide el correo, el código y la nueva', 'entrar-olvido', '390', '--clic=¿Olvidaste tu contraseña?', '--ve=Mandarme el código', `--cierto=(() => { document.querySelector('[name=email]').value = 'lucia@cafeladera.co'; return true })()`, '--clic=Mandarme el código', '--ve=Con él creas una contraseña nueva.', `--cierto=(() => { document.querySelector('[name=codigo]').value = '424242'; return true })()`, '--clic=Seguir', '--ve=Crea tu contraseña nueva', '--ve=Mínimo 15 caracteres.', `--cierto=(() => { document.querySelector('[name=password]').value = 'una-clave-larga-1'; return true })()`, '--clic=Guardar y entrar', '--ve=Ya entraste.'],
+  ['Entrar: volver desde el código regresa a las credenciales', 'entrar-dispositivo', '1440', LLENAR_ENTRADA, '--clic=Entrar', '--ve=Confirma que eres tú', '--clic=Volver', '--ve=Entra a tu negocio'],
+  ['Cuenta por confirmar: manda el código y uno equivocado lo dice', 'cuenta-por-confirmar', '390', '--ve=Confirma tu correo', '--clic=Mandarme el código', '--ve=Te mandé un código a lucia@cafeladera.co.', `--cierto=(() => { document.querySelector('[name=codigo]').value = '000000'; return true })()`, '--clic=Confirmar', '--ve=Ese código no coincide.'],
+  ['Panel: el menú del Dueño ofrece Cerrar sesión', 'panel-funcionando', '1440', '--clic=Tu cuenta: Lucía', '--ve=Cerrar sesión'],
+  ['Panel, teléfono: el cajón también lleva Cerrar sesión', 'panel-funcionando', '390', '--clic=Menú', '--espera=400', '--clic=Tu cuenta: Lucía', '--ve=Cerrar sesión'],
+  ['Entrar: cabe en 320 px con el registro abierto', 'entrar-registro', '320', '--ve=Tu nombre', '--ve=Mínimo 15 caracteres.'],
   ['Entrar: los campos dicen su autocompletado, también al registrarse', 'entrar-registro', '1440', `--cierto=document.querySelector('[name=password]').autocomplete === 'new-password' && document.querySelector('[name=email]').autocomplete === 'email'`, '--clic=¿Ya tienes cuenta?', `--cierto=document.querySelector('[name=password]').autocomplete === 'current-password'`],
   ['Entrar: el correo que ya tiene cuenta lleva a entrar, y cambiar de modo limpia el error', 'entrar-registro', '1440', '--ve=Arma tu negocio', LLENAR_ENTRADA, '--clic=Crear cuenta', '--ve=Creando tu cuenta…', '--espera=500', '--ve=Ese correo ya tiene cuenta. Entra con tu contraseña.', '--clic=¿Ya tienes cuenta?', '--no-ve=Ese correo ya tiene cuenta', EL_TITULO('Entra a tu negocio'), '--no-ve=Tu nombre'],
   ['Ajustes: se llega desde el selector del Negocio', 'panel-funcionando', '1440', '--clic=CCafé Ladera', '--ve=Ajustes del negocio', '--clic=Ajustes del negocio', EL_TITULO('Ajustes del negocio'), '--ve=Manizales', '--ve=wa.me/000000000000', '--ve=Sigue el de tu teléfono o tu computador.', '--no-ve=Necesita tu ojo'],
@@ -197,7 +228,10 @@ const RECORRIDOS_DEL_DETALLE: typeof RECORRIDOS = [
 ]
 
 const RECORRIDOS_DEL_TABLERO: typeof RECORRIDOS = [
-  ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=Pedidos por estado', '--ve=Pedidos recientes', '--no-ve=De dónde llegan'],
+  ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=De dónde llegan', '--ve=Tu link', '--ve=Anuncio de Meta', '--ve=Sin dato: no se sabe cómo llegaron', '--ve=Pedidos recientes', '--no-ve=Pedidos por estado'],
+  ['Tablero: sin Clientes, De dónde llegan dice qué sigue', 'tablero-vacio', '390', '--ve=De dónde llegan', '--ve=Todavía no tienes Clientes', '--no-ve=Sin dato'],
+  ['Tablero: los Clientes de antes cuentan como Sin dato y no se reparten', 'tablero-sin-origenes', '390', '--ve=antes de que esto se guardara', '--no-ve=Tu link', '--no-ve=Anuncio de Meta'],
+  ['Tablero: sin Sin dato no se explica', 'tablero-agenda', '1440', '--ve=Tu link', '--no-ve=Sin dato'],
   ['Tablero: un Indicador propio lleva su cifra y sus barras', 'tablero', '1440', '--ve=14 pedidos', '--ve=$1.120.000', `--cierto=document.querySelectorAll('[data-pano=lienzo] ol[aria-label="Ventas por día"] li').length === 5`],
   ['Tablero: la barra más alta llena el eje y la de cero no pinta', 'tablero', '1440', `--cierto=${BARRA(4)}.querySelector('.barra-crece').getBoundingClientRect().height === ${BARRA(4)}.getBoundingClientRect().height && ${BARRA(5)}.querySelector('.barra-crece').getBoundingClientRect().height === 0`],
   ['Tablero: una barra dice su cifra al enfocarla, también la que no se rotula', 'tablero', '1440', `--cierto=getComputedStyle(${BARRA(2)}.lastElementChild).display === 'none'`, `--evalua=${BARRA(2)}.focus()`, `--cierto=getComputedStyle(${BARRA(2)}.lastElementChild).display === 'block' && ${BARRA(2)}.lastElementChild.textContent === '5 Jue 29 oct'`],
@@ -227,7 +261,7 @@ const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
   ['Casos: sin nada, dice qué sigue', 'casos-vacios', '1440', '--ve=Nada espera tu decisión', '--no-ve=Resueltos'],
   ['Casos: sin nada esperando no hay encabezado de decisión', 'pedidos-lista', '1440', '--clic=Casos', '--ve=Resueltos', '--ve=Pregunta por envío a San Andrés', `--no-ve=Espera tu decisión`],
   ['Casos: más que el límite dice el total', 'casos-muchos', '1440', '--ve=Ves los 50 más recientes de 60', '--ve=Ves los 50 más recientes de 1.204'],
-  ['Conversaciones: PC con lista y detalle, y la primera elegida', 'conversaciones-lista', '1440', '--ve=Listo, tu pedido #41 por $76.000', '--ve=Santiago Herrera', '--ve=Tu agente está atendiendo', '--no-ve=Tomar la conversación', '--no-ve=Un Caso espera tu decisión'],
+  ['Conversaciones: PC con lista y detalle, y la primera elegida', 'conversaciones-lista', '1440', '--ve=Listo, tu pedido #41 por $76.000', '--ve=Santiago Herrera', '--ve=Tu agente está atendiendo', '--ve=Tomar la conversación', '--no-ve=Un Caso espera tu decisión'],
   // La fila empieza por las iniciales del avatar, y `--clic` busca por el comienzo del texto.
   ['Conversaciones: tocar otra cambia el detalle y conserva la Sección', 'conversaciones-lista', '1440', '--clic=SHSantiago Herrera', '--ve=Buenas, tengo greca en la casa', '--no-ve=Hola, quiero pedir 2 tueste medio', `--cierto=document.querySelector('h1').textContent === 'Conversaciones'`, `--cierto=document.querySelector('[aria-current=true]').textContent.includes('Santiago')`],
   ['Conversaciones: un Caso que espera lleva a Casos', 'conversacion-con-caso', '1440', '--clic=Un Caso espera tu decisión', '--ve=Espera tu decisión', `--cierto=document.querySelector('h1').textContent === 'Casos'`],
@@ -256,9 +290,18 @@ const RECORRIDOS_DE_LISTAS: typeof RECORRIDOS = [
 ]
 
 const CARD_CASO = 'document.getElementById("tarjeta-p-caso")'
+const ESCOGER = (primero: string, tipo: string, ...mas: string[]) => `(() => { const d = new DataTransfer(); for (const n of ${JSON.stringify([primero, ...mas])}) d.items.add(new File(['x'], n, { type: ${JSON.stringify(tipo)} })); const i = document.querySelector('[data-adjuntar]'); i.files = d.files; i.dispatchEvent(new Event('change', { bubbles: true })); return true })()`
 const RECORRIDOS_DEL_HILO: typeof RECORRIDOS = [
   ['Hilo: el Dueño va en globo secondary y el agente sin globo', 'panel-un-caso', '1440', `--cierto=(() => { const dueno = [...document.querySelectorAll('[data-conversacion] div')].filter((d) => d.textContent === 'Cuando un pedido sea para fuera de mi ciudad, no prometas fecha').at(-1); const agente = [...document.querySelectorAll('[data-conversacion] p')].find((p) => p.textContent.startsWith('Una clienta')); const probe = document.createElement('i'); probe.style.background = 'var(--secondary)'; document.body.append(probe); const secundario = getComputedStyle(probe).backgroundColor; probe.remove(); return getComputedStyle(dueno).backgroundColor === secundario && getComputedStyle(agente).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(agente).fontSize === '14.5px' })()`],
-  ['Hilo: hasta dos sugerencias y sin adjuntar', 'panel-un-caso', '1440', `--cierto=[...document.querySelectorAll('[data-pano=hilo] button')].filter((b) => /^(Quiero ver|Muéstrame|Cuando un pedido)/.test(b.textContent)).length === 2`, `--cierto=!document.querySelector('[aria-label="Adjuntar"]')`],
+  ['Hilo: hasta dos sugerencias y con adjuntar', 'panel-un-caso', '1440', `--cierto=[...document.querySelectorAll('[data-pano=hilo] button')].filter((b) => /^(Quiero ver|Muéstrame|Cuando un pedido)/.test(b.textContent)).length === 2`, `--cierto=!!document.querySelector('[aria-label="Adjuntar"]').checkVisibility()`],
+  ['Redactor: un PDF sube, y con él se puede enviar sin texto', 'panel-funcionando', '1440', `--evalua=${ESCOGER('lista.pdf', 'application/pdf')}`, '--ve=Subiendo', `--cierto=document.querySelector('form button[aria-label="Enviar"]').disabled`, '--no-ve=Subiendo', `--cierto=!document.querySelector('form button[aria-label="Enviar"]').disabled`],
+  ['Redactor: lo que falla dice qué hacer, no se envía y se puede quitar', 'panel-funcionando', '390', `--evalua=${ESCOGER('falla.jpg', 'image/jpeg')}`, '--ve=No se subió. Revisa tu conexión', `--cierto=document.querySelector('form button[aria-label="Enviar"]').disabled`, '--clic=Quitar falla.jpg', '--no-ve=No se subió'],
+  ['Redactor: el cuarto archivo no sube', 'panel-funcionando', '1440', `--evalua=${ESCOGER('a.pdf', 'application/pdf', 'b.pdf', 'c.pdf', 'd.pdf')}`, '--ve=Puedes mandar hasta 3 archivos'],
+  ['Redactor: subiendo, listo y con error, sin desplazar en 320', 'hilo-adjuntando', '320', '--ve=Subiendo', '--ve=Pesa más de 4 MB', `--cierto=document.querySelector('form button[aria-label="Enviar"]').disabled`],
+  ['Redactor: en la carta del armado también se adjunta', 'armado-leyendo', '390', `--cierto=!!document.querySelector('[aria-label="Adjuntar"]').checkVisibility()`],
+  ['Hilo: el archivo va en el globo del Dueño, enlazado a su ruta', 'hilo-con-archivos', '1440', '--ve=Lista de precios noviembre.pdf', '--ve=PDF de 2 páginas', '--ve=Leyó tu archivo', `--cierto=[...document.querySelectorAll('[data-conversacion] a')].some((a) => a.getAttribute('href') === '/api/dueno/archivos/a1')`],
+  ['Hilo: un PDF recortado lo dice en su globo, sin desplazar en 320', 'hilo-con-archivos', '320', '--ve=Leo las primeras 20 de 64 páginas'],
+  ['Hilo: la tarjeta de un archivo pide comparar, dice que es de un archivo y termina en Aplicar', 'hilo-con-archivos', '1440', '--ve=Compara cada precio con tu PDF', '--ve=Lo que leí de tu archivo', `--cierto=[...document.querySelectorAll('[data-conversacion] button')].some((b) => b.textContent.trim() === 'Aplicar')`, '--no-ve=no falta ninguno'],
   ['Redactor: vacío no se enciende; con texto se enciende con --sol y su tinta', 'panel-funcionando', '1440', `--cierto=document.querySelector('form button[aria-label="Enviar"]').disabled && getComputedStyle(document.querySelector('form button[aria-label="Enviar"]')).backgroundImage === 'none'`, `--evalua=(() => { const t = document.querySelector('form textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Hola'); t.dispatchEvent(new Event('input', { bubbles: true })); return 'escrito' })()`, '--espera=500', `--cierto=(() => { const b = getComputedStyle(document.querySelector('form button[aria-label="Enviar"]')); const probe = document.createElement('i'); probe.style.color = 'var(--sol-foreground)'; document.body.append(probe); const tinta = getComputedStyle(probe).color; probe.remove(); return b.backgroundImage.includes('linear-gradient') && b.color === tinta })()`],
   ['Rastro: un check o tres puntos', 'hilo-trabajando', '1440', '--ve=Revisó tu negocio', '--ve=Preparó lo que pediste', `--cierto=document.querySelectorAll('[data-conversacion] .puntos').length === 1`],
   ['Tarjeta de un Caso: etiqueta, lo que escribió, la respuesta, a quién le llega', 'panel-un-caso', '1440', '--ve=Quiere saber cuánto cuesta un envío · pedido #31', '--ve=Marcela Ríos escribió', '--ve=¿Cuánto cuesta enviar a Cali?', '--ve=Le voy a responder', '--ve=Sale por WhatsApp a Marcela Ríos'],
@@ -451,7 +494,8 @@ console.log('\nuna tarjeta sigue pasando por sus rutas')
 
 try {
   console.log('\nnext dev, sin base de datos ni sesión')
-  const desarrollo = await servir('dev', { DATABASE_URL: '', DATABASE_URL_UNPOOLED: '', DATABASE_URL_CONSULTAS: '' })
+  const SIN_BASE = { DATABASE_URL: '', DATABASE_URL_UNPOOLED: '', DATABASE_URL_CONSULTAS: '' }
+  let desarrollo = await servir('dev', SIN_BASE)
   const indice = await ver(`${desarrollo.base}/vitrina`)
   const html = await indice.text()
   afirmar('dev: /vitrina da 200', indice.status === 200, { estado: indice.status, servidor: desarrollo.salida() })
@@ -490,15 +534,22 @@ try {
     afirmar(`dev: ${id} cabe en 320 px`, r.status === 0, r.stderr.slice(-500))
   }
 
-  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
+  for (const [titulo, escena, anchoDeLaVentana, ...pasos] of [...RECORRIDOS_DE_LA_TOMA, ...RECORRIDOS_DEL_CASO, ...RECORRIDOS, ...RECORRIDOS_DEL_DETALLE, ...RECORRIDOS_DE_LISTAS, ...RECORRIDOS_DEL_TABLERO, ...RECORRIDOS_DEL_HILO, ...RECORRIDOS_DE_PUBLICAR, ...RECORRIDOS_DE_ESTADOS, ...RECORRIDOS_DEL_ARMADO, ...RECORRIDOS_DE_ALBA]) {
     const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', ...pasos)
     afirmar(titulo, r.status === 0, r.stderr.slice(-500))
   }
 
+  // Tras cientos de páginas y unos 20 minutos, el mismo `next dev` deja de responderle a Chrome.
+  desarrollo.parar()
+  desarrollo = await servir('dev', SIN_BASE)
   for (const { vista, esqueleto, arriba } of ESQUELETOS_QUE_NO_SALTAN) {
     for (const anchoDeLaVentana of ['1440', '390']) {
       const medir = `--evalua=${JSON.stringify(arriba)}.map((s) => { const e = document.querySelector('[data-pano=lienzo] ' + s); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)] })`
-      const medidas = [vista, esqueleto].map((escena) => JSON.parse(mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', medir).stdout.split('\n')[0]) as ([number, number] | null)[])
+      const medidas = [vista, esqueleto].map((escena) => {
+        const r = mirar(desarrollo.base, escena, captura, anchoDeLaVentana, '900', medir)
+        if (!r.stdout.trim()) throw new Error(`${escena} a ${anchoDeLaVentana} no midió nada (estado ${r.status}, señal ${r.signal}): ${r.stderr.slice(-500)}`)
+        return JSON.parse(r.stdout.split('\n')[0]) as ([number, number] | null)[]
+      })
       const iguales = arriba.every((_, i) => medidas[0][i] && medidas[1][i] && Math.abs(medidas[0][i][0] - medidas[1][i][0]) <= 1 && Math.abs(medidas[0][i][1] - medidas[1][i][1]) <= 1)
       afirmar(`${esqueleto} a ${anchoDeLaVentana}: nada salta al llegar los datos`, iguales, { arriba, medidas })
     }

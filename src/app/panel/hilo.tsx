@@ -5,8 +5,10 @@ import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { PARTE_DE_ARCHIVO, type Adjunto } from '@/nucleo/archivos'
 import { useRecogerLoEscrito, type LoEscrito } from '../lo-escrito'
 import { VistaDelHilo } from './hilo-vista'
+import { subirArchivo } from './subir-archivo'
 import { tocarTarjeta } from './tocar-tarjeta'
 
 type HiloLeido = { mensajes: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }
@@ -59,7 +61,14 @@ export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[
     router.refresh()
   }, [releer, router])
 
-  const alEnviar = useCallback((contenido: string) => void sendMessage({ text: contenido }), [sendMessage])
+  const alEnviar = useCallback(
+    (contenido: string, adjuntos: readonly Adjunto[] = []) => {
+      if (!adjuntos.length) return void sendMessage({ text: contenido })
+      const archivos = adjuntos.map((data) => ({ type: PARTE_DE_ARCHIVO, data }) as const)
+      void sendMessage({ parts: contenido.trim() ? [{ type: 'text', text: contenido }, ...archivos] : archivos })
+    },
+    [sendMessage],
+  )
   const alRecoger = useCallback(
     async ({ texto, plantilla }: LoEscrito) => {
       // Si la plantilla falla, el Dueño no pierde lo que escribió: el armado sigue sin ella.
@@ -79,5 +88,5 @@ export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[
 
 export function Hilo({ inicial, tarjetas }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }) {
   const { messages, estados, status, error, alEnviar, alCambiar } = useHilo({ inicial, tarjetas })
-  return <VistaDelHilo messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alTocar={tocarTarjeta} alCambiar={alCambiar} />
+  return <VistaDelHilo messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alSubir={subirArchivo} alTocar={tocarTarjeta} alCambiar={alCambiar} />
 }

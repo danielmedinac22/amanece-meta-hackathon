@@ -225,6 +225,7 @@ try {
     ["creado + interval '5 hours'", "select count(*) as valor from pedidos where creado + interval '5 hours' > hoy_local", 'numero', 'definicion_del_nucleo'],
     ["date_trunc sobre creado menos interval '5 hours'", "select date_trunc('day', creado) - interval '5 hours' as d from pedidos", 'filas', 'definicion_del_nucleo'],
     ['clientes.telefono', 'select telefono from clientes', 'filas', 'dato_inexistente'],
+    ['clientes.origen', 'select origen from clientes', 'filas', 'dato_inexistente'],
     ['p.direccion calificada', 'select p.direccion from pedidos p', 'filas', 'dato_inexistente'],
     ['texto de conversaciones', 'select texto from conversaciones', 'filas', 'dato_inexistente'],
     ['una fuente que no existe', 'select id from usuarios', 'filas', 'dato_inexistente'],

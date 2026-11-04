@@ -1,9 +1,13 @@
+import type { OrigenDeCliente } from '@/db/esquema'
 import { pesos } from './estado/elementos'
 import { cambioContraLaAnterior, type Cifras, type Voz } from './hoy-palabras'
 import { cifra, ETIQUETA_DE_PEDIDO } from './listas-palabras'
 import type { DatosDelTablero, PorAtender } from './tablero'
 
 export type TarjetaDelTablero = { clave: 'negocio' | 'conversaciones' | 'resueltas' | 'atencion'; dato: string; valor: string; nota: string; espera: boolean }
+
+/** `Tu link`, no `Tu link en Instagram` como el prototipo: la ficha dice que usó el link, no dónde lo vio. */
+export const ETIQUETA_DE_ORIGEN: Record<OrigenDeCliente, string> = { link: 'Tu link', anuncio: 'Anuncio de Meta', sin_dato: 'Sin dato' }
 
 const pedidos = (n: number) => `${cifra(n)} ${n === 1 ? 'pedido' : 'pedidos'}`
 

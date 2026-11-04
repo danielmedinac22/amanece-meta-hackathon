@@ -2,16 +2,27 @@
 
 import type { UIMessage } from 'ai'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import type { EnElRedactor } from '@/app/panel/adjuntos'
 import { VistaDeCasos } from '@/app/panel/casos'
 import { VistaDelHilo, type DatosDelHilo } from '@/app/panel/hilo-vista'
 import type { SeccionPropia } from '@/app/panel/secciones'
 import type { Publicador, RespuestaDePublicar } from '@/app/panel/tocar-publicar'
 import type { RespuestaDeTarjeta, TocarTarjeta } from '@/app/panel/tocar-tarjeta'
+import type { SubirArchivo } from '@/app/panel/subir-archivo'
 import type { DatosDeCasos } from '@/negocio/casos'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
+import { SIN_CONEXION } from '@/nucleo/archivos'
 import type { ItemDeLoPendiente } from '@/nucleo/cambios'
 
 const nada = () => {}
+
+/** Sin red: un nombre con `falla` sale mal, y lo demás queda listo con un id inventado. */
+export const subirDeMuestra: SubirArchivo = async (_, nombre) => {
+  await new Promise((r) => setTimeout(r, 900))
+  if (nombre.includes('falla')) return { error: SIN_CONEXION }
+  const pdf = nombre.toLowerCase().endsWith('.pdf')
+  return { adjunto: { id: `archivo-${nombre}`, clase: pdf ? 'pdf' : 'foto', nombre, paginas: pdf ? 3 : null, paginasDelOriginal: null } }
+}
 const QUIEN_PUBLICA = 'Lucía'
 const CUANTO_TARDA_PUBLICAR = 900
 
@@ -95,9 +106,9 @@ export function DecisionesDeMuestra({ inicial, pendientes = [], guion = {}, chil
 }
 
 /** El Hilo de la vitrina: pinta la conversación inventada y sus sugerencias, botones y envíos no llegan a ninguna ruta. */
-export function HiloDeMuestra({ status = 'ready', seCorto, messages, ...datos }: Pick<DatosDelHilo, 'messages'> & { status?: DatosDelHilo['status']; seCorto?: boolean }) {
+export function HiloDeMuestra({ status = 'ready', seCorto, messages, adjuntos, ...datos }: Pick<DatosDelHilo, 'messages'> & { status?: DatosDelHilo['status']; seCorto?: boolean; adjuntos?: readonly EnElRedactor[] }) {
   const { estados, tocar, avisos } = useContext(LasDecisiones)
-  return <VistaDelHilo {...datos} messages={[...messages, ...avisos]} estados={estados} status={status} error={seCorto ? new Error('Se cortó') : undefined} alEnviar={nada} alTocar={tocar} alCambiar={nada} />
+  return <VistaDelHilo {...datos} messages={[...messages, ...avisos]} estados={estados} status={status} error={seCorto ? new Error('Se cortó') : undefined} alEnviar={nada} alSubir={subirDeMuestra} adjuntosIniciales={adjuntos} alTocar={tocar} alCambiar={nada} />
 }
 
 /** Casos con lo que la base diría después de un clic: enviar lo pasa a Resueltos, y descartarlo lo deja esperando. */

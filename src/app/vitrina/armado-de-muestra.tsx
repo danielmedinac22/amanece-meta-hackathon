@@ -4,6 +4,7 @@ import type { ChatStatus, UIMessage } from 'ai'
 import { useState, type ReactNode } from 'react'
 import { useRecogerLoEscrito } from '@/app/lo-escrito'
 import { VistaDelArmado } from '@/app/panel/armado'
+import { subirDeMuestra } from './hilo-de-muestra'
 import type { TocarTarjeta } from '@/app/panel/tocar-tarjeta'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import type { DatosDelArmado } from '@/nucleo/armado'
@@ -38,5 +39,5 @@ export function ArmadoDeMuestra({ datos, messages, tarjetas = {}, status = 'read
     setAhora((a) => ({ ...a, estados: { ...a.estados, [tarjeta.propuesta]: { ...a.estados[tarjeta.propuesta], estado } } }))
     return accion === 'aprobar' ? { tipo: 'aplicado', resumen: '', envio: null, version: null } : { tipo: 'descartada' }
   }
-  return <VistaDelArmado datos={ahora.datos} messages={ahora.messages} estados={ahora.estados} status={status} error={undefined} alEnviar={alEnviar} alTocar={alTocar} alCambiar={avanzar} alAbrir={async () => ({ abierto: true })} alSalir={despues ? () => setSalio(true) : nada} />
+  return <VistaDelArmado datos={ahora.datos} messages={ahora.messages} estados={ahora.estados} status={status} error={undefined} alEnviar={alEnviar} alSubir={subirDeMuestra} alTocar={alTocar} alCambiar={avanzar} alAbrir={async () => ({ abierto: true })} alSalir={despues ? () => setSalio(true) : nada} />
 }

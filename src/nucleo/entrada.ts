@@ -15,6 +15,9 @@ export function firmaValida(cuerpo: string, firma: string | null, secreto = proc
   return recibida.length === esperada.length && timingSafeEqual(recibida, esperada)
 }
 
+/** El `referral` de Meta, ya leído. `otro` es un referral que no prueba un anuncio: un `post`, `organic` o solo `source_url`. */
+export type Referido = 'anuncio' | 'otro' | 'ninguno'
+
 export type MensajeEntrante = {
   readonly wamid: Wamid
   readonly telefono: string
@@ -24,6 +27,7 @@ export type MensajeEntrante = {
   readonly enviadoEn: Instante
   /** El id de un botón interactivo, o el `payload` del botón de una plantilla. */
   readonly boton: string | null
+  readonly referido: Referido
 }
 
 type CuerpoDeKapso = {
@@ -42,7 +46,14 @@ type CuerpoDeKapso = {
       readonly list_reply?: { readonly id?: unknown; readonly title?: unknown }
     }
     readonly kapso?: { readonly status?: unknown; readonly transcript?: { readonly text?: unknown }; readonly content?: unknown }
+    readonly referral?: unknown
   }
+}
+
+function leerReferido(referral: unknown): Referido {
+  if (referral === undefined || referral === null) return 'ninguno'
+  const { source_type, source_id } = referral as { readonly source_type?: unknown; readonly source_id?: unknown }
+  return source_type === 'ad' && typeof source_id === 'string' && source_id.trim() ? 'anuncio' : 'otro'
 }
 
 /** `null` si el cuerpo no es un mensaje de texto al número de Amanece: un recibo de entrega, otro número, media sin texto. */
@@ -74,6 +85,7 @@ export function leerMensajeEntrante(cuerpo: unknown, recibidoEn: Date = new Date
     texto: texto.trim(),
     enviadoEn: marcar.instante(Number.isFinite(segundos) && segundos > 0 ? new Date(segundos * 1000) : recibidoEn),
     boton: typeof boton === 'string' ? boton : null,
+    referido: leerReferido(mensaje.referral),
   }
 }
 

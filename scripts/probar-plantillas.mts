@@ -186,7 +186,7 @@ async function armarDesde(id: Id) {
 
   const telefono = `5730077${String(Date.now()).slice(-5)}`
   const salidos = envios.length
-  await atenderMensaje({ wamid: marcar.wamid(`wamid.PLANTILLA.${id}.${Date.now()}`), telefono, nombre: 'Cliente de Prueba', texto: GUIONES[id].cliente.texto, enviadoEn: marcar.instante(new Date()), boton: null }, ctx.negocio)
+  await atenderMensaje({ wamid: marcar.wamid(`wamid.PLANTILLA.${id}.${Date.now()}`), telefono, nombre: 'Cliente de Prueba', texto: GUIONES[id].cliente.texto, enviadoEn: marcar.instante(new Date()), boton: null, referido: 'ninguno' }, ctx.negocio)
   const respuesta = envios.slice(salidos).filter((e) => e.telefono === telefono).map((e) => e.texto).join('\n')
   afirmar(`${id}, Muse Spark: el Cliente recibió respuesta`, respuesta.length > 0)
   const { cifra } = GUIONES[id].cliente

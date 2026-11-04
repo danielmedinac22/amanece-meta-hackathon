@@ -13,13 +13,14 @@ import type { DatosDeClientes, DatosDeConversaciones, DatosDePedidos, DetalleDeC
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero } from '@/nucleo/tablero'
 import { rutaDePedido } from '@/nucleo/listas-palabras'
+import type { Atencion, ResultadoDeEscribir } from '@/nucleo/clientes/toma'
 
 const clave = (c: string) => c as Clave
 const LINK = 'https://wa.me/000000000000?text=(LADERA)%20Hola%20Caf%C3%A9%20Ladera'
 const NADA_PENDIENTE: LoPendiente = { items: [], huella: 'vitrina-sin-cambios' as Huella }
 
 /** Lo que la cáscara de la vitrina necesita además de las páginas. */
-export type NegocioDeMuestra = { nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
+export type NegocioDeMuestra = { atenciones?: Record<string, Atencion>; alEscribir?: ResultadoDeEscribir; nombre: string; indicadores: SeccionPintada[]; secciones: SeccionPintada[]; casos: { id: string; titulo: string; propuesta: string | null }[]; pendiente: LoPendiente; nuevos?: readonly SeccionPintada[]; hoy: DatosDeHoy; tablero: DatosDelTablero; pedidos: DatosDePedidos; clientes: DatosDeClientes; seccionDeCasos: DatosDeCasos; conversaciones: DatosDeConversaciones; detalles: Record<string, DetalleDeConversacion> }
 
 const pedidosDeHoy: SeccionPintada = {
   clave: clave('pedidos-de-hoy'),
@@ -163,7 +164,7 @@ const SOLO_RESUELTOS: DatosDeCasos = { ...SIN_CASOS, cuentaDeResueltos: RESUELTO
 
 const SIN_CONVERSACIONES: Pick<NegocioDeMuestra, 'conversaciones' | 'detalles'> = { conversaciones: { cuenta: 0, filas: [], detalle: null, enDetalle: false }, detalles: {} }
 
-const conversacion = (cliente: string, nombre: string, hace: string, mensajes: ['cliente' | 'agente', string][], casoQueEspera: string | null = null) => ({
+const conversacion = (cliente: string, nombre: string, hace: string, mensajes: ['cliente' | 'agente' | 'dueno', string][], casoQueEspera: string | null = null) => ({
   fila: { cliente, nombre, ultima: mensajes.at(-1)![1], hace },
   detalle: { cliente, nombre, cuenta: mensajes.length, casoQueEspera, mensajes: mensajes.map(([de, texto], i) => ({ id: `${cliente}-${i}`, de, texto })) },
 })
@@ -219,13 +220,10 @@ const TABLERO: DatosDelTablero = {
     { dia: '2026-11-02', pedidos: 2 },
     { dia: '2026-11-03', pedidos: 6 },
   ],
-  porEstado: [
-    { estado: 'novedad', cuenta: 1 },
-    { estado: 'pendiente', cuenta: 1 },
-    { estado: 'confirmado', cuenta: 6 },
-    { estado: 'enviado', cuenta: 9 },
-    { estado: 'entregado', cuenta: 12 },
-    { estado: 'cancelado', cuenta: 1 },
+  porOrigen: [
+    { origen: 'link', cuenta: 18 },
+    { origen: 'anuncio', cuenta: 9 },
+    { origen: 'sin_dato', cuenta: 4 },
   ],
   recientes: [
     { id: 'r-41', numero: 41, cliente: 'Daniela Quintero', ciudad: 'Pereira', items: '2 tueste medio, grano 500 g', total: 76_000, estado: 'pendiente' },
@@ -241,7 +239,7 @@ const TABLERO_VACIO: DatosDelTablero = {
   cifras: { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } },
   porAtender: { casos: 0, novedad: 0, pendiente: 0 },
   porDia: TABLERO.porDia.map((d) => ({ ...d, pedidos: 0 })),
-  porEstado: [],
+  porOrigen: [],
   recientes: [],
 }
 
@@ -332,6 +330,9 @@ export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
   indicadores: [],
 }
 
+/** Como se ve un Negocio que ya tenía Clientes el día que se empezó a guardar el origen. */
+export const NEGOCIO_SIN_ORIGENES: NegocioDeMuestra = { ...NEGOCIO_FUNCIONANDO, tablero: { ...TABLERO, porOrigen: [{ origen: 'sin_dato', cuenta: 31 }] } }
+
 export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   indicadores: [pedidosDeHoy, ventasDeUnMes, ventasPorCiudad],
@@ -341,6 +342,11 @@ export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
     cifras: { ...TABLERO.cifras, semana: { ventas: 12_840_000, pedidos: 1_204, clientes: 3_120 }, conversaciones: { total: 1_400, resueltas: 1_312 } },
     porAtender: { casos: 60, novedad: 124, pendiente: 312 },
     porDia: TABLERO.porDia.map((d, i) => ({ ...d, pedidos: 1_000 + i * 240 })),
+    porOrigen: [
+      { origen: 'link', cuenta: 12_480 },
+      { origen: 'anuncio', cuenta: 3_120 },
+      { origen: 'sin_dato', cuenta: 1_204 },
+    ],
     recientes: TABLERO.recientes.map((r) => ({ ...r, cliente: NOMBRE_LARGO, ciudad: 'San José del Guaviare', total: 12_840_000, estado: 'pendiente' as const })),
   },
   pedidos: {
@@ -398,7 +404,7 @@ export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
 export const NEGOCIO_AGENDA: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   nombre: 'Barbería Central',
-  tablero: { ...TABLERO_VACIO, voz: 'agenda', cifras: { ...TABLERO_VACIO.cifras, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } }, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
+  tablero: { ...TABLERO_VACIO, voz: 'agenda', porOrigen: [{ origen: 'link', cuenta: 12 }], cifras: { ...TABLERO_VACIO.cifras, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } }, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
   indicadores: [],
   hoy: {
     hoy: {

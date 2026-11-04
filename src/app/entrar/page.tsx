@@ -1,6 +1,6 @@
-import { EntradaConNeonAuth } from './con-neon-auth'
+import { EntradaConClerk } from './con-clerk'
 
 export default async function Entrar({ searchParams }: PageProps<'/entrar'>) {
   const { modo } = await searchParams
-  return <EntradaConNeonAuth modoInicial={modo === 'registro' ? 'registro' : 'entrar'} />
+  return <EntradaConClerk modoInicial={modo === 'registro' ? 'registro' : 'entrar'} />
 }

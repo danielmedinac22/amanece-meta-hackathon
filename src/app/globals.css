@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@clerk/ui/themes/shadcn.css";
 
 /* El corte de teléfono a PC es 1024 px: por debajo el Hilo es una pestaña, sin importar dónde lo dejó el Dueño. */
 @custom-variant fijo {

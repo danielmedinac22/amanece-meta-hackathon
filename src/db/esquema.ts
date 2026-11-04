@@ -1,9 +1,17 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
+import { boolean, check, customType, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid, uniqueIndex, index, type AnyPgColumn } from 'drizzle-orm/pg-core'
 import type { Acto, VistaPreviaGuardada } from '../nucleo/cambios'
 import type { Escritura } from '../nucleo/estado'
 import type { ClaseDeMensaje, MotivoDeSilencio } from '../nucleo/salida/compuerta'
 import type { MotivoDeFaltante } from '../nucleo/capacidades'
+import type { LoExtraido } from '../nucleo/cambios/lectura'
+
+/** Se manda en hexadecimal; el driver lo devuelve como `Buffer`. */
+const bytea = customType<{ data: Uint8Array; driverData: string | Uint8Array }>({
+  dataType: () => 'bytea',
+  toDriver: (v) => `\\x${Buffer.from(v).toString('hex')}`,
+  fromDriver: (v) => (typeof v === 'string' ? new Uint8Array(Buffer.from(v.slice(2), 'hex')) : new Uint8Array(v)),
+})
 
 const id = () => uuid('id').primaryKey().defaultRandom()
 const creado = () => timestamp('creado', { withTimezone: true }).notNull().defaultNow()
@@ -41,7 +49,7 @@ export const duenos = pgTable(
   {
     id: id(),
     negocioId: negocioId(),
-    /** Id del usuario en Neon Auth. */
+    /** Id del usuario en Clerk. Un Dueño de antes de Clerk guarda su id viejo hasta que entra por primera vez: ver `sinFila` en `src/negocio/sesion.ts`. */
     usuarioId: text('usuario_id').notNull(),
     nombre: text('nombre').notNull().default(''),
     email: text('email').notNull().default(''),
@@ -52,6 +60,10 @@ export const duenos = pgTable(
   (t) => [uniqueIndex('duenos_usuario').on(t.usuarioId), uniqueIndex('duenos_telefono').on(t.telefono).where(sql`${t.telefono} is not null`)],
 )
 
+/** Cómo llegó un Cliente la primera vez que escribió. `sin_dato` cuando nada lo prueba: es también el de todo Cliente anterior a la columna. */
+export const ORIGENES_DE_CLIENTE = ['link', 'anuncio', 'sin_dato'] as const
+export type OrigenDeCliente = (typeof ORIGENES_DE_CLIENTE)[number]
+
 export const clientes = pgTable(
   'clientes',
   {
@@ -61,9 +73,17 @@ export const clientes = pgTable(
     nombre: text('nombre').notNull().default(''),
     /** El último mensaje que escribió el Cliente: abre la ventana de 24 horas de WhatsApp. */
     ultimoMensajeEntrante: timestamp('ultimo_mensaje_entrante', { withTimezone: true }),
+    origen: text('origen', { enum: ORIGENES_DE_CLIENTE }).notNull().default('sin_dato'),
+    /** Quién atiende, y a estas cuatro columnas solo las escribe `salida/atencion.ts`. La toma vale con `tomadaPor` y `tomadaHasta` en el futuro. */
+    tomadaPor: uuid('tomada_por').references(() => duenos.id, { onDelete: 'set null' }),
+    tomadaHasta: timestamp('tomada_hasta', { withTimezone: true }),
+    /** Cuántas veces se ha tomado. Solo sube: un turno que empezó con otro valor ya no le habla al Cliente. */
+    vecesTomada: integer('veces_tomada').notNull().default(0),
+    /** El wamid del último mensaje del Cliente que nadie ha contestado. */
+    sinContestar: text('sin_contestar'),
     creado: creado(),
   },
-  (t) => [uniqueIndex('clientes_negocio_telefono').on(t.negocioId, t.telefono)],
+  (t) => [uniqueIndex('clientes_negocio_telefono').on(t.negocioId, t.telefono), index('clientes_tomadas').on(t.tomadaHasta).where(sql`${t.tomadaPor} is not null`)],
 )
 
 /** La conversación de un Cliente con el Agente de clientes de un Negocio. */
@@ -75,7 +95,7 @@ export const mensajesCliente = pgTable(
     clienteId: uuid('cliente_id')
       .notNull()
       .references(() => clientes.id, { onDelete: 'cascade' }),
-    rol: text('rol', { enum: ['cliente', 'agente'] }).notNull(),
+    rol: text('rol', { enum: ['cliente', 'agente', 'dueno'] }).notNull(),
     texto: text('texto').notNull(),
     /** Id del mensaje en WhatsApp, para no procesar dos veces el mismo. */
     wamid: text('wamid'),
@@ -268,6 +288,39 @@ export const mensajesDueno = pgTable(
     creado: creado(),
   },
   (t) => [index('mensajes_dueno_dueno').on(t.duenoId, t.creado)],
+)
+
+/**
+ * Lo que el Dueño adjunta en el Hilo. Tabla aparte porque el sondeo lee `mensajes_dueno` entero cada pocos segundos. Solo la
+ * toca `src/negocio/archivos.ts`, para que pasar los bytes a otro almacén cambie un archivo.
+ */
+export const archivosDueno = pgTable(
+  'archivos_dueno',
+  {
+    id: id(),
+    negocioId: negocioId(),
+    duenoId: uuid('dueno_id')
+      .notNull()
+      .references(() => duenos.id, { onDelete: 'cascade' }),
+    tipo: text('tipo', { enum: ['image/jpeg', 'image/png', 'application/pdf'] }).notNull(),
+    nombre: text('nombre').notNull(),
+    paginas: integer('paginas'),
+    paginasDelOriginal: integer('paginas_del_original'),
+    tamano: integer('tamano').notNull(),
+    bytes: bytea('bytes').notNull(),
+    /** Sin enviar en un mensaje, se borra a las 24 horas. */
+    enviado: timestamp('enviado', { withTimezone: true }),
+    lecturas: integer('lecturas').notNull().default(0),
+    ultimaLectura: timestamp('ultima_lectura', { withTimezone: true }),
+    /** Lo último que el lector sacó: cargarlo a una tarjeta después no vuelve a pagar. */
+    extraido: jsonb('extraido').$type<LoExtraido>(),
+    creado: creado(),
+  },
+  (t) => [
+    index('archivos_dueno_negocio').on(t.negocioId, t.creado),
+    check('archivos_dueno_peso', sql`octet_length(${t.bytes}) <= 4000000`),
+    check('archivos_dueno_paginas', sql`${t.paginas} is null or ${t.paginas} <= 20`),
+  ],
 )
 
 /** El `CHECK` de `capacidades_faltantes.tipo`. `anterior`: una fila de antes de 0004 que no se pudo leer. */

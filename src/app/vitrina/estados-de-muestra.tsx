@@ -2,27 +2,39 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react'
 import type { MotivoDeEntrada } from '@/app/entrar/errores'
-import { PantallaDeEntrada, type ModoDeEntrada } from '@/app/entrar/formulario'
+import { PantallaDeEntrada, type ModoDeEntrada, type PasoDeEntrada } from '@/app/entrar/formulario'
+import { CuentaPorConfirmar } from '@/app/panel/espera'
 import { ErrorDeLaPantalla } from '@/app/panel/estados'
+import { Button } from '@/components/ui/button'
 
 // `--clic` espera 600 ms antes de su siguiente paso: el recorrido tiene que alcanzar a ver `Entrando…` aunque la máquina vaya lenta.
 const ENTRAR_TARDA_MS = 2000
 
-/** Entrar sin proveedor: cada intento responde lo que sigue en la lista, y `null` es que entró. */
-export function EntradaDeMuestra({ modoInicial, responde }: { modoInicial: ModoDeEntrada; responde: readonly (MotivoDeEntrada | null)[] }) {
+/** Entrar sin proveedor: cada intento responde lo que sigue en la lista: un motivo, el paso siguiente o `null`, que es que entró. */
+export function EntradaDeMuestra({ modoInicial, responde }: { modoInicial: ModoDeEntrada; responde: readonly (MotivoDeEntrada | Exclude<PasoDeEntrada, { en: 'listo' }> | null)[] }) {
   const intento = useRef(0)
   const [entro, setEntro] = useState(false)
   if (entro) return <p className="p-5">Ya entraste.</p>
   return (
     <PantallaDeEntrada
       modoInicial={modoInicial}
-      entrar={async () => {
+      entrar={async (accion) => {
+        if (accion.que === 'volver' || accion.que === 'reenviar') return { paso: { en: 'credenciales' } }
         await new Promise((r) => setTimeout(r, ENTRAR_TARDA_MS))
-        return responde[intento.current++] ?? null
+        const siguiente = responde[intento.current++] ?? null
+        if (siguiente === null) {
+          setEntro(true)
+          return { paso: { en: 'listo' } }
+        }
+        return typeof siguiente === 'string' ? { motivo: siguiente } : { paso: siguiente }
       }}
-      alEntrar={() => setEntro(true)}
     />
   )
+}
+
+/** Confirmar el correo sin proveedor: cada código que se escriba está equivocado. */
+export function ConfirmarDeMuestra() {
+  return <CuentaPorConfirmar email="lucia@cafeladera.co" salir={<Button variant="ghost">Cerrar sesión</Button>} mandar={async () => null} confirmar={async () => 'codigo_incorrecto'} />
 }
 
 /** El error de una Sección: al volver a intentar, en la vitrina sigue fallando. */

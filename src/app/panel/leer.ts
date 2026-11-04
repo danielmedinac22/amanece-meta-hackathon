@@ -8,6 +8,7 @@ import { lecturaPendiente, leerLoPendiente } from '@/nucleo/cambios'
 import { linkDeWhatsapp } from '@/nucleo/entrada'
 import { leerAplicado, valorDelDato } from '@/nucleo/estado'
 import { reglaEnPalabras } from '@/nucleo/estado/elementos'
+import { atencionDe } from '@/nucleo/clientes/toma'
 import { leerHoy } from '@/nucleo/hoy'
 import { leerCliente as clienteDe, leerClientes as clientesDe, leerConversaciones as conversacionesDe, leerGruposDePedidos as gruposDe, leerPedido as pedidoDe, leerPedidos as pedidosDe } from '@/nucleo/listas'
 import { pintarUna } from '@/nucleo/panel'
@@ -48,13 +49,13 @@ export const leerCasos = cache(async () => {
 })
 
 export async function leerOperacion(): Promise<DatosDeLaOperacion> {
-  const { usuario, dueno } = await duenoDelPanel()
+  const { dueno } = await duenoDelPanel()
   const [leido, pendiente, casos] = await Promise.all([negocioDelPanel(), pendienteDelPanel(), leerCasos()])
   const sinPublicar = new Set<string>(pendiente?.items.map((i) => i.clave))
   // Solo corre consultas mientras hay algo sin publicar: lo pintan la tarjeta del Hilo, Inicio y Pedidos.
   const nuevos = leido ? await Promise.all(leido.estado.vigentes('indicador').filter((v) => sinPublicar.has(v.clave)).map((v) => pintarUna(leido.estado, v.clave, v.elemento))) : []
   return {
-    dueno: dueno?.nombre || usuario.name || usuario.email,
+    dueno: dueno?.nombre || dueno?.email || '',
     negocio:
       leido && pendiente && casos
         ? {
@@ -115,8 +116,10 @@ export async function leerLosCasos() {
 }
 
 export async function leerConversaciones(elegido: string | undefined) {
-  const leido = await negocioDelPanel()
-  return leido && conversacionesDe(leido.id, leido.negocio.zonaHoraria, elegido)
+  const [{ ctx }, leido] = await Promise.all([duenoDelPanel(), negocioDelPanel()])
+  if (!ctx || !leido) return null
+  const datos = await conversacionesDe(leido.id, leido.negocio.zonaHoraria, elegido)
+  return { ...datos, atencion: datos.detalle ? await atencionDe(ctx, datos.detalle.cliente) : null }
 }
 
 export async function leerAjustes() {

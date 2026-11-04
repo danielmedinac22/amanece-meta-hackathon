@@ -52,7 +52,7 @@ export { queFaltaParaAbrir, type Falta } from './politica'
 export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 export type { Ensayo, LoQuePaso, Muestra, VistaPreviaDeConversaciones, VistaPreviaGuardada } from './ensayar'
 export { leerLoPendiente, publicar, type ItemDeLoPendiente, type LoPendiente, type ResultadoDePublicar } from './publicar'
-export { armarLectura, buscarProducto, corregirLectura, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
+export { armarLectura, armarLecturaDeArchivos, buscarProducto, corregirLectura, EXTRACTOR, LECTOR_DE_ARCHIVOS, lecturaPendiente, type Extractor, type LectorDeArchivos, type Lectura, type LoExtraido } from './lectura'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
 

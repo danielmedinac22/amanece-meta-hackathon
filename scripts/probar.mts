@@ -20,6 +20,7 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-reglas'],
   ['probar-lectura'],
   ['probar-salida'],
+  ['probar-toma'],
   ['probar-entrada'],
   ['probar-clientes', '--pedido'],
   ['probar-aislamiento'],
@@ -27,6 +28,7 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-publicar'],
   ['probar-dueno'],
   ['probar-primera'],
+  ['probar-archivos'],
   ['probar-armado'],
   ['probar-plantillas'],
   ['probar-vista-previa'],
@@ -36,6 +38,7 @@ const pruebas: [archivo: string, ...argumentos: string[]][] = [
   ['probar-tablero'],
   ['probar-estados'],
   ['probar-casos'],
+  ['probar-sesion'],
   ['probar-vitrina'],
 ]
 

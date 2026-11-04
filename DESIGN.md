@@ -178,7 +178,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 **Derivado.** Las definiciones viven en `src/nucleo/tablero.ts`, las palabras en `tablero-palabras.ts` y la gráfica en `graficas.ts`:
 
 - **Las cifras** son las de Inicio. **Necesitan atención** es `Necesita tu ojo` contado sin su límite, y sin conversaciones `Resueltas sin ti` dice `—`, no `0 %`. Una agenda cambia `Ventas de la semana` por `Clientes de la semana`.
-- **Pedidos por día** son los últimos 7 días en la zona del Negocio, con `CUENTA_COMO_VENTA`. **Pedidos por estado** son todos los pedidos de esos 7 días. `De dónde llegan` no se muestra: nada guarda el origen de un Cliente.
+- **Pedidos por día** son los últimos 7 días en la zona del Negocio, con `CUENTA_COMO_VENTA`. **De dónde llegan** son todos los Clientes, sin ventana, por cómo escribieron la primera vez: `Tu link` si el mensaje traía la ficha del Negocio, `Anuncio de Meta` si además traía un `referral` de anuncio, y `Sin dato` todo lo demás, también quien ya era Cliente antes de guardarlo. No se reparte. Va en cantidades, como lo demás del Tablero. `Pedidos por estado` salió, porque el diseño lleva un solo reparto y Pedidos ya agrupa por estado.
 - **Una gráfica** lleva una sola tinta, `--primary`, un solo eje y barras de hasta 24 px. Se rotulan el último punto y el más alto si no se pisan; las demás cifras salen al tocar o enfocar la barra y las lee un lector de pantalla. Con más de 7 puntos, el eje de abajo solo rotula los extremos.
 - **Un Indicador propio** de una cifra va en una tarjeta. Uno por tiempo lleva su último valor y sus barras, y un ranking va en barras con su nombre, a todo el ancho.
 - **Una Sección propia** siempre muestra su primera y su última columna. Las de en medio entran según el ancho y, mientras no caben, suben debajo del nombre con su título: ningún dato se pierde en teléfono. Una columna de números va a la derecha.
@@ -194,7 +194,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 - **Cancelado** va al final, plegado y con el tono de Entregado.
 - **Una línea de items** escribe la cantidad solo si pasa de 1 y separa los productos con `+`, porque un nombre puede llevar coma: `2 tueste medio, grano 500 g + Molino manual`.
 - **El límite** son 50 filas por grupo y 100 Clientes, los más recientes. La cuenta siempre es la de verdad, y una línea dice cuántas ves.
-- **En Conversaciones**, la lista son los Clientes que tienen mensajes, los 100 más recientes. El detalle trae los últimos 200 y abre en lo último. El pie dice quién atiende: hoy siempre `Tu agente está atendiendo`, porque el Agente de clientes no se calla con un Caso abierto, y un enlace si hay un Caso sin resolver.
+- **En Conversaciones**, la lista son los Clientes que tienen mensajes, los 100 más recientes. El detalle trae los últimos 200 y abre en lo último. El pie dice quién atiende. `Tu agente está atendiendo` lleva `Tomar la conversación`, y el agente no se calla con un Caso abierto, solo cuando se toma. La tienes tú lleva cuánto queda para que vuelva a tu agente, `Devolver al agente` y el redactor. Fuera de la ventana de 24 horas no hay redactor ni se ofrece tomarla, y la pantalla lo dice. Un mensaje del Dueño va a la derecha en `--secondary`, con `Dueño` encima. Un Caso sin resolver lleva su enlace.
 - **En Casos**, `Espera tu decisión` lleva la misma tarjeta del Hilo, leída con `estadosDeTarjetas`. Un Caso solo se cierra enviando: descartar o que venza lo deja esperando, con su constancia y qué sigue. En `Resueltos`, una respuesta aprobada que no salió lo dice.
 - **En Clientes**, `Pedidos` y `Total` usan `CUENTA_COMO_VENTA`. `Ciudad` es la del último pedido que dijo una, y `Último` lo más reciente entre escribir y pedir. Un Cliente sin nombre sale con su teléfono.
 - **El detalle de un pedido o de un Cliente** tiene su ruta (`/panel/pedidos/[id]`, `/panel/clientes/[id]`) y sigue en su Sección: la lista va al lado, angosta y con su fila marcada, y en teléfono una pantalla a la vez. La flecha también va en PC, porque sin elegir nada la lista vuelve a ocupar el lienzo. Su conversación trae los últimos 20 mensajes y es la del Cliente, no la del pedido, porque nada liga un mensaje con un pedido. Un id que no es del Negocio dice que no está.
@@ -222,7 +222,9 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 
 ### Redactor
 
-**Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto. **Destino**: adjuntar, porque el Hilo todavía no recibe archivos.
+**Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto.
+
+**Derivado: adjuntar.** Fotos y PDF, hasta 3 por mensaje. Encima del texto queda una fila por archivo con `Subiendo` o el error en palabras, y una X para quitarlo. Con un archivo listo se puede enviar sin texto; mientras sube, no. En el globo del Dueño el archivo es un enlace con su nombre. Lo leído de un archivo llega en la tarjeta de lo leído, que pide comparar cada precio con el archivo. Con el Negocio abierto esa tarjeta dice `Aplicar`, y termina en Publicar como las demás. En la caja flotante no va adjuntar, como en el prototipo.
 
 ## Publicar
 
@@ -242,7 +244,8 @@ Hoy el único link es el de WhatsApp. **Destino**: el del Panel, para el equipo,
 
 **Derivado.** Nada de esto tuvo ronda de diseño: sale de lo decidido y sigue así hasta que Daniel lo revise.
 
-- **Entrar.** El mismo cielo de Alba: el titular arriba y el formulario en una hoja. En teléfono la hoja llega hasta abajo. Cada campo lleva su etiqueta visible, no solo el marcador. La pantalla no sabe quién autentica: recibe una función, y los códigos del proveedor viven en una sola tabla, `src/app/entrar/errores.ts`.
+- **Entrar.** El mismo cielo de Alba: el titular arriba y el formulario en una hoja. En teléfono la hoja llega hasta abajo. Cada campo lleva su etiqueta visible, no solo el marcador. La pantalla no sabe quién autentica: recibe una función, responde con el paso que sigue (`credenciales`, `olvido`, `codigo`, `contrasena_nueva`) y los códigos del proveedor viven en una sola tabla, `src/app/entrar/errores.ts`.
+- **Cuenta en espera.** El mismo cielo, sin Panel. Un correo sin verificar se confirma ahí con un código. Una cuenta vieja que todavía no pasa ve `Estoy pasando tu cuenta`, sin Negocio nuevo.
 - **Vacío.** Una línea tenue que dice qué sigue, sin ilustración ni botón.
 - **Cargando.** Un esqueleto por Sección con las mismas cajas que la vista, dentro de la cáscara, sin cambiarle el lugar a nada. Lo que siempre dice lo mismo, como los títulos de una tabla, va escrito. `probar-vitrina` mide cada par.
 - **Error.** `No pude traer [qué].`, `Vuelve a intentar en un momento.` y un botón. `--destructive` va en el ícono, no en el texto grande. La cáscara se queda: el Dueño puede irse a otra Sección.

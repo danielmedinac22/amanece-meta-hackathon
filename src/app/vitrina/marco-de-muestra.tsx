@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, type ComponentProps, type ReactNode } from 'react'
-import { Operacion } from '@/app/panel/operacion'
+import { ItemDeSalir, Operacion } from '@/app/panel/operacion'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { DetalleDeMuestra, type FilasDeMuestra } from './detalle-de-muestra'
 import { DecisionesDeMuestra, useDecisiones, type GuionDePublicar } from './hilo-de-muestra'
 
-type Props = Omit<ComponentProps<typeof Operacion>, 'ruta' | 'alIr' | 'children' | 'publicador'> & { paginas: Record<string, ReactNode>; filas?: FilasDeMuestra; rutaInicial?: string; tarjetas?: Record<string, EstadoDeTarjeta>; guion?: GuionDePublicar }
+type Props = Omit<ComponentProps<typeof Operacion>, 'ruta' | 'alIr' | 'children' | 'publicador' | 'salir'> & { paginas: Record<string, ReactNode>; filas?: FilasDeMuestra; rutaInicial?: string; tarjetas?: Record<string, EstadoDeTarjeta>; guion?: GuionDePublicar }
 
 function OperacionDeMuestra({ paginas, filas, rutaInicial, datos, ...props }: Omit<Props, 'tarjetas' | 'guion'> & { rutaInicial: string }) {
   const [ruta, setRuta] = useState(rutaInicial)
@@ -15,7 +15,7 @@ function OperacionDeMuestra({ paginas, filas, rutaInicial, datos, ...props }: Om
   const conLoQuePaso = negocio ? { ...datos, negocio: { ...negocio, propias: [...negocio.propias, ...propias], publicar: negocio.publicar && { ...negocio.publicar, items } } } : datos
   return (
     // La ruta de verdad es `usePathname`, sin la consulta: `paginas` sí la distingue porque así se elige una conversación.
-    <Operacion {...props} datos={conLoQuePaso} ruta={ruta.split('?')[0]} alIr={setRuta} publicador={publicador}>
+    <Operacion {...props} datos={conLoQuePaso} ruta={ruta.split('?')[0]} alIr={setRuta} publicador={publicador} salir={<ItemDeSalir alTocar={() => setRuta('/panel')} />}>
       {paginas[ruta] ?? (filas && <DetalleDeMuestra filas={filas} ruta={ruta} />)}
     </Operacion>
   )

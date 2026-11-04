@@ -13,15 +13,19 @@ import type { Elemento } from '@/nucleo/estado/elementos'
 import { EscribirleAlAgente } from './disposicion'
 import { ResultadoDelIndicador } from './pieza'
 import { SinPublicar } from './sin-publicar'
+import { COMPARAR } from '@/nucleo/archivos'
 import type { AccionDeTarjeta, RespuestaDeTarjeta, TocarTarjeta } from './tocar-tarjeta'
+
+type AccionEnPantalla = TarjetaDeAprobacion['accion'] | 'aplicarLoLeido'
 
 const ACCIONES = {
   aplicar: { verbo: 'Aplicar', hecha: 'Aplicada', llega: 'Lo notan tus Clientes', terminaEnPublicar: true, vencio: 'Venció sin aplicarse. Pídela de nuevo si todavía la quieres.' },
   enviar: { verbo: 'Enviar', hecha: 'Enviada', llega: 'Sale por WhatsApp a tu Cliente', terminaEnPublicar: false, vencio: 'Venció sin enviarse. Pídele a tu agente que la prepare de nuevo.' },
-  confirmar: { verbo: 'Están bien y no falta ninguno', hecha: 'Confirmada', llega: 'Lo notan tus Clientes', terminaEnPublicar: false, vencio: 'Venció sin confirmarse. Pégale el enlace a tu agente de nuevo.' },
+  confirmar: { verbo: 'Están bien y no falta ninguno', hecha: 'Confirmada', llega: 'Lo notan tus Clientes', terminaEnPublicar: false, vencio: 'Venció sin confirmarse. Mándaselo a tu agente de nuevo.' },
+  aplicarLoLeido: { verbo: 'Aplicar', hecha: 'Aplicada', llega: 'Lo notan tus Clientes', terminaEnPublicar: true, vencio: 'Venció sin aplicarse. Mándaselo a tu agente de nuevo.' },
   deshacer: { verbo: 'Deshacer', hecha: 'Deshecha', llega: 'Solo lo ven tú y tu equipo', terminaEnPublicar: true, vencio: 'Ya no se puede deshacer desde aquí. Pídeselo a tu agente.' },
   revertir: { verbo: 'Revertir', hecha: 'Revertida', llega: 'Lo notan tus Clientes', terminaEnPublicar: false, vencio: 'Venció sin revertirse. Pídela de nuevo si todavía la quieres.' },
-} as const satisfies Record<TarjetaDeAprobacion['accion'], { verbo: string; hecha: string; llega: string; terminaEnPublicar: boolean; vencio: string }>
+} as const satisfies Record<AccionEnPantalla, { verbo: string; hecha: string; llega: string; terminaEnPublicar: boolean; vencio: string }>
 
 const ETIQUETAS: Partial<Record<Elemento['tipo'], { abierta: string; constancia: string }>> = {
   regla: { abierta: 'Vista previa · regla nueva', constancia: 'Nueva regla' },
@@ -35,7 +39,7 @@ const ENTRA = [0.22, 1, 0.36, 1] as const
 export function etiquetaDe(tarjeta: TarjetaDeAprobacion, estado: EstadoDeTarjeta | undefined, cual: 'abierta' | 'constancia' = 'abierta'): string {
   const asunto = estado?.asunto
   if (asunto?.tipo === 'caso') return asunto.pedido ? `${asunto.titulo} · pedido #${asunto.pedido}` : asunto.titulo
-  if (tarjeta.accion === 'confirmar') return 'Lo que leí de tu página'
+  if (tarjeta.accion === 'confirmar') return tarjeta.lineas.some((l) => l.startsWith(COMPARAR)) ? 'Lo que leí de tu archivo' : 'Lo que leí de tu página'
   if (tarjeta.accion === 'enviar') return 'Un Caso'
   const etiquetas = asunto?.tipo === 'elemento' && asunto.que ? ETIQUETAS[asunto.que] : undefined
   return etiquetas?.[cual] ?? 'Un cambio en tu negocio'
@@ -43,7 +47,7 @@ export function etiquetaDe(tarjeta: TarjetaDeAprobacion, estado: EstadoDeTarjeta
 
 type Desenlace = { readonly texto: string; readonly tono: 'bien' | 'nada' | 'ojo' }
 
-function envioDeLaTarjeta(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): EnvioDeRespuesta | null {
+function envioDeLaTarjeta(accion: AccionEnPantalla, estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): EnvioDeRespuesta | null {
   if (accion !== 'enviar') return null
   const guardado = estado?.estado === 'aplicada' && estado.asunto?.tipo === 'caso' ? estado.asunto.envio : null
   const delClic = r?.tipo === 'aplicado' ? r.envio : null
@@ -52,7 +56,7 @@ function envioDeLaTarjeta(accion: TarjetaDeAprobacion['accion'], estado: EstadoD
 }
 
 /** Lo que dice la tarjeta cuando ya no espera: primero lo que acaba de pasar con este clic, después lo guardado. */
-function desenlaceDe(accion: TarjetaDeAprobacion['accion'], estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): Desenlace {
+function desenlaceDe(accion: AccionEnPantalla, estado: EstadoDeTarjeta | undefined, r: RespuestaDeTarjeta | null): Desenlace {
   const { hecha, vencio } = ACCIONES[accion]
   const cliente = estado?.asunto?.tipo === 'caso' ? estado.asunto.cliente : null
   const por = estado?.aprobadaPor ? `${hecha} por ${estado.aprobadaPor}` : hecha
@@ -201,7 +205,7 @@ function Cuerpo({ tarjeta, estado }: { tarjeta: TarjetaDeAprobacion; estado: Est
 }
 
 /** Una propuesta en el Hilo o en Casos. Después de un clic muestra lo que respondió la ruta. `ancla` es solo del Hilo: la misma tarjeta puede estar en los dos a la vez. */
-export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, alTocar, alCambiar }: { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; ancla?: string; etiqueta?: string; alTocar: TocarTarjeta; alCambiar: () => void }) {
+export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, abierto = false, alTocar, alCambiar }: { /** Con el Negocio abierto, lo leído no termina en confirmar, sino en Aplicar y Publicar. */ abierto?: boolean; tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta | undefined; posicion?: string | null; ancla?: string; etiqueta?: string; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const [enCurso, setEnCurso] = useState(false)
   const [respuesta, setRespuesta] = useState<RespuestaDeTarjeta | null>(null)
   const escribir = useContext(EscribirleAlAgente)
@@ -214,7 +218,8 @@ export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, alT
   // Un `conflicto` de Aplicar ya descartó la tarjeta y su texto pide proponerlo de nuevo: ahí tocar otra vez no sirve.
   const sirveTocarOtraVez = !respuesta || respuesta.tipo === 'error' || respuesta.tipo === 'ya_no_cabe' || (respuesta.tipo === 'conflicto' && esDeshacer)
   const esperando = sirveTocarOtraVez && abierta
-  const { verbo, llega } = ACCIONES[tarjeta.accion]
+  const accion: AccionEnPantalla = tarjeta.accion === 'confirmar' && abierto ? 'aplicarLoLeido' : tarjeta.accion
+  const { verbo, llega } = ACCIONES[accion]
   const cliente = estado?.asunto?.tipo === 'caso' ? estado.asunto.cliente : null
 
   async function tocar(accion: AccionDeTarjeta) {
@@ -259,7 +264,7 @@ export function Tarjeta({ tarjeta, estado, posicion = null, ancla, etiqueta, alT
           <span className="ml-auto text-xs text-muted-foreground">{cliente ? `Sale por WhatsApp a ${cliente}` : llega}</span>
         </>
       }
-      hecho={esperando ? null : <Hecho desenlace={desenlaceDe(tarjeta.accion, estado, respuesta)} recien={!!respuesta} />}
+      hecho={esperando ? null : <Hecho desenlace={desenlaceDe(accion, estado, respuesta)} recien={!!respuesta} />}
     />
   )
 }

@@ -18,17 +18,23 @@ process.env.ENVIO_SIMULADO = '1'
 
 console.log('Entrar')
 const ESPERADOS: [string, MotivoDeEntrada][] = [
-  ['INVALID_EMAIL_OR_PASSWORD', 'datos_no_coinciden'],
-  ['USER_ALREADY_EXISTS', 'ya_tiene_cuenta'],
-  ['USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'ya_tiene_cuenta'],
-  ['PASSWORD_TOO_SHORT', 'contrasena_corta'],
-  ['PASSWORD_TOO_LONG', 'contrasena_larga'],
-  ['INVALID_EMAIL', 'correo_invalido'],
-  ['EMAIL_NOT_VERIFIED', 'correo_sin_confirmar'],
+  ['form_password_incorrect', 'datos_no_coinciden'],
+  ['form_identifier_not_found', 'datos_no_coinciden'],
+  ['form_identifier_exists', 'ya_tiene_cuenta'],
+  ['strategy_for_user_invalid', 'sin_contrasena'],
+  ['form_password_length_too_short', 'contrasena_corta'],
+  ['form_password_size_in_bytes_exceeded', 'contrasena_larga'],
+  ['form_password_not_strong_enough', 'contrasena_debil'],
+  ['form_password_pwned', 'contrasena_filtrada'],
+  ['form_param_format_invalid', 'correo_invalido'],
+  ['form_code_incorrect', 'codigo_incorrecto'],
+  ['verification_expired', 'codigo_vencido'],
+  ['user_locked', 'muchos_intentos'],
+  ['network_error', 'sin_conexion'],
 ]
 for (const [code, motivo] of ESPERADOS) afirmar(`${code} se dice como ${motivo}`, motivoDelError({ code, status: 400 }) === motivo)
 afirmar('El límite de intentos llega sin código', motivoDelError({ status: 429 }) === 'muchos_intentos')
-afirmar('Un código que no conocemos no deja pasar el inglés', motivoDelError({ code: 'INVALID_ORIGIN', status: 403 }) === 'no_se_pudo' && motivoDelError({}) === 'no_se_pudo')
+afirmar('Un código que no conocemos no deja pasar el inglés', motivoDelError({ code: 'origin_invalid', status: 403 }) === 'no_se_pudo' && motivoDelError({}) === 'no_se_pudo')
 afirmar('Un código con nombre de propiedad de objeto no rompe la tabla', motivoDelError({ code: 'constructor' }) === 'no_se_pudo')
 for (const [motivo, palabras] of Object.entries(PALABRAS_DE_ENTRADA)) {
   afirmar(`${motivo}: dice qué pasó y qué hacer, sin disculpas`, palabras.split('. ').length === 2 && !/lo siento|perd[oó]n|disculpa|lament|sorry|invalid|error/i.test(palabras), palabras)

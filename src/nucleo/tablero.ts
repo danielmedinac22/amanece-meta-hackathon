@@ -1,22 +1,22 @@
 import { and, desc, eq, gte, ne, notExists, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
-import type { EstadoDePedido } from '@/db/esquema'
+import { ORIGENES_DE_CLIENTE, type EstadoDePedido, type OrigenDeCliente } from '@/db/esquema'
 import { CUENTA_COMO_VENTA } from './consultas/catalogo'
 import { DIAS_QUE_ESPERA_UNA_CONFIRMACION, leerCifras } from './hoy'
 import { vozDelRubro, type Cifras, type Voz } from './hoy-palabras'
 import type { NegocioId } from './identidad'
-import { lineaDeItems, nombreDelCliente, ORDEN_DE_PEDIDOS } from './listas-palabras'
+import { lineaDeItems, nombreDelCliente } from './listas-palabras'
 
 export type PedidoReciente = { id: string; numero: number; cliente: string; ciudad: string; items: string; total: number; estado: EstadoDePedido }
 /** Lo mismo que `Necesita tu ojo` de Inicio, contado sin su límite. Un pedido con Caso abierto cuenta como Caso. */
 export type PorAtender = { casos: number; novedad: number; pendiente: number }
-/** `porDia` siempre trae los 7 días, también los de cero, del más viejo a hoy. `porEstado` solo los estados con pedidos. */
+/** `porDia` siempre trae los 7 días, también los de cero, del más viejo a hoy. `porOrigen` son todos los Clientes, sin ventana, solo los orígenes con alguno. */
 export type DatosDelTablero = {
   voz: Voz
   cifras: Cifras
   porAtender: PorAtender
   porDia: { dia: string; pedidos: number }[]
-  porEstado: { estado: EstadoDePedido; cuenta: number }[]
+  porOrigen: { origen: OrigenDeCliente; cuenta: number }[]
   recientes: PedidoReciente[]
 }
 
@@ -38,7 +38,7 @@ export async function leerTablero(negocio: NegocioId, zona: string, rubro: strin
     .from(casos)
     .where(and(eq(casos.negocioId, negocio), eq(casos.pedidoId, pedidos.id), ne(casos.estado, 'resuelto')))
 
-  const [cifras, casosAbiertos, [porAtender], dias, porEstado, recientes] = await Promise.all([
+  const [cifras, casosAbiertos, [porAtender], dias, porOrigen, recientes] = await Promise.all([
     leerCifras(negocio, zona),
     db.$count(casos, and(eq(casos.negocioId, negocio), ne(casos.estado, 'resuelto'))),
     db
@@ -62,11 +62,10 @@ export async function leerTablero(negocio: NegocioId, zona: string, rubro: strin
       order by d
     `),
     db
-      .select({ estado: pedidos.estado, cuenta: sql<number>`count(*)`.mapWith(Number) })
-      .from(pedidos)
-      .innerJoin(clientes, delCliente)
-      .where(and(eq(pedidos.negocioId, negocio), sql`${pedidos.creado} >= ((now() at time zone ${z})::date::timestamp - interval '${atras} days') at time zone ${z}`))
-      .groupBy(pedidos.estado),
+      .select({ origen: clientes.origen, cuenta: sql<number>`count(*)`.mapWith(Number) })
+      .from(clientes)
+      .where(eq(clientes.negocioId, negocio))
+      .groupBy(clientes.origen),
     db
       .select({ id: pedidos.id, numero: pedidos.numero, items: pedidos.items, ciudad: pedidos.ciudad, total: pedidos.total, estado: pedidos.estado, nombre: clientes.nombre, telefono: clientes.telefono })
       .from(pedidos)
@@ -81,7 +80,7 @@ export async function leerTablero(negocio: NegocioId, zona: string, rubro: strin
     cifras,
     porAtender: { casos: casosAbiertos, ...porAtender },
     porDia: dias.rows as DatosDelTablero['porDia'],
-    porEstado: ORDEN_DE_PEDIDOS.flatMap((estado) => porEstado.filter((f) => f.estado === estado)),
+    porOrigen: ORIGENES_DE_CLIENTE.flatMap((origen) => porOrigen.filter((f) => f.origen === origen)),
     recientes: recientes.map((f) => ({ id: f.id, numero: f.numero, cliente: nombreDelCliente(f.nombre, f.telefono), ciudad: f.ciudad, items: lineaDeItems(f.items), total: f.total, estado: f.estado })),
   }
 }

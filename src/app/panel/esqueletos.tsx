@@ -143,7 +143,7 @@ export function EsqueletoDeConversaciones() {
           <Forma className="h-9 w-2/5 rounded-xl" />
           <Forma className="ml-auto h-9 w-1/2 rounded-xl" />
         </div>
-        <div className="flex items-center gap-2 border-t border-border p-3 text-xs text-muted-foreground">Tu agente está atendiendo</div>
+        <div className="flex min-h-14 items-center gap-2 border-t border-border p-3 text-xs text-muted-foreground">Tu agente está atendiendo</div>
       </div>
     </Cargando>
   )

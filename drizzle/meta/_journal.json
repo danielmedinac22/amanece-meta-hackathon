@@ -57,6 +57,27 @@
       "when": 1793736049870,
       "tag": "0007_casos_regla_y_lado",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793744793269,
+      "tag": "0008_toma_de_la_conversacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793749055779,
+      "tag": "0009_archivos_dueno",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793753422870,
+      "tag": "0010_origen_de_cliente",
+      "breakpoints": true
     }
   ]
 }

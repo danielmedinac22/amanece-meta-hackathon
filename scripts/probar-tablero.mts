@@ -77,6 +77,9 @@ try {
       .returning()
   const [paola, sinNombre] = await clientesDe(a.id)
   const [deB] = await clientesDe(b.id)
+  // A mano. A: 3 por link, 1 por anuncio, y Paola y el sin nombre que nacieron sin origen, hace 30 días. B: sus 2 sin origen y 2 por anuncio.
+  const conOrigen = (negocioId: string, prefijoTel: string, origenes: ('link' | 'anuncio')[]) => origenes.map((origen, i) => ({ negocioId, origen, nombre: `Origen ${i}`, telefono: `${prefijoTel}${marca}${i}` }))
+  await db.insert(esquema.clientes).values([...conOrigen(a.id, '58', ['link', 'anuncio', 'link', 'link']), ...conOrigen(b.id, '58', ['anuncio', 'anuncio'])])
   let numero = 1
   const pedido = (negocioId: string, clienteId: string, estado: Estado, total: number, cuando: Date, ciudad = 'Pasto') => ({ negocioId, clienteId, numero: numero++, items: [{ productoId: 'x', nombre: 'Tueste medio', cantidad: 1, precio: total }], total, estado, creado: cuando, ciudad })
 
@@ -127,7 +130,7 @@ try {
   afirmar('La gráfica suma solo la última semana', t.porDia.reduce((s, d) => s + d.pedidos, 0) === 4, t.porDia)
 
   console.log('\nReparto')
-  afirmar('Los estados salen en el orden de Pedidos, solo con lo de estos 7 días', t.porEstado.map((f) => `${f.estado} ${f.cuenta}`).join() === 'novedad 1,pendiente 1,confirmado 1,enviado 1,entregado 1,cancelado 1', t.porEstado)
+  afirmar('De dónde llegan cuadra con el conteo a mano, sin ventana, y un Cliente sin origen es Sin dato', t.porOrigen.map((f) => `${f.origen} ${f.cuenta}`).join() === 'link 3,anuncio 1,sin_dato 2', t.porOrigen)
 
   console.log('\nTabla')
   afirmar('Los cinco más recientes, con su estado', t.recientes.length === 5 && t.recientes.map((r) => r.estado).join() === 'novedad,confirmado,pendiente,cancelado,enviado', t.recientes)
@@ -139,12 +142,13 @@ try {
   afirmar('Otro Negocio no se cuela en el Tablero', !todo.includes('7777777') && !todo.includes('5555555') && !todo.includes('Intrusa'), t)
   const deOtro = await leerTablero(marcar.negocio(b.id), ZONA, 'café')
   afirmar('Otro Negocio tiene lo suyo', deOtro.porAtender.novedad === 2 && deOtro.porAtender.casos === 1 && deOtro.recientes.length === 2 && deOtro.recientes.every((r) => r.total === 7_777_777), deOtro)
-  afirmar('Un pedido a nombre de un Cliente ajeno no se muestra en la gráfica ni en la tabla', deOtro.porDia.at(-1)?.pedidos === 2 && !JSON.stringify(deOtro.recientes).includes('5555555') && deOtro.porEstado.every((f) => f.estado !== 'confirmado'), deOtro)
+  afirmar('Un pedido a nombre de un Cliente ajeno no se muestra en la gráfica ni en la tabla', deOtro.porDia.at(-1)?.pedidos === 2 && !JSON.stringify(deOtro.recientes).includes('5555555'), deOtro)
+  afirmar('Otro Negocio cuenta solo sus Clientes', deOtro.porOrigen.map((f) => `${f.origen} ${f.cuenta}`).join() === 'anuncio 2,sin_dato 2', deOtro.porOrigen)
 
   console.log('\nVacío y voz')
   const vacio = await negocioNuevo('C', 'Barbería')
   const sinDatos = await leerTablero(marcar.negocio(vacio.id), ZONA, 'Barbería')
-  afirmar('Un Negocio sin nada trae siete días en cero y listas vacías', sinDatos.porDia.length === 7 && sinDatos.porDia.every((d) => d.pedidos === 0) && sinDatos.porEstado.length === 0 && sinDatos.recientes.length === 0, sinDatos)
+  afirmar('Un Negocio sin nada trae siete días en cero y listas vacías', sinDatos.porDia.length === 7 && sinDatos.porDia.every((d) => d.pedidos === 0) && sinDatos.porOrigen.length === 0 && sinDatos.recientes.length === 0, sinDatos)
   afirmar('El Rubro decide la voz', sinDatos.voz === 'agenda' && t.voz === 'tienda')
 } finally {
   if (creados.length) await db.delete(esquema.negocios).where(inArray(esquema.negocios.id, creados))

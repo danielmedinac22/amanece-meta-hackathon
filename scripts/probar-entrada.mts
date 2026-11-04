@@ -20,6 +20,7 @@ const errores = capturarErrores()
 const { db, esquema } = await import('../src/db')
 const { FICHA_DE_ENRUTAMIENTO } = await import('../src/nucleo/ficha')
 const { elegirReparto, leerMensajeEntrante, linkDeWhatsapp, recibirMensaje, repartir } = await import('../src/nucleo/entrada')
+const { origenAlNacer } = await import('../src/nucleo/ficha')
 const { marcar } = await import('../src/nucleo/identidad')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
 
@@ -59,6 +60,39 @@ try {
   afirmar('lectura: sin timestamp de Meta usa la hora de llegada', sinHora?.enviadoEn === recibidoEn.toISOString(), sinHora)
   afirmar('lectura: un recibo de entrega no es un mensaje', leerMensajeEntrante({ message: { id: 'w.5', from: '573000000001', type: 'text', text: { body: 'x' }, kapso: { status: 'delivered' } } }) === null)
   afirmar('lectura: un mensaje a otro número no es de Amanece', leerMensajeEntrante({ phone_number_id: 'otro-numero', message: { id: 'w.6', from: '573000000001', type: 'text', text: { body: 'x' } } }) === null)
+  const conReferral = (referral: unknown) => leerMensajeEntrante(eventoDeKapso({ wamid: 'w.r', telefono: '573000000001', texto: '(LADERA) hola', referral }), recibidoEn)
+  const ANUNCIO = { source_type: 'ad', source_id: '120210987654321098', ctwa_clid: 'clic', headline: 'Café', body: 'Envío', source_url: 'https://fb.me/x', media_type: 'image' }
+  const REFERIDOS: [string, unknown, string][] = [
+    ['sin referral', undefined, 'ninguno'],
+    ['referral null', null, 'ninguno'],
+    ['anuncio con su id', ANUNCIO, 'anuncio'],
+    ['anuncio de Status, sin ctwa_clid', { source_type: 'ad', source_id: '1' }, 'anuncio'],
+    ['anuncio sin source_id', { source_type: 'ad', ctwa_clid: 'clic' }, 'otro'],
+    ['anuncio con source_id vacío', { source_type: 'ad', source_id: '  ' }, 'otro'],
+    ['anuncio con source_id que no es texto', { source_type: 'ad', source_id: 1 }, 'otro'],
+    ['post', { source_type: 'post', source_id: '1' }, 'otro'],
+    ['organic', { source_type: 'organic', source_id: '1' }, 'otro'],
+    ['solo source_url', { source_url: 'https://fb.me/x' }, 'otro'],
+    ['referral vacío', {}, 'otro'],
+    ['referral que es texto', 'ad', 'otro'],
+    ['referral que es número', 7, 'otro'],
+    ['referral que es lista', [ANUNCIO], 'otro'],
+  ]
+  for (const [caso, referral, referido] of REFERIDOS) afirmar(`lectura: ${caso} se lee ${referido} y el mensaje sigue entrando`, conReferral(referral)?.referido === referido, conReferral(referral))
+
+  const ORIGENES: [string, string, 'anuncio' | 'otro' | 'ninguno', string][] = [
+    ['su ficha sin referral', '(LADERA) hola', 'ninguno', 'link'],
+    ['su ficha en minúsculas', '(ladera) hola', 'ninguno', 'link'],
+    ['su ficha con un anuncio', '(LADERA) hola', 'anuncio', 'anuncio'],
+    ['su ficha con un referral que no prueba un anuncio', '(LADERA) hola', 'otro', 'sin_dato'],
+    ['un anuncio sin ficha, porque el número es compartido', 'hola', 'anuncio', 'sin_dato'],
+    ['un anuncio con la ficha de otro Negocio', '(TRIGO) hola', 'anuncio', 'sin_dato'],
+    ['sin ficha ni referral', 'hola', 'ninguno', 'sin_dato'],
+    ['algo con forma de ficha que escribió el Cliente', '(sin) azúcar', 'ninguno', 'sin_dato'],
+    ['la ficha al final del texto', 'hola (LADERA)', 'ninguno', 'sin_dato'],
+  ]
+  for (const [caso, texto, referido, origen] of ORIGENES) afirmar(`origen: ${caso} es ${origen}`, origenAlNacer({ texto, referido }, 'LADERA') === origen, { texto, referido })
+
   afirmar('lectura: una imagen sin texto no es un mensaje', leerMensajeEntrante({ message: { id: 'w.7', from: '573000000001', type: 'image', image: { id: 'm1' } } }) === null)
 
   console.log('\n=== 2. La ficha ===')

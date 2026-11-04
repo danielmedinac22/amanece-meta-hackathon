@@ -24,6 +24,7 @@ export const nombreDelCliente = (nombre: string, telefono: string) => nombre.tri
 /** `null` si el teléfono ya es su nombre, para no decirlo dos veces. */
 export const telefonoAparte = (nombre: string, telefono: string) => (nombre.trim() ? nombreDelCliente('', telefono) : null)
 
+export const rutaDeConversacion = (cliente: string) => `/panel/conversaciones?cliente=${cliente}`
 export const rutaDePedido = (id: string) => `/panel/pedidos/${encodeURIComponent(id)}`
 export const rutaDeCliente = (id: string) => `/panel/clientes/${encodeURIComponent(id)}`
 
