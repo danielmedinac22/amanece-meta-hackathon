@@ -1,18 +1,29 @@
 'use client'
 
+import { ArrowsClockwise, ArrowUp, CaretUp, CheckCircle, NotePencil, Warning } from '@phosphor-icons/react'
 import type { ChatStatus, UIMessage } from 'ai'
-import { useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Button, buttonVariants } from '@/components/ui/button'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
-import { tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
-import { Tarjeta } from './tarjeta'
+import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import { PARTE_DE_ARCHIVO, type Adjunto } from '@/nucleo/archivos'
+import { rutaDeConversacion } from '@/nucleo/listas-palabras'
+import { PARTE_DE_PLANTILLA, PARTIDAS, plantillaDelHilo, type IdDePlantilla } from '@/nucleo/plantillas'
+import { decisionesEnEspera, decisionQueEspera, esCapacidadFaltante, tarjetaDeLaParte } from '@/negocio/partes-del-hilo'
+import { ArchivoEnElGlobo, BotonAdjuntar, TiraDeAdjuntos, useAdjuntos, type EnElRedactor } from './adjuntos'
+import { HiloEnLaOperacion } from './disposicion'
+import type { SubirArchivo } from './subir-archivo'
+import { IrASeccion } from './ir-a-seccion'
+import { etiquetaDe, Tarjeta } from './tarjeta'
+import type { TocarTarjeta } from './tocar-tarjeta'
 
 /** Lo que el Dueño ve mientras su Agente del dueño usa una herramienta. */
 const ETIQUETAS: Record<string, string> = {
   leer_enlace: 'Leyó lo que publicaste',
+  leer_archivo: 'Leyó tu archivo',
   guardar_conocimiento: 'Guardó lo que sabe de tu negocio',
   guardar_productos: 'Actualizó tu catálogo',
+  corregir_tarjeta: 'Corrigió lo que leyó',
   abrir_negocio: 'Dejó listo a tu agente de clientes',
   ver_negocio: 'Revisó tu negocio',
   proponer: 'Preparó lo que pediste',
@@ -22,96 +33,233 @@ const ETIQUETAS: Record<string, string> = {
   registrar_capacidad_faltante: 'Anotó algo que todavía no sabe hacer',
 }
 
-const SUGERENCIAS_ARMANDO = ['No tengo página: vendo café de especialidad en Manizales', 'Tengo una panadería en Bogotá']
-const SUGERENCIAS_LISTO = [
-  'Cuando un pedido sea para fuera de mi ciudad, ábreme un Caso y no prometas fecha',
-  'Quiero ver los pedidos confirmados por día',
-  'Muéstrame los pedidos con novedad',
-]
+export type AlEnviar = (contenido: string, adjuntos?: readonly Adjunto[]) => void
+
+const SUGERENCIAS = ['Quiero ver los pedidos confirmados por día', 'Muéstrame los pedidos con novedad']
 
 export type DatosDelHilo = {
   messages: UIMessage[]
   estados: Record<string, EstadoDeTarjeta>
-  estado: 'armando' | 'listo' | null
   status: ChatStatus
   error: Error | undefined
 }
 
-/** Pinta la conversación. Quien la conecta decide qué pasa al enviar: esta vista no habla con ninguna ruta. */
-export function VistaDelHilo({ messages, estados, estado, status, error, alEnviar, alCambiar }: DatosDelHilo & { alEnviar: (contenido: string) => void; alCambiar: () => void }) {
-  const [texto, setTexto] = useState('')
+export function Puntos() {
+  return (
+    <span className="puntos inline-flex items-center">
+      <i />
+      <i />
+      <i />
+    </span>
+  )
+}
+
+/** Mientras lee un enlace dice cuál; lo demás lleva su etiqueta. */
+function etiquetaDelRastro(herramienta: string, parte: { state: string; input?: unknown }) {
+  if (herramienta === 'leer_archivo' && parte.state.startsWith('input')) return 'Leyendo tu archivo'
+  const url = herramienta === 'leer_enlace' && parte.state.startsWith('input') ? (parte.input as { url?: unknown } | undefined)?.url : null
+  return typeof url === 'string' ? `Leyendo ${url}` : (ETIQUETAS[herramienta] ?? herramienta)
+}
+
+/** El rastro de que el armado partió de una plantilla. */
+export function RastroDePlantilla({ id }: { id: IdDePlantilla }) {
+  return (
+    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+      <ArrowsClockwise className="size-3.5 shrink-0" />
+      <span>Parto de {PARTIDAS[id].nombre}</span>
+    </div>
+  )
+}
+
+function Rastro({ estado, children }: { estado: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+      {estado === 'output-available' ? <CheckCircle weight="fill" className="size-3.5 shrink-0" /> : estado === 'output-error' ? <Warning weight="fill" className="size-3.5 shrink-0 text-destructive" /> : <Puntos />}
+      <span>{children}</span>
+    </div>
+  )
+}
+
+/** Lo que el Dueño pidió y Amanece no sabe hacer: queda anotado y no se aplica nada, así que no lleva botón. */
+function CapacidadFaltante() {
+  return (
+    <div className="flex gap-2.5 rounded-[calc(var(--radius)-4px)] bg-muted px-3 py-2.5">
+      <NotePencil className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium">Todavía no sé hacer esto</p>
+        <p className="text-xs text-pretty text-muted-foreground">Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.</p>
+      </div>
+    </div>
+  )
+}
+
+/** Pinta la conversación. Quien la conecta decide qué pasa al enviar y al tocar una tarjeta: esta vista no habla con ninguna ruta. */
+export function VistaDelHilo({ messages, estados, status, error, alEnviar, alSubir, adjuntosIniciales, alTocar, alCambiar }: DatosDelHilo & { alEnviar: AlEnviar; alSubir: SubirArchivo; adjuntosIniciales?: readonly EnElRedactor[]; alTocar: TocarTarjeta; alCambiar: () => void }) {
   const final = useRef<HTMLDivElement>(null)
+  // Lo que ya estaba al abrir no entra con movimiento: solo lo que llega después.
+  const [yaEstaban] = useState(messages.length)
   const ocupado = status === 'submitted' || status === 'streaming'
+  const { vista, controles, avisarDecision, borrador } = useContext(HiloEnLaOperacion)
+
+  // `vista` porque oculta no se puede bajar: al volver a verse tiene que quedar en lo último que llegó.
+  useEffect(() => {
+    final.current?.scrollIntoView({ block: 'nearest' })
+  }, [messages, vista])
 
   useEffect(() => {
-    final.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    avisarDecision(decisionQueEspera(messages, estados))
+  }, [messages, estados, avisarDecision])
 
-  function enviar(contenido: string) {
-    if (!contenido.trim() || ocupado) return
-    alEnviar(contenido)
-    setTexto('')
+  const plantilla = plantillaDelHilo(messages)
+  const sugerencias = plantilla ? PARTIDAS[plantilla].alAbrir : SUGERENCIAS
+  const enEspera = decisionesEnEspera(messages, estados)
+  const posicionDe = (propuesta: string) => {
+    const i = enEspera.findIndex((t) => t.propuesta === propuesta)
+    return enEspera.length > 1 && i >= 0 ? `${i + 1} de ${enEspera.length}` : null
   }
-
-  const sugerencias = estado === 'listo' ? SUGERENCIAS_LISTO : SUGERENCIAS_ARMANDO
+  const tarjeta = (t: NonNullable<ReturnType<typeof tarjetaDeLaParte>>) => <Tarjeta abierto tarjeta={t} estado={estados[t.propuesta]} posicion={posicionDe(t.propuesta)} ancla={`tarjeta-${t.propuesta}`} alTocar={alTocar} alCambiar={alCambiar} />
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+    <div className="flex h-full min-h-0 flex-col flotante:h-auto">
+      <div data-conversacion className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 motion-safe:scroll-smooth flotante:mb-2 flotante:max-h-[58vh] flotante:flex-none flotante:rounded-lg flotante:border flotante:bg-background flotante:p-4 flotante:shadow-alzada plegada:hidden">
+        {enEspera.length > 1 && (
+          <button type="button" onClick={() => document.getElementById(`tarjeta-${enEspera[0].propuesta}`)?.scrollIntoView({ block: 'start' })} className="sticky top-0 z-10 flex w-full shrink-0 items-center gap-2 rounded-[calc(var(--radius)-4px)] border border-border bg-card px-3 py-2 text-left text-xs">
+            <Warning weight="fill" className="size-3.5 shrink-0 text-ojo" />
+            <span className="shrink-0 font-medium tabular-nums">1 de {enEspera.length}</span>
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{etiquetaDe(enEspera[0], estados[enEspera[0].propuesta])}</span>
+            <CaretUp className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        )}
         {messages.length === 0 && (
-          <div className="rounded-lg bg-card p-4 text-sm">
+          <p className="text-(length:--texto-hilo) leading-normal text-pretty">
             Hola, soy tu agente. Trabajo para tu negocio todo el día. Si ya lo tienes publicado en una página o en Instagram,
             pégame el enlace y lo leo. Si no, cuéntame cómo se llama y qué vendes.
-          </div>
+          </p>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : ''}>
-            <div className={m.role === 'user' ? 'max-w-[85%] rounded-lg bg-primary px-4 py-2.5 text-primary-foreground' : 'max-w-full'}>
-              {m.parts.map((parte, i) => {
-                if (parte.type === 'text') return <p key={i} className="whitespace-pre-wrap leading-relaxed">{parte.text}</p>
-                const t = tarjetaDeLaParte(parte)
-                if (parte.type.startsWith('tool-')) {
-                  const herramienta = parte.type.slice(5)
-                  const p = parte as { state: string }
-                  return (
-                    <div key={i} className="my-2">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
-                        <span className={p.state === 'output-available' ? 'text-bien' : p.state === 'output-error' ? 'text-destructive' : 'animate-pulse text-ojo'}>●</span>
-                        {ETIQUETAS[herramienta] ?? herramienta}
-                      </span>
-                      {t && <Tarjeta tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} />}
-                    </div>
-                  )
-                }
-                return t ? <Tarjeta key={i} tarjeta={t} estado={estados[t.propuesta]} alCambiar={alCambiar} /> : null
-              })}
-            </div>
-          </div>
+        {messages.map((m, indice) => (
+          <MensajeDelHilo key={m.id} m={m} entra={indice >= yaEstaban} tarjeta={tarjeta} />
         ))}
-        {status === 'submitted' && <p className="animate-pulse text-sm text-muted-foreground">Pensando…</p>}
-        {error && <p className="text-sm text-destructive">Algo falló. Intenta de nuevo.</p>}
+        {status === 'submitted' && (
+          <span role="status" aria-label="Tu agente está escribiendo" className="py-1">
+            <Puntos />
+          </span>
+        )}
+        {error && <p role="alert" className="text-sm text-destructive">Se cortó mi respuesta. Escríbeme de nuevo.</p>}
         <div ref={final} />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-1.5 flotante:hidden">
         {sugerencias.map((s) => (
-          <Button key={s} variant="outline" size="xs" onClick={() => enviar(s)} disabled={ocupado} className="h-auto max-w-full shrink rounded-full bg-card px-3 py-1 text-left font-normal whitespace-normal text-muted-foreground">
+          <Button key={s} variant="outline" size="xs" onClick={() => alEnviar(s)} disabled={ocupado} className="h-auto max-w-full shrink rounded-full bg-background px-2.5 py-1 text-left font-normal whitespace-normal text-muted-foreground hover:text-foreground">
             {s}
           </Button>
         ))}
       </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          enviar(texto)
-        }}
-        className="mt-3 flex gap-2"
-      >
-        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a tu agente…" className="h-11 flex-1 rounded-full bg-card px-4" />
-        <Button type="submit" disabled={ocupado || !texto.trim()} className="h-11 rounded-full px-5">
-          Enviar
-        </Button>
-      </form>
+      <Redactor ocupado={ocupado} alEnviar={alEnviar} alSubir={alSubir} adjuntosIniciales={adjuntosIniciales} borrador={borrador}>
+        {controles}
+      </Redactor>
     </div>
+  )
+}
+
+/** Un mensaje de la conversación. `tarjeta` pinta una decisión, o devuelve `null` si quien la pinta la lleva a otro lado. */
+export function MensajeDelHilo({ m, entra, tarjeta }: { m: UIMessage; entra: boolean; tarjeta: (t: TarjetaDeAprobacion) => ReactNode }) {
+  return (
+    <div className={[m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-3', entra ? 'motion-safe:animate-[sube_240ms_var(--ease-entra)]' : ''].join(' ')}>
+      {m.role === 'user' ? (
+        <div className="flex max-w-[85%] min-w-0 flex-col gap-1.5 rounded-[calc(var(--radius)+2px)] bg-secondary px-3.5 py-2 text-(length:--texto-hilo) leading-[1.45] text-pretty whitespace-pre-wrap text-secondary-foreground">
+          {m.parts.map((parte, i) => (parte.type === 'text' ? <span key={i}>{parte.text}</span> : parte.type === PARTE_DE_ARCHIVO ? <ArchivoEnElGlobo key={i} adjunto={parte.data as Adjunto} /> : null))}
+        </div>
+      ) : (
+        m.parts.map((parte, i) => {
+          if (parte.type === 'text') return <p key={i} className="text-(length:--texto-hilo) leading-normal text-pretty whitespace-pre-wrap">{parte.text}</p>
+          if (parte.type === PARTE_DE_PLANTILLA) {
+            const id = plantillaDelHilo([m])
+            return id && <RastroDePlantilla key={i} id={id} />
+          }
+          if (parte.type === 'data-toma') {
+            const { cliente, nombre } = parte.data as { cliente: string; nombre: string }
+            return (
+              <IrASeccion key={i} href={rutaDeConversacion(cliente)} className={buttonVariants({ variant: 'outline', size: 'sm', className: 'mt-1 self-start' })}>
+                {nombre ? `Ver la conversación de ${nombre}` : 'Ver la conversación'}
+              </IrASeccion>
+            )
+          }
+          const t = tarjetaDeLaParte(parte)
+          if (esCapacidadFaltante(parte)) return <CapacidadFaltante key={i} />
+          if (parte.type.startsWith('tool-')) {
+            const herramienta = parte.type.slice(5)
+            const conEstado = parte as { state: string; input?: unknown }
+            // `proponer` sin tarjeta no preparó nada: el modelo tiene que corregir o explicar.
+            const noPreparo = herramienta === 'proponer' && conEstado.state === 'output-available' && !t
+            const noCorrigio = herramienta === 'corregir_tarjeta' && conEstado.state === 'output-available' && !t
+            return (
+              <div key={i} className="flex flex-col gap-3">
+                <Rastro estado={conEstado.state}>{noPreparo ? 'Revisó lo que pediste' : noCorrigio ? 'Revisó lo que leyó' : etiquetaDelRastro(herramienta, conEstado)}</Rastro>
+                {t && tarjeta(t)}
+              </div>
+            )
+          }
+          return t ? <div key={i}>{tarjeta(t)}</div> : null
+        })
+      )}
+    </div>
+  )
+}
+
+/** La caja donde el Dueño escribe, en el Hilo y en la carta del armado. `children` son los controles que van al lado de enviar. */
+export function Redactor({ ocupado, alEnviar, alSubir, adjuntosIniciales, borrador, children }: { ocupado: boolean; alEnviar: AlEnviar; alSubir: SubirArchivo; adjuntosIniciales?: readonly EnElRedactor[]; borrador?: { texto: string } | null; children?: ReactNode }) {
+  const [texto, setTexto] = useState('')
+  const adjuntos = useAdjuntos(alSubir, adjuntosIniciales)
+  const hayQueEnviar = !!texto.trim() || adjuntos.listos.length > 0
+  const caja = useRef<HTMLTextAreaElement>(null)
+  const [borradorPuesto, setBorradorPuesto] = useState(borrador)
+  if (borrador !== borradorPuesto) {
+    setBorradorPuesto(borrador)
+    if (borrador) setTexto(borrador.texto)
+  }
+
+  useEffect(() => {
+    if (!borrador) return
+    caja.current?.focus()
+    caja.current?.setSelectionRange(borrador.texto.length, borrador.texto.length)
+  }, [borrador])
+
+  function enviar() {
+    if (!hayQueEnviar || ocupado || adjuntos.subiendo) return
+    alEnviar(texto, adjuntos.listos)
+    setTexto('')
+    adjuntos.vaciar()
+  }
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        enviar()
+      }}
+      className="mt-2 flex flex-wrap items-end gap-2 rounded-(--radius) border border-border bg-card p-2 flotante:mt-0 flotante:items-center flotante:gap-1 flotante:rounded-lg flotante:p-1 flotante:shadow-alzada"
+    >
+      <TiraDeAdjuntos lista={adjuntos.lista} alQuitar={adjuntos.quitar} />
+      <BotonAdjuntar alEscoger={adjuntos.agregar} />
+      <textarea
+        ref={caja}
+        rows={1}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault()
+            enviar()
+          }
+        }}
+        placeholder="Escríbele a tu agente"
+        aria-label="Escríbele a tu agente"
+        className="field-sizing-content max-h-32 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+      />
+      <Button type="submit" size="icon" aria-label="Enviar" disabled={ocupado || adjuntos.subiendo || !hayQueEnviar} className="size-9 rounded-full not-disabled:bg-(image:--sol) not-disabled:text-(--sol-foreground)">
+        <ArrowUp weight="bold" className="size-4" />
+      </Button>
+      {children}
+    </form>
   )
 }

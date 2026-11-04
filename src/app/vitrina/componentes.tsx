@@ -138,7 +138,7 @@ export function Componentes() {
         </Grupo>
 
         <Grupo titulo="Table">
-          <Table className="w-96">
+          <Table className="max-w-96">
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>

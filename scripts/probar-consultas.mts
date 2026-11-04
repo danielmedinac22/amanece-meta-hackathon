@@ -20,6 +20,7 @@ const { esErrorDeConsulta, explicar, validarConsulta } = await import('../src/nu
 const { armarLote, ejecutar, esNoDisponible, firmaDe, PREAMBULO } = await import('../src/nucleo/consultas/ejecutar')
 const { pintarUna, vaPorTiempo } = await import('../src/nucleo/panel')
 const { Indicador, Seccion } = await import('../src/app/panel/pieza')
+const { etiquetaLarga } = await import('../src/nucleo/graficas')
 const { renderToStaticMarkup } = await import('react-dom/server')
 const { claveDeAgrupacion } = await import('../src/nucleo/capacidades')
 const { ensayarPanel } = await import('../src/nucleo/cambios/ensayar')
@@ -224,6 +225,7 @@ try {
     ["creado + interval '5 hours'", "select count(*) as valor from pedidos where creado + interval '5 hours' > hoy_local", 'numero', 'definicion_del_nucleo'],
     ["date_trunc sobre creado menos interval '5 hours'", "select date_trunc('day', creado) - interval '5 hours' as d from pedidos", 'filas', 'definicion_del_nucleo'],
     ['clientes.telefono', 'select telefono from clientes', 'filas', 'dato_inexistente'],
+    ['clientes.origen', 'select origen from clientes', 'filas', 'dato_inexistente'],
     ['p.direccion calificada', 'select p.direccion from pedidos p', 'filas', 'dato_inexistente'],
     ['texto de conversaciones', 'select texto from conversaciones', 'filas', 'dato_inexistente'],
     ['una fuente que no existe', 'select id from usuarios', 'filas', 'dato_inexistente'],
@@ -358,7 +360,7 @@ try {
   const htmlDe = (p: SeccionPintada) => renderToStaticMarkup(Indicador({ p }))
   const treinta = Array.from({ length: 30 }, (_, i) => punto(`2026-10-${String(i + 1).padStart(2, '0')}`, i + 1000))
   const htmlPorDia = htmlDe(pintadaSerie(treinta, true))
-  afirmar('5 quáter lo pintado: 30 puntos se ven los 30, con su etiqueta en texto y sin recorte', treinta.every((t) => htmlPorDia.includes(`>${t.etiqueta}<`)), htmlPorDia.slice(0, 200))
+  afirmar('5 quáter lo pintado: 30 puntos se ven los 30, con su etiqueta en texto y sin recorte', treinta.every((t) => htmlPorDia.includes(`>${etiquetaLarga(t.etiqueta)}<`)), htmlPorDia.slice(0, 200))
   afirmar('5 quáter lo pintado: una serie por tiempo lleva la cifra grande con el último punto', /text-3xl[^>]*>1\.029</.test(htmlPorDia), htmlPorDia.slice(0, 300))
   const htmlRanking = htmlDe(pintadaSerie([punto('Café 500 g', 40), punto('Té verde', 3)], false))
   afirmar('5 quáter lo pintado: un ranking muestra el nombre del producto y no lleva cifra grande', htmlRanking.includes('>Café 500 g<') && htmlRanking.includes('>Té verde<') && !htmlRanking.includes('text-3xl'), htmlRanking.slice(0, 300))

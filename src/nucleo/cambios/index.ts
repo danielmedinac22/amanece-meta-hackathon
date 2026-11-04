@@ -30,7 +30,9 @@ import {
   type PropuestaId,
 } from '../identidad'
 import { explicar } from '../consultas/validar'
-import { despachar, EN_CURSO, intencion, type MotivoDeSilencio, type ResultadoDeEnvio } from '../salida'
+import { porQueNoSalio, SIN_SABER, type EnvioDeRespuesta } from '../caso-palabras'
+import { enviosDeCasos } from '../casos'
+import { despachar, intencion } from '../salida'
 import { fueraDeVentana } from '../salida/compuerta'
 import type { Motores } from '../clientes/turno'
 import { vistaPreviaDe, type VistaPreviaGuardada } from './ensayar'
@@ -50,7 +52,7 @@ export { queFaltaParaAbrir, type Falta } from './politica'
 export { VIGENCIA_DE_UNA_PROPUESTA_HORAS, type Huella, type OrigenDelPedido, type TarjetaDeAprobacion } from './fila'
 export type { Ensayo, LoQuePaso, Muestra, VistaPreviaDeConversaciones, VistaPreviaGuardada } from './ensayar'
 export { leerLoPendiente, publicar, type ItemDeLoPendiente, type LoPendiente, type ResultadoDePublicar } from './publicar'
-export { armarLectura, buscarProducto, EXTRACTOR, lecturaPendiente, type Extractor, type Lectura, type LoExtraido } from './lectura'
+export { armarLectura, armarLecturaDeArchivos, buscarProducto, corregirLectura, EXTRACTOR, LECTOR_DE_ARCHIVOS, lecturaPendiente, type Extractor, type LectorDeArchivos, type Lectura, type LoExtraido } from './lectura'
 
 // ══ Lo que se puede pedir ═══════════════════════════════════════════════════════════════════════
 
@@ -168,7 +170,7 @@ export type ResultadoDeAprobar =
    * También en el doble clic, desde el otro Dueño y en el reintento. `envio` si respondía un Caso. `version`, la del
    * Negocio que dejó la escritura; null si no escribió Elementos (una pieza o una respuesta).
    */
-  | { readonly tipo: 'aplicado'; readonly resumen: string; readonly envio: ResultadoDeEnvio | null; readonly version: VersionDelNegocio | null }
+  | { readonly tipo: 'aplicado'; readonly resumen: string; readonly envio: EnvioDeRespuesta | null; readonly version: VersionDelNegocio | null }
   /**
    * Otro cambió alguna de esas claves después de que se propuso: ROLLBACK, y la propuesta queda descartada porque
    * ya nunca podrá aplicarse. `resumen` dice quién tocó qué y cuándo.
@@ -199,6 +201,8 @@ export type EntradaDeHistorial = {
   /** El verbo del botón: lo pinta la tarjeta y lo necesitará el botón de WhatsApp. */
   readonly accion: TarjetaDeAprobacion['accion']
   readonly cuando: Instante
+  /** El Caso que responde. */
+  readonly caso: CasoId | null
 }
 
 type FilaDePropuesta = typeof esquema.propuestas.$inferSelect
@@ -304,7 +308,7 @@ async function proponerComo(quien: Quien, pedido: PedidoConSuClic, motores?: Mot
       const aprobadoPor = pedido.origen === 'panel' ? quien.pedidoPor : null
       const r = await aplicarConReclamo({ negocio: quien.negocio, propuesta: id, huella, aprobadoPor, sinBoton: { alcance: t.alcance, origen: pedido.origen } })
       if (r.tipo === 'aplicado') {
-        if (pedido.origen === 'panel') await dejarElDesenlace(quien.negocio, r)
+        if (pedido.origen === 'panel') await dejarElDesenlace(quien.negocio, r, null)
         const conDeshacer = t.alcance === 'panel' && !t.revierte && r.quedo === 'en_la_vista_previa'
         return { desenlace: 'aplicado', propuesta: id, tarjeta: conDeshacer ? { ...tarjeta, accion: 'deshacer' } : null, vistaPrevia, gasto: t.gasto, resumen: resumenDeLoAplicado(id, t, r.quedo) }
       }
@@ -420,8 +424,9 @@ export async function aprobar(ctx: ContextoDelDueno, propuesta: string, huella: 
   if (r.tipo === 'conflicto') await descartarSinBoton(marcar.propuesta(propuesta))
   if (r.tipo === 'sigue_esperando') return { tipo: 'no_existe' }
   if (r.tipo !== 'aplicado') return r
-  const desenlace = await dejarElDesenlace(ctx.negocio, r)
-  return { tipo: 'aplicado', resumen: desenlace?.texto ?? 'Aplicado.', envio: r.envio, version: versionDe(r.fila) }
+  const envio = await envioDeLaFila(ctx.negocio, r.fila)
+  const desenlace = await dejarElDesenlace(ctx.negocio, r, envio)
+  return { tipo: 'aplicado', resumen: desenlace?.texto ?? 'Aplicado.', envio, version: versionDe(r.fila) }
 }
 
 /** Lo que se le responde a un Cliente, ya revalidado dentro del reclamo. */
@@ -441,7 +446,7 @@ type Reclamo =
 type SinBoton = { readonly alcance: Alcance; readonly origen: OrigenDelPedido }
 
 /** `avisar`: este clic es el que deja la línea del desenlace en los Hilos. El doble clic no, y tampoco sabe `quedo`. */
-type Aplicada = { readonly tipo: 'aplicado'; readonly fila: FilaDePropuesta; readonly envio: ResultadoDeEnvio | null; readonly avisar: boolean; readonly quedo: Quedo | null }
+type Aplicada = { readonly tipo: 'aplicado'; readonly fila: FilaDePropuesta; readonly avisar: boolean; readonly quedo: Quedo | null }
 
 const versionDe = (f: FilaDePropuesta): VersionDelNegocio | null => (f.version === null ? null : (f.version as VersionDelNegocio))
 
@@ -503,7 +508,8 @@ async function aplicarConReclamo(a: {
       return { ...reclamo, resumen: await conflictoEnPalabras(a.negocio, reclamo.claves) }
     case 'reclamada':
       // Fuera de la transacción: `despachar` no corre dentro de una. La clave lleva la huella, así que es idempotente.
-      return { tipo: 'aplicado', fila: reclamo.fila, envio: reclamo.respuesta ? await despacharDespuesDelCommit(intencionDe(a.negocio, reclamo.respuesta, reclamo.fila.huella)) : null, avisar: true, quedo: reclamo.quedo }
+      if (reclamo.respuesta) await despacharDespuesDelCommit(intencionDe(a.negocio, reclamo.respuesta, reclamo.fila.huella))
+      return { tipo: 'aplicado', fila: reclamo.fila, avisar: true, quedo: reclamo.quedo }
     case 'sin_reclamo':
       return releer(a)
   }
@@ -555,19 +561,23 @@ async function cerrarCaso(tx: Transaccion, negocio: NegocioId, acto: Acto): Prom
   return { caso: acto.caso, cliente: id, texto: acto.texto }
 }
 
-/** Después del COMMIT, una excepción de `despachar` es un envío que no salió, no un `aprobar` fallido. */
-async function despacharDespuesDelCommit(i: ReturnType<typeof intencionDe>): Promise<ResultadoDeEnvio> {
+async function despacharDespuesDelCommit(i: ReturnType<typeof intencionDe>): Promise<void> {
   try {
-    return await despachar(i)
+    await despachar(i)
   } catch (e) {
     console.error('[aprobar] despachar falló después del COMMIT', i.clave, e)
-    return { tipo: 'por_enviar', error: e instanceof Error ? e.message : String(e) }
   }
 }
 
-/** La fila que otro clic acaba de reclamar en `despachar` y todavía está enviando: va en camino, no es una falla. */
-function enCamino(envio: ResultadoDeEnvio | null): boolean {
-  return envio?.tipo === 'por_enviar' && envio.error === EN_CURSO
+async function envioDeLaFila(negocio: NegocioId, f: FilaDePropuesta): Promise<EnvioDeRespuesta | null> {
+  const [acto] = f.actos
+  if (!acto) return null
+  try {
+    return (await enviosDeCasos(negocio, [acto.caso])).get(acto.caso) ?? SIN_SABER
+  } catch (e) {
+    console.error('[aprobar] no pude leer el envío', f.id, e)
+    return SIN_SABER
+  }
 }
 
 function intencionDe(negocio: NegocioId, r: Respuesta, huella: string) {
@@ -591,34 +601,26 @@ async function releer(a: { readonly negocio: NegocioId; readonly propuesta: Prop
  * mirar la ventana, porque la compuerta la dejaría salir: si ya cerró y nada salió, no sale, y como nadie escribió
  * la línea del desenlace, la escribe este clic.
  */
-async function reintentarRespuesta(negocio: NegocioId, f: FilaDePropuesta): Promise<{ readonly envio: ResultadoDeEnvio | null; readonly avisar: boolean }> {
+async function reintentarRespuesta(negocio: NegocioId, f: FilaDePropuesta): Promise<{ readonly avisar: boolean }> {
   const [acto] = f.actos
-  if (!acto) return { envio: null, avisar: false }
+  if (!acto) return { avisar: false }
   const [cliente] = await db
     .select({ id: esquema.clientes.id, ultimo: esquema.clientes.ultimoMensajeEntrante })
     .from(esquema.casos)
     .innerJoin(esquema.clientes, and(eq(esquema.clientes.id, esquema.casos.clienteId), eq(esquema.clientes.negocioId, esquema.casos.negocioId)))
     .where(and(eq(esquema.casos.id, acto.caso), eq(esquema.casos.negocioId, negocio)))
-  if (!cliente) return { envio: null, avisar: false }
+  if (!cliente) return { avisar: false }
   const i = intencionDe(negocio, { caso: acto.caso, cliente: marcar.cliente(cliente.id), texto: acto.texto }, f.huella)
   const yaHayEnvio = (await db.$count(esquema.mensajesSalientes, eq(esquema.mensajesSalientes.clave, i.clave))) > 0
-  if (!yaHayEnvio && fueraDeVentana(instanteDe(cliente.ultimo), ahora())) return { envio: { tipo: 'no_salio', motivo: 'fuera_de_ventana' }, avisar: true }
-  return { envio: await despacharDespuesDelCommit(i), avisar: false }
+  if (!yaHayEnvio && fueraDeVentana(instanteDe(cliente.ultimo), ahora())) return { avisar: true }
+  await despacharDespuesDelCommit(i)
+  return { avisar: false }
 }
-
-const MOTIVO_EN_PALABRAS = {
-  emergencia: 'los envíos están detenidos por una emergencia.',
-  negocio_en_sombra: 'el Negocio está en sombra y no le habla a nadie.',
-  numero_no_permitido: 'el número de Amanece no está listo para enviar.',
-  destinatario_de_otro_negocio: 'ese Cliente no es de este Negocio.',
-  fuera_de_ventana: 'pasaron más de 24 horas desde su último mensaje y WhatsApp no deja escribirle hasta que vuelva a escribir.',
-  una_respuesta_por_mensaje: 'ya se le había respondido ese mensaje.',
-} as const satisfies Record<MotivoDeSilencio, string>
 
 type Desenlace = { readonly texto: string; readonly por: string }
 
 /** Lo arma el código, nunca el modelo. Nombra a quien aprobó, que en un reintento puede ser el otro Dueño. */
-async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio: ResultadoDeEnvio | null, quedo: Quedo | null): Promise<Desenlace> {
+async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio: EnvioDeRespuesta | null, quedo: Quedo | null): Promise<Desenlace> {
   const [quien] = f.aprobadoPor ? await db.select({ nombre: esquema.duenos.nombre }).from(esquema.duenos).where(eq(esquema.duenos.id, f.aprobadoPor)) : []
   const por = quien?.nombre || 'Un Dueño'
   const [acto] = f.actos
@@ -634,23 +636,16 @@ async function desenlaceEnPalabras(negocio: NegocioId, f: FilaDePropuesta, envio
     .innerJoin(esquema.clientes, eq(esquema.clientes.id, esquema.casos.clienteId))
     .where(and(eq(esquema.casos.id, acto.caso), eq(esquema.casos.negocioId, negocio)))
   const a = cliente?.nombre || 'el Cliente'
-  if (enCamino(envio)) return { por, texto: `${por} le respondió a ${a}: «${acto.texto}»` }
-  switch (envio?.tipo) {
-    case 'por_enviar':
-      return { por, texto: `${por} aprobó la respuesta a ${a}, pero WhatsApp no la tomó. Escríbele tú directamente.` }
-    case 'no_salio':
-      return { por, texto: `${por} aprobó la respuesta a ${a}, pero no salió: ${MOTIVO_EN_PALABRAS[envio.motivo]}` }
-    default:
-      return { por, texto: `${por} le respondió a ${a}: «${acto.texto}»` }
-  }
+  const seSabe = envio ?? SIN_SABER
+  return { por, texto: seSabe.tipo === 'salio' ? `${por} le respondió a ${a}: «${acto.texto}»` : `${por} aprobó la respuesta a ${a}, pero ${porQueNoSalio(seSabe)}` }
 }
 
 /**
  * Ya hubo COMMIT: una falla al avisar no convierte lo aplicado en un error para el Dueño. La línea es para el otro Dueño y
  * para el modelo, que solo había visto `resumen`. `data-aprobacion` le da el id sin la huella.
  */
-async function dejarElDesenlace(negocio: NegocioId, r: Aplicada): Promise<Desenlace | null> {
-  const desenlace = await desenlaceEnPalabras(negocio, r.fila, r.envio, r.quedo).catch((e) => {
+async function dejarElDesenlace(negocio: NegocioId, r: Aplicada, envio: EnvioDeRespuesta | null): Promise<Desenlace | null> {
+  const desenlace = await desenlaceEnPalabras(negocio, r.fila, envio, r.quedo).catch((e) => {
     console.error('[aprobar] no pude armar el desenlace', r.fila.id, e)
     return null
   })
@@ -724,6 +719,7 @@ export async function historial(ctx: ContextoDelDueno, filtro: { readonly limite
     estado: estadoDe(f, revertida, cuando),
     accion: accionDe(f.origen, f.actos, f.revierte),
     cuando: marcar.instante(f.creado),
+    caso: f.actos[0]?.caso ?? null,
   }))
 }
 

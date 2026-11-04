@@ -4,7 +4,8 @@
  *  2. `recibirMensaje` de punta a punta con el envío simulado (ENVIO_SIMULADO=1, que se pone aquí), entrando por
  *     `leerMensajeEntrante` con un evento de Kapso como el del webhook;
  *  3. con `--pedido`, también un pedido y un Caso de verdad en la base;
- *  4. con una regla de siempre `no_prometer: plazo` aprobada con el botón, lo que sale no promete plazos.
+ *  4. con una regla de siempre `no_prometer: plazo` aprobada con el botón, lo que sale no promete plazos;
+ *  6. el origen con el que nace un Cliente queda en la base, y un mensaje de después no lo cambia.
  *
  * Cada caso se afirma contra lo que quedó en la base o lo que se habría enviado, nunca contra el texto del
  * modelo, y el script sale con 1 si alguno falla. Lo que la corrida creó se borra al final, también si falla.
@@ -43,6 +44,9 @@ const inicio = new Date()
 const telefono = '573000000001'
 const telefonoVencido = `570${String(Date.now()).slice(-9)}`
 const telefonoSinSesion = '573000000999'
+const telefonoPorLink = `571${String(Date.now()).slice(-9)}`
+const telefonoPorAnuncio = `572${String(Date.now()).slice(-9)}`
+const telefonosDeOrigen = [telefonoPorLink, telefonoPorAnuncio]
 const base = `wamid.PRUEBA.${Date.now()}`
 const entrante = (m: Parameters<typeof eventoDeKapso>[0]) => leerMensajeEntrante(eventoDeKapso(m))!
 let laderaId: string | undefined
@@ -72,10 +76,11 @@ async function limpiar() {
     await db.update(esquema.negocios).set({ version: versionDeLadera }).where(eq(esquema.negocios.id, laderaId))
   }
   if (duenoDePrueba) await db.delete(esquema.duenos).where(eq(esquema.duenos.id, duenoDePrueba))
+  const delOrigen = await db.select({ id: esquema.clientes.id }).from(esquema.clientes).where(and(eq(esquema.clientes.negocioId, laderaId), inArray(esquema.clientes.telefono, telefonosDeOrigen)))
   const casos = await db
     .select({ id: esquema.casos.id })
     .from(esquema.casos)
-    .where(and(eq(esquema.casos.clienteId, camilaId), gte(esquema.casos.creado, inicio)))
+    .where(and(inArray(esquema.casos.clienteId, [camilaId, ...delOrigen.map((c) => c.id)]), gte(esquema.casos.creado, inicio)))
   const idsDeCasos = casos.map((c) => c.id)
   // Cada Caso trae un aviso al Hilo de los Dueños del Negocio; el id del Caso viaja dentro del mensaje.
   const hilo = await db
@@ -91,11 +96,13 @@ async function limpiar() {
   if (idsDeCasos.length) await db.delete(esquema.casos).where(inArray(esquema.casos.id, idsDeCasos))
   await db.delete(esquema.pedidos).where(and(eq(esquema.pedidos.clienteId, camilaId), gte(esquema.pedidos.creado, inicio)))
   await db.delete(esquema.mensajesCliente).where(and(eq(esquema.mensajesCliente.clienteId, camilaId), gte(esquema.mensajesCliente.creado, inicio)))
-  await db.delete(esquema.mensajesSalientes).where(and(inArray(esquema.mensajesSalientes.telefono, [telefono, telefonoSinSesion]), gte(esquema.mensajesSalientes.creado, inicio)))
+  await db.delete(esquema.mensajesSalientes).where(and(inArray(esquema.mensajesSalientes.telefono, [telefono, telefonoSinSesion, ...telefonosDeOrigen]), gte(esquema.mensajesSalientes.creado, inicio)))
   await db.delete(esquema.mensajesEntrantes).where(like(esquema.mensajesEntrantes.wamid, `${base}%`))
   await db.delete(esquema.turnos).where(and(eq(esquema.turnos.negocioId, laderaId), inArray(esquema.turnos.agente, ['clientes', 'dueno']), gte(esquema.turnos.creado, inicio)))
   // Al borrar al Cliente de la ventana vencida se van también sus mensajes.
   await db.delete(esquema.clientes).where(and(eq(esquema.clientes.negocioId, laderaId), eq(esquema.clientes.telefono, telefonoVencido)))
+  await db.delete(esquema.clientes).where(and(eq(esquema.clientes.negocioId, laderaId), inArray(esquema.clientes.telefono, telefonosDeOrigen)))
+  await db.delete(esquema.sesionesWhatsapp).where(inArray(esquema.sesionesWhatsapp.telefono, telefonosDeOrigen))
   await db.update(esquema.clientes).set({ ultimoMensajeEntrante: ultimoMensajeDeCamila }).where(eq(esquema.clientes.id, camilaId))
   if (!sesionLeida) return
   if (sesionPrevia) await db.insert(esquema.sesionesWhatsapp).values(sesionPrevia).onConflictDoUpdate({ target: esquema.sesionesWhatsapp.telefono, set: sesionPrevia })
@@ -249,9 +256,9 @@ try {
     }
     const [uno, dos] = [await crear(7), await crear(8)]
     const titulo = `Pedido fuera de Manizales (prueba ${base})`
-    const a = await puerto.abrir_caso({ titulo, detalle: 'primero', pedido: uno, reusar: true })
-    const b = await puerto.abrir_caso({ titulo, detalle: 'otra vez', pedido: uno, reusar: true })
-    const c = await puerto.abrir_caso({ titulo, detalle: 'otro pedido', pedido: dos, reusar: true })
+    const a = await puerto.abrir_caso({ titulo, detalle: 'primero', pedido: uno, reusar: true, reglas: ['Regla uno'] })
+    const b = await puerto.abrir_caso({ titulo, detalle: 'otra vez', pedido: uno, reusar: true, reglas: ['Regla dos', 'Regla uno'] })
+    const c = await puerto.abrir_caso({ titulo, detalle: 'otro pedido', pedido: dos, reusar: true, reglas: [] })
     const filas = await db.select({ id: esquema.casos.id, pedido: esquema.pedidos.numero, detalle: esquema.casos.detalle }).from(esquema.casos).leftJoin(esquema.pedidos, eq(esquema.pedidos.id, esquema.casos.pedidoId)).where(eq(esquema.casos.titulo, titulo))
     afirmar('3b: el mismo pedido reusa su Caso y otro pedido abre otro, cada uno con su pedido', a.nuevo && !b.nuevo && b.caso === a.caso && c.nuevo && c.caso !== a.caso && filas.length === 2 && filas.find((f) => f.id === a.caso)?.pedido === uno && filas.find((f) => f.id === c.caso)?.pedido === dos, { a, b, c, filas })
   }
@@ -296,10 +303,20 @@ try {
 
   console.log('\n=== 5. Un Caso del núcleo se reusa y suma el mensaje nuevo ===')
   const puerto = puertoDeLaBase(await leerPublicado(marcar.negocio(ladera.id)), marcar.cliente(camila.id))
-  const primero = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «uno»', pedido: null, reusar: true })
-  const segundo = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «dos»', pedido: null, reusar: true })
+  const primero = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «uno»', pedido: null, reusar: true, reglas: [] })
+  const segundo = await puerto.abrir_caso({ titulo: `Respuesta frenada por el núcleo (${base})`, detalle: 'Camila escribió: «dos»', pedido: null, reusar: true, reglas: [] })
   const [reusado] = primero.caso ? await db.select().from(esquema.casos).where(eq(esquema.casos.id, primero.caso)) : []
   afirmar('reusar: el mismo Caso, con los dos mensajes en el detalle', primero.caso !== null && primero.caso === segundo.caso && reusado?.detalle.includes('«uno»') && reusado.detalle.includes('«dos»'), reusado)
+
+  console.log('\n=== 6. El origen con el que nace un Cliente ===')
+  const origenDe = async (tel: string) => (await db.select({ origen: esquema.clientes.origen }).from(esquema.clientes).where(and(eq(esquema.clientes.negocioId, ladera.id), eq(esquema.clientes.telefono, tel))))[0]?.origen
+  const ANUNCIO = { source_type: 'ad', source_id: '120210987654321098', ctwa_clid: 'clic' }
+  await recibirMensaje(entrante({ wamid: `${base}.origen.1`, telefono: telefonoPorLink, texto: '(LADERA) hola', nombre: 'Prueba' }))
+  afirmar('origen: su ficha sin referral nace link', (await origenDe(telefonoPorLink)) === 'link', await origenDe(telefonoPorLink))
+  await recibirMensaje(entrante({ wamid: `${base}.origen.2`, telefono: telefonoPorLink, texto: 'hola otra vez', referral: ANUNCIO }))
+  afirmar('origen: un mensaje de después no cambia cómo llegó', (await origenDe(telefonoPorLink)) === 'link', await origenDe(telefonoPorLink))
+  await recibirMensaje(entrante({ wamid: `${base}.origen.3`, telefono: telefonoPorAnuncio, texto: '(LADERA) hola', nombre: 'Prueba', referral: ANUNCIO }))
+  afirmar('origen: su ficha con un anuncio nace anuncio', (await origenDe(telefonoPorAnuncio)) === 'anuncio', await origenDe(telefonoPorAnuncio))
 
   afirmar('recibirMensaje no registró errores (una disculpa técnica también cuenta)', errores.length === 0, errores)
 } catch (e) {

@@ -80,7 +80,8 @@ for (const [par, texto, fondo, minClaro, minOscuro] of PARES) {
   }
 }
 
-const TINTA = claro['--foreground']
+const TINTA = claro['--sol-foreground']
+afirmar('La tinta de --sol es la de DESIGN.md y no cambia en oscuro', TINTA === 'oklch(0.23 0.035 265)' && oscuro['--sol-foreground'] === TINTA, { claro: TINTA, oscuro: oscuro['--sol-foreground'] })
 for (const extremo of ['#ff9a5c', '#ff6b8b']) {
   const ratio = contraste(TINTA, extremo)
   afirmar(`Tinta sobre el extremo ${extremo} de --sol: ${ratio.toFixed(2)} (documentado 6.2)`, ratio >= 6.2 - TOLERANCIA)
@@ -88,7 +89,7 @@ for (const extremo of ['#ff9a5c', '#ff6b8b']) {
 afirmar('--sol sigue siendo el degradado documentado', claro['--sol'] === 'linear-gradient(120deg, #ff9a5c, #ff6b8b)', claro['--sol'])
 
 afirmar('El modo oscuro cambia el fondo', oscuro['--background'] !== claro['--background'])
-afirmar('El modo oscuro sigue al sistema, sin clase ni variante propia', !/\.dark\b|@custom-variant/.test(css))
+afirmar('El modo oscuro sigue al sistema, sin clase ni variante propia', !/\.dark\b|@custom-variant\s+dark\b/.test(css))
 afirmar('color-scheme declara claro y oscuro', /color-scheme:\s*light dark/.test(css))
 afirmar('--fuente y --fuente-titulo las pone next/font, no :root', !/^\s*--fuente(-titulo)?:/m.test(css))
 afirmar('--sol y --alba no son colores de Tailwind', !/--color-(sol|alba)\b/.test(css))

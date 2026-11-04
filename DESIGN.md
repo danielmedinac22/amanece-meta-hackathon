@@ -29,7 +29,7 @@ Amanece se ve como un buen producto de hoy y le habla a quien vende por WhatsApp
 
 Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de referencia para Tablero, tablas y bandeja. Este repo ya usa esos tokens y esas letras. Para ver una pantalla sin sesión, mira `/vitrina`.
 
-**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Con `pnpm dev` corriendo, `pnpm tsx scripts/mirar-vitrina.mts <escena> <salida.png> [ancho] [alto] [--oscuro]` la captura y avisa si se desborda a lo ancho. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
+**Vitrina.** `/vitrina` pinta las pantallas con datos inventados, sin sesión ni base de datos, y solo existe en `next dev`: sus páginas son `page.dev.tsx` y un build no las incluye. Para agregar una pantalla, suma una fila a `ESCENAS` en `src/app/vitrina/escenas.tsx` con su `id`, su título y lo que pinta. Con `pnpm dev` corriendo, `pnpm tsx scripts/mirar-vitrina.mts <escena> <salida.png> [ancho] [alto] [--oscuro]` la captura y avisa si se desborda a lo ancho; sus pasos (`--clic`, `--ve`, `--cierto` y los demás, en la cabecera del script) tocan y afirman como lo haría el Dueño. Los datos de prueba van en `src/app/vitrina/datos.ts` y nada fuera de esa carpeta los importa. Una pantalla que se pinte desde datos separa su vista de su lectura, como `src/app/panel/vista.tsx`.
 
 ## Tokens
 
@@ -43,7 +43,7 @@ Eurocolombia ya usa `base-nova` sobre NexaCRM de shadcn studio, y sirve de refer
 | `--bien` | Lo resuelto o funcionando: `Atendiendo`, `Confirmado`, el check de una constancia |
 | `--ojo` | Lo que espera al Dueño o está en vista previa: `Vista previa`, `Con novedad`, el número de Casos |
 | `--alba` | Solo el cielo de la entrada y del armado |
-| `--sol` | Solo el botón de enviar activo, siempre con ícono en tinta `oklch(0.23 0.035 265)` |
+| `--sol` | Solo el botón de enviar activo, siempre con ícono en `--sol-foreground`, la tinta `oklch(0.23 0.035 265)`, que no cambia en oscuro |
 | `--globo-cliente` | **Derivado.** El globo de lo que escribe el Cliente en una muestra de WhatsApp. El texto va en `--globo-cliente-foreground`. |
 | `--velo` | **Derivado.** El velo que oscurece lo de atrás cuando abre un diálogo o un cajón. Es el de `base-nova`. |
 | `--destructive` | **Derivado.** Errores y acciones que borran. Valores de `base-nova`: `oklch(0.577 0.245 27.325)` en claro y `oklch(0.704 0.191 22.216)` en oscuro. Su contraste está medido en la tabla de abajo. |
@@ -116,7 +116,13 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 **Decidido.** Como Lovable: cielo completo, `¿Qué hace tu negocio?` al centro y una caja grande que escribe ejemplos sola mientras está vacía y se detiene cuando el Dueño escribe. Debajo sube una hoja con dos pestañas: `Plantillas` y `Lo que puede hacer`.
 
-**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Destino**: hoy el armado no parte de plantillas.
+**Plantillas.** Tres, nombradas por Rubro, con negocios inventados: Venta contra entrega, Envíos y paquetería, y Servicios con agenda. Cada tarjeta dibuja el Panel real a escala, con dos globos del WhatsApp encima, y ofrece `Remixear` y `Ver`. Al remixear, la plantilla entra como chip a la caja y el cursor queda ahí. `Ver` abre lo que ve el Dueño junto a lo que ve el Cliente. En teléfono son un carrusel. **Derivado**: una plantilla trae cómo trabajar y nunca datos (`src/nucleo/plantillas.ts`): el Rubro, las reglas que hacen cierta su promesa, lo que el agente pregunta primero y lo que se le pide ya abierto. Sus negocios inventados viven solo en la tarjeta. Cada tarjeta promete lo que el producto hace hoy, y solo nombra Secciones que el Panel tiene. **Destino**: cuando existan las citas, los envíos que se mueven y el cálculo por peso, las tarjetas vuelven al texto del prototipo.
+
+**Lo que puede hacer.** Cada fila es algo que el producto hace hoy. Lo que todavía no existe no se promete aquí.
+
+**Portada.** Alba vive en `/`, con `Entrar` arriba. Nada de esta pantalla llama al servidor, así que un visitante sin cuenta no gasta modelo.
+
+**Lo escrito.** **Derivado.** La caja lo guarda en el navegador por un día, sigue a `/panel` y la puerta de sesión pide la cuenta si hace falta. Después de cualquier entrada, lo guardado llega al agente sin volver a escribirlo.
 
 ### Armado
 
@@ -144,15 +150,41 @@ Cada animación informa algo: de dónde salió una cosa o que una acción funcio
 
 La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y una agenda de citas. Cada cifra sale de un dato real, nunca del modelo.
 
+**Derivado.** Las definiciones viven en `src/nucleo/hoy.ts` y las palabras en `hoy-palabras.ts`:
+
+- **Esta semana** va desde el lunes en la zona del Negocio. `la anterior` es la semana pasada hasta este mismo momento, y solo se compara con al menos 3 pedidos en ese tramo.
+- **Lo vendido** usa `CUENTA_COMO_VENTA`, la misma definición de las Secciones y los Indicadores.
+- **Una conversación de hoy** es un Cliente que escribió hoy. **Resuelta sin ti** es una donde el último mensaje es del agente y salió, y ese Cliente no tiene un Caso abierto ni un Caso abierto o resuelto hoy.
+- **El Rubro** es texto libre: lo que suena a agenda habla de quién escribió, porque nada guarda una cita todavía, y todo lo demás habla de ventas.
+- **Lo último** dice lo que dejó registro con hora. De un Cliente muestra su último mensaje tal cual, en una línea y recortado a 80 caracteres, sin el código del link. Un pedido confirmado antes de guardarse esa hora no sale como confirmado.
+
 ### Tablero
 
 **Decidido.** Sección aparte. Cuatro tarjetas de Indicadores, gráfica, reparto y tabla reciente, en la forma de Eurocolombia.
+
+**Derivado.** Las definiciones viven en `src/nucleo/tablero.ts`, las palabras en `tablero-palabras.ts` y la gráfica en `graficas.ts`:
+
+- **Las cifras** son las de Inicio. **Necesitan atención** es `Necesita tu ojo` contado sin su límite, y sin conversaciones `Resueltas sin ti` dice `—`, no `0 %`. Una agenda cambia `Ventas de la semana` por `Clientes de la semana`.
+- **Pedidos por día** son los últimos 7 días en la zona del Negocio, con `CUENTA_COMO_VENTA`. **De dónde llegan** son todos los Clientes, sin ventana, por cómo escribieron la primera vez: `Tu link` si el mensaje traía la ficha del Negocio, `Anuncio de Meta` si además traía un `referral` de anuncio, y `Sin dato` todo lo demás, también quien ya era Cliente antes de guardarlo. No se reparte. Va en cantidades, como lo demás del Tablero. `Pedidos por estado` salió, porque el diseño lleva un solo reparto y Pedidos ya agrupa por estado.
+- **Una gráfica** lleva una sola tinta, `--primary`, un solo eje y barras de hasta 24 px. Se rotulan el último punto y el más alto si no se pisan; las demás cifras salen al tocar o enfocar la barra y las lee un lector de pantalla. Con más de 7 puntos, el eje de abajo solo rotula los extremos.
+- **Un Indicador propio** de una cifra va en una tarjeta. Uno por tiempo lleva su último valor y sus barras, y un ranking va en barras con su nombre, a todo el ancho.
+- **Una Sección propia** siempre muestra su primera y su última columna. Las de en medio entran según el ancho y, mientras no caben, suben debajo del nombre con su título: ningún dato se pierde en teléfono. Una columna de números va a la derecha.
 
 ### Pedidos: Lista
 
 **Decidido.** Agrupados por lo que falta hacer, con este orden: Con novedad, Por confirmar, Confirmado, Enviado y Entregado. Encabezados pegajosos con su cuenta. Filas densas, sin gráficas. En teléfono se esconden número, ciudad y tiempo.
 
 **Derivado.** Conversaciones y Clientes siguen esta densidad. Conversaciones es lista y detalle en dos columnas, y en teléfono una pantalla a la vez. Las tablas esconden columnas según el ancho, de modo que el nombre y el estado quepan sin desplazar.
+
+**Derivado.** Las definiciones viven en `src/nucleo/listas.ts` y las palabras en `listas-palabras.ts`:
+
+- **Cancelado** va al final, plegado y con el tono de Entregado.
+- **Una línea de items** escribe la cantidad solo si pasa de 1 y separa los productos con `+`, porque un nombre puede llevar coma: `2 tueste medio, grano 500 g + Molino manual`.
+- **El límite** son 50 filas por grupo y 100 Clientes, los más recientes. La cuenta siempre es la de verdad, y una línea dice cuántas ves.
+- **En Conversaciones**, la lista son los Clientes que tienen mensajes, los 100 más recientes. El detalle trae los últimos 200 y abre en lo último. El pie dice quién atiende. `Tu agente está atendiendo` lleva `Tomar la conversación`, y el agente no se calla con un Caso abierto, solo cuando se toma. La tienes tú lleva cuánto queda para que vuelva a tu agente, `Devolver al agente` y el redactor. Fuera de la ventana de 24 horas no hay redactor ni se ofrece tomarla, y la pantalla lo dice. Un mensaje del Dueño va a la derecha en `--secondary`, con `Dueño` encima. Un Caso sin resolver lleva su enlace.
+- **En Casos**, `Espera tu decisión` lleva la misma tarjeta del Hilo, leída con `estadosDeTarjetas`. Un Caso solo se cierra enviando: descartar o que venza lo deja esperando, con su constancia y qué sigue. En `Resueltos`, una respuesta aprobada que no salió lo dice.
+- **En Clientes**, `Pedidos` y `Total` usan `CUENTA_COMO_VENTA`. `Ciudad` es la del último pedido que dijo una, y `Último` lo más reciente entre escribir y pedir. Un Cliente sin nombre sale con su teléfono.
+- **El detalle de un pedido o de un Cliente** tiene su ruta (`/panel/pedidos/[id]`, `/panel/clientes/[id]`) y sigue en su Sección: la lista va al lado, angosta y con su fila marcada, y en teléfono una pantalla a la vez. La flecha también va en PC, porque sin elegir nada la lista vuelve a ocupar el lienzo. Su conversación trae los últimos 20 mensajes y es la del Cliente, no la del pedido, porque nada liga un mensaje con un pedido. Un id que no es del Negocio dice que no está.
 
 ## Hilo: Nota
 
@@ -164,7 +196,7 @@ La frase se arma por Rubro con datos del Negocio: una tienda habla de ventas y u
 
 | Caso | La tarjeta muestra | Acciones | Al resolver |
 |---|---|---|---|
-| Caso | Lo que escribió el Cliente, la respuesta en `--muted` y la regla que aplica | `Enviar`, `Descartar` | `Enviada a [Cliente]`, `Descartada` |
+| Caso | Lo que escribió el Cliente, la respuesta en `--muted`, `Por tu lado` y la regla que aplica; lo que el Caso no guardó no se muestra | `Enviar`, `Descartar` | `Enviada a [Cliente]` solo si WhatsApp la tomó; si no, lo que pasó, con el ícono y el color `--ojo`. `Descartada` |
 | Indicador o Sección | El resultado con datos reales, ya en la vista previa | `Deshacer` | `Deshecha`, `Publicada` |
 | Regla o conocimiento | La regla y una conversación de prueba | `Aplicar`, `Descartar` | `Aplicada`, `Publicada`, `Descartada` |
 | Lo leído de una página | Lo encontrado | `Están bien y no falta ninguno`, `Corregir` | `Confirmada` |
@@ -173,15 +205,17 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 
 **Constancia.** Al resolver, el cuerpo se pliega y quedan dos líneas: de qué se trataba y qué pasó, con un caret para volver a verlo. Desenlaces que ya existen en el código: `Aplicada por [Dueño]`, `y revertida después` y `Venció sin aplicarse. Pídela de nuevo si todavía la quieres.`
 
-**Hoy el código** aplica un Indicador o una Sección sin tarjeta, y una regla aplicada queda funcionando de una vez. La tarjeta y la vista previa de esta tabla llegan con el ticket de Publicar.
+**Derivado: varias decisiones a la vez.** Cada tarjeta se queda en su lugar de la conversación y lleva su `1 de 3`. Arriba del Hilo queda una línea con la más urgente, que lleva a ella: primero lo que un Cliente está esperando y después lo que vence antes.
 
 ### Redactor
 
 **Decidido.** Caja con adjuntar, texto y enviar. El botón de enviar es redondo y se enciende con `--sol` cuando hay texto.
 
+**Derivado: adjuntar.** Fotos y PDF, hasta 3 por mensaje. Encima del texto queda una fila por archivo con `Subiendo` o el error en palabras, y una X para quitarlo. Con un archivo listo se puede enviar sin texto; mientras sube, no. En el globo del Dueño el archivo es un enlace con su nombre. Lo leído de un archivo llega en la tarjeta de lo leído, que pide comparar cada precio con el archivo. Con el Negocio abierto esa tarjeta dice `Aplicar`, y termina en Publicar como las demás. En la caja flotante no va adjuntar, como en el prototipo.
+
 ## Publicar
 
-**Destino**, se construye en [Publicar](https://github.com/danielmedinac22/amanece/issues/34). Lo aplicado queda en vista previa hasta que el Dueño lo manda a su link.
+**Decidido.** Lo aplicado queda en vista previa hasta que el Dueño lo manda a su link.
 
 | Estado | Botón | Lienzo |
 |---|---|---|
@@ -190,6 +224,21 @@ Estructura: etiqueta arriba, en texto chico; cuerpo; acciones abajo con una lín
 | Mientras corre | `Publicando` con indicador | `Vista previa` |
 
 Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, por cada cosa, si la notan los Clientes o solo la ve el equipo. Después, el agente lo confirma en el Hilo.
+
+Hoy el único link es el de WhatsApp. **Destino**: el del Panel, para el equipo, cuando exista un rol distinto del Dueño y un link propio.
+
+## Entrar, estados y Ajustes
+
+**Derivado.** Nada de esto tuvo ronda de diseño: sale de lo decidido y sigue así hasta que Daniel lo revise.
+
+- **Entrar.** El mismo cielo de Alba: el titular arriba y el formulario en una hoja. En teléfono la hoja llega hasta abajo. Cada campo lleva su etiqueta visible, no solo el marcador. La pantalla no sabe quién autentica: recibe una función, responde con el paso que sigue (`credenciales`, `olvido`, `codigo`, `contrasena_nueva`) y los códigos del proveedor viven en una sola tabla, `src/app/entrar/errores.ts`.
+- **Cuenta en espera.** El mismo cielo, sin Panel. Un correo sin verificar se confirma ahí con un código. Una cuenta vieja que todavía no pasa ve `Estoy pasando tu cuenta`, sin Negocio nuevo.
+- **Vacío.** Una línea tenue que dice qué sigue, sin ilustración ni botón.
+- **Cargando.** Un esqueleto por Sección con las mismas cajas que la vista, dentro de la cáscara, sin cambiarle el lugar a nada. Lo que siempre dice lo mismo, como los títulos de una tabla, va escrito. `probar-vitrina` mide cada par.
+- **Error.** `No pude traer [qué].`, `Vuelve a intentar en un momento.` y un botón. `--destructive` va en el ícono, no en el texto grande. La cáscara se queda: el Dueño puede irse a otra Sección.
+- **Tarjeta que venció.** Se ve viva hasta que el sondeo o un clic digan otra cosa. Al tocarla, la tarjeta se pliega con `Venció sin [verbo]` y qué hacer. El verbo es el de la acción: `Enviar` vence `sin enviarse`.
+- **Capacidad faltante.** Un bloque tenue en el Hilo, sin botón: `Todavía no sé hacer esto` y `Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.`. No promete cuándo. El rastro de `proponer` sin tarjeta dice `Revisó lo que pediste`, no `Preparó`.
+- **Ajustes del negocio.** Se abre desde el selector del Negocio. Solo muestra lo que el Negocio ya tiene y no guarda nada ahí mismo: `Cambiar` empieza el mensaje en el redactor, porque nombre y ciudad les llegan a los Clientes y pasan por la tarjeta y por Publicar.
 
 ## Palabras
 
@@ -202,7 +251,6 @@ Al abrirlo muestra los links con copiar y abrir, lo que falta por publicar y, po
 
 ## Lo que falta decidir
 
-- **Portada pública.** Alba es la entrada del armado. Si la portada comparte esa pantalla o lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
+- **Demo en vivo.** Si la portada lleva la demo en vivo de la ronda 3 sigue abierto. Para la pieza de demo, usa el skill `stageshow`.
 - **Clientes, formularios, ajustes y errores** no tuvieron ronda. Son **Derivado**.
-- **Varias decisiones a la vez** en el Hilo.
 - **Lo que ve el equipo** cuando exista un rol distinto del Dueño.

@@ -43,6 +43,41 @@
       "when": 1793669626336,
       "tag": "0005_publicar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793732208245,
+      "tag": "0006_pedidos_confirmado",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793736049870,
+      "tag": "0007_casos_regla_y_lado",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793744793269,
+      "tag": "0008_toma_de_la_conversacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793749055779,
+      "tag": "0009_archivos_dueno",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793753422870,
+      "tag": "0010_origen_de_cliente",
+      "breakpoints": true
     }
   ]
 }

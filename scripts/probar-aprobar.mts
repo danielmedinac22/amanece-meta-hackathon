@@ -20,6 +20,8 @@ const { marcar } = await import('../src/nucleo/identidad')
 const { proponer, proponerRespuestaAlCaso, aprobar, descartar, historial, guardarEnElAlta } = await import('../src/nucleo/cambios')
 const { politicaDeAprobacion } = await import('../src/nucleo/cambios/politica')
 const { leerAplicado } = await import('../src/nucleo/estado')
+const { leerHiloConTarjetas } = await import('../src/negocio/dueno-chat')
+const { guardarEnElHilo, mensajeDelAgente } = await import('../src/negocio/dueno-hilo')
 const el = await import('../src/nucleo/estado/elementos')
 type Elemento = import('../src/nucleo/estado/elementos').Elemento
 
@@ -240,10 +242,20 @@ try {
   if (rc.desenlace === 'espera_al_dueno') {
     const fc = await filaDe(rc.propuesta)
     afirmar('respuesta: sin pedido_por y con el acto responder_caso', fc.pedidoPor === null && fc.actos.length === 1 && fc.actos[0].caso === caso.id && fc.actos[0].texto === texto, fc)
+    const escribio = `Me llegó la talla equivocada (${marca})`
+    await db.insert(esquema.mensajesCliente).values([
+      { negocioId: ladera.id, clienteId: camila.id, rol: 'cliente', texto: escribio, creado: new Date(Date.now() - 60_000) },
+      { negocioId: ladera.id, clienteId: camila.id, rol: 'agente', texto: 'Ya le aviso al Dueño', creado: new Date(Date.now() - 30_000) },
+      { negocioId: ladera.id, clienteId: camila.id, rol: 'cliente', texto: 'Esto llegó después de abrirse el Caso', creado: new Date(Date.now() + 60_000) },
+    ])
+    await guardarEnElHilo(ladera.id, B.dueno, 'agente', mensajeDelAgente('Aviso', [{ type: 'data-tarjeta', data: rc.tarjeta }]))
+    const { tarjetas } = await leerHiloConTarjetas(B)
+    const asunto = tarjetas[rc.propuesta]?.asunto
+    afirmar('tarjeta: el asunto trae el Caso, el Cliente, lo último que escribió antes de abrirse y la respuesta', asunto?.tipo === 'caso' && asunto.titulo === caso.titulo && asunto.cliente === camila.nombre && asunto.escribio === escribio && asunto.respuesta === texto, asunto)
     const r10 = await aprobar(B, rc.propuesta, rc.tarjeta.huella)
     const salientes = await db.select().from(mensajesSalientes).where(eq(mensajesSalientes.clienteId, camila.id))
     const [cerrado] = await db.select().from(casos).where(eq(casos.id, caso.id))
-    afirmar('respuesta: aprobar sale simulado', r10.tipo === 'aplicado' && r10.envio?.tipo === 'simulado', r10)
+    afirmar('respuesta: aprobar sale simulado', r10.tipo === 'aplicado' && r10.envio?.tipo === 'salio', r10)
     afirmar('respuesta: un solo envío a la Cliente, con el texto de la propuesta', enviosA(camila.telefono, desde).length === 1 && enviosA(camila.telefono, desde)[0].texto === texto, enviosA(camila.telefono, desde))
     afirmar('respuesta: una fila resolucion_de_caso con su Caso y la huella en la clave', salientes.length === 1 && salientes[0].clase === 'resolucion_de_caso' && salientes[0].casoId === caso.id && salientes[0].clave.includes(rc.tarjeta.huella), salientes)
     afirmar('respuesta: el Caso queda resuelto con ese texto', cerrado.estado === 'resuelto' && cerrado.resolucion === texto, cerrado)

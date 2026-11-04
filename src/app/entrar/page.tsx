@@ -1,12 +1,6 @@
-import { Suspense } from 'react'
-import { FormularioDeEntrada } from './formulario'
+import { EntradaConClerk } from './con-clerk'
 
-export default function Entrar() {
-  return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-10">
-      <Suspense>
-        <FormularioDeEntrada />
-      </Suspense>
-    </main>
-  )
+export default async function Entrar({ searchParams }: PageProps<'/entrar'>) {
+  const { modo } = await searchParams
+  return <EntradaConClerk modoInicial={modo === 'registro' ? 'registro' : 'entrar'} />
 }

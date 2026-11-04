@@ -5,18 +5,19 @@
 import { generateText, isStepCount, tool, type LanguageModelUsage, type ModelMessage, type ToolSet } from 'ai'
 import { z } from 'zod'
 import { modelo } from '@/lib/modelo'
-import type { CasoId, ClienteId, Instante, Wamid } from '../identidad'
+import { marcar, type CasoId, type ClienteId, type Instante, type Wamid } from '../identidad'
 import type { EstadoDelNegocio, EstadoPublicado } from '../estado'
 import type { EstadoDePedido, ItemDePedido } from '@/db/esquema'
 import { claveDeProducto, comoClave, comoMonto, ETIQUETA_DEL_DATO, pesos, type Clave, type Monto, type PedidoParaReglas, type VersionDelNegocio } from '../estado/elementos'
 import type { Cotizacion } from '../precios/cotizar'
-import { ensayo, intencion, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
+import { ensayo, intencion, type DelAgente, type IntencionDeEnvio, type IntencionEnsayada } from '../salida'
+import { vezActual } from '../salida/atencion'
 import { montosEn, revisar, telefonosEn, type HechosDeRevision, type MotivoDeRevision, type Revision } from '../salida/revisar'
-import { envolver, puertoDeLaBase, puertoEnMemoria, type AccionHecha, type PuertoDeAcciones, type PuertoParaElModelo } from './acciones'
+import { conCerca, envolver, puertoDeLaBase, puertoEnMemoria, type AccionHecha, type PuertoDeAcciones, type PuertoParaElModelo } from './acciones'
 import { compilarReglas, sinRepetir, type ViolacionDeRegla } from './reglas'
 
 export type Modo = 'real' | 'ensayo'
-export type TurnoDeConversacion = { readonly rol: 'cliente' | 'agente'; readonly texto: string }
+export type TurnoDeConversacion = { readonly rol: 'cliente' | 'agente' | 'dueno'; readonly texto: string }
 
 export type PedidoDelCliente = {
   readonly numero: number
@@ -54,14 +55,16 @@ export type Conversacion = {
   readonly mensaje: { readonly texto: string; readonly wamid: Wamid; readonly enviadoEn: Instante }
 }
 
-export type Entorno<M extends Modo> = { readonly modo: M; readonly acciones: PuertoDeAcciones; readonly otrosNegocios: readonly string[] }
+export type Entorno<M extends Modo> = { readonly modo: M; readonly acciones: PuertoDeAcciones; readonly otrosNegocios: readonly string[]; readonly habla: DelAgente }
 
-export function entornoReal(estado: EstadoPublicado, cliente: ClienteId, otrosNegocios: readonly string[]): Entorno<'real'> {
-  return { modo: 'real', acciones: puertoDeLaBase(estado, cliente), otrosNegocios }
+/** `hizoAlgo`: si el turno comprometió algo. Si otro toma la conversación, el Dueño se entera de que quedó hecho. */
+export function entornoReal(estado: EstadoPublicado, cliente: ClienteId, otrosNegocios: readonly string[], habla: DelAgente): Entorno<'real'> & { hizoAlgo(): boolean } {
+  const { puerto, hizoAlgo } = conCerca(puertoDeLaBase(estado, cliente), async () => (await vezActual(cliente)) === habla.vez)
+  return { modo: 'real', acciones: puerto, otrosNegocios, habla, hizoAlgo }
 }
 
 export function entornoDeEnsayo(estado: EstadoDelNegocio, cliente: ClienteDelTurno, acciones: PuertoDeAcciones = puertoEnMemoria(estado, cliente)): Entorno<'ensayo'> {
-  return { modo: 'ensayo', acciones, otrosNegocios: [] }
+  return { modo: 'ensayo', acciones, otrosNegocios: [], habla: { tipo: 'agente', vez: marcar.vez(0), debida: false } }
 }
 
 export type Uso = Pick<LanguageModelUsage, 'inputTokens' | 'outputTokens'>
@@ -142,7 +145,7 @@ export async function turno<M extends Modo>(
   const reglas = compilarReglas(estado)
   const alEntrar = reglas.alEntrar(conversacion.cliente.pedidos.flatMap((p) => (p.paraReglas ? [p.paraReglas] : [])))
   let activas = alEntrar
-  const envuelto = envolver(entorno.acciones, estado, reglas)
+  const envuelto = envolver(entorno.acciones, estado, reglas, alEntrar)
   const { cliente, mensaje } = conversacion
   const detalle = `${cliente.nombre || 'El Cliente'} escribió: «${mensaje.texto}»`
   let llamadas = 0
@@ -162,7 +165,7 @@ export async function turno<M extends Modo>(
 
   const alDueno = reglas.enEntrada(alEntrar)
   if (alDueno) {
-    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, pedido: null })
+    await envuelto.abrirCasoDelNucleo({ titulo: `Regla: ${alDueno.nombre}`, detalle, pedido: null, reglas: [alDueno.nombre] })
     casosPorReglas++
     texto = alDueno.avisoAlCliente
   } else {
@@ -173,7 +176,7 @@ export async function turno<M extends Modo>(
     const borrador = b.texto.trim() || SIN_TEXTO
     activas = sinRepetir([...envuelto.activadas(), ...alEntrar])
     const deSalida = reglas.enSalida(activas, borrador, envuelto.casosDelModelo())
-    for (const { titulo, pedido } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido })
+    for (const { titulo, pedido, regla } of deSalida.casosPorAbrir) await envuelto.abrirCasoDelNucleo({ titulo, detalle, pedido, reglas: [regla] })
     casosPorReglas += deSalida.casosPorAbrir.length
     const hechos = () => hechosDeRevision(estado, cliente, envuelto.cotizaciones(), entorno.otrosNegocios)
     texto = borrador
@@ -191,12 +194,12 @@ export async function turno<M extends Modo>(
       } else {
         texto = RESPALDO
         corregido = 'respaldo'
-        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, pedido: null })
+        await envuelto.abrirCasoDelNucleo({ titulo: 'Respuesta frenada por el núcleo', detalle: `${detalle}\nNo se pudo enviar: «${otra || borrador}»`, pedido: null, reglas: [] })
       }
     }
   }
 
-  const datos = { destinatario: { tipo: 'cliente', negocio: estado.identidad.id, cliente: cliente.id }, texto, enRespuestaA: mensaje.wamid } as const
+  const datos = { destinatario: { tipo: 'cliente', negocio: estado.identidad.id, cliente: cliente.id }, texto, enRespuestaA: mensaje.wamid, habla: entorno.habla } as const
   return {
     texto,
     acciones: envuelto.hechas(),

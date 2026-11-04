@@ -31,6 +31,7 @@ const { marcar } = await import('../src/nucleo/identidad')
 const { canonico } = await import('../src/lib/canonico')
 const { leerMensajeEntrante } = await import('../src/nucleo/entrada')
 const { atenderMensaje } = await import('../src/nucleo/clientes/atender')
+const { estadosDeTarjetas } = await import('../src/negocio/dueno-chat')
 const { retirarSinPublicar } = await import('./retirar-sin-publicar.mjs')
 const { quitarPanel } = await import('./quitar-panel.mjs')
 
@@ -523,6 +524,39 @@ const CASOS: Record<string, () => Promise<void>> = {
     const primeroRevertir = rev2.tipo === 'aplicado' && horarioFinal === null
     const primeroPublicar = rev2.tipo === 'ya_no_cabe' && rev2.problemas.some((p) => p.tipo === 'ya_se_publico') && pub2.tipo === 'publicado' && horarioFinal === 'De 9 a 6'
     afirmar('a la vez, sin publicar: si revierte primero no les llega; si publica primero, la tarjeta no sale de una', primeroRevertir || primeroPublicar, { pub2, rev2, horarioFinal })
+  },
+
+  async tarjetaPublicada() {
+    const N = await negocioAbierto('T')
+    const ana = await duenoDe(N, 'Ana')
+    const r = await pedirIndicador(ana, `Por publicar ${marca}`)
+    if (r.desenlace !== 'aplicado' || !r.tarjeta) throw new Error(`pedirIndicador dio ${r.desenlace}: ${r.resumen}`)
+    const { tarjeta } = r
+    const estadoDe = async (ctx: ContextoDelDueno, propuesta: string) => (await estadosDeTarjetas(ctx, [propuesta]))[propuesta]
+    const antes = await estadoDe(ana, tarjeta.propuesta)
+    const lista = await pendienteDe(N)
+    afirmar('tarjeta: aplicada y sin publicar no dice Publicada', antes?.estado === 'aplicada' && antes.publicada === false, antes)
+    afirmar('tarjeta: dice la clave que está en la lista de Publicar', antes?.asunto?.tipo === 'elemento' && antes.asunto.clave === lista.items[0].clave, { antes, lista })
+
+    const otra = await duenoDe(await negocioAbierto('U'), 'Julia')
+    afirmar('tarjeta: otro Negocio no lee la de este', (await estadoDe(otra, tarjeta.propuesta)) === undefined)
+
+    await publicarTodo(ana)
+    afirmar('tarjeta: al publicar dice Publicada', (await estadoDe(ana, tarjeta.propuesta))?.publicada === true)
+
+    await db.update(esquema.negocios).set({ estado: 'armando' }).where(eq(esquema.negocios.id, N))
+    afirmar('tarjeta: mientras se arma no hay Clientes y nada dice Publicada', (await estadoDe(ana, tarjeta.propuesta))?.publicada === false)
+    await db.update(esquema.negocios).set({ estado: 'listo' }).where(eq(esquema.negocios.id, N))
+
+    const enterrada = await aplicar(ana, poner(dato('horario', 'De 8 a 6')))
+    const ultima = await aplicar(ana, poner(dato('horario', 'De 9 a 6'), HORARIO))
+    await publicarTodo(ana)
+    afirmar('tarjeta: la que quedó enterrada nunca les llegó a los Clientes', (await estadoDe(ana, enterrada))?.publicada === false)
+    afirmar('tarjeta: la última de esa clave sí dice Publicada', (await estadoDe(ana, ultima))?.publicada === true)
+
+    const deshecho = await deshacer(ana, tarjeta.propuesta, tarjeta.huella)
+    const despues = await estadoDe(ana, tarjeta.propuesta)
+    afirmar('tarjeta: deshecha después de publicar ya no dice Publicada', deshecho.tipo === 'deshecho' && despues?.estado === 'revertida' && despues.publicada === false, { deshecho, despues })
   },
 
   async botonDeshacer() {

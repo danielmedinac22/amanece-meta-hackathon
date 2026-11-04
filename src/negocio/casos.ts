@@ -1,0 +1,81 @@
+import { and, desc, eq, ne } from 'drizzle-orm'
+import { db, esquema } from '@/db'
+import type { TarjetaDeAprobacion } from '@/nucleo/cambios'
+import type { EnvioDeRespuesta } from '@/nucleo/caso-palabras'
+import { enviosDeResueltos, ultimasTarjetasDe } from '@/nucleo/casos'
+import { haceCuanto } from '@/nucleo/hoy-palabras'
+import type { ContextoDelDueno } from '@/nucleo/identidad'
+import { nombreDelCliente } from '@/nucleo/listas-palabras'
+import { estadosDeTarjetas, type EstadoDeTarjeta } from './dueno-chat'
+
+export type DecisionDeUnCaso = { tarjeta: TarjetaDeAprobacion; estado: EstadoDeTarjeta }
+/** `decision` es la última respuesta que se le propuso al Dueño, viva o no; null si nunca hubo una. */
+export type CasoQueEspera = { id: string; titulo: string; quien: string; detalle: string; propuesta: string; reglas: readonly string[]; porTuLado: string | null; hace: string; pedido: string | null; decision: DecisionDeUnCaso | null }
+export type CasoResuelto = { id: string; titulo: string; resolucion: string; hace: string; pedido: string | null; envio: EnvioDeRespuesta | null }
+export type DatosDeCasos = { cuentaQueEspera: number; esperan: CasoQueEspera[]; cuentaDeResueltos: number; resueltos: CasoResuelto[] }
+
+export const CUANTOS_CASOS = 50
+
+/** Un Caso solo se cierra enviando la respuesta: descartarla, o que venza, lo deja esperando. */
+export async function casosDe(ctx: ContextoDelDueno, zona: string): Promise<DatosDeCasos> {
+  const { casos: c, clientes, pedidos } = esquema
+  const ahora = new Date()
+  const delNegocio = eq(c.negocioId, ctx.negocio)
+  const espera = and(delNegocio, ne(c.estado, 'resuelto'))
+  const resuelto = and(delNegocio, eq(c.estado, 'resuelto'))
+  const [abiertos, cuentaQueEspera, cerrados, cuentaDeResueltos] = await Promise.all([
+    db
+      .select({ id: c.id, titulo: c.titulo, detalle: c.detalle, propuesta: c.propuesta, reglas: c.reglas, porTuLado: c.porTuLado, creado: c.creado, nombre: clientes.nombre, telefono: clientes.telefono, numero: pedidos.numero, pedido: pedidos.id })
+      .from(c)
+      .leftJoin(clientes, and(eq(clientes.id, c.clienteId), eq(clientes.negocioId, ctx.negocio)))
+      .leftJoin(pedidos, and(eq(pedidos.id, c.pedidoId), eq(pedidos.negocioId, ctx.negocio)))
+      .where(espera)
+      .orderBy(desc(c.creado))
+      .limit(CUANTOS_CASOS),
+    db.$count(c, espera),
+    db
+      .select({
+        id: c.id,
+        titulo: c.titulo,
+        resolucion: c.resolucion,
+        creado: c.creado,
+        resuelto: c.resuelto,
+        pedido: pedidos.id,
+      })
+      .from(c)
+      .leftJoin(pedidos, and(eq(pedidos.id, c.pedidoId), eq(pedidos.negocioId, ctx.negocio)))
+      .where(resuelto)
+      .orderBy(desc(c.resuelto))
+      .limit(CUANTOS_CASOS),
+    db.$count(c, resuelto),
+  ])
+  const [decisiones, envios] = await Promise.all([ultimaDecisionDe(ctx, abiertos.map((a) => a.id)), enviosDeResueltos(ctx.negocio, cerrados.map((f) => f.id))])
+  return {
+    cuentaQueEspera,
+    esperan: abiertos.map((a) => ({
+      id: a.id,
+      titulo: a.titulo,
+      quien: [a.telefono === null ? null : nombreDelCliente(a.nombre ?? '', a.telefono), a.numero === null ? null : `pedido #${a.numero}`].filter(Boolean).join(' · '),
+      detalle: a.detalle,
+      propuesta: a.propuesta,
+      reglas: a.reglas,
+      porTuLado: a.porTuLado || null,
+      hace: haceCuanto(a.creado, ahora, zona),
+      pedido: a.pedido,
+      decision: decisiones.get(a.id) ?? null,
+    })),
+    cuentaDeResueltos,
+    resueltos: cerrados.map((f) => ({ id: f.id, titulo: f.titulo, resolucion: f.resolucion, hace: haceCuanto(f.resuelto ?? f.creado, ahora, zona), pedido: f.pedido, envio: envios.get(f.id) ?? null })),
+  }
+}
+
+async function ultimaDecisionDe(ctx: ContextoDelDueno, casos: readonly string[]): Promise<ReadonlyMap<string, DecisionDeUnCaso>> {
+  const tarjetas = await ultimasTarjetasDe(ctx.negocio, casos)
+  const estados = await estadosDeTarjetas(ctx, [...tarjetas.values()].map((t) => t.propuesta))
+  return new Map(
+    [...tarjetas].flatMap(([caso, tarjeta]) => {
+      const estado = estados[tarjeta.propuesta]
+      return estado ? [[caso, { tarjeta, estado }] as const] : []
+    }),
+  )
+}

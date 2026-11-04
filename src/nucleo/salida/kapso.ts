@@ -7,6 +7,12 @@ export type EnvioPorKapso =
   | { readonly tipo: 'simulado' }
   | { readonly tipo: 'fallo'; readonly error: string }
 
+const RECHAZO = 'Kapso respondió'
+const SIN_NUMERO = 'Falta KAPSO_PHONE_NUMBER_ID'
+
+/** Solo estos dos dicen que no salió. Una excepción puede llegar después de que Kapso aceptó: de ese `fallo` no se sabe. */
+export const fueRechazado = (error: string) => error === SIN_NUMERO || error.startsWith(`${RECHAZO} `)
+
 // La guarda vive en el adaptador y no en `despachar`: si se reescribe la salida, los `probar-*` no le escriben a teléfonos reales.
 const simulado = () => process.env.ENVIO_SIMULADO === '1'
 
@@ -16,7 +22,7 @@ export async function enviarPorKapso(telefono: string, texto: string): Promise<E
     console.log(`[envío simulado a ${telefono}] ${texto}`)
     return { tipo: 'simulado' }
   }
-  if (!NUMERO_DE_AMANECE.id) return { tipo: 'fallo', error: 'Falta KAPSO_PHONE_NUMBER_ID' }
+  if (!NUMERO_DE_AMANECE.id) return { tipo: 'fallo', error: SIN_NUMERO }
   try {
     const respuesta = await fetch(`${BASE}/${NUMERO_DE_AMANECE.id}/messages`, {
       method: 'POST',
@@ -28,7 +34,7 @@ export async function enviarPorKapso(telefono: string, texto: string): Promise<E
         text: { body: texto.slice(0, 4096), preview_url: false },
       }),
     })
-    if (!respuesta.ok) return { tipo: 'fallo', error: `Kapso respondió ${respuesta.status}: ${await respuesta.text()}` }
+    if (!respuesta.ok) return { tipo: 'fallo', error: `${RECHAZO} ${respuesta.status}: ${await respuesta.text()}` }
     const datos = (await respuesta.json()) as { messages?: { id: string }[] }
     const id = datos.messages?.[0]?.id
     return { tipo: 'enviado', wamid: id ? marcar.wamid(id) : null }

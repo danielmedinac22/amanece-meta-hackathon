@@ -78,6 +78,7 @@ try {
     afirmar('pasar_al_dueno: el modelo no se llama', g.llamadas.responder === 0 && g.llamadas.reescribir === 0, g.llamadas)
     afirmar('pasar_al_dueno: el texto es el aviso de la regla', t.texto === 'Ya le paso tu mensaje a Ana.', t.texto)
     afirmar('pasar_al_dueno: queda un abrir_caso con la regla y ningún pedido', t.acciones.length === 1 && t.acciones[0].nombre === 'abrir_caso' && puerto.casos.length === 1 && puerto.casos[0].titulo === 'Regla: Todo al Dueño' && puerto.pedidos.length === 0, { acciones: t.acciones, casos: puerto.casos })
+    afirmar('pasar_al_dueno: el Caso guarda el nombre de su regla', puerto.casos[0]?.reglas.join() === 'Todo al Dueño', puerto.casos)
   }
 
   console.log('\n=== abrir_caso de salida ===')
@@ -85,12 +86,14 @@ try {
     const estado = estadoCon(regla('Avisar', [{ tipo: 'abrir_caso', titulo: 'Un Cliente escribió' }]))
     const { puerto } = await correr(estado, 'Hola', guion('¡Hola! ¿En qué te ayudo?').motores)
     afirmar('abrir_caso: si el modelo no lo abrió, lo abre el núcleo con el título de la regla', puerto.casos.length === 1 && puerto.casos[0].titulo === 'Un Cliente escribió', puerto.casos)
+    afirmar('abrir_caso: el Caso del núcleo guarda el nombre de su regla', puerto.casos[0]?.reglas.join() === 'Avisar', puerto.casos)
     const abre = guion(async ({ puerto: p }) => {
       await p.abrir_caso({ titulo: 'Lo abrió el modelo', detalle: '', pedido: null })
       return { texto: 'Ya se lo paso al equipo.', uso: SIN_USO }
     })
     const { puerto: otro } = await correr(estado, 'Hola', abre.motores)
     afirmar('abrir_caso: si el modelo ya lo abrió, el núcleo no abre otro', otro.casos.length === 1 && otro.casos[0].titulo === 'Lo abrió el modelo', otro.casos)
+    afirmar('abrir_caso: una regla de siempre también la nombra el Caso del modelo que la reemplaza', otro.casos[0]?.reglas.join() === 'Avisar', otro.casos)
   }
 
   console.log('\n=== no_prometer ===')
@@ -104,6 +107,7 @@ try {
     await turno(estado, conversacion('¿Y si pago hoy?'), entornoDeEnsayo(estado, cliente, puerto), otraVez.motores)
     const frenados = puerto.casos.filter((c) => c.titulo === 'Respuesta frenada por el núcleo')
     afirmar('respaldo dos veces: un solo Caso, con los dos mensajes en el detalle', frenados.length === 1 && frenados[0].detalle.includes('¿Cuándo me llega?') && frenados[0].detalle.includes('¿Y si pago hoy?'), puerto.casos)
+    afirmar('una Respuesta frenada no nombra ninguna regla: la frena lo último que falló', frenados[0]?.reglas.length === 0, frenados)
     const corrige = guion('Te llega en 3 días hábiles.', 'Despachamos de lunes a viernes; la fecha exacta te la confirma el equipo.')
     const r2 = await correr(estado, '¿Cuándo me llega?', corrige.motores)
     afirmar('no_prometer corregido: sale la corrección, con el motivo a la vista del modelo', r2.t.corregido === 'si' && r2.t.texto.startsWith('Despachamos') && corrige.llamadas.motivos.some((m) => m.includes('plazos')), { texto: r2.t.texto, motivos: corrige.llamadas.motivos })
@@ -200,6 +204,7 @@ try {
 
     const pereira = await correr(estado, 'Quiero 2 cafés para Pereira, calle 10 # 5-20', pide('Pereira', 2, 'Listo, pedido creado por $76.000. Te llega el martes.').motores)
     afirmar('pedido a Pereira: el núcleo abre el Caso de la regla y la regla queda activa', pereira.puerto.casos.some((c) => c.titulo === 'Pedido fuera de Manizales') && pereira.t.reglasActivas.includes(clave('regla:Fuera de Manizales')), { casos: pereira.puerto.casos, activas: pereira.t.reglasActivas })
+    afirmar('pedido a Pereira: el Caso guarda el nombre de la regla', pereira.puerto.casos.find((c) => c.titulo === 'Pedido fuera de Manizales')?.reglas.join() === 'Envíos fuera de Manizales', pereira.puerto.casos)
     afirmar('pedido a Pereira: "te llega el martes" se corrige por no_prometer', pereira.t.corregido === 'si' && pereira.t.violaciones.some((v) => v.efecto === 'no_prometer'), pereira.t)
 
     const enCasa = await correr(estado, 'Quiero 2 cafés para Manizales', pide('Manizales, Caldas', 2, 'Listo, pedido creado por $76.000. Te llega mañana.').motores)
@@ -261,9 +266,11 @@ try {
     const ajeno = puertoEnMemoria(estado, cliente)
     await enUnTurno(ajeno, 'Quiero 2 cafés para Pereira y tengo un reclamo', aPereira(2, (p) => p.abrir_caso({ titulo: 'Reclamo', detalle: 'Un reclamo', pedido: null })))
     afirmar('un abrir_caso del modelo sin pedido no apaga el Caso de la regla', ajeno.casos.length === 2 && ajeno.casos.some((c) => c.titulo === 'Pedido fuera de Manizales' && c.pedido === 1), ajeno.casos)
+    afirmar('un Caso del modelo que no reemplaza nada no nombra la regla, y el de la regla sí', ajeno.casos.find((c) => c.titulo === 'Reclamo')?.reglas.length === 0 && ajeno.casos.find((c) => c.pedido === 1)?.reglas.join() === 'Envíos fuera de Manizales', ajeno.casos)
     const propio = puertoEnMemoria(estado, cliente)
     await enUnTurno(propio, 'Quiero 2 cafés para Pereira', aPereira(2, (p, numero) => p.abrir_caso({ titulo: 'Envío a Pereira', detalle: 'Fuera de Manizales', pedido: numero })))
     afirmar('un abrir_caso del modelo con el mismo pedido reemplaza al de la regla', propio.casos.length === 1 && propio.casos[0].titulo === 'Envío a Pereira', propio.casos)
+    afirmar('el Caso del modelo que reemplaza al de la regla la nombra', propio.casos[0]?.reglas.join() === 'Envíos fuera de Manizales', propio.casos)
 
     const sinCiudad = puertoEnMemoria(estado, cliente)
     const vacia = await enUnTurno(
