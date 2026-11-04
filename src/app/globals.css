@@ -242,11 +242,6 @@
   mask-image: linear-gradient(to bottom, black 20%, transparent);
 }
 
-.alba-llena {
-  background: var(--alba);
-  mask-image: linear-gradient(to bottom, black 62%, transparent);
-}
-
 /* En oscuro `--foreground` ya es tinta clara: la misma regla sirve para los dos temas, sin mirar el tema desde JS. */
 .cielo-que-amanece {
   color: oklch(0.95 0.008 250);

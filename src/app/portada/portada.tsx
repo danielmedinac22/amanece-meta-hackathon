@@ -25,7 +25,12 @@ export function Portada({ idioma }: { idioma: Idioma }) {
       <Dia titulo={t.dia.titulo} nota={t.dia.nota} primera={{ hora: primera.hora, meridiano: primera.meridiano }}>
         {t.dia.momentos.map((m) => (
           <article key={m.hora} data-hora={m.hora} data-meridiano={m.meridiano} className="flex flex-col gap-[13px]">
-            <h3 className="font-heading text-[clamp(24px,3.6vw,36px)] leading-[1.1] font-semibold tracking-tight text-balance">{m.titulo}</h3>
+            <h3 className="font-heading text-[clamp(24px,3.6vw,36px)] leading-[1.1] font-semibold tracking-tight text-balance">
+              <span className="sr-only">
+                {m.hora} {m.meridiano}.{' '}
+              </span>
+              {m.titulo}
+            </h3>
             <PiezaDelDia pieza={m.pieza} enLinea={t.enLinea} />
           </article>
         ))}
