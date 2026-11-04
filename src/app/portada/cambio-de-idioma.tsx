@@ -7,7 +7,7 @@ const IDIOMAS: readonly { idioma: Idioma; rotulo: string }[] = [
   { idioma: 'en', rotulo: 'EN' },
 ]
 
-export function CambioDeIdioma({ idioma, alSalir }: { idioma: Idioma; alSalir?: () => void }) {
+export function CambioDeIdioma({ idioma }: { idioma: Idioma }) {
   return (
     <span role="group" aria-label={TEXTOS[idioma].idioma.grupo} className="inline-flex rounded-full p-0.5 text-[13px]">
       {IDIOMAS.map((i) => (
@@ -16,8 +16,7 @@ export function CambioDeIdioma({ idioma, alSalir }: { idioma: Idioma; alSalir?: 
           href={RUTA_DE_IDIOMA[i.idioma]}
           hrefLang={i.idioma}
           aria-current={i.idioma === idioma ? 'page' : undefined}
-          onClick={alSalir}
-          className={cn('rounded-full px-2.5 py-1 font-medium', i.idioma === idioma ? 'bg-current/12' : 'opacity-70 hover:opacity-100')}
+          className={cn('rounded-full px-2.5 py-1 font-medium', i.idioma === idioma ? 'bg-current/12' : 'hover:bg-current/8')}
         >
           {i.rotulo}
         </Link>

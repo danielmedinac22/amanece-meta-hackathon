@@ -159,7 +159,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
             etiqueta: 'Caso',
             titulo: 'Sofía quiere cambiar su dirección',
             escribio: 'Sofía escribió: “Me mudé. ¿Me pueden cambiar la dirección? Ya salió el pedido.”',
-            respuesta: 'Hola Sofía. Tu pedido ya salió. Le pido el cambio a la transportadora y te aviso hoy mismo.',
+            respuesta: 'Hola Sofía. Tu pedido ya salió. Reviso si todavía se puede cambiar y te aviso hoy.',
             principal: { texto: 'Enviar', resultado: 'Enviada a Sofía' },
             secundaria: { texto: 'Descartar', resultado: 'Descartada' },
             nota: 'Le llega a Sofía',
@@ -208,8 +208,8 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
           descripcion: 'Contesta a dónde llegas y cuánto cobras, con lo que le contaste, y le dice a cada cliente en qué va su pedido.',
           negocio: 'Envíos Cordillera',
           mensajes: [
-            { de: 'cliente', texto: '¿Cuánto vale una caja de 5 kilos a Pereira?' },
-            { de: 'agente', texto: 'A Pereira, $24.500. ¿Te lo dejo listo?' },
+            { de: 'cliente', texto: '¿Cuánto vale enviar una caja a Pereira?' },
+            { de: 'agente', texto: 'A Pereira, $24.500 la caja. ¿Te tomo el pedido?' },
           ],
         },
         {
@@ -362,7 +362,7 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
             etiqueta: 'Case',
             titulo: 'Sofía wants to change her address',
             escribio: 'Sofía wrote: “I moved. Can you change my address? The order already shipped.”',
-            respuesta: 'Hi Sofía. Your order already shipped. I’ll ask the carrier to change it and let you know today.',
+            respuesta: 'Hi Sofía. Your order already shipped. I’ll check whether it can still be changed and let you know today.',
             principal: { texto: 'Send', resultado: 'Sent to Sofía' },
             secundaria: { texto: 'Dismiss', resultado: 'Dismissed' },
             nota: 'Goes to Sofía',
@@ -411,8 +411,8 @@ export const TEXTOS: Record<Idioma, TextosDePortada> = {
           descripcion: 'Answers where you deliver and what you charge, from what you told it, and tells each customer where their order stands.',
           negocio: 'Envíos Cordillera',
           mensajes: [
-            { de: 'cliente', texto: 'How much for a 5 kg box to Pereira?' },
-            { de: 'agente', texto: 'To Pereira, COP 24,500. Want me to set it up?' },
+            { de: 'cliente', texto: 'How much to send a box to Pereira?' },
+            { de: 'agente', texto: 'To Pereira, COP 24,500 a box. Shall I take your order?' },
           ],
         },
         {

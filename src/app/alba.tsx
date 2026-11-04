@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowsClockwise, ArrowUp, X } from '@phosphor-icons/react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useInView } from 'motion/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { memo, useEffect, useRef, useState, type RefObject } from 'react'
@@ -181,22 +181,39 @@ export function Alba({ alSeguir, idioma = 'es' }: { alSeguir?: () => void; idiom
   // `undefined`: el Dueño no ha tocado nada aquí, y vale lo que venía guardado de antes de pedir la cuenta.
   const [elegida, setElegida] = useState<IdDePlantilla | null>()
   const plantilla = elegida === undefined ? plantillaGuardada : elegida
-  const maquina = useMaquina(!!texto, t.ejemplos)
+  const cielo = useRef<HTMLDivElement>(null)
+  const cieloEnVista = useInView(cielo)
+  const maquina = useMaquina(!!texto || !cieloEnVista, t.ejemplos)
   const [rafaga, setRafaga] = useState<Rafaga | null>(null)
   const boton = useRef<HTMLButtonElement>(null)
   const salida = useRef(0)
   useEffect(() => () => clearTimeout(salida.current), [])
 
+  const loDeAhora = useRef({ texto, plantilla })
+  useEffect(() => {
+    loDeAhora.current = { texto, plantilla }
+  })
+  useEffect(
+    () => () => {
+      if (loDeAhora.current.texto.trim()) guardarLoEscrito(loDeAhora.current.texto, loDeAhora.current.plantilla)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    document.documentElement.lang = idioma
+    return () => {
+      document.documentElement.lang = 'es'
+    }
+  }, [idioma])
+
   const nivel = nivelDelCielo({ largo: texto.trim().length, conPlantilla: !!plantilla, maquina: maquina?.fraccion ?? 0, saliendo: !!rafaga })
   const volvioConAlgo = escrito === null && elegida === undefined && !!(guardado || plantillaGuardada)
   const progreso = useAmanecer(nivel, volvioConAlgo)
 
-  const guardar = () => {
-    if (texto.trim()) guardarLoEscrito(texto, plantilla)
-  }
   const empezar = () => {
     if (!texto.trim() || rafaga) return
-    guardar()
+    guardarLoEscrito(texto, plantilla)
     const seguir = alSeguir ?? (() => router.push('/panel'))
     if (conMenosMovimiento()) return seguir()
     const b = boton.current!.getBoundingClientRect()
@@ -207,38 +224,40 @@ export function Alba({ alSeguir, idioma = 'es' }: { alSeguir?: () => void; idiom
 
   return (
     <div className="relative flex-1">
-      <Cielo progreso={progreso} rafaga={rafaga}>
-        <header className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between gap-3 px-5">
-          <Link href={RUTA_DE_IDIOMA[idioma]} className="flex items-center gap-[7px] font-heading text-[17px] font-semibold tracking-tight">
-            <i aria-hidden className="size-[9px] rounded-full bg-current" />
-            Amanece
-          </Link>
-          <div className="flex items-center gap-1.5">
-            <CambioDeIdioma idioma={idioma} alSalir={guardar} />
-            <Link href="/panel" prefetch={false} onClick={guardar} className={buttonVariants({ variant: 'ghost', size: 'sm', className: 'text-inherit' })}>
-              {textos.entrar}
+      <div ref={cielo}>
+        <Cielo progreso={progreso} rafaga={rafaga}>
+          <header className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between gap-3 px-5">
+            <Link href={RUTA_DE_IDIOMA[idioma]} className="flex items-center gap-[7px] font-heading text-[17px] font-semibold tracking-tight">
+              <i aria-hidden className="size-[9px] rounded-full bg-current" />
+              Amanece
             </Link>
+            <div className="flex items-center gap-1.5">
+              <CambioDeIdioma idioma={idioma} />
+              <Link href="/panel" prefetch={false} className={buttonVariants({ variant: 'ghost', size: 'sm', className: 'text-inherit' })}>
+                {textos.entrar}
+              </Link>
+            </div>
+          </header>
+          <div className="mx-auto flex w-full max-w-[720px] flex-col items-center px-5 pt-[7vh] pb-6 text-center sm:pt-[10vh]">
+            <h1 className="font-heading text-[clamp(34px,5.6vw,58px)] leading-[1.04] font-semibold tracking-tight text-balance">{t.titulo}</h1>
+            <p className="mt-3 max-w-[46ch] text-[17px] leading-normal text-pretty">{t.subtitulo}</p>
+            <Caja
+              idioma={idioma}
+              texto={texto}
+              marcador={maquina?.texto ?? t.marcador}
+              plantilla={plantilla}
+              boton={boton}
+              alCambiar={(x) => {
+                setEscrito(x)
+                setElegida(plantilla)
+                if (!x.trim()) olvidarLoEscrito()
+              }}
+              alEmpezar={empezar}
+              alQuitarPlantilla={() => setElegida(null)}
+            />
           </div>
-        </header>
-        <main className="mx-auto flex w-full max-w-[720px] flex-col items-center px-5 pt-[7vh] pb-6 text-center sm:pt-[10vh]">
-          <h1 className="font-heading text-[clamp(34px,5.6vw,58px)] leading-[1.04] font-semibold tracking-tight text-balance">{t.titulo}</h1>
-          <p className="mt-3 max-w-[46ch] text-[17px] leading-normal text-pretty">{t.subtitulo}</p>
-          <Caja
-            idioma={idioma}
-            texto={texto}
-            marcador={maquina?.texto ?? t.marcador}
-            plantilla={plantilla}
-            boton={boton}
-            alCambiar={(x) => {
-              setEscrito(x)
-              setElegida(plantilla)
-              if (!x.trim()) olvidarLoEscrito()
-            }}
-            alEmpezar={empezar}
-            alQuitarPlantilla={() => setElegida(null)}
-          />
-        </main>
-      </Cielo>
+        </Cielo>
+      </div>
       <Hoja idioma={idioma} plantilla={plantilla} alRemixear={setElegida} />
     </div>
   )

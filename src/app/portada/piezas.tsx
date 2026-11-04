@@ -44,6 +44,7 @@ const PIEZAS: { [T in Pieza['tipo']]: (pieza: PiezaDe<T>, enLinea: string) => Re
   ),
   caso: (p) => (
     <TarjetaDeMuestra etiqueta={p.etiqueta} titulo={p.titulo} principal={p.principal} secundaria={p.secundaria} nota={p.nota}>
+      <b className="font-semibold">{p.titulo}</b>
       <p>{p.escribio}</p>
       <p className="rounded-[calc(var(--radius)-4px)] bg-muted px-2.5 py-2">{p.respuesta}</p>
     </TarjetaDeMuestra>

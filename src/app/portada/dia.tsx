@@ -39,12 +39,12 @@ export function Dia({ titulo, nota, primera, children }: { titulo: string; nota:
     <motion.section ref={raiz} style={{ '--cielo-arriba': arriba } as CSSProperties} className="relative grid grid-cols-[minmax(0,1fr)] *:[grid-area:1/1]">
       <motion.div aria-hidden className="sticky top-0 h-svh self-start overflow-hidden" style={{ background: fondo }}>
         <motion.div className="estrellas absolute inset-0" style={{ opacity: estrellas }} />
-        <motion.div className="sol-de-portada absolute top-0 left-1/2 aspect-square w-[min(120vw,760px)] rounded-full" style={{ x: '-50%', y: solSube, opacity: sol }} />
+        <motion.div className="sol-de-portada absolute top-0 left-1/2 aspect-square w-[min(120vw,760px)] rounded-full motion-reduce:hidden" style={{ x: '-50%', y: solSube, opacity: sol }} />
       </motion.div>
       <div ref={contenido} className="tinta-del-dia relative z-[1] min-w-0">
         <div className="mx-auto w-full max-w-[1120px] px-5 pt-[clamp(52px,9vw,100px)]">
           <h2 className="max-w-[18ch] font-heading text-[clamp(28px,4.6vw,46px)] leading-[1.08] font-semibold tracking-tight text-balance">{titulo}</h2>
-          <p className="mt-2 text-xs opacity-75">{nota}</p>
+          <p className="mt-2 text-xs">{nota}</p>
         </div>
         <div className="mx-auto grid w-full max-w-[1120px] grid-cols-[minmax(0,1fr)] px-5 md:grid-cols-[minmax(0,.86fr)_minmax(0,1fr)] md:gap-[30px]">
           <div

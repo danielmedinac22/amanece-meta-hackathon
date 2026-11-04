@@ -37,6 +37,8 @@ try {
   }
 
   const { es, en } = TEXTOS
+  const cifras = (texto: string) => (texto.match(/\d[\d.,]*\d|\d/g) ?? []).map((c) => c.replace(/[.,]/g, '')).join()
+  es.dificil.preguntas.forEach((p, i) => afirmar(`«${p.pregunta}»: las cifras son las mismas en inglés`, cifras(p.respuesta) === cifras(en.dificil.preguntas[i].respuesta), { es: p.respuesta, en: en.dificil.preguntas[i].respuesta }))
   const formaDelDia = (i: Idioma) => TEXTOS[i].dia.momentos.map((m) => `${m.hora} ${m.meridiano} ${m.pieza.tipo}`).join()
   afirmar('los dos idiomas cuentan el mismo día', formaDelDia('es') === formaDelDia('en'), { es: formaDelDia('es'), en: formaDelDia('en') })
   afirmar('los dos idiomas traen las mismas preguntas y los mismos Casos', es.dificil.preguntas.map((p) => !!p.caso).join() === en.dificil.preguntas.map((p) => !!p.caso).join())
