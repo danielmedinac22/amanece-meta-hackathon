@@ -47,6 +47,7 @@ async function huellaDeLosDemas(negocio: string): Promise<string> {
     (select count(*) from mensajes_cliente m join clientes c on c.id = m.cliente_id where m.negocio_id = ${negocio} and c.telefono <> ${P}) as mensajes,
     (select count(*) from pedidos p join clientes c on c.id = p.cliente_id where p.negocio_id = ${negocio} and c.telefono <> ${P}) as pedidos,
     (select count(*) from casos k left join clientes c on c.id = k.cliente_id where k.negocio_id = ${negocio} and c.telefono is distinct from ${P}) as casos,
+    (select count(*) from citas k join clientes c on c.id = k.cliente_id where k.negocio_id = ${negocio} and c.telefono <> ${P}) as citas,
     (select count(*) from mensajes_salientes where negocio_id = ${negocio} and telefono is distinct from ${P}) as salientes,
     (select count(*) from sesiones_whatsapp where negocio_id = ${negocio} and telefono <> ${P}) as sesiones,
     (select count(*) from mensajes_dueno where negocio_id = ${negocio}) as hilos`)
