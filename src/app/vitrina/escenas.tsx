@@ -24,7 +24,8 @@ import { GUION_WHATSAPP_NO_LA_TOMA, HILO_CASO_CON_REGLA, HILO_CASO_VIEJO, HILO_D
 import { CasosDeMuestra, HiloDeMuestra, HiloQueRecibeUnaDecision, type GuionDePublicar } from './hilo-de-muestra'
 import { MarcoDeMuestra } from './marco-de-muestra'
 import { GUION_FALLA, GUION_LLEGA_UNA_SECCION, GUION_OTRO_DUENO, GUION_UN_INDICADOR, GUION_UNA_REGLA, HILO_UN_INDICADOR, HILO_UNA_REGLA, NEGOCIO_MUCHOS_CAMBIOS, NEGOCIO_SECCION_SIN_PUBLICAR, NEGOCIO_UN_INDICADOR, TARJETAS_UN_INDICADOR, TARJETAS_UNA_REGLA } from './datos'
-import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
+import { HILO_ARMANDOSE, HILO_CON_UN_CASO, HILO_CONSTANCIAS, HILO_TRABAJANDO, HILO_VARIAS_DECISIONES, NEGOCIO_AGENDA, NEGOCIO_CASOS_SIN_BOTON, NEGOCIO_CON_CAMBIOS, NEGOCIO_CON_UN_CASO, NEGOCIO_CON_MUCHAS_FILAS, NEGOCIO_FUNCIONANDO, NEGOCIO_LO_ULTIMO, NEGOCIO_RECIEN_ABIERTO,
+  NEGOCIO_SIN_ORIGENES, NEGOCIO_SIN_VENTAS, TARJETAS_CON_UN_CASO, TARJETAS_CONSTANCIAS, TARJETAS_VARIAS_DECISIONES, type NegocioDeMuestra } from './datos'
 
 type Escena = { id: string; titulo: string; pinta: () => ReactNode }
 type Disposicion = Pick<ComponentProps<typeof MarcoDeMuestra>, 'sidebarAbierto' | 'cajonAbierto' | 'inicial' | 'rutaInicial'>
@@ -169,6 +170,7 @@ export const ESCENAS: readonly Escena[] = [
   { id: 'conversaciones-muchas', titulo: 'Conversaciones: más filas que el límite y textos largos', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, rutaDeConversacion('larga')) },
   { id: 'tablero', titulo: 'Tablero: cifras, Indicadores propios, gráfica, reparto y tabla', pinta: () => enLaSeccion(NEGOCIO_FUNCIONANDO, '/panel/tablero') },
   { id: 'tablero-vacio', titulo: 'Tablero: todavía sin pedidos ni conversaciones', pinta: () => enLaSeccion(NEGOCIO_RECIEN_ABIERTO, '/panel/tablero') },
+  { id: 'tablero-sin-origenes', titulo: 'Tablero: Clientes de antes de guardar de dónde llegan', pinta: () => enLaSeccion(NEGOCIO_SIN_ORIGENES, '/panel/tablero') },
   { id: 'tablero-agenda', titulo: 'Tablero: un Negocio de citas', pinta: () => enLaSeccion(NEGOCIO_AGENDA, '/panel/tablero') },
   { id: 'tablero-armandose', titulo: 'Tablero: un Negocio armándose ve la carta', pinta: () => <ArmadoDeMuestra datos={ARMADO_CONOCIENDO} messages={HILO_CONOCIENDO} /> },
   { id: 'tablero-muchos', titulo: 'Tablero: cifras grandes, nombres largos, 30 días y un ranking', pinta: () => enLaSeccion(NEGOCIO_CON_MUCHAS_FILAS, '/panel/tablero') },

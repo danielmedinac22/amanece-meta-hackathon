@@ -4,10 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils'
 import { pesos } from '@/nucleo/estado/elementos'
 import { graficaDe } from '@/nucleo/graficas'
-import { cifra, ETIQUETA_DE_PEDIDO } from '@/nucleo/listas-palabras'
+import { cifra } from '@/nucleo/listas-palabras'
 import type { SeccionPintada } from '@/nucleo/panel'
 import type { DatosDelTablero, PedidoReciente } from '@/nucleo/tablero'
-import { tarjetasDelTablero, type TarjetaDelTablero } from '@/nucleo/tablero-palabras'
+import { ETIQUETA_DE_ORIGEN, tarjetasDelTablero, type TarjetaDelTablero } from '@/nucleo/tablero-palabras'
 import { Barras, Reparto } from './graficas'
 import { EstadoDePedido } from './listas'
 import { Indicadores } from './pieza'
@@ -90,7 +90,7 @@ export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonl
     tablero.porDia.map((d) => ({ etiqueta: d.dia, valor: d.pedidos })),
     { tipo: 'cantidad', nombre: '' },
   )
-  const delPeriodo = tablero.porEstado.reduce((s, f) => s + f.cuenta, 0)
+  const deClientes = tablero.porOrigen.reduce((s, f) => s + f.cuenta, 0)
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
@@ -103,8 +103,9 @@ export function VistaDelTablero({ indicadores, tablero }: { indicadores: readonl
         <Bloque titulo="Pedidos por día" nota="Últimos 7 días. No cuenta lo cancelado ni lo que falta confirmar.">
           {grafica ? <Barras grafica={grafica} titulo="Pedidos por día" alto={168} /> : <p className="text-sm text-muted-foreground">Todavía no hay pedidos en estos 7 días.</p>}
         </Bloque>
-        <Bloque titulo="Pedidos por estado" nota="Últimos 7 días, todos los pedidos.">
-          {delPeriodo > 0 ? <Reparto filas={tablero.porEstado.map((f) => ({ clave: f.estado, etiqueta: ETIQUETA_DE_PEDIDO[f.estado], cifra: cifra(f.cuenta), parte: f.cuenta / delPeriodo }))} /> : <p className="text-sm text-muted-foreground">Todavía no hay pedidos en estos 7 días.</p>}
+        <Bloque titulo="De dónde llegan" nota="Todos tus Clientes, por cómo te escribieron la primera vez.">
+          {deClientes > 0 ? <Reparto filas={tablero.porOrigen.map((f) => ({ clave: f.origen, etiqueta: ETIQUETA_DE_ORIGEN[f.origen], cifra: cifra(f.cuenta), parte: f.cuenta / deClientes }))} /> : <p className="text-sm text-muted-foreground">Todavía no tienes Clientes. Cuando alguien te escriba, aparece aquí.</p>}
+          {tablero.porOrigen.some((f) => f.origen === 'sin_dato') && <p className="mt-3 text-xs text-pretty text-muted-foreground">Sin dato: no se sabe cómo llegaron. Los Clientes que ya tenías cuentan aquí.</p>}
         </Bloque>
       </div>
       <Recientes filas={tablero.recientes} />

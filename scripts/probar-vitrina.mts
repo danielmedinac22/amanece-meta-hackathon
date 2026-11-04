@@ -174,7 +174,10 @@ const ESQUELETOS_QUE_NO_SALTAN: { vista: string; esqueleto: string; arriba: stri
 ]
 
 const RECORRIDOS_DEL_TABLERO: typeof RECORRIDOS = [
-  ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=Pedidos por estado', '--ve=Pedidos recientes', '--no-ve=De dónde llegan'],
+  ['Tablero: cuatro tarjetas con sus cifras, y un reparto que sí tiene dato', 'tablero', '1440', '--ve=Ventas de la semana', '--ve=$1.284.000', '--ve=18\u00a0% más que la anterior', '--ve=Conversaciones hoy', '--ve=Resueltas sin ti', '--ve=93\u00a0%', '--ve=Necesitan atención', '--ve=De dónde llegan', '--ve=Tu link', '--ve=Anuncio de Meta', '--ve=Sin dato: no se sabe cómo llegaron', '--ve=Pedidos recientes', '--no-ve=Pedidos por estado'],
+  ['Tablero: sin Clientes, De dónde llegan dice qué sigue', 'tablero-vacio', '390', '--ve=De dónde llegan', '--ve=Todavía no tienes Clientes', '--no-ve=Sin dato'],
+  ['Tablero: los Clientes de antes cuentan como Sin dato y no se reparten', 'tablero-sin-origenes', '390', '--ve=Los Clientes que ya tenías cuentan aquí', '--no-ve=Tu link', '--no-ve=Anuncio de Meta'],
+  ['Tablero: sin Sin dato no se explica', 'tablero-agenda', '1440', '--ve=Tu link', '--no-ve=Sin dato'],
   ['Tablero: un Indicador propio lleva su cifra y sus barras', 'tablero', '1440', '--ve=14 pedidos', '--ve=$1.120.000', `--cierto=document.querySelectorAll('[data-pano=lienzo] ol[aria-label="Ventas por día"] li').length === 5`],
   ['Tablero: la barra más alta llena el eje y la de cero no pinta', 'tablero', '1440', `--cierto=${BARRA(4)}.querySelector('.barra-crece').getBoundingClientRect().height === ${BARRA(4)}.getBoundingClientRect().height && ${BARRA(5)}.querySelector('.barra-crece').getBoundingClientRect().height === 0`],
   ['Tablero: una barra dice su cifra al enfocarla, también la que no se rotula', 'tablero', '1440', `--cierto=getComputedStyle(${BARRA(2)}.lastElementChild).display === 'none'`, `--evalua=${BARRA(2)}.focus()`, `--cierto=getComputedStyle(${BARRA(2)}.lastElementChild).display === 'block' && ${BARRA(2)}.lastElementChild.textContent === '5 Jue 29 oct'`],

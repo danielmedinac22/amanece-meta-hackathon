@@ -218,13 +218,10 @@ const TABLERO: DatosDelTablero = {
     { dia: '2026-11-02', pedidos: 2 },
     { dia: '2026-11-03', pedidos: 6 },
   ],
-  porEstado: [
-    { estado: 'novedad', cuenta: 1 },
-    { estado: 'pendiente', cuenta: 1 },
-    { estado: 'confirmado', cuenta: 6 },
-    { estado: 'enviado', cuenta: 9 },
-    { estado: 'entregado', cuenta: 12 },
-    { estado: 'cancelado', cuenta: 1 },
+  porOrigen: [
+    { origen: 'link', cuenta: 18 },
+    { origen: 'anuncio', cuenta: 9 },
+    { origen: 'sin_dato', cuenta: 4 },
   ],
   recientes: [
     { id: 'r-41', numero: 41, cliente: 'Daniela Quintero', ciudad: 'Pereira', items: '2 tueste medio, grano 500 g', total: 76_000, estado: 'pendiente' },
@@ -240,7 +237,7 @@ const TABLERO_VACIO: DatosDelTablero = {
   cifras: { semana: { ventas: 0, pedidos: 0, clientes: 0 }, anterior: { ventas: 0, pedidos: 0 }, conversaciones: { total: 0, resueltas: 0 } },
   porAtender: { casos: 0, novedad: 0, pendiente: 0 },
   porDia: TABLERO.porDia.map((d) => ({ ...d, pedidos: 0 })),
-  porEstado: [],
+  porOrigen: [],
   recientes: [],
 }
 
@@ -331,6 +328,9 @@ export const NEGOCIO_RECIEN_ABIERTO: NegocioDeMuestra = {
   indicadores: [],
 }
 
+/** Como se ve un Negocio que ya tenía Clientes el día que se empezó a guardar el origen. */
+export const NEGOCIO_SIN_ORIGENES: NegocioDeMuestra = { ...NEGOCIO_FUNCIONANDO, tablero: { ...TABLERO, porOrigen: [{ origen: 'sin_dato', cuenta: 31 }] } }
+
 export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   indicadores: [pedidosDeHoy, ventasDeUnMes, ventasPorCiudad],
@@ -340,6 +340,11 @@ export const NEGOCIO_CON_MUCHAS_FILAS: NegocioDeMuestra = {
     cifras: { ...TABLERO.cifras, semana: { ventas: 12_840_000, pedidos: 1_204, clientes: 3_120 }, conversaciones: { total: 1_400, resueltas: 1_312 } },
     porAtender: { casos: 60, novedad: 124, pendiente: 312 },
     porDia: TABLERO.porDia.map((d, i) => ({ ...d, pedidos: 1_000 + i * 240 })),
+    porOrigen: [
+      { origen: 'link', cuenta: 12_480 },
+      { origen: 'anuncio', cuenta: 3_120 },
+      { origen: 'sin_dato', cuenta: 1_204 },
+    ],
     recientes: TABLERO.recientes.map((r) => ({ ...r, cliente: NOMBRE_LARGO, ciudad: 'San José del Guaviare', total: 12_840_000, estado: 'pendiente' as const })),
   },
   pedidos: {
@@ -397,7 +402,7 @@ export const NEGOCIO_SIN_VENTAS: NegocioDeMuestra = {
 export const NEGOCIO_AGENDA: NegocioDeMuestra = {
   ...NEGOCIO_FUNCIONANDO,
   nombre: 'Barbería Central',
-  tablero: { ...TABLERO_VACIO, voz: 'agenda', cifras: { ...TABLERO_VACIO.cifras, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } }, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
+  tablero: { ...TABLERO_VACIO, voz: 'agenda', porOrigen: [{ origen: 'link', cuenta: 12 }], cifras: { ...TABLERO_VACIO.cifras, semana: { ventas: 0, pedidos: 0, clientes: 12 }, conversaciones: { total: 4, resueltas: 3 } }, porAtender: { casos: 1, novedad: 0, pendiente: 0 } },
   indicadores: [],
   hoy: {
     hoy: {
