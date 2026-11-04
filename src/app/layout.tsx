@@ -7,6 +7,7 @@ const hanken = Hanken_Grotesk({ variable: '--fuente', subsets: ['latin'] })
 const bricolage = Bricolage_Grotesque({ variable: '--fuente-titulo', subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://app.amanece.co'),
   title: 'Amanece',
   description: 'Arma conversando el agente que atiende a tus clientes por WhatsApp.',
 }

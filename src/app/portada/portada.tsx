@@ -9,10 +9,11 @@ import { RUTA_DE_IDIOMA, TEXTOS, type Idioma } from './textos'
 export function metadatosDePortada(idioma: Idioma): Metadata {
   const { titulo, descripcion } = TEXTOS[idioma].meta
   return {
-    metadataBase: new URL('https://app.amanece.co'),
     title: titulo,
     description: descripcion,
     alternates: { canonical: RUTA_DE_IDIOMA[idioma], languages: RUTA_DE_IDIOMA },
+    openGraph: { title: titulo, description: descripcion, siteName: 'Amanece', type: 'website', locale: idioma === 'es' ? 'es_CO' : 'en_US' },
+    twitter: { card: 'summary_large_image' },
   }
 }
 
