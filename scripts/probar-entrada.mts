@@ -62,6 +62,11 @@ try {
   afirmar('lectura: un mensaje que entra marcado delivered se atiende', leerMensajeEntrante(deKapso('whatsapp.message.received', { status: 'delivered' }))?.texto === 'LADERA')
   afirmar('lectura: el evento de un recibo no se atiende', leerMensajeEntrante(deKapso('whatsapp.message.delivered', { status: 'delivered' })) === null)
   afirmar('lectura: lo que sale no se atiende aunque diga received', leerMensajeEntrante(deKapso('whatsapp.message.received', { status: 'delivered', direction: 'outbound' })) === null)
+  const sinTipo = { data: { message: { id: 'w.e', from: '573000000001', type: 'text', text: { body: 'LADERA' }, kapso: { status: 'delivered' } } } }
+  afirmar('lectura: sin tipo en el cuerpo, el encabezado del evento decide', leerMensajeEntrante(sinTipo, new Date(), 'whatsapp.message.received')?.texto === 'LADERA')
+  afirmar('lectura: el encabezado de un recibo no se atiende', leerMensajeEntrante(sinTipo, new Date(), 'whatsapp.message.delivered') === null)
+  afirmar('lectura: el tipo también puede venir afuera de data', leerMensajeEntrante({ type: 'whatsapp.message.received', ...sinTipo })?.texto === 'LADERA')
+  afirmar('lectura: la dirección inbound basta sin evento', leerMensajeEntrante({ message: { ...sinTipo.data.message, kapso: { status: 'delivered', direction: 'inbound' } } })?.texto === 'LADERA')
   afirmar('lectura: un recibo de entrega no es un mensaje', leerMensajeEntrante({ message: { id: 'w.5', from: '573000000001', type: 'text', text: { body: 'x' }, kapso: { status: 'delivered' } } }) === null)
   afirmar('lectura: un mensaje a otro número no es de Amanece', leerMensajeEntrante({ phone_number_id: 'otro-numero', message: { id: 'w.6', from: '573000000001', type: 'text', text: { body: 'x' } } }) === null)
   const conReferral = (referral: unknown) => leerMensajeEntrante(eventoDeKapso({ wamid: 'w.r', telefono: '573000000001', texto: '(LADERA) hola', referral }), recibidoEn)

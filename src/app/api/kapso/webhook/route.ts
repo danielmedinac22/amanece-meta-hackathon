@@ -21,9 +21,10 @@ export async function POST(request: Request) {
     return new Response('Cuerpo inválido', { status: 400 })
   }
 
-  const mensaje = leerMensajeEntrante(evento)
+  const delEncabezado = request.headers.get('x-webhook-event')
+  const mensaje = leerMensajeEntrante(evento, new Date(), delEncabezado)
   // Sin esto, un número mal configurado se queda sordo y responde 200.
-  if (!mensaje) console.warn('[webhook] descartado', porQueSeDescarta(evento))
+  if (!mensaje) console.warn('[webhook] descartado', porQueSeDescarta(evento, delEncabezado))
   if (mensaje) {
     after(async () => {
       try {
