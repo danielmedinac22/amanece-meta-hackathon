@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, isNotNull, ne, notExists, or, sql } from 'drizzle-orm'
 import { db, esquema } from '@/db'
 import type { EstadoDeCita } from '@/db/esquema'
 import { CUENTA_COMO_VENTA } from './consultas/catalogo'
@@ -102,12 +102,13 @@ async function leerElOjo(negocio: NegocioId, ahora: Date, zona: string): Promise
         and(
           eq(pedidos.negocioId, negocio),
           or(eq(pedidos.estado, 'novedad'), and(eq(pedidos.estado, 'pendiente'), gte(pedidos.creado, new Date(ahora.getTime() - DIAS_QUE_ESPERA_UNA_CONFIRMACION * 86_400_000)))),
+          // Aquí y no después del límite: los pedidos con Caso abierto no le quitan el lugar a uno que no lo tiene.
+          notExists(db.select({ uno: sql`1` }).from(casos).where(and(eq(casos.negocioId, negocio), eq(casos.pedidoId, pedidos.id), ne(casos.estado, 'resuelto')))),
         ),
       )
       .orderBy(sql`${pedidos.estado} = 'novedad' desc`, desc(pedidos.creado))
       .limit(CUANTOS_EN_EL_OJO),
   ])
-  const conCaso = new Set(abiertos.map((c) => c.pedidoId))
   return [
     ...abiertos.map(
       (c): CosaDelOjo => ({
@@ -118,9 +119,7 @@ async function leerElOjo(negocio: NegocioId, ahora: Date, zona: string): Promise
         ruta: '/panel/casos',
       }),
     ),
-    ...pedidosDelOjo
-      .filter((p) => !conCaso.has(p.id))
-      .map(
+    ...pedidosDelOjo.map(
         (p): CosaDelOjo => ({
           clave: `pedido-${p.id}`,
           titulo: p.estado === 'novedad' ? COSA_DE_UN_PEDIDO.novedad(nombre(p.cliente), p.ciudad) : COSA_DE_UN_PEDIDO.pendiente(nombre(p.cliente)),

@@ -74,8 +74,10 @@ export function useAdjuntos(alSubir: SubirArchivo, iniciales: readonly EnElRedac
 
   const quitar = (local: string) => setLista((l) => l.filter((x) => x.local !== local))
   const vaciar = () => setLista([])
+  const devolver = (adjuntos: readonly Adjunto[]) =>
+    setLista((l) => [...adjuntos.map((adjunto): EnElRedactor => ({ local: `devuelto-${adjunto.id}`, nombre: adjunto.nombre, clase: adjunto.clase, estado: 'listo', adjunto })), ...l])
 
-  return { lista, listos: lista.flatMap((x) => (x.estado === 'listo' ? [x.adjunto] : [])), subiendo: lista.some((x) => x.estado === 'subiendo'), agregar, quitar, vaciar }
+  return { lista, listos: lista.flatMap((x) => (x.estado === 'listo' ? [x.adjunto] : [])), subiendo: lista.some((x) => x.estado === 'subiendo'), agregar, quitar, vaciar, devolver }
 }
 
 const Icono = ({ clase, className }: { clase: ClaseDeArchivo; className: string }) => (clase === 'pdf' ? <FilePdf className={className} /> : <Imagen className={className} />)

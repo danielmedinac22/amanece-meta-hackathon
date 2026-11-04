@@ -14,6 +14,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pedirPublicar } from '../src/app/panel/tocar-publicar'
 import { tocarTarjeta } from '../src/app/panel/tocar-tarjeta'
+import { intentoPara } from '../src/app/panel/intento'
+import { loQueVuelve, NO_LLEGO } from '../src/app/panel/lo-que-vuelve'
 import { decisionesEnEspera, decisionQueEspera } from '../src/negocio/partes-del-hilo'
 import { EMPIEZA_A_CORREGIR } from '../src/nucleo/armado-paso'
 import { afirmar, terminar } from './afirmar.mjs'
@@ -189,6 +191,8 @@ const RECORRIDOS_DE_ESTADOS: typeof RECORRIDOS = [
   ['Hilo: lo que no sabe hacer queda anotado, sin botón, venga de donde venga', 'hilo-capacidad-faltante', '1440', `--cierto=document.querySelector('[data-conversacion]').innerText.split('Todavía no sé hacer esto').length === 3`, '--ve=Quedó anotado para el equipo de Amanece. No cambié nada en tu negocio.', `--cierto=![...document.querySelectorAll('[data-conversacion] button')].some((b) => /^(Aplicar|Enviar)/.test(b.textContent.trim()))`, '--no-ve=Preparó lo que pediste', '--no-ve=Anotó algo'],
   ['Hilo: proponer sin tarjeta dice que revisó, no que preparó', 'hilo-capacidad-faltante', '1440', '--ve=Revisó lo que pediste'],
   ['Hilo: lo que no sabe hacer, en teléfono', 'hilo-capacidad-faltante', '390', '--ve=Todavía no sé hacer esto'],
+  ['Privacidad: dice quién responde y qué se guarda', 'privacidad', '390', '--ve=Quién responde', '--ve=Ley 1581'],
+  ['Hilo: lo que no llegó vuelve a la caja y lo dice', 'hilo-no-llego', '1440', '--ve=Te lo dejé en la caja', '--no-ve=Se cortó mi respuesta', `--cierto=document.querySelector('form textarea').value === 'Cierro los domingos'`],
   ['Hilo: si se corta la respuesta dice qué hacer', 'hilo-error', '1440', '--ve=Se cortó mi respuesta. Escríbeme de nuevo.', '--no-ve=Algo falló'],
   ['Tarjeta que venció sin refrescar: dice que venció y ya no deja tocar', 'hilo-tarjeta-vencio', '1440', '--ve=1 de 4', TOCAR_EN_TARJETA('v-aplicar', 'Aplicar'), '--espera=400', TARJETA_DICE('v-aplicar', 'Venció sin aplicarse. Pídela de nuevo'), TARJETA_SIN_BOTONES('v-aplicar'), '--ve=1 de 3', TOCAR_EN_TARJETA('v-enviar', 'Enviar'), '--espera=400', TARJETA_DICE('v-enviar', 'Venció sin enviarse. Pídele a tu agente'), TARJETA_SIN_BOTONES('v-enviar')],
   ['Tarjeta que otro ya resolvió: dice qué hacer y ya no deja tocar', 'hilo-tarjeta-vencio', '1440', TOCAR_EN_TARJETA('v-otro', 'Aplicar'), '--espera=400', TARJETA_DICE('v-otro', 'Esta tarjeta ya no está disponible. Pídesela de nuevo'), TARJETA_SIN_BOTONES('v-otro')],
@@ -490,6 +494,20 @@ console.log('\nuna tarjeta sigue pasando por sus rutas')
   globalThis.fetch = (async () => {
     throw new Error('sin red')
   }) as typeof fetch
+  const delDueno = (id: string) => ({ id, role: 'user' as const, parts: [] })
+  const foto = { id: 'a1', clase: 'foto' as const, nombre: 'menu.jpg', paginas: null, paginasDelOriginal: null }
+  const mandado = { texto: 'Cierro los domingos', adjuntos: [foto] }
+  const antes = [delDueno('s1')]
+  const local = [delDueno('s1'), delDueno('local')]
+  afirmar('Se cortó después de guardar: no vuelve nada, o se repetiría', loQueVuelve(mandado, new Error('cortado'), local, [delDueno('s1'), delDueno('otro-id')]) === null)
+  afirmar('No se guardó: vuelve con sus archivos', loQueVuelve(mandado, new Error('Failed to fetch'), local, antes)?.adjuntos.length === 1 && loQueVuelve(mandado, new Error('Failed to fetch'), local, antes)?.aviso === NO_LLEGO)
+  afirmar('Sin poder leer el Hilo: vuelve, porque repetir cuesta menos que perder', loQueVuelve(mandado, new Error('Failed to fetch'), local, null)?.texto === mandado.texto)
+  const rechazado = loQueVuelve(mandado, new Error(JSON.stringify({ error: 'Ese archivo ya no está. Vuelve a adjuntarlo.' })), local, antes)
+  afirmar('Un rechazo dice lo que dijo la ruta y devuelve el texto sin el archivo', rechazado?.aviso === 'Ese archivo ya no está. Vuelve a adjuntarlo.' && rechazado.texto === mandado.texto && rechazado.adjuntos.length === 0, rechazado)
+  const primero = intentoPara(null, 'Hola', () => 'id-1')
+  afirmar('El mismo texto reintenta con el mismo intento', intentoPara(primero, 'Hola', () => 'id-2').id === 'id-1')
+  afirmar('Otro texto es otro intento: el viejo diría que ya salió', intentoPara(primero, 'Hola, Ana', () => 'id-2').id === 'id-2')
+
   afirmar('Sin red el error vuelve a la tarjeta', (await tocarTarjeta(tarjeta, 'aprobar')).tipo === 'error')
   afirmar('Sin red el error vuelve a Publicar', (await pedirPublicar('h1')).tipo === 'error')
   globalThis.fetch = (async (url: string, init: RequestInit) => {

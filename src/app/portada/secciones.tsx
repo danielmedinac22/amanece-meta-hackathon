@@ -109,7 +109,12 @@ export function Pie({ t, idioma }: { t: TextosDePortada['pie']; idioma: Idioma }
   return (
     <footer className="mx-auto flex w-full max-w-[1120px] flex-wrap items-center justify-between gap-2.5 px-5 pt-[18px] pb-[30px] text-[12.5px] text-muted-foreground">
       <span>{t.texto}</span>
-      <CambioDeIdioma idioma={idioma} />
+      <span className="flex items-center gap-3">
+        <Link href="/privacidad" className="underline underline-offset-2">
+          {t.privacidad}
+        </Link>
+        <CambioDeIdioma idioma={idioma} />
+      </span>
     </footer>
   )
 }

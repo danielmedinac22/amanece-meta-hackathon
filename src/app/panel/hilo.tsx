@@ -3,11 +3,12 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EstadoDeTarjeta } from '@/negocio/dueno-chat'
 import { PARTE_DE_ARCHIVO, type Adjunto } from '@/nucleo/archivos'
 import { useRecogerLoEscrito, type LoEscrito } from '../lo-escrito'
 import { VistaDelHilo } from './hilo-vista'
+import { loQueVuelve, type Devuelto, type Enviado } from './lo-que-vuelve'
 import { subirArchivo } from './subir-archivo'
 import { tocarTarjeta } from './tocar-tarjeta'
 
@@ -61,8 +62,29 @@ export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[
     router.refresh()
   }, [releer, router])
 
+  const enviado = useRef<Enviado | null>(null)
+  const [devuelto, setDevuelto] = useState<Devuelto | null>(null)
+
+  // La caja ya se vació al enviar. Lo que el servidor no guardó vuelve a ella y sale de la conversación.
+  useEffect(() => {
+    const quedo = enviado.current
+    if (!error || !quedo) return
+    enviado.current = null
+    void (async () => {
+      const servidor = await fetch('/api/dueno/chat')
+        .then((r) => (r.ok ? (r.json() as Promise<HiloLeido>) : null))
+        .catch(() => null)
+      const vuelve = loQueVuelve(quedo, error, messages, servidor?.mensajes ?? null)
+      if (!vuelve) return
+      setDevuelto(vuelve)
+      setMessages(servidor?.mensajes ?? ((ms) => (ms.at(-1)?.role === 'user' ? ms.slice(0, -1) : ms)))
+    })()
+  }, [error, messages, setMessages])
+
   const alEnviar = useCallback(
     (contenido: string, adjuntos: readonly Adjunto[] = []) => {
+      enviado.current = { texto: contenido, adjuntos }
+      setDevuelto(null)
       if (!adjuntos.length) return void sendMessage({ text: contenido })
       const archivos = adjuntos.map((data) => ({ type: PARTE_DE_ARCHIVO, data }) as const)
       void sendMessage({ parts: contenido.trim() ? [{ type: 'text', text: contenido }, ...archivos] : archivos })
@@ -83,10 +105,10 @@ export function useHilo({ inicial, tarjetas, alTerminar }: { inicial: UIMessage[
   // Se espera el saludo: el primer sondeo da de alta al Dueño, y lo escrito debe quedar en el Hilo después de saludar.
   useRecogerLoEscrito(messages.length > 0, alRecoger)
 
-  return { messages, estados, status, error, ocupado, alEnviar, alCambiar }
+  return { messages, estados, status, error, devuelto, ocupado, alEnviar, alCambiar }
 }
 
 export function Hilo({ inicial, tarjetas }: { inicial: UIMessage[]; tarjetas: Record<string, EstadoDeTarjeta> }) {
-  const { messages, estados, status, error, alEnviar, alCambiar } = useHilo({ inicial, tarjetas })
-  return <VistaDelHilo messages={messages} estados={estados} status={status} error={error} alEnviar={alEnviar} alSubir={subirArchivo} alTocar={tocarTarjeta} alCambiar={alCambiar} />
+  const { messages, estados, status, error, devuelto, alEnviar, alCambiar } = useHilo({ inicial, tarjetas })
+  return <VistaDelHilo messages={messages} estados={estados} status={status} error={error} devuelto={devuelto} alEnviar={alEnviar} alSubir={subirArchivo} alTocar={tocarTarjeta} alCambiar={alCambiar} />
 }
